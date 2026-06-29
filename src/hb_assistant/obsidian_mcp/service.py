@@ -8,7 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .config import ObsidianMcpConfig, ObsidianMcpConfigPatch, apply_patch, load_config
+from .config import (
+    ObsidianMcpConfig,
+    ObsidianMcpConfigPatch,
+    apply_patch,
+    load_config,
+    load_config_with_warnings,
+)
 from .mutations import (
     create_note,
     patch_note,
@@ -54,6 +60,10 @@ class ObsidianMcpService:
 
     def get_config(self) -> ObsidianMcpConfig:
         return load_config()
+
+    def config_warnings(self) -> list[str]:
+        """Forward-compat warnings from the last persisted-config load (e.g. unknown keys)."""
+        return load_config_with_warnings()[1]
 
     def update_config(self, patch: ObsidianMcpConfigPatch) -> dict[str, Any]:
         config, one_time_token = apply_patch(patch)

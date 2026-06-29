@@ -282,17 +282,36 @@ def config_path() -> Path:
     return root / "obsidian_mcp_config.json"
 
 
-def load_config() -> ObsidianMcpConfig:
+def load_config_with_warnings() -> tuple[ObsidianMcpConfig, list[str]]:
+    """Load the persisted config, tolerating unknown keys written by newer code.
+
+    The model keeps ``extra="forbid"`` so the typed patch path still rejects programmer
+    error, but the *persisted-file* path may legitimately contain keys a newer branch
+    added and this code does not know yet. We pre-filter the raw dict against the known
+    model fields before validating, so an unknown key never 500s an older deployment;
+    the dropped keys are reported as ``config_warnings`` for the operator surface.
+
+    Invalid *values* on known keys still raise (real corruption, not forward-compat).
+    """
     path = config_path()
     if not path.exists():
-        return ObsidianMcpConfig()
+        return ObsidianMcpConfig(), []
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return ObsidianMcpConfig()
+        return ObsidianMcpConfig(), []
     if not isinstance(raw, dict):
-        return ObsidianMcpConfig()
-    return ObsidianMcpConfig.model_validate(raw)
+        return ObsidianMcpConfig(), []
+    known = set(ObsidianMcpConfig.model_fields)
+    unknown = sorted(k for k in raw if k not in known)
+    filtered = {k: v for k, v in raw.items() if k in known}
+    config = ObsidianMcpConfig.model_validate(filtered)
+    warnings = [f"unknown_keys_ignored:{','.join(unknown)}"] if unknown else []
+    return config, warnings
+
+
+def load_config() -> ObsidianMcpConfig:
+    return load_config_with_warnings()[0]
 
 
 def save_config(config: ObsidianMcpConfig) -> ObsidianMcpConfig:

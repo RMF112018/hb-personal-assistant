@@ -1736,10 +1736,12 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
+        service = ObsidianMcpService()
         return {
             "surface": "settings.obsidian_mcp.config",
-            "config": ObsidianMcpService().get_config().redacted(),
-            "guardrails": ObsidianMcpService().guardrails(),
+            "config": service.get_config().redacted(),
+            "config_warnings": service.config_warnings(),
+            "guardrails": service.guardrails(),
         }
 
     @app.patch("/api/settings/obsidian-mcp/config")
@@ -1773,7 +1775,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         from hb_assistant.obsidian_mcp import ObsidianMcpService
 
-        result = ObsidianMcpService(db_path=db_path).source_index_status({})
+        service = ObsidianMcpService(db_path=db_path)
+        result = service.source_index_status({})
+        result["config_warnings"] = service.config_warnings()
         watcher = getattr(app.state, "source_watcher", None)
         if watcher is not None:
             with suppress(Exception):
