@@ -1,0 +1,9 @@
+ .../ProjectScheduleDashboardVisualizations.tsx     |  2 +-
+ frontend/src/lib/api.ts                            | 30 +++++++
+ frontend/src/lib/scheduleApiAsOf.test.ts           | 16 ++++
+ frontend/src/pages/ProjectSchedulePage.test.tsx    | 98 ++++++++++++++++++++++
+ frontend/src/pages/ProjectSchedulePage.tsx         | 37 +++++++-
+ src/hb_assistant/construction/analytics/api.py     | 29 +++++++
+ .../analytics/project_schedule_narrative_qa.py     | 46 ++++++++++
+ .../analytics/project_schedule_summary_service.py  | 18 ++++
+ 8 files changed, 272 insertions(+), 4 deletions(-)

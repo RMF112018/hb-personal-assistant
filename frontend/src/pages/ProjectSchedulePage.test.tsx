@@ -11,6 +11,7 @@ const getProjectScheduleSummaryMock = vi.fn()
 const getProjectScheduleMetricTrendsMock = vi.fn()
 const getProjectScheduleBaselineMock = vi.fn()
 const getProjectScheduleDrilldownMock = vi.fn()
+const getProjectScheduleControlsMock = vi.fn()
 const downloadProjectScheduleExportMock = vi.fn()
 
 vi.mock('../lib/api', async () => {
@@ -25,6 +26,7 @@ vi.mock('../lib/api', async () => {
       getProjectScheduleBaseline: (...args: unknown[]) => getProjectScheduleBaselineMock(...args),
       getProjectScheduleDrilldown: (...args: unknown[]) => getProjectScheduleDrilldownMock(...args),
       downloadProjectScheduleExport: (...args: unknown[]) => downloadProjectScheduleExportMock(...args),
+      getProjectScheduleControls: (...args: unknown[]) => getProjectScheduleControlsMock(...args),
     },
   }
 })
@@ -297,6 +299,49 @@ function trendMetric(key: string, overrides: Record<string, unknown> = {}) {
   }
 }
 
+function controlsResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    available: true,
+    advisory_posture: 'sequence_cues_not_causation',
+    as_of_date: '2026-06-28',
+    schedule_data_date: '2026-06-23',
+    comparison_basis: 'prior_update',
+    summary: {
+      overall_status: 'watch',
+      headline: 'Schedule controls recommend PM review of priority sequence and float signals.',
+      supporting_points: ['1 open review workbench cues in the selected basis.'],
+      primary_review_focus: 'Candidate change driver: Envelope Completion',
+      open_review_item_count: 1,
+      high_priority_review_item_count: 1,
+    },
+    top_controls: [
+      {
+        control_id: 'ctrl-1',
+        category: 'critical_path',
+        severity: 'review',
+        confidence: 'high',
+        title: 'Candidate change driver: Envelope Completion',
+        summary: 'Candidate driver sequence cue for PM review.',
+        recommended_action: 'Review the linked activity sequence and downstream movement before disposition.',
+        links: {
+          driver_detail: '/projects/tropical/schedule/drivers/DRV-A?basis=prior_update',
+          review_item: '/projects/tropical/schedule/workbench?review=driver%3ADRV-A&comparison_basis=prior_update',
+        },
+      },
+    ],
+    sections: {
+      cpm_observability: {
+        available: true,
+        headline: 'CPM recompute succeeded for the selected schedule version.',
+      },
+    },
+    links: {
+      review_workbench: '/projects/tropical/schedule/workbench?comparison_basis=prior_update',
+    },
+    ...overrides,
+  }
+}
+
 function trendResponse(overrides: Record<string, unknown> = {}) {
   return {
     available: true,
@@ -368,6 +413,7 @@ function renderPage(
     baseline_summary: (response as Record<string, any>).baseline_summary || {},
   })
   getProjectScheduleDrilldownMock.mockResolvedValue({ count: 1, items: [] })
+  getProjectScheduleControlsMock.mockResolvedValue(controlsResponse())
   downloadProjectScheduleExportMock.mockResolvedValue(undefined)
   return render(
     <QueryClientProvider client={client}>
@@ -383,6 +429,7 @@ describe('ProjectSchedulePage', () => {
     getProjectScheduleMetricTrendsMock.mockReset()
     getProjectScheduleBaselineMock.mockReset()
     getProjectScheduleDrilldownMock.mockReset()
+    getProjectScheduleControlsMock.mockReset()
     downloadProjectScheduleExportMock.mockReset()
   })
 
@@ -412,6 +459,8 @@ describe('ProjectSchedulePage', () => {
     expect(screen.getByText('Forecast 2026-12-15')).toBeInTheDocument()
     expect(screen.getAllByText('Review Next').length).toBeGreaterThanOrEqual(1)
     expect(await screen.findByText('Schedule Controls')).toBeInTheDocument()
+    expect(screen.getByText(/do not determine causation, entitlement, or responsibility/i)).toBeInTheDocument()
+    expect(await screen.findByText('Controls Trend Analytics')).toBeInTheDocument()
   })
 
   it('requests controls trends without as-of when latest context is selected and renders supported panels', async () => {
@@ -461,6 +510,10 @@ describe('ProjectSchedulePage', () => {
         'tropical',
         expect.objectContaining({ asOf: '2026-06-16' }),
       )
+      expect(getProjectScheduleControlsMock).toHaveBeenCalledWith('tropical', {
+        asOf: '2026-06-16',
+        comparisonBasis: 'prior_update',
+      })
     })
 
     expect(screen.getByRole('link', { name: 'Open Workbench' })).toHaveAttribute(
@@ -487,6 +540,10 @@ describe('ProjectSchedulePage', () => {
     renderPage(scheduleResponse({ as_of_date: undefined }))
 
     await screen.findByText('Schedule Controls')
+    expect(getProjectScheduleControlsMock).toHaveBeenCalledWith('tropical', {
+      asOf: undefined,
+      comparisonBasis: 'prior_update',
+    })
     expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
     expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
     expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
@@ -641,5 +698,46 @@ describe('ProjectSchedulePage', () => {
     await screen.findByText('Envelope Completion')
     expect(screen.queryByText('(A1)')).not.toBeInTheDocument()
     expect(screen.queryByText('A1')).not.toBeInTheDocument()
+  })
+
+  it('renders top controls without raw activity id as the primary label', async () => {
+    renderPage()
+    expect(await screen.findByText('Candidate change driver: Envelope Completion')).toBeInTheDocument()
+    const topControlsRegion = screen.getByText('Top controls').closest('div')
+    expect(topControlsRegion?.textContent || '').not.toMatch(/\bDRV-A\b/)
+  })
+
+  it('preserves comparison basis on driver detail links when toggled', async () => {
+    const user = userEvent.setup()
+    renderPage(
+      scheduleResponse({
+        change_driver_analysis: {
+          available: true,
+          advisory_posture: 'sequence_cues_not_causation',
+          prior_update: scheduleResponse().change_driver_analysis.prior_update,
+          baseline: {
+            available: true,
+            advisory_posture: 'sequence_cues_not_causation',
+            summary: { candidate_driver_count: 1 },
+            top_drivers: [
+              { activity_id: 'A1', activity_name: 'Envelope Completion', review_priority: 80, downstream_count: 2 },
+            ],
+            review_drilldowns: {
+              drivers: { count: 1, items: [{ activity_id: 'A1', activity_name: 'Envelope Completion' }] },
+            },
+          },
+        },
+      }),
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Since selected baseline' }))
+    await waitFor(() => {
+      expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
+        asOf: undefined,
+        comparisonBasis: 'baseline',
+      })
+    })
+    const driverLink = await screen.findByRole('link', { name: 'Envelope Completion' })
+    expect(driverLink).toHaveAttribute('href', expect.stringContaining('basis=baseline'))
   })
 })

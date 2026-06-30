@@ -1215,6 +1215,35 @@ def create_app(*, db_path: str | None = None) -> Any:
             project_key, as_of=as_of_date
         )
 
+    @app.get("/api/projects/{project_key}/schedule/controls")
+    def project_schedule_controls(
+        project_key: str,
+        as_of: str | None = None,
+        comparison_basis: str = "prior_update",
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_controls_service import (
+            ProjectScheduleControlsService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        return ProjectScheduleControlsService(db_path=_schedule_db_path()).build_controls(
+            project_key,
+            as_of=as_of_date,
+            comparison_basis=basis,
+        )
+
     @app.get("/api/projects/{project_key}/schedule/drilldowns")
     def project_schedule_drilldowns(
         project_key: str,

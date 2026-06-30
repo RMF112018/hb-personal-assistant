@@ -47,7 +47,7 @@ export function ProjectScheduleDashboardVisualizations({
 
   return (
     <section className="space-y-4">
-      <h4 className="text-sm font-semibold">Schedule Controls</h4>
+      <h4 className="text-sm font-semibold">Controls Trend Analytics</h4>
       <ControlsOverview schedule={schedule} />
 
       <div className="space-y-4">

@@ -1,0 +1,12 @@
+ M frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx
+ M frontend/src/lib/api.ts
+ M frontend/src/lib/scheduleApiAsOf.test.ts
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_narrative_qa.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+?? docs/evidence/project-schedule-hub/schedule-controls-phase6-20260630T224348Z/
+?? frontend/src/components/project-schedule/ScheduleControlsPanel.tsx
+?? src/hb_assistant/construction/analytics/project_schedule_controls_service.py
+?? tests/test_project_schedule_controls_service.py

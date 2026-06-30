@@ -1189,6 +1189,24 @@ class ProjectScheduleSummaryService:
             "baseline_summary": baseline_summary,
         }
 
+    def build_schedule_hub_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any] | None:
+        """Public schedule intelligence context for controls, workbench, and related surfaces.
+
+        Delegates to ``_review_workbench_context`` because that helper is the established
+        composition point for version resolution and schedule intelligence assembly.
+        Duplicating that logic here would risk drift across hub, workbench, and controls.
+        """
+        context = self._review_workbench_context(project_key, as_of=as_of)
+        if not context:
+            return None
+        versions = self._hub_project_versions(project_key)
+        as_of_date = context.get("as_of_date") or datetime.now(timezone.utc).date()
+        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+        enriched = dict(context)
+        if current_choice:
+            enriched["schedule_data_date"] = _date_str(self._data_date(current_choice.version))
+        return enriched
+
     def build_export(
         self,
         project_key: str,

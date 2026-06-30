@@ -62,6 +62,52 @@ def validate_review_cue_text(cue: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_CONTROLS_FORBIDDEN_TERMS = _FORBIDDEN_TERMS + (
+    "entitlement",
+    "liquidated damages",
+    "recovery owed",
+    "subcontractor-caused",
+    "liable",
+    "claim entitlement",
+)
+
+
+def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate PM-facing schedule controls copy for forbidden causation/entitlement language."""
+
+    violations: list[dict[str, str]] = []
+    fields: dict[str, str] = {}
+    summary = payload.get("summary") or {}
+    fields["headline"] = str(summary.get("headline") or "")
+    for index, point in enumerate(summary.get("supporting_points") or []):
+        fields[f"supporting_point:{index}"] = str(point)
+    for index, control in enumerate(payload.get("top_controls") or []):
+        prefix = f"top_controls:{index}"
+        fields[f"{prefix}:title"] = str(control.get("title") or "")
+        fields[f"{prefix}:summary"] = str(control.get("summary") or "")
+        fields[f"{prefix}:why_it_matters"] = str(control.get("why_it_matters") or "")
+        fields[f"{prefix}:recommended_action"] = str(control.get("recommended_action") or "")
+        for caveat_index, caveat in enumerate(control.get("caveats") or []):
+            fields[f"{prefix}:caveat:{caveat_index}"] = str(caveat)
+    for section_key, section in (payload.get("sections") or {}).items():
+        if isinstance(section, dict):
+            fields[f"section:{section_key}:headline"] = str(section.get("headline") or "")
+    combined = " ".join(fields.values()).lower()
+    for term in _CONTROLS_FORBIDDEN_TERMS:
+        if _contains_forbidden_term(combined, term):
+            violations.append(
+                {
+                    "code": "forbidden_term",
+                    "message": f"Forbidden claim language detected in controls payload: {term}",
+                }
+            )
+    return {
+        "passed": not violations,
+        "violations": violations,
+        "advisory_posture": _ADVISORY_POSTURE,
+    }
+
+
 def validate_summary(summary: dict[str, Any]) -> dict[str, Any]:
     violations: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []

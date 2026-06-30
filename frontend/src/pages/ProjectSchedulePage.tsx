@@ -8,6 +8,7 @@ import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { TechnicalDetails } from '../components/common/TechnicalDetails'
 import { ForecastDialog } from '../components/forecast/ForecastDialog'
+import { ScheduleControlsPanel } from '../components/project-schedule/ScheduleControlsPanel'
 import { ScheduleImportFlow } from '../components/project-schedule/ScheduleImportFlow'
 import type { ProjectScheduleImportCommitResult } from '../components/project-schedule/scheduleImportTypes'
 import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
@@ -213,16 +214,19 @@ function DriverEvidenceSection({
   projectKey,
   driverHub,
   asOfDate,
+  comparisonBasis,
+  onComparisonBasisChange,
 }: {
   projectKey: string
   driverHub: Record<string, any>
   asOfDate?: string
+  comparisonBasis: 'prior_update' | 'baseline'
+  onComparisonBasisChange: (basis: 'prior_update' | 'baseline') => void
 }) {
   const driverDetailQuery = (activityId: string, basis: 'prior_update' | 'baseline') =>
     `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(activityId)}?basis=${basis}${
       asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''
     }`
-  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
   const driverAnalysis =
     comparisonBasis === 'baseline'
       ? driverHub.baseline || { available: false }
@@ -265,13 +269,13 @@ function DriverEvidenceSection({
         <div className="flex flex-wrap gap-2">
           <button
             className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-            onClick={() => setComparisonBasis('prior_update')}
+            onClick={() => onComparisonBasisChange('prior_update')}
           >
             Since previous update
           </button>
           <button
             className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-            onClick={() => setComparisonBasis('baseline')}
+            onClick={() => onComparisonBasisChange('baseline')}
           >
             Since selected baseline
           </button>
@@ -434,6 +438,7 @@ export function ProjectSchedulePage() {
   const [showAllActions, setShowAllActions] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [newImportBanner, setNewImportBanner] = useState(false)
+  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
@@ -488,6 +493,21 @@ export function ProjectSchedulePage() {
   const { data: baselinePayload } = useQuery({
     queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
     queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
+    enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+  })
+  const driverHubEarly = (data || {}) as ProjectScheduleSummaryResponse
+  const baselineAvailableEarly = Boolean(driverHubEarly.change_driver_analysis?.baseline?.available)
+  const {
+    data: controlsPayload,
+    isLoading: controlsLoading,
+    error: controlsError,
+  } = useQuery({
+    queryKey: ['project', 'schedule', 'controls', projectKey, asOf || 'latest', comparisonBasis],
+    queryFn: () =>
+      api.getProjectScheduleControls(projectKey, {
+        asOf: requestAsOf,
+        comparisonBasis,
+      }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
   })
 
@@ -687,6 +707,15 @@ export function ProjectSchedulePage() {
 
         <TrustBanner scheduleTrust={scheduleTrust} identityReview={identityReview} />
 
+        <ScheduleControlsPanel
+          controls={controlsPayload}
+          loading={controlsLoading}
+          error={controlsError}
+          comparisonBasis={comparisonBasis}
+          baselineAvailable={baselineAvailableEarly}
+          onComparisonBasisChange={setComparisonBasis}
+        />
+
         <div className={`card ${toneFor(health.status)}`}>
           <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
             <div>
@@ -788,6 +817,8 @@ export function ProjectSchedulePage() {
                 projectKey={projectKey}
                 driverHub={driverHub}
                 asOfDate={requestAsOf}
+                comparisonBasis={comparisonBasis}
+                onComparisonBasisChange={setComparisonBasis}
               />
             </div>
           </div>

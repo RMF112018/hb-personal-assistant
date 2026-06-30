@@ -1,0 +1,30 @@
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:20:  const comparisonBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:23:    queryKey: ['project', 'schedule', 'driver-detail', projectKey, activityId, asOfDate, comparisonBasis],
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:27:        comparisonBasis,
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:120:        comparisonBasis: 'prior_update',
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:125:      comparisonBasis: 'prior_update',
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:143:      comparisonBasis: 'prior_update',
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:95:  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:111:    comparisonBasis,
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:123:        await api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate, comparisonBasis })
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:127:        comparisonBasis,
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:247:              className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:253:              className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:371:                  comparisonBasis={comparisonBasis}
+frontend/src/pages/ProjectSchedulePage.tsx:225:  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
+frontend/src/pages/ProjectSchedulePage.tsx:227:    comparisonBasis === 'baseline'
+frontend/src/pages/ProjectSchedulePage.tsx:267:            className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+frontend/src/pages/ProjectSchedulePage.tsx:273:            className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+frontend/src/pages/ProjectSchedulePage.tsx:359:                        to={driverDetailQuery(String(item.activity_id || ''), comparisonBasis)}
+frontend/src/pages/ProjectSchedulePage.test.tsx:414:    expect(await screen.findByText('Schedule Controls')).toBeInTheDocument()
+frontend/src/pages/ProjectSchedulePage.test.tsx:489:    await screen.findByText('Schedule Controls')
+frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx:50:      <h4 className="text-sm font-semibold">Schedule Controls</h4>
+frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx:51:      <ControlsOverview schedule={schedule} />
+frontend/src/components/projects/ProjectScheduleDashboardVisualizations.tsx:229:function ControlsOverview({ schedule }: { schedule: Record<string, any> }) {
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:21:  const { comparisonBasis, comparisonIdentitySafe, diffFacts } = model
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:34:          Current identity: {text(comparisonBasis.current_schedule_identity_key)} · Prior identity:{' '}
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:35:          {text(comparisonBasis.default_prior_schedule_identity_key)} · Reason:{' '}
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:36:          {text(comparisonBasis.default_prior_selection_reason ?? comparisonBasis.default_prior_unavailable_reason)}
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:38:        {comparisonIdentitySafe && comparisonBasis.detailed_diff_id ? (
+frontend/src/components/schedule/health/ScheduleHealthVersionComparisonPanel.tsx:41:            to={`/schedules/version-diff?project=${encodeURIComponent(String(health.project_key ?? projectKey))}&diff_id=${encodeURIComponent(String(comparisonBasis.detailed_diff_id))}`}
+frontend/src/components/project-schedule/ReviewCueCard.tsx:69:  comparisonBasis: 'prior_update' | 'baseline'

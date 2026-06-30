@@ -1,0 +1,11 @@
+Phase 6 validation — fixture proof unless noted
+
+Focused backend bundle: PASS (controls + hub + review + narrative)
+pytest -k "schedule and review": PASS
+pytest -k "schedule and as_of": PASS
+py_compile: PASS
+scripts/test-schedule.sh: 323 passed, 2 deselected
+npm run typecheck: PASS
+frontend tests: 60 passed (ProjectSchedulePage, Workbench, scheduleApiAsOf, scheduleImport)
+
+Parser/CPM/import foundations: NOT modified
