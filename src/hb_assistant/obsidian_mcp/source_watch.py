@@ -8,8 +8,12 @@ Indexing never runs on the request loop and never blocks startup/shutdown.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import os
 import threading
+import uuid
 from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +32,10 @@ from .source_indexer import (
 
 _logger = logging.getLogger("hb_assistant.obsidian_mcp.source_watch")
 
+# Lease staleness TTL — mirrors the requeue_stuck TTL so a crashed owner's in-flight events and its
+# lease both become reclaimable on the same horizon.
+WATCHER_LEASE_TTL_SECONDS = 900
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -35,6 +43,19 @@ def _now() -> str:
 
 def _enabled_roots(config: ObsidianMcpConfig) -> list[Any]:
     return [r for r in getattr(config, "external_sources", []) or [] if r.enabled]
+
+
+def _roots_hash(config: ObsidianMcpConfig, db_path: str) -> str:
+    """Stable short hash of the (db, vault, enabled-roots) context this watcher would own."""
+    payload = json.dumps(
+        {
+            "db": str(db_path),
+            "vault": getattr(config, "vault_root", None),
+            "roots": sorted((r.source_root_key, r.path) for r in _enabled_roots(config)),
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 class SourceWatcher:
@@ -51,6 +72,10 @@ class SourceWatcher:
         self._last_event_at: str | None = None
         self._last_error_code: str | None = None
         self._last_test_event_at: str | None = None
+        # Single-owner lease: an opaque per-watcher nonce identifies this instance's ownership.
+        self._owner_token = uuid.uuid4().hex
+        self._is_owner = False
+        self._degraded = False
 
     # ----- lifecycle -------------------------------------------------------------------------
     def start(self, *, config: ObsidianMcpConfig | None = None) -> None:
@@ -65,6 +90,39 @@ class SourceWatcher:
         if self._thread is not None and self._thread.is_alive():
             return
         self._stop.clear()
+        # Single-owner guard: only one backend may run the drain loop against this DB/root context.
+        # FAIL CLOSED: if ownership cannot be proven — a competing live owner OR a lease-check error
+        # — this instance serves the API but stays degraded (no drain thread, no observer). Better a
+        # quiet/degraded watcher than two uncoordinated drains racing the same DB/source roots.
+        owner_info = {
+            "pid": os.getpid(),
+            "cwd": os.getcwd(),
+            "db_path": str(self._db_path),
+            "roots_hash": _roots_hash(self._config, str(self._db_path)),
+        }
+        try:
+            lease = self._repo.acquire_watcher_lease(
+                owner_token=self._owner_token, owner_info=owner_info,
+                ttl_seconds=WATCHER_LEASE_TTL_SECONDS,
+            )
+        except Exception:  # lease-check error: cannot prove ownership → degrade, do NOT drain
+            self._is_owner = False
+            self._degraded = True
+            self._mode = "degraded"
+            self._last_error_code = "watcher_lease_error"  # safe, sanitized (no exception detail)
+            _logger.warning("source_watch.degraded_lease_error", extra={"obsidian_mcp": {
+                "error_code": "watcher_lease_error"}})
+            return
+        if not lease.get("acquired", True):
+            self._is_owner = False
+            self._degraded = True
+            self._mode = "degraded"
+            self._last_error_code = "watcher_not_owner"
+            _logger.warning("source_watch.degraded_not_owner", extra={"obsidian_mcp": {
+                "owner_pid": (lease.get("owner") or {}).get("pid")}})
+            return
+        self._is_owner = True
+        self._degraded = False
         with suppress(Exception):
             self._repo.requeue_stuck()  # recover events stuck in 'processing' from a prior run
         try:
@@ -87,6 +145,13 @@ class SourceWatcher:
             self._thread.join(timeout=3)
             self._thread = None
         self._mode = "stopped"
+        # Release the lease only if we actually own it (a degraded non-owner must never clear the
+        # live owner's lease).
+        if self._is_owner:
+            with suppress(Exception):
+                self._repo.release_watcher_lease(owner_token=self._owner_token)
+        self._is_owner = False
+        self._degraded = False
 
     def restart(self) -> dict[str, Any]:
         """Stop, reload config from disk (so config edits take effect), and start again."""
@@ -182,6 +247,8 @@ class SourceWatcher:
                 if self._mode == "polling":
                     self._poll_once()
                 drain_queue(self._repo, self._config)
+                with suppress(Exception):
+                    self._repo.refresh_watcher_heartbeat(owner_token=self._owner_token)
             except Exception as exc:  # never let the worker die
                 self._last_error_code = type(exc).__name__
                 _logger.warning("source_watch.worker_error", extra={"obsidian_mcp": {
@@ -206,10 +273,20 @@ class SourceWatcher:
             health = self._repo.queue_health()
         except Exception:
             health = {}
+        owner: dict[str, Any] | None = None
+        with suppress(Exception):
+            owner = self._repo.get_watcher_owner(ttl_seconds=WATCHER_LEASE_TTL_SECONDS)
+        if owner is not None:
+            # Redact the internal ownership nonce; keep the operator-useful diagnostics
+            # (pid/cwd/db_path/roots_hash/started_at/heartbeat). No bearer token is ever in here.
+            owner = {k: v for k, v in owner.items() if k != "owner_token"}
         return {
             "running": running,
             "mode": self._mode,
             "watch_enabled": bool(getattr(cfg, "external_source_watch_enabled", False)),
+            "degraded": bool(self._degraded),
+            "is_owner": bool(self._is_owner),
+            "owner": owner,
             "queued_count": health.get("queued_count"),
             "queue_health": health,
             "last_event_at": self._last_event_at,

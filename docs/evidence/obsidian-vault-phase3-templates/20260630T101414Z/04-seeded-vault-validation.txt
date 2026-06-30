@@ -1,0 +1,33 @@
+=== expected seeded files ===
+OK: README.md
+OK: Work/00 Dashboard/Work Dashboard.md
+OK: Home/00 Dashboard/Home Dashboard.md
+OK: MOCs/Work/Work MOC.md
+OK: MOCs/Home/Home MOC.md
+OK: MOCs/Shared/Shared MOC.md
+OK: Templates/Source Cards/source-card-template.md
+OK: Templates/Projects/work-project-template.md
+OK: Templates/Projects/home-project-template.md
+OK: Templates/Meetings/work-meeting-template.md
+OK: Templates/Meetings/home-meeting-template.md
+OK: Templates/Decisions/decision-log-template.md
+OK: Templates/Daily/work-daily-template.md
+OK: Templates/Daily/home-daily-template.md
+OK: Templates/People/person-template.md
+OK: Templates/Companies/company-template.md
+OK: Source Notes/Work/README.md
+OK: Source Notes/Home/README.md
+OK: Source Notes/Shared/README.md
+MISSING_COUNT=0
+
+=== no NON-markdown files seeded (vault, excluding plugin dirs) ===
+/Users/bobbyfetting/Documents/Obsidian Vault/99 System/Receipts/reset-receipt-20260630T095421Z.json
+(end non-md list)
+
+=== source card frontmatter spot-check ===
+note_type: source_card
+source_sha256: ""
+template_version: "source-card-v1"
+
+=== total markdown files in vault ===
+52

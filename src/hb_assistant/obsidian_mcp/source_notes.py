@@ -24,7 +24,57 @@ from .mutations import create_note, resolve_markdown_write_path, sha256_file
 from .source_analyzers import SourceAnalysis
 from .source_index_repository import SourceIndexRepository
 from .source_indexer import is_deferred_source_path, is_excluded_source_path
+from .source_value import SourceValue, classify_source_value, derive_confidence
 from .tools import ObsidianMcpToolError
+
+# Card schema markers (kept in sync with Templates/Source Cards/source-card-template.md).
+TEMPLATE_VERSION = "source-card-v1"
+CARD_VERSION = "phase4-v1"
+# document_type values that are not a confident PM class → flag the card for human review.
+_AMBIGUOUS_DOC_TYPES = frozenset({
+    "general_pdf", "general_document", "spreadsheet", "cost_document",
+})
+
+
+def _domain_for(detail: dict[str, Any]) -> str:
+    """Deterministic work/home/shared domain from the source root key (no path content needed).
+
+    Single source of truth for both the card frontmatter `domain` and the routed Source Notes
+    subfolder. Home is checked first so a hypothetical 'home-work' key resolves to home.
+    """
+    key = str(detail.get("source_root_key") or "").lower()
+    if "home" in key:
+        return "home"
+    if any(s in key for s in ("onedrive", "work", "syn-work", "hb-", "procore", "sharepoint")):
+        return "work"
+    return "shared"
+
+
+# work/home/shared (lowercase, from _domain_for) -> the seeded vault subfolder name.
+_DOMAIN_FOLDER = {"work": "Work", "home": "Home", "shared": "Shared"}
+_SAFE_BASENAME_RE = re.compile(r"[^A-Za-z0-9 _.()\-]+")
+_MAX_BASENAME_CHARS = 80
+
+
+def _safe_basename(detail: dict[str, Any]) -> str:
+    """A readable, path-safe card basename derived from the source filename (NOT its directory path).
+
+    Guarantees: no path separators, no '..', no leading dot/dotfile, no absolute-path fragment, no
+    control characters, bounded length; deterministic 'source' fallback when empty. The
+    ``__<source_id>.md`` suffix is appended by the caller AFTER this, so the suffix is never altered.
+    """
+    if detail.get("rel_path"):
+        raw = Path(str(detail["rel_path"]).replace("\\", "/")).name  # basename only — drops directories
+    else:
+        raw = f"{detail.get('source_kind') or 'link'}__{detail.get('domain_ref_id') or ''}"
+    raw = raw.replace("\\", "/").replace("/", " ")          # belt-and-suspenders: no separators
+    raw = "".join(ch for ch in raw if ch.isprintable() and ch not in "\t\r\n")  # no control chars
+    raw = _SAFE_BASENAME_RE.sub("-", raw)                    # whitelist charset
+    raw = re.sub(r"\.{2,}", ".", raw)                        # collapse runs of dots (kills '..')
+    raw = re.sub(r"[-\s]{2,}", lambda m: m.group(0)[0], raw)  # collapse repeated separators
+    raw = raw.strip(" .-")                                    # no leading/trailing dot/space/dash
+    raw = raw[:_MAX_BASENAME_CHARS].strip(" .-")
+    return raw or "source"
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
 # v2: file-type-specific advisory prompts + deterministic per-type analyzer block.
@@ -47,10 +97,17 @@ def _sha256_text(text: str) -> str:
 
 
 def _card_rel_path(config: ObsidianMcpConfig, detail: dict[str, Any]) -> str:
+    """Routed, path-safe generated-card path: ``<folder>/<Domain>/<basename>__<source_id12>.md``.
+
+    Routes by the deterministic :func:`_domain_for` domain. The source directory path is NOT
+    replicated and never embedded in the filename; the 12-char source_id suffix makes the path stable
+    per source and collision-safe across same-basename sources (preserving the
+    UNIQUE(source_id, note_rel_path) model).
+    """
     folder = (config.source_notes_folder or "Source Notes").strip("/")
-    if detail.get("rel_path"):
-        return f"{folder}/{detail['rel_path']}.md"
-    return f"{folder}/{detail['source_kind']}/{detail['domain_ref_id']}.md"
+    domain_folder = _DOMAIN_FOLDER.get(_domain_for(detail), "Shared")
+    source_id12 = str(detail["source_id"])[:12]
+    return f"{folder}/{domain_folder}/{_safe_basename(detail)}__{source_id12}.md"
 
 
 def _yaml_str(value: object) -> str:
@@ -65,8 +122,11 @@ def _yaml_str(value: object) -> str:
 
 
 def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, Any] | None,
-                 analysis: SourceAnalysis | None = None) -> str:
+                 analysis: SourceAnalysis | None = None, *,
+                 value: SourceValue | None = None, domain: str = "shared",
+                 review_status: str = "unreviewed", confidence: str | None = None) -> str:
     lines = ["---", "note_type: source_card",
+             f"domain: {_yaml_str(domain)}",
              f"source_id: {_yaml_str(detail['source_id'])}",
              f"source_kind: {_yaml_str(detail['source_kind'])}"]
     if detail.get("rel_path"):
@@ -79,14 +139,24 @@ def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, 
         f"source_sha256: {_yaml_str(detail.get('content_sha256'))}",
         f"source_mtime_ns: {_yaml_str(detail.get('mtime_ns'))}",
         f"indexed_at: {_yaml_str(detail.get('indexed_at'))}",
+        f"updated_at: {_yaml_str(detail.get('updated_at') or detail.get('indexed_at') or generated_at)}",
         f"generated_at: {_yaml_str(generated_at)}",
         "stale: false",
         f"project_key: {_yaml_str(detail.get('project_key'))}",
         f"project_number: {_yaml_str(detail.get('project_number'))}",
     ]
     if analysis is not None:
-        for key, value in analysis.to_frontmatter_dict().items():
-            lines.append(f"{key}: {_yaml_str(value)}")
+        for key, val in analysis.to_frontmatter_dict().items():
+            lines.append(f"{key}: {_yaml_str(val)}")
+    if value is not None:
+        lines.append(f"source_disposition: {_yaml_str(value.disposition.value)}")
+    if confidence is not None:
+        lines.append(f"source_confidence: {_yaml_str(confidence)}")
+    lines += [
+        f"review_status: {_yaml_str(review_status)}",
+        f"template_version: {_yaml_str(TEMPLATE_VERSION)}",
+        f"card_version: {_yaml_str(CARD_VERSION)}",
+    ]
     lines.append(f"summary_advisory: {'true' if advisory else 'false'}")
     if advisory:
         lines += [
@@ -95,7 +165,7 @@ def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, 
             f"summary_prompt_version: {_yaml_str(advisory.get('prompt_version'))}",
             f"summary_generated_at: {_yaml_str(advisory.get('generated_at'))}",
         ]
-    lines += ["tags:", f"  - source/{detail['source_kind']}"]
+    lines += ["tags:", f"  - source/{detail['source_kind']}", f"  - domain/{domain}"]
     if detail.get("project_number"):
         lines.append(f"  - project/{detail['project_number']}")
     if advisory:
@@ -220,6 +290,78 @@ def _card_basis(detail: dict[str, Any]) -> str:
     if detail.get("extraction_status") in ("failed", "unsupported", "skipped_too_large") or not has_text:
         return "filename/path analysis + metadata only"
     return "metadata only"
+
+
+_WHY_BY_TYPE: dict[str, str] = {
+    "change_order": "An executed change order — it moves contract value/scope; verify the amount and status.",
+    "potential_change_order": "A potential change order (PCO/COR) — track pricing and approval before it executes.",
+    "pay_application": "A payment application — drives billing/cash; verify amount, period, and approval.",
+    "contract": "A contract — defines obligations, value, and terms of record.",
+    "subcontract": "A subcontract — defines a trade partner's scope, value, and terms.",
+    "purchase_order": "A purchase order — committed procurement; verify vendor and amount.",
+    "rfi": "An RFI — an open question that can affect cost/schedule until answered.",
+    "submittal": "A submittal — product/shop-drawing approval gating procurement and install.",
+    "meeting_minutes": "Meeting minutes — decisions and action items of record.",
+    "schedule": "A schedule artifact — sequencing/milestones (no CPM computed here).",
+    "specification": "A specification — governs materials/workmanship requirements.",
+    "drawing": "A drawing — design intent; coordinate against current revisions.",
+    "bid_package": "A bid package — defines a procurement scope for pricing.",
+    "daily_log": "A daily log — field record of labor/conditions for the day.",
+    "manpower_log": "A manpower/labor log — staffing record affecting productivity tracking.",
+    "cost_report": "A cost report — current cost position; reconcile against budget/forecast.",
+    "project_controls": "A project-controls report — cost/forecast position of record.",
+    "closeout": "A closeout document — completion/handover record.",
+    "warranty": "A warranty document — coverage and obligations after completion.",
+    "operations_maintenance": "An O&M document — operations/maintenance reference for handover.",
+    "punch_list": "A punch list — open completion items before final acceptance.",
+    "safety": "A safety record — compliance and risk documentation.",
+    "quality": "A quality record — conformance/QA-QC documentation.",
+    "inspection": "An inspection record — verification of work/compliance.",
+}
+
+
+def _pm_value_sections(detail: dict[str, Any], analysis: SourceAnalysis | None,
+                       value: SourceValue | None, confidence: str | None,
+                       review_status: str) -> list[str]:
+    """Deterministic PM sections (no model summary): Why This Matters / PM Review Cues / Source Basis /
+    Follow-Up. All content is derived from filename/metadata classification only."""
+    doc_type = analysis.document_type if analysis is not None else None
+    out: list[str] = ["## Why This Matters"]
+    out.append(f"- {_WHY_BY_TYPE.get(doc_type or '', 'Indexed source retained for reference and search.')}")
+    out.append("")
+    out += ["## PM Review Cues"]
+    cues: list[str] = []
+    if analysis and analysis.document_number:
+        cues.append(f"Confirm document number {analysis.document_number}.")
+    if analysis and analysis.amount:
+        cues.append(f"Verify amount {analysis.amount} against the source (deterministic extract).")
+    if analysis and analysis.doc_status:
+        cues.append(f"Confirm status '{analysis.doc_status}'.")
+    if analysis and analysis.doc_date:
+        cues.append(f"Confirm date {analysis.doc_date}.")
+    if detail.get("project_number"):
+        cues.append(f"Tie to project {detail['project_number']}.")
+    if review_status == "needs_review":
+        cues.append("Low-confidence/ambiguous classification — confirm document type before relying on this card.")
+    if not cues:
+        cues.append("Review the source and confirm classification.")
+    out += [f"- {c}" for c in cues]
+    out.append("")
+    out += ["## Source Basis",
+            f"- Card basis: {_card_basis(detail)}",
+            f"- Document type: {doc_type or 'unknown'} (deterministic — filename/metadata)"]
+    if value is not None:
+        out.append(f"- Disposition: {value.disposition.value}")
+    if confidence is not None:
+        out.append(f"- Confidence: {confidence} (deterministic; not model-derived)")
+    if value is not None and value.reasons:
+        out.append(f"- Classification reasons: {', '.join(value.reasons[:6])}")
+    out.append("")
+    out += ["## Follow-Up",
+            "- [ ] Confirm classification and key fields above.",
+            "- [ ] Link related project / people / decisions.",
+            ""]
+    return out
 
 
 _SPREADSHEET_SIGNAL_TERMS = (
@@ -557,7 +699,16 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     display = Path(detail["rel_path"]).name if detail.get("rel_path") else str(detail.get("domain_ref_id"))
     # Deterministic construction analysis (file sources only; sensitive sources have no excerpt).
     analysis = source_analyzers.from_detail(detail) if detail.get("rel_path") else None
-    parts = [_frontmatter(detail, generated_at, advisory, analysis), "", f"# Source Card: {display}", ""]
+    # Thread the PM-value disposition + a deterministic confidence/domain/review_status into the card.
+    value = classify_source_value(detail, config) if detail.get("rel_path") else None
+    domain = _domain_for(detail)
+    confidence = derive_confidence(value) if value is not None else None
+    needs_review = confidence == "low" or (
+        analysis is not None and analysis.document_type in _AMBIGUOUS_DOC_TYPES)
+    review_status = "needs_review" if needs_review else "unreviewed"
+    parts = [_frontmatter(detail, generated_at, advisory, analysis, value=value, domain=domain,
+                          review_status=review_status, confidence=confidence),
+             "", f"# Source Card: {display}", ""]
     if advisory:
         kind = advisory.get("kind")
         if kind == "drawing":
@@ -582,6 +733,9 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
         parts.append(f"- Project number: {detail['project_number']}")
     parts.append(f"- Card basis: {_card_basis(detail)}")
     parts.append("")
+
+    # PM-grade deterministic value sections (Why This Matters / PM Review Cues / Source Basis / Follow-Up).
+    parts += _pm_value_sections(detail, analysis, value, confidence, review_status)
 
     # PM-grade deterministic sections: spreadsheet, drawing-specific, bid-package, or fallback.
     if analysis is not None:

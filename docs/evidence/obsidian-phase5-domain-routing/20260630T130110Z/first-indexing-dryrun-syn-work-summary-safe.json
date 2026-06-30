@@ -1,0 +1,56 @@
+{
+  "actions_taken": "none (read-only readiness scan)",
+  "cap_reached": true,
+  "counts_by_disposition": {
+    "auto_card_high": 98,
+    "auto_card_normal": 323,
+    "metadata_only": 77,
+    "unsupported": 2
+  },
+  "counts_by_document_type": {
+    "closeout": 2,
+    "cost_document": 19,
+    "drawing": 3,
+    "general_document": 140,
+    "general_pdf": 228,
+    "manpower_log": 1,
+    "pay_application": 2,
+    "purchase_order": 2,
+    "safety": 1,
+    "schedule": 2,
+    "specification": 2,
+    "spreadsheet": 95,
+    "submittal": 3
+  },
+  "counts_by_domain": {
+    "work": 500
+  },
+  "counts_by_extension": {
+    "csv": 2,
+    "doc": 4,
+    "docx": 104,
+    "eml": 8,
+    "jpg": 2,
+    "md": 3,
+    "msg": 9,
+    "pages": 1,
+    "pdf": 262,
+    "tiff": 1,
+    "xls": 1,
+    "xlsm": 2,
+    "xlsx": 93,
+    "xml": 1,
+    "zip": 7
+  },
+  "elapsed_seconds": 0.095,
+  "files_examined": 500,
+  "max_files": 500,
+  "max_seconds": 120.0,
+  "mode": "dry_run",
+  "root_key": "syn-work",
+  "skipped_deferred_by_reason": {
+    "metadata_only_no_auto_card": 77,
+    "unsupported_file_type": 2
+  },
+  "symlinks_recorded": 0
+}

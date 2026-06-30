@@ -61,8 +61,11 @@ def _make_and_enqueue(repo, root_dir: Path, name: str, body: str) -> None:
 
 
 def _card_path(vault: Path, rel: str) -> Path:
-    # cards live at "Source Notes/<rel_path>.md" (rel_path already includes the source extension)
-    return vault / "Source Notes" / f"{rel}.md"
+    # Phase 5: cards are domain-routed to "Source Notes/{Work,Home,Shared}/<basename>__<id12>.md"
+    # (no source directory replication). Resolve by the source basename regardless of domain subfolder.
+    base = Path(rel).name
+    matches = sorted((vault / "Source Notes").rglob(f"{base}__*.md"))
+    return matches[0] if matches else vault / "Source Notes" / "__missing__.md"
 
 
 # ------------------------------------------------------------------------------- defaults: OFF

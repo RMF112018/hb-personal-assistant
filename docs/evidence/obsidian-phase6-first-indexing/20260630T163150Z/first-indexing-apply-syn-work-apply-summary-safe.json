@@ -1,0 +1,21 @@
+{
+  "all_routed_under_work": true,
+  "counts_by_disposition": {
+    "auto_card_high": 25
+  },
+  "counts_by_document_type": {},
+  "enqueued_count": 0,
+  "error_count": 25,
+  "generated_card_count": 0,
+  "mode": "apply",
+  "processed_count": 0,
+  "queue_after": {
+    "processing": 0,
+    "queued": 0
+  },
+  "queued_event_delta": 0,
+  "root_key": "syn-work",
+  "selected_count": 25,
+  "skipped_count": 0,
+  "summary_count": 0
+}

@@ -58,9 +58,11 @@ def test_dry_run_returns_counts_and_samples_without_mutation(env) -> None:
     repo, config, vault, db, sid_ins, note_path = env
     res = retire_source_cards(repo, config, apply=False)
     assert res["apply"] is False
-    assert res["matched_count"] == 1  # only the insurance (deferred) card matches
+    assert res["matched_count"] == 1  # only the insurance (deferred) card matches (via source_rel)
     assert res["by_policy"]["deferred"] == 1
-    assert any("INSURANCE" in p.upper() for p in res["sample_paths"])
+    # Phase 5: cards are domain-routed (no source-dir replication), so the deferred match comes from
+    # the source path, and the sampled path is the routed card path (no leaked source directory).
+    assert note_path in res["sample_paths"]
     assert res["retired_count"] == 0
     # No DB change, card file untouched.
     assert _status(db, sid_ins) == "generated"

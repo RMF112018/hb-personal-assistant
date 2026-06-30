@@ -15,6 +15,12 @@ from enum import Enum
 from typing import Any
 
 from .config import ObsidianMcpConfig
+from .source_skip_codes import (
+    DEFERRED_PATH,
+    EXCLUDED_PATH,
+    METADATA_ONLY_NO_AUTO_CARD,
+    UNSUPPORTED_FILE_TYPE,
+)
 
 
 class SourceValueDisposition(str, Enum):
@@ -35,10 +41,14 @@ _DISP_RANK: dict[SourceValueDisposition, int] = {
 
 # document_type -> disposition mapping (the analyzer is the single source of types).
 HIGH_DOCUMENT_TYPES = frozenset({
-    "architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing",
+    "architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing", "drawing",
     "bid_package", "rfi", "submittal", "meeting_minutes", "schedule", "specification",
-    "cost_document", "change_order", "pay_application", "contract", "daily_log",
-    "punchlist", "closeout", "project_controls", "staffing_report",
+    "cost_document", "change_order", "potential_change_order", "pay_application",
+    "contract", "subcontract", "purchase_order", "daily_log", "manpower_log",
+    "punch_list", "punchlist",  # punch_list canonical; punchlist kept for backward compatibility
+    "closeout", "warranty", "operations_maintenance",
+    "cost_report", "project_controls", "staffing_report",
+    "safety", "quality", "inspection",
 })
 # NORMAL also covers unknown-but-real project documents (general_pdf/general_document): they still
 # get a card, just not prioritized ahead of recognized PM/control artifacts. METADATA_ONLY is reserved
@@ -89,7 +99,7 @@ def _build(disposition: SourceValueDisposition, *, reasons: list[str], config: O
     allow_summary = allow_card and disposition in (_D.AUTO_CARD_HIGH, _D.AUTO_CARD_NORMAL)
     code = skip_code
     if code is None and not allow_card and disposition is _D.METADATA_ONLY:
-        code = "metadata_only_no_auto_card"
+        code = METADATA_ONLY_NO_AUTO_CARD
     return SourceValue(
         disposition=disposition,
         priority_score=_DISP_RANK[disposition] * 100,
@@ -100,6 +110,21 @@ def _build(disposition: SourceValueDisposition, *, reasons: list[str], config: O
         skip_code=code,
         reasons=reasons,
     )
+
+
+def derive_confidence(value: SourceValue) -> str:
+    """Deterministic, explainable confidence label (high/medium/low) for a source card.
+
+    HIGH disposition driven by the document_type itself → ``high``; a HIGH reached only via a
+    filename/path signal promotion → ``medium`` (weaker evidence); NORMAL → ``medium``; everything
+    else (metadata-only/deferred/unsupported) → ``low``. Purely a function of disposition + reasons.
+    """
+    promoted = any(r in ("high_path_signal", "normal_path_signal") for r in value.reasons)
+    if value.disposition is _D.AUTO_CARD_HIGH:
+        return "medium" if promoted else "high"
+    if value.disposition is _D.AUTO_CARD_NORMAL:
+        return "medium"
+    return "low"
 
 
 def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> SourceValue:
@@ -114,14 +139,14 @@ def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> 
 
     if rel and _path_has_segment(rel, getattr(config, "source_index_excluded_path_parts", [])):
         return _build(_D.EXCLUDED, reasons=["excluded_path_segment"], config=config,
-                      skip_code="excluded_path", allow_metadata_index=False)
+                      skip_code=EXCLUDED_PATH, allow_metadata_index=False)
     unsupported = {_ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])}
     if ext and ext in unsupported:
         return _build(_D.UNSUPPORTED, reasons=[f"unsupported_ext:{ext}"], config=config,
-                      skip_code="unsupported_file_type", allow_metadata_index=False)
+                      skip_code=UNSUPPORTED_FILE_TYPE, allow_metadata_index=False)
     if rel and _path_has_segment(rel, getattr(config, "source_index_deferred_path_parts", [])):
         return _build(_D.DEFERRED, reasons=["deferred_path_segment"], config=config,
-                      skip_code="deferred_path", allow_metadata_index=True)
+                      skip_code=DEFERRED_PATH, allow_metadata_index=True)
 
     from . import source_analyzers  # lazy: pure module, avoids any import-order surprise
     document_type = source_analyzers.from_detail(detail).document_type
