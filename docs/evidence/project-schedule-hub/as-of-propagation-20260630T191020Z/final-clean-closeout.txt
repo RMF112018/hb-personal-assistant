@@ -1,0 +1,14 @@
+date_utc=2026-06-30T20:26:10Z
+branch=feature/schedule-as-of-propagation-20260630T191020Z
+head=f2a2356e96b6851499987fd19c29a59b520d795b
+
+status:
+## feature/schedule-as-of-propagation-20260630T191020Z...origin/main [ahead 1]
+?? docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/final-clean-closeout.txt
+
+recent log:
+f2a2356e (HEAD -> feature/schedule-as-of-propagation-20260630T191020Z) fix(schedule): propagate as-of context consistently
+112ff008 (origin/main, origin/HEAD, feat/phase-8c-review-workbench) Merge pull request #228 from RMF112018/ops/obsidian-phase6-first-indexing-20260630T163150Z
+7c61539f (origin/ops/obsidian-phase6-first-indexing-20260630T163150Z, ops/obsidian-phase6-first-indexing-20260630T163150Z) ops(obsidian): Phase 6E safety closeout — freeze auto-gen, clear 4 queued events
+9181d65a Merge pull request #229 from RMF112018/feature/schedule-canonical-package-merge-20260630T093009Z
+117a5b9e ops(obsidian): Phase 6D — first real bounded batch (25 Source Notes/Work cards)
