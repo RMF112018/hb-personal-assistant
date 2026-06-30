@@ -37,13 +37,44 @@ _AMBIGUOUS_DOC_TYPES = frozenset({
 
 
 def _domain_for(detail: dict[str, Any]) -> str:
-    """Deterministic work/home/shared domain from the source root key (no path content needed)."""
+    """Deterministic work/home/shared domain from the source root key (no path content needed).
+
+    Single source of truth for both the card frontmatter `domain` and the routed Source Notes
+    subfolder. Home is checked first so a hypothetical 'home-work' key resolves to home.
+    """
     key = str(detail.get("source_root_key") or "").lower()
     if "home" in key:
         return "home"
-    if "onedrive" in key or "work" in key or "syn-work" in key or "hb-" in key:
+    if any(s in key for s in ("onedrive", "work", "syn-work", "hb-", "procore", "sharepoint")):
         return "work"
     return "shared"
+
+
+# work/home/shared (lowercase, from _domain_for) -> the seeded vault subfolder name.
+_DOMAIN_FOLDER = {"work": "Work", "home": "Home", "shared": "Shared"}
+_SAFE_BASENAME_RE = re.compile(r"[^A-Za-z0-9 _.()\-]+")
+_MAX_BASENAME_CHARS = 80
+
+
+def _safe_basename(detail: dict[str, Any]) -> str:
+    """A readable, path-safe card basename derived from the source filename (NOT its directory path).
+
+    Guarantees: no path separators, no '..', no leading dot/dotfile, no absolute-path fragment, no
+    control characters, bounded length; deterministic 'source' fallback when empty. The
+    ``__<source_id>.md`` suffix is appended by the caller AFTER this, so the suffix is never altered.
+    """
+    if detail.get("rel_path"):
+        raw = Path(str(detail["rel_path"]).replace("\\", "/")).name  # basename only — drops directories
+    else:
+        raw = f"{detail.get('source_kind') or 'link'}__{detail.get('domain_ref_id') or ''}"
+    raw = raw.replace("\\", "/").replace("/", " ")          # belt-and-suspenders: no separators
+    raw = "".join(ch for ch in raw if ch.isprintable() and ch not in "\t\r\n")  # no control chars
+    raw = _SAFE_BASENAME_RE.sub("-", raw)                    # whitelist charset
+    raw = re.sub(r"\.{2,}", ".", raw)                        # collapse runs of dots (kills '..')
+    raw = re.sub(r"[-\s]{2,}", lambda m: m.group(0)[0], raw)  # collapse repeated separators
+    raw = raw.strip(" .-")                                    # no leading/trailing dot/space/dash
+    raw = raw[:_MAX_BASENAME_CHARS].strip(" .-")
+    return raw or "source"
 
 # Bump when the advisory prompt/template changes so receipts record which version produced a card.
 # v2: file-type-specific advisory prompts + deterministic per-type analyzer block.
@@ -66,10 +97,17 @@ def _sha256_text(text: str) -> str:
 
 
 def _card_rel_path(config: ObsidianMcpConfig, detail: dict[str, Any]) -> str:
+    """Routed, path-safe generated-card path: ``<folder>/<Domain>/<basename>__<source_id12>.md``.
+
+    Routes by the deterministic :func:`_domain_for` domain. The source directory path is NOT
+    replicated and never embedded in the filename; the 12-char source_id suffix makes the path stable
+    per source and collision-safe across same-basename sources (preserving the
+    UNIQUE(source_id, note_rel_path) model).
+    """
     folder = (config.source_notes_folder or "Source Notes").strip("/")
-    if detail.get("rel_path"):
-        return f"{folder}/{detail['rel_path']}.md"
-    return f"{folder}/{detail['source_kind']}/{detail['domain_ref_id']}.md"
+    domain_folder = _DOMAIN_FOLDER.get(_domain_for(detail), "Shared")
+    source_id12 = str(detail["source_id"])[:12]
+    return f"{folder}/{domain_folder}/{_safe_basename(detail)}__{source_id12}.md"
 
 
 def _yaml_str(value: object) -> str:

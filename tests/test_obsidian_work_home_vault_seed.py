@@ -9,11 +9,20 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "seed_obsidian_work_home_vault.py"
 _spec = importlib.util.spec_from_file_location("seed_obsidian_work_home_vault", _SCRIPT)
 assert _spec and _spec.loader
 mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mod)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_backend(monkeypatch):
+    # Hermetic: the seed script's --apply refuses if a backend listens on 8000. Tests must not depend
+    # on the real port being free (an operator backend may be running), so stub the check to False.
+    monkeypatch.setattr(mod, "_backend_listening", lambda *a, **k: False)
 
 _REQUIRED = [
     "README.md",
