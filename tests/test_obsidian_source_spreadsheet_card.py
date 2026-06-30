@@ -30,7 +30,7 @@ def test_high_value_spreadsheet_card_has_sections_and_basis():
     for section in ("## Spreadsheet Identity", "## PM Relevance",
                     "## Detected Workbook Signals", "## Review / Verification Notes"):
         assert section in md
-    assert "project_controls" in md  # high-value class surfaced
+    assert "cost_report" in md  # high-value class surfaced (cost-report split from project_controls)
     assert "Sheet names: Summary, Detail" in md
     assert "no formulas evaluated, no macros executed" in md
 

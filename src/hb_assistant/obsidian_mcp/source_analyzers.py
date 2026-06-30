@@ -146,6 +146,13 @@ class SourceAnalysis:
     exclusions: list[str] = field(default_factory=list)
     procurement_signals: list[str] = field(default_factory=list)
     trade_scope: list[str] = field(default_factory=list)
+    # Generic PM-grade deterministic fields (populated ONLY when explicit/unambiguous; never invented).
+    document_number: str | None = None
+    title: str | None = None
+    vendor: str | None = None
+    amount: str | None = None
+    doc_date: str | None = None
+    doc_status: str | None = None
 
     @property
     def is_drawing(self) -> bool:
@@ -162,10 +169,16 @@ class SourceAnalysis:
             out["discipline"] = self.discipline
         for key in ("sheet_number", "sheet_title", "issue_status",
                     "revision_number", "revision_date", "revision_description",
-                    "bid_package_number", "bid_package_title"):
+                    "bid_package_number", "bid_package_title",
+                    "document_number", "title", "vendor", "amount"):
             value = getattr(self, key)
             if value:
                 out[key] = str(value)
+        # doc_date/doc_status surface under the simpler frontmatter keys date/status.
+        if self.doc_date:
+            out["date"] = str(self.doc_date)
+        if self.doc_status:
+            out["status"] = str(self.doc_status)
         return out
 
     def as_dict(self) -> dict[str, Any]:
@@ -225,7 +238,9 @@ def _spreadsheet_doc_type(rel_path: str, text: str) -> str:
     blob = f"{name}\n{text[:2000].lower()}"
     if re.search(r"pay app|payapp|payment application|application for payment", blob):
         return "pay_application"
-    if re.search(r"cost entries|cost report|\bforecast\b|\bbudget\b", blob):
+    if re.search(r"\bcost report\b", blob):
+        return "cost_report"
+    if re.search(r"cost entries|\bforecast\b|\bbudget\b|project controls", blob):
         return "project_controls"
     if re.search(r"\bstaffing\b|\bmanpower\b|\blabor\b", blob):
         return "staffing_report"
@@ -238,31 +253,59 @@ def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
     # Bid packages BEFORE rfi: a bid doc that merely mentions RFIs must not become an RFI.
     if _bid_package_signal(rel_path, text):
         return "bid_package"
-    # Stricter RFI: require an explicit RFI marker, not a bare "rfi" substring.
-    if re.search(r"request for information|\brfi\s*#|\brfi\s+no\.?|\brfi log\b", blob):
+    # Stricter RFI: require an explicit RFI marker (incl. a numbered "RFI 032"), not a bare substring.
+    if re.search(r"request for information|\brfi\s*#|\brfi\s+no\.?|\brfi\s*#?\s*\d|\brfi log\b", blob):
         return "rfi"
     if "submittal" in blob or ("shop drawing" in blob and "specification" not in blob):
         return "submittal"
-    if re.search(r"\bpcco\b|\bpco\b|\bcor\b|change order|change directive", blob):
+    # Potential change order (PCO / COR / "change order request") BEFORE executed change_order.
+    if re.search(r"\bpco\b|\bcor\b|potential change order|change order request|change event|\bcce\b", blob):
+        return "potential_change_order"
+    if re.search(r"\bpcco\b|change order|change directive|\bocd\b", blob):
         return "change_order"
     if re.search(r"pay app|payapp|payment application|application for payment|\bg70[23]\b", blob):
         return "pay_application"
-    if re.search(r"\bcontract\b|\bsubcontract\b|notice to proceed|\bntp\b", name):
+    if re.search(r"purchase order|\bp\.?o\.?\s*#|\bpo\s+no\.?|\bpo\s*#?\s*\d{2,}", blob):
+        return "purchase_order"
+    # Subcontract BEFORE contract (subcontract is the more specific class).
+    if re.search(r"\bsubcontract\b", name):
+        return "subcontract"
+    if re.search(r"\bcontract\b|notice to proceed|\bntp\b", name):
         return "contract"
     if re.search(r"daily log|daily report", blob):
         return "daily_log"
+    if re.search(r"\bmanpower\b|man[- ]?power|man[- ]?hours", blob):
+        return "manpower_log"
     if re.search(r"punch ?list", blob):
-        return "punchlist"
-    if re.search(r"close ?out|as[- ]?built|o&m manual|\bwarranty\b", blob):
+        return "punch_list"
+    # Operations & maintenance and warranty split out of the generic closeout bucket.
+    if re.search(r"o\s*&\s*m\b|\bo and m\b|operations?\s*(?:and|&)\s*maintenance", blob):
+        return "operations_maintenance"
+    if re.search(r"\bwarranty\b|\bwarranties\b", blob):
+        return "warranty"
+    if re.search(r"close ?out|as[- ]?built", blob):
         return "closeout"
     if "meeting minutes" in blob or re.search(r"\bminutes\b", name):
         return "meeting_minutes"
     if re.search(r"specification|section \d{4,6}", blob):
         return "specification"
-    if re.search(r"project controls|cost report|cost forecast", blob):
+    if re.search(r"\bcost report\b", blob):
+        return "cost_report"
+    if re.search(r"project controls|cost forecast", blob):
         return "project_controls"
     if re.search(r"\bschedule\b", name):
         return "schedule"
+    # Safety BEFORE quality BEFORE inspection (so "Safety Inspection" → safety).
+    if re.search(r"\bsafety\b|toolbox talk|\bjha\b|\bjsa\b|\bswms\b", blob):
+        return "safety"
+    if re.search(r"\bquality\b|\bqa/qc\b|\bqaqc\b|\bncr\b|non[- ]?conformance", blob):
+        return "quality"
+    if re.search(r"\binspection\b|\binspect\b", blob):
+        return "inspection"
+    # Generic drawing by filename signal (sheet tokens without a dash, or plan/elevation/section).
+    if re.search(r"\bfloor plan\b|\belevation\b|\bbuilding section\b|\bdrawing set\b|\bdetail sheet\b", blob) \
+            or re.search(r"\b[A-Z]{1,2}\d{2,3}\b", Path(rel_path).stem.upper()):
+        return "drawing"
     if re.search(r"presentation|\bdeck\b", blob):
         return "presentation"
     if re.search(r"marketing|brochure", blob):
@@ -481,6 +524,59 @@ def _classify_non_spreadsheet(rel_path: str, text: str, sheet_number: str | None
     return doctype_guess
 
 
+_DOCNUM_RE: dict[str, "re.Pattern[str]"] = {
+    "rfi": re.compile(r"(?i)\brfi\s*#?\s*(\d{1,5})"),
+    "change_order": re.compile(r"(?i)\b(?:pcco|co)\s*#?\s*(\d{1,5})"),
+    "potential_change_order": re.compile(r"(?i)\b(?:pco|cor)\s*#?\s*(\d{1,5})"),
+    "pay_application": re.compile(r"(?i)\bpay\s*app(?:lication)?\s*#?\s*(\d{1,4})"),
+    "purchase_order": re.compile(r"(?i)\b(?:purchase order|po|p\.o\.)\s*#?\s*(\d{2,8})"),
+    "submittal": re.compile(r"(?i)\bsubmittal\s*#?\s*(\d{2}(?:[ ]?\d{2}){1,3}|\d{1,5})"),
+}
+_ISO_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
+_AMOUNT_RE = re.compile(r"\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\b")
+_STATUS_RE = re.compile(
+    r"(?i)\b(approved|executed|rejected|voided|void|superseded|for review|"
+    r"draft|open|closed|in review|pending)\b")
+# Trailing " - <Name>" segment is treated as the counterparty for these classes.
+_VENDOR_TYPES = {"subcontract", "contract", "purchase_order", "pay_application"}
+
+
+def _pm_document_fields(rel_path: str, text: str, document_type: str) -> dict[str, str | None]:
+    """Deterministic PM fields from filename/excerpt ONLY — never invented, never from an LLM.
+
+    Returns document_number/title/vendor/amount/doc_date/doc_status (each None when not explicit).
+    """
+    stem = Path(rel_path).stem
+    blob = f"{stem}\n{text[:2000]}"
+    out: dict[str, str | None] = {
+        "document_number": None, "title": None, "vendor": None,
+        "amount": None, "doc_date": None, "doc_status": None,
+    }
+    pat = _DOCNUM_RE.get(document_type)
+    if pat is not None:
+        m = pat.search(blob)
+        if m:
+            out["document_number"] = re.sub(r"\s+", " ", m.group(1)).strip()
+    # Trailing " - <text>" segment of the filename → vendor (procurement/contract/pay) or title.
+    segs = [s.strip() for s in re.split(r"\s[-–]\s", stem) if s.strip()]
+    trailing = segs[-1] if len(segs) >= 2 else None
+    if trailing and not _ISO_DATE_RE.search(trailing):
+        if document_type in _VENDOR_TYPES:
+            out["vendor"] = _clip(trailing)
+        else:
+            out["title"] = _clip(trailing)
+    dm = _ISO_DATE_RE.search(stem) or _ISO_DATE_RE.search(text[:2000])
+    if dm:
+        out["doc_date"] = dm.group(1)
+    am = _AMOUNT_RE.search(text[:4000])  # amounts only from explicit "$" in the body, never invented
+    if am:
+        out["amount"] = re.sub(r"\s+", "", am.group(0))
+    sm = _STATUS_RE.search(blob)
+    if sm:
+        out["doc_status"] = sm.group(1).lower()
+    return out
+
+
 def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     """Build a :class:`SourceAnalysis` from an indexed source ``detail`` dict. Fail-soft."""
     rel_path = str(detail.get("rel_path") or "")
@@ -517,6 +613,8 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
         procurement = _procurement_signals(rel_path)
         trade = _trade_scope(text)
 
+    pm = _pm_document_fields(rel_path, text, document_type)
+
     return SourceAnalysis(
         document_type=document_type,
         discipline=discipline,
@@ -541,4 +639,10 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
         exclusions=exclusions,
         procurement_signals=procurement,
         trade_scope=trade,
+        document_number=pm["document_number"],
+        title=pm["title"],
+        vendor=pm["vendor"],
+        amount=pm["amount"],
+        doc_date=pm["doc_date"],
+        doc_status=pm["doc_status"],
     )
