@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
-from .connection import get_connection, transaction
+from .connection import open_connection, transaction
 
 DEFAULT_PROFILE = "dcma_14_point_plus_gao"
 ENGINE_VERSION = "1.0.0"
@@ -17,11 +18,17 @@ class ScheduleQualityRepository:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = get_connection(self._db_path)
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.row_factory = sqlite3.Row
-        return conn
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.row_factory = sqlite3.Row
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     def enqueue_evaluation(
         self,
@@ -41,76 +48,76 @@ class ScheduleQualityRepository:
         queued_at: str,
     ) -> tuple[bool, str]:
         """Insert pending run idempotently. Returns (created, evaluation_run_id)."""
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            cur = conn.execute(
-                """
-                SELECT evaluation_run_id FROM schedule_quality_evaluation_runs
-                WHERE schedule_version_key=? AND idempotency_key=?
-                """,
-                (schedule_version_key, idempotency_key),
-            )
-            existing = cur.fetchone()
-            if existing:
-                return False, str(existing[0])
-            conn.execute(
-                """
-                INSERT INTO schedule_quality_evaluation_runs (
-                  evaluation_run_id, project_key, schedule_table_id, schedule_version_key,
-                  import_id, assessment_profile, assessment_profile_version, method_source,
-                  trigger_source, idempotency_key, status, is_latest, queued_at,
-                  engine_version, checker_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
-                """,
-                (
-                    evaluation_run_id,
-                    project_key,
-                    schedule_table_id,
-                    schedule_version_key,
-                    import_id,
-                    assessment_profile,
-                    assessment_profile_version,
-                    method_source,
-                    trigger_source,
-                    idempotency_key,
-                    queued_at,
-                    engine_version,
-                    checker_version,
-                ),
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                cur = conn.execute(
+                    """
+                    SELECT evaluation_run_id FROM schedule_quality_evaluation_runs
+                    WHERE schedule_version_key=? AND idempotency_key=?
+                    """,
+                    (schedule_version_key, idempotency_key),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    return False, str(existing[0])
+                conn.execute(
+                    """
+                    INSERT INTO schedule_quality_evaluation_runs (
+                      evaluation_run_id, project_key, schedule_table_id, schedule_version_key,
+                      import_id, assessment_profile, assessment_profile_version, method_source,
+                      trigger_source, idempotency_key, status, is_latest, queued_at,
+                      engine_version, checker_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
+                    """,
+                    (
+                        evaluation_run_id,
+                        project_key,
+                        schedule_table_id,
+                        schedule_version_key,
+                        import_id,
+                        assessment_profile,
+                        assessment_profile_version,
+                        method_source,
+                        trigger_source,
+                        idempotency_key,
+                        queued_at,
+                        engine_version,
+                        checker_version,
+                    ),
+                )
         return True, evaluation_run_id
 
     def claim_pending_run(self, *, started_at: str) -> dict[str, Any] | None:
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            cur = conn.execute(
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                cur = conn.execute(
                 """
                 SELECT evaluation_run_id FROM schedule_quality_evaluation_runs
                 WHERE status='pending'
                 ORDER BY queued_at ASC
                 LIMIT 1
                 """
-            )
-            row = cur.fetchone()
-            if not row:
-                return None
-            run_id = str(row[0])
-            updated = conn.execute(
-                """
-                UPDATE schedule_quality_evaluation_runs
-                SET status='running', started_at=?
-                WHERE evaluation_run_id=? AND status='pending'
-                """,
-                (started_at, run_id),
-            )
-            if updated.rowcount != 1:
-                return None
-            cur2 = conn.execute(
-                "SELECT * FROM schedule_quality_evaluation_runs WHERE evaluation_run_id=?",
-                (run_id,),
-            )
-            claimed = cur2.fetchone()
-            return dict(claimed) if claimed else None
+                )
+                row = cur.fetchone()
+                if not row:
+                    return None
+                run_id = str(row[0])
+                updated = conn.execute(
+                    """
+                    UPDATE schedule_quality_evaluation_runs
+                    SET status='running', started_at=?
+                    WHERE evaluation_run_id=? AND status='pending'
+                    """,
+                    (started_at, run_id),
+                )
+                if updated.rowcount != 1:
+                    return None
+                cur2 = conn.execute(
+                    "SELECT * FROM schedule_quality_evaluation_runs WHERE evaluation_run_id=?",
+                    (run_id,),
+                )
+                claimed = cur2.fetchone()
+                return dict(claimed) if claimed else None
 
     def complete_run(
         self,
@@ -120,24 +127,24 @@ class ScheduleQualityRepository:
         assessment_profile: str,
         completed_at: str,
     ) -> None:
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            conn.execute(
-                """
-                UPDATE schedule_quality_evaluation_runs
-                SET is_latest=0
-                WHERE schedule_version_key=? AND assessment_profile=? AND is_latest=1
-                """,
-                (schedule_version_key, assessment_profile),
-            )
-            conn.execute(
-                """
-                UPDATE schedule_quality_evaluation_runs
-                SET status='completed', completed_at=?, is_latest=1
-                WHERE evaluation_run_id=?
-                """,
-                (completed_at, evaluation_run_id),
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                conn.execute(
+                    """
+                    UPDATE schedule_quality_evaluation_runs
+                    SET is_latest=0
+                    WHERE schedule_version_key=? AND assessment_profile=? AND is_latest=1
+                    """,
+                    (schedule_version_key, assessment_profile),
+                )
+                conn.execute(
+                    """
+                    UPDATE schedule_quality_evaluation_runs
+                    SET status='completed', completed_at=?, is_latest=1
+                    WHERE evaluation_run_id=?
+                    """,
+                    (completed_at, evaluation_run_id),
+                )
 
     def fail_run(
         self,
@@ -147,51 +154,51 @@ class ScheduleQualityRepository:
         error_message_redacted: str,
         completed_at: str,
     ) -> None:
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            conn.execute(
-                """
-                UPDATE schedule_quality_evaluation_runs
-                SET status='failed', completed_at=?, error_code=?, error_message_redacted=?
-                WHERE evaluation_run_id=?
-                """,
-                (completed_at, error_code, error_message_redacted, evaluation_run_id),
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                conn.execute(
+                    """
+                    UPDATE schedule_quality_evaluation_runs
+                    SET status='failed', completed_at=?, error_code=?, error_message_redacted=?
+                    WHERE evaluation_run_id=?
+                    """,
+                    (completed_at, error_code, error_message_redacted, evaluation_run_id),
+                )
 
     def insert_metric_results(self, rows: list[dict[str, Any]]) -> int:
         if not rows:
             return 0
         cols = list(rows[0].keys())
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            conn.executemany(
-                f"INSERT INTO schedule_quality_metric_results ({', '.join(cols)}) "
-                f"VALUES ({', '.join('?' for _ in cols)})",
-                [tuple(r[c] for c in cols) for r in rows],
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                conn.executemany(
+                    f"INSERT INTO schedule_quality_metric_results ({', '.join(cols)}) "
+                    f"VALUES ({', '.join('?' for _ in cols)})",
+                    [tuple(r[c] for c in cols) for r in rows],
+                )
         return len(rows)
 
     def insert_scorecard(self, row: dict[str, Any]) -> None:
         cols = list(row.keys())
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            conn.execute(
-                f"INSERT INTO schedule_quality_scorecards ({', '.join(cols)}) "
-                f"VALUES ({', '.join('?' for _ in cols)})",
-                tuple(row[c] for c in cols),
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                conn.execute(
+                    f"INSERT INTO schedule_quality_scorecards ({', '.join(cols)}) "
+                    f"VALUES ({', '.join('?' for _ in cols)})",
+                    tuple(row[c] for c in cols),
+                )
 
     def insert_findings(self, rows: list[dict[str, Any]]) -> int:
         if not rows:
             return 0
         cols = list(rows[0].keys())
-        conn = get_connection(self._db_path)
-        with transaction(conn):
-            conn.executemany(
-                f"INSERT INTO schedule_quality_findings ({', '.join(cols)}) "
-                f"VALUES ({', '.join('?' for _ in cols)})",
-                [tuple(r[c] for c in cols) for r in rows],
-            )
+        with open_connection(self._db_path) as conn:
+            with transaction(conn):
+                conn.executemany(
+                    f"INSERT INTO schedule_quality_findings ({', '.join(cols)}) "
+                    f"VALUES ({', '.join('?' for _ in cols)})",
+                    [tuple(r[c] for c in cols) for r in rows],
+                )
         return len(rows)
 
     def get_run(self, evaluation_run_id: str) -> dict[str, Any] | None:

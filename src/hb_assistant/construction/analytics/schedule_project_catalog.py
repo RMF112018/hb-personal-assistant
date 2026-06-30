@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import sqlite3
 from collections import defaultdict
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
-from hb_assistant.store.connection import get_connection
+from hb_assistant.store.connection import open_connection
 
 from .schedule_import_service import ensure_schedule_schema
 
@@ -80,8 +81,15 @@ class ScheduleProjectCatalog:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        return get_connection(self._db_path)
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     def _table_exists(self, conn: sqlite3.Connection, table: str) -> bool:
         cur = conn.execute(

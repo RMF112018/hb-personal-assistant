@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timezone
 
-from .connection import get_connection, transaction
+from .connection import get_connection, open_connection, transaction
 
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
@@ -9265,10 +9265,10 @@ class SQLiteMigrator:
     def current_version(self) -> int:
         """Return the highest applied migration version (0 if none)."""
         try:
-            conn = get_connection(self._db_path)
-            cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
-            row = cur.fetchone()
-            return int(row[0]) if row and row[0] is not None else 0
+            with open_connection(self._db_path) as conn:
+                cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
+                row = cur.fetchone()
+                return int(row[0]) if row and row[0] is not None else 0
         except sqlite3.OperationalError:
             # Table does not exist yet
             return 0

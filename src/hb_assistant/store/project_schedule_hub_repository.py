@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterator
 
-from .connection import get_connection, open_connection, transaction
+from .connection import open_connection, transaction
 
 MEMBERSHIP_ACCEPTED = "accepted"
 MEMBERSHIP_EXCLUDED = "excluded"
@@ -31,10 +32,16 @@ class ProjectScheduleHubRepository:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = get_connection(self._db_path)
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            conn.execute("PRAGMA foreign_keys=ON")
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     def get_membership(
         self, *, project_key: str, schedule_version_key: str

@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Iterable
+import sqlite3
+from contextlib import contextmanager
+from typing import Any, Iterable, Iterator
 
-from .connection import get_connection, open_connection, transaction
+from .connection import open_connection, transaction
 
 
 def deterministic_cpm_run_id(
@@ -40,10 +42,16 @@ class ScheduleCpmDiagnosticsRepository:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self):
-        conn = get_connection(self._db_path)
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            conn.execute("PRAGMA foreign_keys=ON")
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     def insert_run(
         self, run_row: dict[str, Any], *, conn: Any | None = None

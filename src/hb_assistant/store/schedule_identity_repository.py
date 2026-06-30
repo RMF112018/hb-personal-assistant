@@ -8,11 +8,12 @@ import os
 import re
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Iterator
 
-from .connection import get_connection, open_connection, transaction
+from .connection import open_connection, transaction
 
 
 def normalize_schedule_identity_value(value: Any) -> str | None:
@@ -113,10 +114,16 @@ class ScheduleIdentityRepository:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = get_connection(self._db_path)
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            conn.execute("PRAGMA foreign_keys=ON")
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     @staticmethod
     def build_evidence(

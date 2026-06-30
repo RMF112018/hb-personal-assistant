@@ -3,19 +3,26 @@
 from __future__ import annotations
 
 import sqlite3
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
-from .connection import get_connection, open_connection, transaction
+from .connection import open_connection, transaction
 
 
 class ScheduleImportRepository:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = get_connection(self._db_path)
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        with open_connection(self._db_path) as conn:
+            conn.execute("PRAGMA foreign_keys=ON")
+            try:
+                yield conn
+                conn.commit()
+            except BaseException:
+                conn.rollback()
+                raise
 
     def insert_import(self, row: dict[str, Any], *, conn: sqlite3.Connection | None = None) -> None:
         cols = list(row.keys())
