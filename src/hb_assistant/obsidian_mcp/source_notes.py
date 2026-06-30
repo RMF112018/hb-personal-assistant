@@ -624,9 +624,14 @@ def _matched_filename_tokens(detail: dict[str, Any], config: ObsidianMcpConfig) 
     return [str(s).strip() for s in signals if str(s).strip().lower() in name][:_ADVISORY_MAX_ITEMS]
 
 
-def _local_summary_marker(status: str, model: str) -> str:
-    """The opening hb-local-summary marker (a future local summarizer locates/replaces this block)."""
-    return f'{LOCAL_SUMMARY_BEGIN_PREFIX} model="{model}" status="{status}" -->'
+def _local_summary_marker(status: str, model: str, generated_at: str | None = None) -> str:
+    """The opening hb-local-summary marker (a future local summarizer locates/replaces this block).
+
+    ``generated_at`` is appended as an attribute only when provided (set by the local appender on a
+    generated block); the deterministic pending marker omits it (backward-compatible).
+    """
+    stamp = f' generated_at="{generated_at}"' if generated_at else ""
+    return f'{LOCAL_SUMMARY_BEGIN_PREFIX} model="{model}" status="{status}"{stamp} -->'
 
 
 def _advisory_summary(advisory: dict[str, Any] | None) -> list[str]:
@@ -690,7 +695,7 @@ def replace_local_summary_block(card_text: str, inner_lines: list[str], *, model
     stamped = list(inner_lines) + [
         f"_Model: {model} · generated {generated_at}._"]
     new_lines = (lines[:s]
-                 + [_local_summary_marker("generated", model)]
+                 + [_local_summary_marker("generated", model, generated_at)]
                  + stamped
                  + [LOCAL_SUMMARY_END]
                  + lines[e + 1:])
