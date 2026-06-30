@@ -1,0 +1,16 @@
+Post-rebase validation — 2026-06-30
+Branch: feature/project-schedule-import-ux-20260630T204437Z @ 56c4307c
+Base: origin/main @ 5f7ea138
+
+Backend focused pytest (48): PASS
+py_compile: PASS
+scripts/test-schedule.sh: 323 passed, 2 deselected
+npm run typecheck: PASS
+vitest ProjectSchedulePage: 12 passed
+vitest scheduleImport: 37 passed
+vitest scheduleApiAsOf: 2 passed
+vitest api: 21 passed
+
+git status -sb: ## feature/project-schedule-import-ux-20260630T204437Z...origin/main [ahead 1]
+git log --oneline origin/main..HEAD:
+56c4307c feat(schedule): add project schedule import workflow
