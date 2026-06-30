@@ -94,3 +94,19 @@
   this bounded 25. To keep generation bounded, the operator should decide before next backend start:
   clear the 4 queued events and/or disable auto-card-generation until a controlled wider pass is
   authorized.
+
+## Phase 6E — safety closeout (auto-generation frozen; queue neutralized)
+- Backend stopped + port 8000 clear before changes. Runtime config backed up locally (untracked).
+- Runtime config FROZEN to prevent uncontrolled auto-generation on next backend start:
+  external_source_watch_enabled=false, source_card_auto_generate_enabled=false,
+  source_summary_auto_generate_enabled=false, source_note_auto_refresh_enabled=false. Capability
+  preserved (source_card_generation_enabled=true; vault writes intact).
+- The 4 queued events (watcher-enqueued `modified` events on syn-work files from cloud-sync during the
+  6D runtime check) were verified read-only: all modified/queued/syn-work, 0 processing, 0 errors,
+  none were Phase 6D apply candidates. Neutralized WITHOUT a drain via the existing
+  complete_event(status='skipped', error_code='operator_cleared_after_phase6d') on exactly those 4 IDs.
+  Queue before: queued=4; after: queued=0 (skipped +4 with the marker). No cards generated, no
+  summaries, no file/source deletion, no external-root mutation.
+- Post-freeze one-backend status: watcher running=false, watch_enabled=false, mode=stopped; queued=0,
+  processing=0, error=0, generated_card_count=25, stale_note_count=0, summarized=7 (pre-existing,
+  unchanged). Backend stopped; port 8000 clear.
