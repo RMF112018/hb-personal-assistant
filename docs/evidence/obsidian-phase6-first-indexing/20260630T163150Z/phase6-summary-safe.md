@@ -1,47 +1,48 @@
-# Phase 6 Summary (sanitized — counts only)
+# Phase 6 / 6B Summary (sanitized — counts only)
 
-## Bounded first-indexing apply tool
-- New `scripts/obsidian_source_first_indexing_apply.py`: single-root, deterministic, capped first
-  production indexing via the DIRECT path `index_source_file` -> `generate_source_card`
-  (no event queue: enqueues 0, never drains, never claims unrelated queued events). Selection reuses
-  the Phase-5 dry-run module (`scan_root`) so it is identical to the read-only preview: keeps only
-  `auto_card_high` + domain `work`, sorts by rel_path, caps at 25.
-- Apply gates (all enforced + tested): requires `--apply` + exact confirm-root/db/vault; refuses if a
-  backend listens on 8000; refuses nonzero queued/processing (require-empty-queue); refuses disabled/
-  missing/unmounted/in-vault/quarantine root; caps selection; refuses non-high / non-work / not-under-
-  `Source Notes/Work/`; never overwrites user files; `--max-summaries` must be 0. Post-apply asserts
-  queued-event delta == 0.
-- 16 apply tests pass (incl. generated cards land under Source Notes/Work with basename+id12 filename,
-  domain/disposition/confidence/review_status/template/card_version frontmatter + PM body sections,
-  no source-dir replication, no user-file overwrite, no unrelated-queue drain, path-free safe summary,
-  external files unmodified). 168 targeted tests pass overall; ruff clean.
+## Tooling
+- `scripts/obsidian_source_first_indexing_apply.py`: single-root, deterministic, capped first
+  production indexing via the DIRECT path index_source_file -> generate_source_card (no event queue;
+  enqueues 0; never drains; post-apply asserts queued-event delta == 0). Selection reuses the Phase-5
+  dry-run module (auto_card_high + domain work, sorted by rel_path).
+- Phase 6B added stat-only readability detection (no forced downloads): `online_only_or_dataless`
+  (st_size>0, st_blocks==0) skipped BEFORE any read; read-time failures caught per reason
+  (read_timeout / read_permission_error / read_error). The loop walks the FULL high pool, skipping
+  unreadable placeholders, generating up to the card cap. Preview mode = stat-only readable-vs-dataless
+  view. Gates unchanged (confirm-*, backend-on-8000, require-empty-queue, root validation, caps,
+  non-high/non-work/route refusals, max-summaries==0).
+- 22 apply tests pass (gates, deterministic selection, routed generation + frontmatter/PM-sections +
+  filename scheme, no-overwrite, no-unrelated-queue-drain, path-free summary, external-files-unmodified,
+  and 6B: dataless/timeout/permission/read-error skipped + count-logged, selection-continues,
+  pool-exhausted blocker, readability-status branches). 133 targeted tests pass overall; ruff clean.
 
 ## Dry-run (re-run, read-only)
-- root_key=syn-work, max_files=500, cap_reached=true; by disposition: auto_card_high=98,
-  auto_card_normal=323, metadata_only=77, unsupported=2; all domain=work. Matches Phase 5 exactly.
+- root syn-work, max_files=500, cap_reached=true; by disposition: auto_card_high=98,
+  auto_card_normal=323, metadata_only=77, unsupported=2; all domain=work. Matches Phase 5.
 
-## Production apply outcome: 0 cards generated — BLOCKED by online-only source files
-- selected=25 (auto_card_high, work, deterministic), enqueued=0, processed=0, generated=0,
-  summaries=0, skipped=0, **error=25 (all TimeoutError)**, queued_event_delta=0.
-- Root cause: the first 25 deterministically-selected syn-work candidates are **cloud "online-only"
-  placeholders** (logical size present, `st_blocks=0`, dataless); reading them to extract text times
-  out. Confirmed: a 5s read of the first file timed out; stat shows 0 allocated blocks.
-- **Zero writes:** generated_notes still 67 not_generated; 0 syn-work source rows created; queue 0/0;
-  Source Notes/Work has only its pre-existing README (no cards). The apply is atomic per file and left
-  the DB + vault unchanged.
-- Per the rules, did NOT cherry-pick different/materialized files, change caps, or force-download.
+## Production apply outcome (6B): 0 cards generated — pool exhausted (all candidates online-only)
+- pool_size=98 (auto_card_high + work within the 500-file scan); readable_considered=0;
+  generated=0; summaries=0; enqueued=0; errors=0; queued_event_delta=0.
+- skips_by_reason: online_only_or_dataless=98, read_timeout=0, read_permission_error=0, read_error=0.
+- pool_exhausted_before_cap=true (fewer than 25 readable high candidates within the 500-file cap).
+- **Every** high-value candidate in syn-work's first 500 files is a cloud online-only placeholder
+  (st_blocks=0, dataless). The placeholder-skip ran fast with no read timeouts (vs Phase 6's 25
+  TimeoutErrors). Per the rules, did NOT expand caps / force-download / cherry-pick.
+- **Zero writes:** generated_notes unchanged (67 not_generated); 0 syn-work source rows; queue 0/0;
+  Source Notes/Work has only its pre-existing README.
 
 ## Runtime status (read-only, one backend, current code)
-- queue 0/0/0, generated 0, stale 0; watcher running, mode watchdog, degraded false, is_owner true;
-  backend started once and stopped at closeout; port 8000 clear.
+- queue 0/0/0, generated 0, stale 0; watcher running, watchdog, degraded false, is_owner true; backend
+  started once and stopped at closeout; port 8000 clear.
 
 ## Confirmations
-- No all-root scan; no manual unrelated queue drain; no broad summaries (0). One backend only, stopped.
-- Quarantine not deleted/copied; external roots untouched (read attempts only; nothing modified).
-- Sensitive evidence (apply/dry-run detail with rel paths, db baseline) kept local/untracked; only
-  count-only summaries committed.
+- No all-root scan; no unrelated queue drain; no broad summaries (0); one backend only, stopped.
+- Quarantine not deleted/copied; external roots untouched (only stat-based readability checks; dataless
+  files were never read, so no downloads triggered). Sensitive evidence kept local/untracked; only
+  count-only summary committed.
 
-## Recommended next
-- Materialize the target syn-work files locally (cloud-drive "make available offline") for the
-  selected set, OR authorize a follow-up that (a) skips online-only/dataless files during selection and (b)
-  selects the next readable auto_card_high candidates under the same caps — then re-run the apply.
+## Blocker + recommended next
+- To generate the first real cards, the operator must MATERIALIZE (make-available-offline) the target
+  high-value files in the cloud drive for syn-work, then re-run the apply (no code change needed); OR
+  authorize scanning deeper than 500 files / a different root, where materialized high-value files may
+  exist. The tooling is complete, fast, and placeholder-aware; the only blocker is data materialization.
