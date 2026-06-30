@@ -157,3 +157,29 @@ def test_status_owner_redacts_token(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         assert "db_path" in owner and "roots_hash" in owner
     finally:
         w.stop()
+
+
+def test_lease_check_error_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A lease-check DB error must NOT start the drain — degrade with a safe code (fail-closed)."""
+    db, config = _watch_setup(tmp_path, watch=True)
+    # If the guard wrongly reached the drain loop, this would surface; it must not be hit.
+    monkeypatch.setattr(SourceWatcher, "_start_watchdog", _force_polling)
+    w = SourceWatcher(db, config)
+
+    def _boom(*_a: object, **_k: object) -> dict[str, object]:
+        raise sqlite3.OperationalError("lease table unavailable")
+
+    monkeypatch.setattr(w._repo, "acquire_watcher_lease", _boom)
+    w.start()
+    try:
+        st = w.status()  # API/status surface stays available
+        assert st["degraded"] is True
+        assert st["is_owner"] is False
+        assert st["running"] is False              # no active drain thread started
+        assert st["mode"] == "degraded"
+        assert st["last_error_code"] == "watcher_lease_error"  # safe, sanitized code
+        assert isinstance(st["queue_health"], dict)            # status still serves cleanly
+        # No ownership was recorded (the failed acquire wrote nothing).
+        assert w._repo.get_watcher_owner() is None
+    finally:
+        w.stop()

@@ -14,7 +14,9 @@ and `watcher_heartbeat_at`.
   crashed owner) is reclaimable: the new owner takes over and `requeue_stuck` recovers any
   in-flight events.
 - The worker refreshes its heartbeat each drain pass; `stop()` releases the lease only if this
-  instance owns it. A lease-check DB error fails **open** (a healthy single backend is never blocked).
+  instance owns it. A **lease-check error fails CLOSED**: ownership cannot be proven, so the watcher
+  degrades (no drain loop) with `last_error_code = "watcher_lease_error"` while the API keeps
+  serving — better than two uncoordinated drains racing the same DB/source roots.
 
 ### Reading watcher state
 `GET /api/settings/obsidian-mcp/source-watch/status` (viewer-readable) and the nested `watcher`

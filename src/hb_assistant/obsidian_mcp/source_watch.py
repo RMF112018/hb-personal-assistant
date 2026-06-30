@@ -91,23 +91,28 @@ class SourceWatcher:
             return
         self._stop.clear()
         # Single-owner guard: only one backend may run the drain loop against this DB/root context.
-        # A competing live owner → this instance serves the API but stays degraded (no drain thread,
-        # no observer). A DB hiccup in the lease check fails OPEN (proceed) so it never kills the
-        # watcher on a healthy single backend; a deliberate live owner returns acquired=False.
+        # FAIL CLOSED: if ownership cannot be proven — a competing live owner OR a lease-check error
+        # — this instance serves the API but stays degraded (no drain thread, no observer). Better a
+        # quiet/degraded watcher than two uncoordinated drains racing the same DB/source roots.
         owner_info = {
             "pid": os.getpid(),
             "cwd": os.getcwd(),
             "db_path": str(self._db_path),
             "roots_hash": _roots_hash(self._config, str(self._db_path)),
         }
-        lease: dict[str, Any] = {"acquired": True}
         try:
             lease = self._repo.acquire_watcher_lease(
                 owner_token=self._owner_token, owner_info=owner_info,
                 ttl_seconds=WATCHER_LEASE_TTL_SECONDS,
             )
-        except Exception as exc:  # lease-check DB error: do not block a healthy single backend
-            self._last_error_code = type(exc).__name__
+        except Exception:  # lease-check error: cannot prove ownership → degrade, do NOT drain
+            self._is_owner = False
+            self._degraded = True
+            self._mode = "degraded"
+            self._last_error_code = "watcher_lease_error"  # safe, sanitized (no exception detail)
+            _logger.warning("source_watch.degraded_lease_error", extra={"obsidian_mcp": {
+                "error_code": "watcher_lease_error"}})
+            return
         if not lease.get("acquired", True):
             self._is_owner = False
             self._degraded = True
