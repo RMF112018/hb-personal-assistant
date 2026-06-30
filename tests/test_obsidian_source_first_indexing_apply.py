@@ -79,7 +79,9 @@ def test_preview_writes_nothing(tmp_path, capsys):
     rc = mod.main(_args(db, cfg, vault))  # no --apply
     assert rc == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["mode"] == "preview" and out["selected_count"] == 3  # 3 auto_card_high
+    # 3 auto_card_high in the pool; preview reports readability (all materialized temp files readable).
+    assert out["mode"] == "preview" and out["pool_size"] == 3
+    assert out["readable_considered"] == 3
     assert _gen_count(db) == 0
     assert not (Path(vault) / "Source Notes").exists()  # nothing written
 
@@ -139,20 +141,20 @@ def test_max_summaries_nonzero_refused(tmp_path):
 
 
 # ----- selection -----------------------------------------------------------------------------
-def test_selects_only_auto_card_high(tmp_path, capsys):
+def test_pool_is_only_auto_card_high_work(tmp_path, capsys):
     db, cfg, vault, _root = _env(tmp_path)
-    mod.main(_args(db, cfg, vault))
+    mod.main(_args(db, cfg, vault))  # preview
     out = json.loads(capsys.readouterr().out)
-    # 3 high (rfi/change_order/submittal); excludes normal/metadata/unsupported.
-    assert out["selected_count"] == 3
-    assert set(out["counts_by_document_type"]) <= {"rfi", "change_order", "submittal"}
+    # 3 high (rfi/change_order/submittal); excludes normal/metadata/unsupported. All domain work.
+    assert out["pool_size"] == 3
 
 
-def test_honors_max_candidates(tmp_path, capsys):
+def test_card_cap_limits_generation(tmp_path, capsys):
     db, cfg, vault, _root = _env(tmp_path)
-    mod.main(_args(db, cfg, vault, max_candidates=2))
+    # Pool is 3, but the card cap (min(max_cards,max_candidates)) limits generation to 2.
+    mod.main(_args(db, cfg, vault, apply=True, max_cards=2, max_candidates=2))
     out = json.loads(capsys.readouterr().out)
-    assert out["selected_count"] == 2  # deterministic sort, first 2
+    assert out["pool_size"] == 3 and out["generated_card_count"] == 2 and out["reached_cap"] is True
 
 
 # ----- apply (direct generation) -------------------------------------------------------------
@@ -240,3 +242,82 @@ def test_external_source_files_unmodified(tmp_path, capsys):
     mod.main(_args(db, cfg, vault, apply=True))
     for p, content in before.items():
         assert p.read_text(encoding="utf-8") == content  # source files never modified
+
+
+# ===== Phase 6B: online-only / dataless / unreadable placeholder handling =====
+class _FakeStat:
+    st_size = 100_000
+    st_blocks = 0  # logical size > 0 but 0 allocated blocks == cloud online-only placeholder
+
+
+def test_readability_status_branches(tmp_path, monkeypatch):
+    p = tmp_path / "real.md"
+    p.write_text("materialized", encoding="utf-8")
+    assert mod._readability_status(p) == "readable"
+    assert mod._readability_status(tmp_path / "missing.md") == "read_error"
+    monkeypatch.setattr(type(p), "lstat", lambda self: _FakeStat())  # simulate dataless placeholder
+    assert mod._readability_status(p) == "online_only_or_dataless"
+
+
+def test_dataless_skipped_and_selection_continues(tmp_path, capsys, monkeypatch):
+    db, cfg, vault, _root = _env(tmp_path)
+    monkeypatch.setattr(mod, "_readability_status",
+                        lambda p: "online_only_or_dataless" if "RFI 032" in str(p) else "readable")
+    rc = mod.main(_args(db, cfg, vault, apply=True))
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["skips_by_reason"]["online_only_or_dataless"] == 1
+    assert out["generated_card_count"] == 2  # continued to the 2 readable high candidates
+    # The dataless file produced no card.
+    work = Path(vault) / "Source Notes" / "Work"
+    assert not any("RFI 032" in c.name for c in work.glob("*.md"))
+
+
+def _fake_index_raising(monkeypatch, needle: str, exc: Exception):
+    real = mod.index_source_file
+
+    def fake(abs_path, *a, **k):
+        if needle in str(abs_path):
+            raise exc
+        return real(abs_path, *a, **k)
+
+    monkeypatch.setattr(mod, "index_source_file", fake)
+
+
+def test_read_timeout_skipped_and_continues(tmp_path, capsys, monkeypatch):
+    db, cfg, vault, _root = _env(tmp_path)
+    _fake_index_raising(monkeypatch, "PCCO 004", TimeoutError("cloud read timed out"))
+    mod.main(_args(db, cfg, vault, apply=True))
+    out = json.loads(capsys.readouterr().out)
+    assert out["skips_by_reason"]["read_timeout"] == 1
+    assert out["generated_card_count"] == 2  # RFI + Submittal still generated
+
+
+def test_read_permission_error_skipped(tmp_path, capsys, monkeypatch):
+    db, cfg, vault, _root = _env(tmp_path)
+    _fake_index_raising(monkeypatch, "PCCO 004", PermissionError("denied"))
+    mod.main(_args(db, cfg, vault, apply=True))
+    out = json.loads(capsys.readouterr().out)
+    assert out["skips_by_reason"]["read_permission_error"] == 1
+    assert out["generated_card_count"] == 2
+
+
+def test_read_error_skipped(tmp_path, capsys, monkeypatch):
+    db, cfg, vault, _root = _env(tmp_path)
+    _fake_index_raising(monkeypatch, "PCCO 004", OSError("io error"))
+    mod.main(_args(db, cfg, vault, apply=True))
+    out = json.loads(capsys.readouterr().out)
+    assert out["skips_by_reason"]["read_error"] == 1
+    assert out["generated_card_count"] == 2
+
+
+def test_pool_exhausted_before_cap_reports_blocker(tmp_path, capsys, monkeypatch):
+    db, cfg, vault, _root = _env(tmp_path)
+    monkeypatch.setattr(mod, "_readability_status", lambda p: "online_only_or_dataless")
+    rc = mod.main(_args(db, cfg, vault, apply=True))
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["generated_card_count"] == 0
+    assert out["skips_by_reason"]["online_only_or_dataless"] == 3
+    assert out["pool_exhausted_before_cap"] is True and out["reached_cap"] is False
+    assert out["queued_event_delta"] == 0  # no queue events even when nothing is generated
