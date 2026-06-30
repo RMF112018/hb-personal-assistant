@@ -1,0 +1,13 @@
+ frontend/src/lib/api.ts                            |   3 +-
+ .../src/pages/ProjectScheduleDriverDetailPage.tsx  |  16 +-
+ frontend/src/pages/ProjectSchedulePage.test.tsx    |   7 +
+ frontend/src/pages/ProjectSchedulePage.tsx         |  10 +-
+ .../pages/ProjectScheduleWorkbenchPage.test.tsx    |  42 +++-
+ .../src/pages/ProjectScheduleWorkbenchPage.tsx     | 238 +++++----------------
+ src/hb_assistant/construction/analytics/api.py     |   3 +
+ .../analytics/project_schedule_narrative_qa.py     |  38 +++-
+ .../project_schedule_review_cue_service.py         | 108 +++++++---
+ .../analytics/project_schedule_review_service.py   |  45 ++--
+ .../analytics/project_schedule_summary_service.py  |  11 +-
+ .../store/schedule_activity_repository.py          |  60 ++++--
+ 12 files changed, 313 insertions(+), 268 deletions(-)

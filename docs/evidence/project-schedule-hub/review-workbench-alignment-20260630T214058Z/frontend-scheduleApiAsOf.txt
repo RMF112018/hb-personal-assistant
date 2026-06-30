@@ -1,0 +1,14 @@
+
+> frontend@0.0.0 test
+> vitest run scheduleApiAsOf
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-workbench-alignment-20260630T213439Z/frontend
+
+ ✓ src/lib/scheduleApiAsOf.test.ts  (2 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  17:54:43
+   Duration  477ms (transform 52ms, setup 33ms, collect 47ms, tests 3ms, environment 185ms, prepare 49ms)
+

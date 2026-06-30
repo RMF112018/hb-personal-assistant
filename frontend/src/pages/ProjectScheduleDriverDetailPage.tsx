@@ -66,6 +66,13 @@ export function ProjectScheduleDriverDetailPage() {
     )
   }
 
+  const scheduleHref = asOfDate
+    ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
+    : `/projects/${projectKey}/schedule`
+  const workbenchHref = asOfDate
+    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(asOfDate)}`
+    : `/projects/${projectKey}/schedule/workbench`
+
   const activity = detail.activity || {}
   const downstream = Array.isArray(detail.downstream_impacts) ? detail.downstream_impacts : []
   const upstream = Array.isArray(detail.upstream_path) ? detail.upstream_path : []
@@ -78,14 +85,15 @@ export function ProjectScheduleDriverDetailPage() {
           <div>
             <h3 className="section-title mb-0">Driver Detail</h3>
             <p className="mt-1 text-sm text-[var(--hb-muted)]">
-              {text(activity.activity_name)} ({text(activity.activity_id)}) · Basis {text(detail.comparison_basis)}
+              {text(activity.activity_name) || 'Unnamed activity'} · Basis {text(detail.comparison_basis)}
+              {asOfDate ? ` · As of ${asOfDate}` : ''}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link className="badge" to={`/projects/${projectKey}/schedule/workbench`}>
+            <Link className="badge" to={workbenchHref}>
               Workbench
             </Link>
-            <Link className="badge" to={`/projects/${projectKey}/schedule`}>
+            <Link className="badge" to={scheduleHref}>
               Schedule Hub
             </Link>
           </div>
@@ -120,7 +128,7 @@ export function ProjectScheduleDriverDetailPage() {
             <ul className="mt-2 space-y-1 text-sm">
               {upstream.map((node: any) => (
                 <li key={node.activity_id}>
-                  {text(node.activity_name)} ({text(node.activity_id)})
+                  {text(node.activity_name) || 'Unnamed activity'}
                 </li>
               ))}
               {!upstream.length && <li className="text-[var(--hb-muted)]">No upstream chain in preview.</li>}

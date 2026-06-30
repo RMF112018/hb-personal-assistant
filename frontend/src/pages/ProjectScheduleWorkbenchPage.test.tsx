@@ -46,9 +46,24 @@ const reviewItems = {
       confidence: 'production_backed',
       severity: 'high',
       cue_summary: 'Candidate driver sequence cue for PM review.',
+      recommended_review_action: 'Review the linked activity sequence and downstream movement before disposition.',
+      evidence_summary: 'Canonical activity merged from primary.xer.',
       caveats: [
         'This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.',
       ],
+      evidence: {
+        as_of: '2026-07-03',
+        schedule_data_date: '2026-07-01',
+        cue_category: 'change_driver',
+        cue_label: 'Candidate change driver',
+        recommended_review_action: 'Review the linked activity sequence and downstream movement before disposition.',
+        evidence_summary: 'Canonical activity merged from primary.xer.',
+        technical_evidence_available: true,
+        technical_evidence: {
+          import_id: 'imp-current',
+          cpm_status: 'success',
+        },
+      },
       phase: 'Phase 1',
     },
     {
@@ -100,7 +115,10 @@ describe('ProjectScheduleWorkbenchPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', { asOf: '2026-07-03' })
+      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
+        asOf: '2026-07-03',
+        comparisonBasis: 'prior_update',
+      })
     })
     expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
       asOf: '2026-07-03',
@@ -111,7 +129,8 @@ describe('ProjectScheduleWorkbenchPage', () => {
       confidence: undefined,
       phase: undefined,
     })
-    expect(await screen.findByText('Review driver: Concrete pour')).toBeInTheDocument()
+    expect(await screen.findByText('Candidate change driver')).toBeInTheDocument()
+    expect(screen.queryByText('imp-current')).not.toBeInTheDocument()
   })
 
   it('loads preview only for viewers without syncing', async () => {
@@ -131,7 +150,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
     })
     expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
     expect(await screen.findByText(/Preview only/)).toBeInTheDocument()
-    const card = screen.getByText('Review driver: Concrete pour').closest('article')
+    const card = screen.getByText('Candidate change driver').closest('article')
     expect(card).toBeTruthy()
     expect(within(card as HTMLElement).queryByText('Save notes')).not.toBeInTheDocument()
   })
@@ -140,7 +159,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await screen.findByText('Review driver: Concrete pour')
+    await screen.findByText('Candidate change driver')
     const detailButtons = screen.getAllByRole('button', { name: 'Show detail' })
     await user.click(detailButtons[0])
 
@@ -149,7 +168,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
     })
     expect(screen.getByText(/not a causation/i)).toBeInTheDocument()
 
-    const card = screen.getByText('Review driver: Concrete pour').closest('article')
+    const card = screen.getByText('Candidate change driver').closest('article')
     const select = within(card as HTMLElement).getByRole('combobox')
     await user.selectOptions(select, 'reviewed')
 
@@ -170,5 +189,18 @@ describe('ProjectScheduleWorkbenchPage', () => {
         pm_notes: 'checked driver',
       })
     })
+  })
+
+  it('keeps technical evidence collapsed by default and shows advisory copy', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Candidate change driver')
+    expect(screen.getByText(/Sequence cues only/)).toBeInTheDocument()
+    expect(screen.queryByText('imp-current')).not.toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: 'Show detail' })[0])
+    expect(screen.getByText(/Show technical evidence/)).toBeInTheDocument()
+    expect(screen.queryByText(/Raw technical payload/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Show technical evidence' }))
+    expect(screen.getByText(/Raw technical payload/)).toBeInTheDocument()
   })
 })

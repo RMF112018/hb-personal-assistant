@@ -30,6 +30,38 @@ _REQUIRED_DRIVER_MARKERS = (
 _BASIS_TERMS = ("prior update", "previous update", "baseline", "since baseline", "since the prior")
 
 
+def validate_review_cue_text(cue: dict[str, Any]) -> dict[str, Any]:
+    """Validate PM-facing review cue copy for forbidden causation/entitlement language."""
+
+    violations: list[dict[str, str]] = []
+    fields = {
+        "item_title": str(cue.get("item_title") or ""),
+        "cue_summary": str(cue.get("cue_summary") or cue.get("evidence", {}).get("cue_summary") or ""),
+        "recommended_review_action": str(
+            cue.get("recommended_review_action")
+            or (cue.get("evidence") or {}).get("recommended_review_action")
+            or ""
+        ),
+    }
+    caveats = cue.get("caveats") or (cue.get("evidence") or {}).get("caveats") or []
+    for index, caveat in enumerate(caveats):
+        fields[f"caveat:{index}"] = str(caveat)
+    combined = " ".join(fields.values()).lower()
+    for term in _FORBIDDEN_TERMS:
+        if _contains_forbidden_term(combined, term):
+            violations.append(
+                {
+                    "code": "forbidden_term",
+                    "message": f"Forbidden claim language detected in review cue: {term}",
+                }
+            )
+    return {
+        "passed": not violations,
+        "violations": violations,
+        "advisory_posture": _ADVISORY_POSTURE,
+    }
+
+
 def validate_summary(summary: dict[str, Any]) -> dict[str, Any]:
     violations: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []
@@ -97,10 +129,10 @@ def validate_summary(summary: dict[str, Any]) -> dict[str, Any]:
 def _contains_forbidden_term(text: str, term: str) -> bool:
     for match in re.finditer(re.escape(term), text, flags=re.I):
         start = match.start()
-        window = text[max(0, start - 24):start].lower()
-        if re.search(r"\b(?:not|no|never)\s+$", window):
+        window = text[max(0, start - 48):start].lower()
+        if re.search(r"\b(?:not|no|never)\b", window):
             continue
-        if re.search(r"\bdoes\s+not\s+determine\s+$", window):
+        if re.search(r"\bdoes\s+not\s+determine\b", window):
             continue
         return True
     return False

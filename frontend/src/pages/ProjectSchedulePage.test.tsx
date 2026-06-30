@@ -635,4 +635,11 @@ describe('ProjectSchedulePage', () => {
       expect(rendered).not.toContain(forbidden)
     }
   })
+
+  it('suppresses raw activity ids in default driver labels', async () => {
+    renderPage()
+    await screen.findByText('Envelope Completion')
+    expect(screen.queryByText('(A1)')).not.toBeInTheDocument()
+    expect(screen.queryByText('A1')).not.toBeInTheDocument()
+  })
 })

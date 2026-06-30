@@ -381,10 +381,11 @@ export function getProjectScheduleDriverDetail(
 }
 export function syncProjectScheduleReviewItems(
   projectKey: string,
-  opts?: { asOf?: string },
+  opts?: { asOf?: string; comparisonBasis?: 'prior_update' | 'baseline' },
 ) {
   const params = new URLSearchParams();
   if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
   const qs = params.toString();
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items${qs ? `?${qs}` : ''}`,

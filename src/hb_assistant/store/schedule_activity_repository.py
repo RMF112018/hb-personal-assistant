@@ -319,31 +319,51 @@ class ScheduleActivityRepository:
         self, *, schedule_version_key: str, activity_id: str
     ) -> dict[str, Any] | None:
         """Return inspectable canonical package merge lineage for one activity."""
+        batch = self.get_activity_merge_lineage_batch(
+            schedule_version_key=schedule_version_key,
+            activity_ids=[activity_id],
+        )
+        return batch.get(activity_id)
 
+    def get_activity_merge_lineage_batch(
+        self,
+        *,
+        schedule_version_key: str,
+        activity_ids: Iterable[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Return canonical package merge lineage for many activities."""
+
+        ids = [str(activity_id) for activity_id in activity_ids if activity_id]
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
         with self._conn() as conn:
-            row = conn.execute(
-                """
+            rows = conn.execute(
+                f"""
                 SELECT activity_id, source_activity_object_id, raw_source_fields_json
                 FROM procore_ep_schedule_activities
-                WHERE schedule_version_key=? AND activity_id=?
-                ORDER BY updated_at DESC, id DESC
-                LIMIT 1
+                WHERE schedule_version_key=? AND activity_id IN ({placeholders})
+                ORDER BY activity_id, updated_at DESC, id DESC
                 """,
-                (schedule_version_key, activity_id),
-            ).fetchone()
-        if row is None:
-            return None
-        raw = _loads_json(dict(row).get("raw_source_fields_json"))
-        return {
-            "schedule_version_key": schedule_version_key,
-            "activity_id": activity_id,
-            "source_activity_object_id": row["source_activity_object_id"],
-            "merged_from_files": _loads_json(raw.get("merged_from_files_json")),
-            "source_object_ids": _loads_json(raw.get("source_object_ids_json")),
-            "field_lineage": _loads_json(raw.get("field_lineage_json")),
-            "field_conflicts": _loads_json(raw.get("field_conflicts_json")),
-            "raw_merged": _loads_json(raw.get("raw_merged_json")),
-        }
+                (schedule_version_key, *ids),
+            ).fetchall()
+        out: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            activity_id = str(row["activity_id"])
+            if activity_id in out:
+                continue
+            raw = _loads_json(dict(row).get("raw_source_fields_json"))
+            out[activity_id] = {
+                "schedule_version_key": schedule_version_key,
+                "activity_id": activity_id,
+                "source_activity_object_id": row["source_activity_object_id"],
+                "merged_from_files": _loads_json(raw.get("merged_from_files_json")),
+                "source_object_ids": _loads_json(raw.get("source_object_ids_json")),
+                "field_lineage": _loads_json(raw.get("field_lineage_json")),
+                "field_conflicts": _loads_json(raw.get("field_conflicts_json")),
+                "raw_merged": _loads_json(raw.get("raw_merged_json")),
+            }
+        return out
 
     def list_relationships(self, schedule_version_key: str) -> list[dict[str, Any]]:
         with self._conn() as conn:

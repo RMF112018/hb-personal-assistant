@@ -1,0 +1,95 @@
+=== comparison_basis in review service ===
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:42:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:56:            comparison_basis=comparison_basis,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:87:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:102:            comparison_basis=comparison_basis,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:122:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:124:        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:138:                comparison_basis="prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:149:            comparison_basis=basis,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:169:        comparison_basis: str,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:194:                    comparison_basis=basis_key,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:236:                comparison_basis=basis_key,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:238:        active = bases.get(comparison_basis) or bases.get("prior_update") or {"available": False}
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:241:        envelope["comparison_basis"] = comparison_basis
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:366:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:381:                comparison_basis=comparison_basis,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:395:            comparison_basis=comparison_basis,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:558:            "comparison_basis",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:585:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:597:            "comparison_basis": comparison_basis,
+src/hb_assistant/construction/analytics/api.py:1298:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/api.py:1315:        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+src/hb_assistant/construction/analytics/api.py:1319:            comparison_basis=basis,
+src/hb_assistant/construction/analytics/api.py:1330:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/api.py:1355:        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+src/hb_assistant/construction/analytics/api.py:1362:            comparison_basis=basis,
+src/hb_assistant/construction/analytics/api.py:1426:        comparison_basis: str = "prior_update",
+src/hb_assistant/construction/analytics/api.py:1442:        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+src/hb_assistant/construction/analytics/api.py:1446:            comparison_basis=basis,
+
+=== as_of schedule_data_date in cue service ===
+68:        as_of_date: date,
+82:            as_of_date=as_of_date,
+93:        preview = self._preview_only_cues(project_key, schedule_version_key, as_of_date)
+105:        as_of_date: date,
+127:        as_of = as_of_date.isoformat()
+128:        schedule_data_date = self._schedule_data_date(schedule_version_key)
+150:                        as_of=as_of,
+151:                        schedule_data_date=schedule_data_date,
+178:                    as_of=as_of,
+179:                    schedule_data_date=schedule_data_date,
+203:                    as_of=as_of,
+204:                    schedule_data_date=schedule_data_date,
+230:                    as_of=as_of,
+231:                    schedule_data_date=schedule_data_date,
+254:                    as_of=as_of,
+255:                    schedule_data_date=schedule_data_date,
+266:                as_of_date=as_of_date,
+285:                        as_of=as_of,
+286:                        schedule_data_date=schedule_data_date,
+304:                as_of_date=as_of_date,
+323:                        as_of=as_of,
+324:                        schedule_data_date=schedule_data_date,
+337:                as_of_date=as_of_date,
+356:                        as_of=as_of,
+357:                        schedule_data_date=schedule_data_date,
+372:                as_of_date=as_of_date,
+392:                            as_of=as_of,
+393:                            schedule_data_date=schedule_data_date,
+405:                as_of_date=as_of_date,
+411:                        stable_item_key=f"metric:delay_analysis:{as_of}",
+420:                        as_of=as_of,
+421:                        schedule_data_date=schedule_data_date,
+449:                    as_of=as_of,
+450:                    schedule_data_date=schedule_data_date,
+472:                            as_of=as_of,
+473:                            schedule_data_date=schedule_data_date,
+528:        as_of_date: date,
+546:                    as_of=as_of_date.isoformat(),
+547:                    schedule_data_date=self._schedule_data_date(schedule_version_key),
+575:    def _schedule_data_date(schedule_version_key: str) -> str | None:
+591:        as_of: str,
+592:        schedule_data_date: str | None = None,
+614:            "as_of": as_of,
+615:            "schedule_data_date": schedule_data_date,
+616:            "data_date": schedule_data_date,
+
+=== provenance fields ===
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:19:def _source_file_names(lineage: dict[str, Any] | None) -> list[str]:
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:72:    files = _source_file_names(lineage)
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:107:        lineage_by_activity = self._activities.get_activity_merge_lineage_batch(
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:131:        source_files = _source_file_names(lineage)
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:137:        evidence["source_file_names"] = source_files
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:140:        evidence["technical_evidence_available"] = technical_available
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:147:        technical: dict[str, Any] = dict(evidence.get("technical_evidence") or {})
+src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py:177:            evidence["technical_evidence"] = technical
+src/hb_assistant/store/schedule_activity_repository.py:322:        batch = self.get_activity_merge_lineage_batch(
+src/hb_assistant/store/schedule_activity_repository.py:328:    def get_activity_merge_lineage_batch(
+
+=== validate_review_cue_text ===
+tests/test_project_schedule_review_alignment.py:19:    validate_review_cue_text,
+tests/test_project_schedule_review_alignment.py:240:def test_validate_review_cue_text_flags_unsafe_wording() -> None:
+tests/test_project_schedule_review_alignment.py:241:    safe = validate_review_cue_text(
+tests/test_project_schedule_review_alignment.py:248:    unsafe = validate_review_cue_text(
+src/hb_assistant/construction/analytics/project_schedule_narrative_qa.py:33:def validate_review_cue_text(cue: dict[str, Any]) -> dict[str, Any]:
