@@ -56,23 +56,21 @@ def test_generate_card_traceability(env) -> None:
                   "source_path: \"22-101-00/RFI 12 conduit.md\"", "source_sha256:", "source_mtime_ns:",
                   "indexed_at:", "generated_at:", "stale: false", "project_number: \"22-101-00\""):
         assert token in card, token
-    assert "## Source Reference" in card and "remains in its system of record" in card
+    assert "## Source Basis" in card and f"Source ID: `{sid}`" in card
     assert sqlite3.connect(db).execute(
         "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
     ).fetchone()[0] == "generated"
 
 
-def test_bounded_preview_no_raw_dump(env) -> None:
-    repo, config, _root, vault, _db = env  # cap = 120 chars
-    long_body = "PARAGRAPH ONE. " + ("verylongtoken " * 80)  # >> 120 chars
+def test_no_raw_body_dump(env) -> None:
+    repo, config, _root, vault, _db = env
+    long_body = "PARAGRAPH ONE. " + ("verylongtoken " * 80)
     sid = _index_file(env, "big.md", long_body)
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "bounded — not the full file" in card
-    # The card must NOT contain the entire file body.
-    body_tokens = long_body.count("verylongtoken")
-    assert card.count("verylongtoken") < body_tokens
-    assert "truncated preview" in card
+    # Phase 8 drops the raw indexed-text preview entirely; the file body is never dumped into the card.
+    assert "Indexed Text Preview" not in card
+    assert "verylongtoken" not in card
 
 
 def test_obsidian_note_not_applicable(env) -> None:
@@ -92,7 +90,7 @@ def test_email_link_card_has_no_body(env) -> None:
                                   domain_ref_id="msg-secret-1", project_number="22-101-00")
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "## Linked Record" in card
+    assert "Linked record:" in card  # link-only source summary, not a body section
     assert "Indexed Text Preview" not in card  # no body section for link sources
     assert "email_messages" in card and "msg-secret-1" in card
 
@@ -106,7 +104,8 @@ def test_sensitive_source_preview_withheld(env, monkeypatch: pytest.MonkeyPatch)
     sid = index_source_file(f, sroot, repo, config)
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "preview withheld" in card
+    assert "extracted text withheld" in card  # card basis flags the sensitive source
+    assert "Indexed Text Preview" not in card
     assert "confidential salary" not in card  # sensitive text never in the card
 
 
@@ -146,7 +145,8 @@ def test_stale_then_refresh(env) -> None:
     assert sqlite3.connect(db).execute(
         "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
     ).fetchone()[0] == "generated"
-    assert "tunnel" in (vault / out["note_path"]).read_text(encoding="utf-8")
+    # Refreshed deterministic card was re-rendered (the body carries no raw source text to assert on).
+    assert "## Source Basis" in (vault / out["note_path"]).read_text(encoding="utf-8")
 
 
 def test_source_not_found(env) -> None:

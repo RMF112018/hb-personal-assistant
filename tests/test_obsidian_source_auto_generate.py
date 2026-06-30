@@ -124,7 +124,10 @@ def test_auto_refresh_regenerates_existing_card(tmp_path: Path, monkeypatch: pyt
     f.write_text("v2 conduit revised", encoding="utf-8")
     repo.enqueue_event(event_type="modified", rel_path="22-101-00/a.md", source_root_key="proj")
     drain_queue(repo, config)
-    assert "v2 conduit revised" in _card_path(vault, "22-101-00/a.md").read_text(encoding="utf-8")
+    # Phase 8 cards carry no raw body; prove the refresh used the new content via its source SHA-256.
+    import hashlib
+    new_sha = hashlib.sha256(b"v2 conduit revised").hexdigest()
+    assert new_sha in _card_path(vault, "22-101-00/a.md").read_text(encoding="utf-8")
 
     # a brand-new file gets NO card under refresh-only policy
     _make_and_enqueue(repo, root_dir, "22-101-00/b.md", "new file")
@@ -145,7 +148,7 @@ def test_auto_summary_generates_with_backend(tmp_path: Path, monkeypatch: pytest
     drain_queue(repo, config)
     card = _card_path(vault, "22-101-00/a.md").read_text(encoding="utf-8")
     assert "summary_advisory: true" in card
-    assert "## AI Summary" in card
+    assert "## Advisory Summary" in card and "Conduit RFI; 8-week lead time." in card
 
 
 def test_auto_summary_suppressed_for_sensitive_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

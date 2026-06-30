@@ -69,10 +69,10 @@ def test_summarize_enriches_card_with_advisory(env, monkeypatch) -> None:
     out = summarize_source(repo, config, source_id=sid)
     assert out["summarized"] is True and out["mode"] == "llm"
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "## AI Summary (advisory — model-generated, not authoritative)" in card
+    assert "## Advisory Summary" in card and "model-generated, not authoritative" in card
     assert "summary_advisory: true" in card
     assert "summary_model_provider:" in card and "summary_prompt_version:" in card
-    assert "Advisory only — verify against the source." in card
+    assert "Verify against the source." in card
     receipt = repo.get_summary(sid)
     assert receipt is not None and receipt["model_provider"] == "ollama"
     # no raw prompt/response persisted in the receipt table

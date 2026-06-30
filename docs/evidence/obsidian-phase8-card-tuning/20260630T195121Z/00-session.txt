@@ -1,0 +1,9 @@
+WORKTREE=/Users/bobbyfetting/hb-personal-assistant-worktrees/obsidian-phase8-card-tuning-20260630T195121Z
+BRANCH=feat/obsidian-phase8-card-tuning-20260630T195121Z
+TIMESTAMP=20260630T195121Z
+=== repo ===
+feat/obsidian-phase8-card-tuning-20260630T195121Z
+112ff008c830fa3c5c2452f113d444512e127d56
+112ff008c830fa3c5c2452f113d444512e127d56
+--- status ---
+?? docs/evidence/obsidian-phase8-card-tuning/

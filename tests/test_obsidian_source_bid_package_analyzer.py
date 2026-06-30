@@ -120,13 +120,14 @@ def test_bid_package_card_renders_pm_sections(env) -> None:
     sid = _index(env, BID_PATH, BID_TEXT)
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
+    # Phase 8: bid detail is folded into Key Facts (no competing top-level Bid Package Identity).
     for needle in (
         'document_type: "bid_package"', 'bid_package_number: "08-03"',
-        "## Bid Package Identity", "## Scope Summary", "## Inclusions",
-        "## Exclusions", "## Procurement / Estimating Signals", "## PM Coordination Flags",
-        "## Source Reference", "storefront",
+        "## Key Facts", "Package number: 08-03", "Inclusions:", "Exclusions:",
+        "Trade scope:", "Procurement signals:", "## Source Basis", "storefront",
     ):
         assert needle in card, needle
+    assert "## Bid Package Identity" not in card
 
 
 # ----- typed summary ----------------------------------------------------------------------------
@@ -142,8 +143,9 @@ def test_bid_package_typed_summary_prompt_and_render(env) -> None:
     for fact in ("DETERMINISTIC FACTS", "08-03", "Glass Windows", "Inclusions", "storefront"):
         assert fact in prompt, fact
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    for sec in ("## AI PM Summary (advisory", "## Scope Covered", "## Procurement Risks",
-                "## Bid Clarifications Needed",
-                'summary_prompt_version: "source-card-bid-package-v1"'):
-        assert sec in card, sec
+    assert "## Advisory Summary" in card
+    for needle in ("model-generated, not authoritative", "Glass/glazing bid package 08-03",
+                   "Scope covered", "Procurement risks", "Bid clarifications needed",
+                   'summary_prompt_version: "source-card-bid-package-v1"'):
+        assert needle in card, needle
     assert repo.get_summary(sid)["prompt_version"] == BID_PACKAGE_PROMPT_VERSION

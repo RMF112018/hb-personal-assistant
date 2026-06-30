@@ -1,0 +1,27 @@
+=== artifacts ===
+OK: scripts/obsidian_source_first_indexing_apply.py
+OK: scripts/obsidian_source_first_indexing_dryrun.py
+OK: src/hb_assistant/obsidian_mcp/source_notes.py
+OK: src/hb_assistant/obsidian_mcp/source_analyzers.py
+OK: src/hb_assistant/obsidian_mcp/source_value.py
+OK: src/hb_assistant/obsidian_mcp/source_skip_codes.py
+OK: tests/test_obsidian_source_first_indexing_apply.py
+OK: tests/test_obsidian_source_note_domain_routing.py
+OK: docs/runbooks/obsidian-source-first-indexing-pass.md
+
+=== port 8000 ===
+clear
+
+=== frozen flags ===
+external_source_watch_enabled: False
+source_card_auto_generate_enabled: False
+source_summary_auto_generate_enabled: False
+source_note_auto_refresh_enabled: False
+source_card_generation_enabled: True
+writes_enabled: True
+vault_markdown_write_enabled: True
+
+=== generated note counts + Work md ===
+{'generated': 25, 'not_generated': 67}
+work generated: 25
+Work md files: 26
