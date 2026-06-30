@@ -1,0 +1,249 @@
+{
+  "entries": [
+    {
+      "classification": "system_artifact",
+      "ext": "",
+      "kind": "file",
+      "mtime_ns": 1782810579459358611,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": ".DS_Store",
+      "size_bytes": 12292,
+      "top_folder": ".DS_Store"
+    },
+    {
+      "classification": "system_artifact",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779693193000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": ".git",
+      "size_bytes": null,
+      "top_folder": ".git"
+    },
+    {
+      "classification": "system_artifact",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782810569000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": ".obsidian",
+      "size_bytes": null,
+      "top_folder": ".obsidian"
+    },
+    {
+      "classification": "system_artifact",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782810571000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": ".smart-env",
+      "size_bytes": null,
+      "top_folder": ".smart-env"
+    },
+    {
+      "classification": "system_artifact",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779692940000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": ".venv",
+      "size_bytes": null,
+      "top_folder": ".venv"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782736500000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "AI Outputs",
+      "size_bytes": null,
+      "top_folder": "AI Outputs"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1780054740000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Agent Briefs",
+      "size_bytes": null,
+      "top_folder": "Agent Briefs"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779625567000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Archive",
+      "size_bytes": null,
+      "top_folder": "Archive"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1781000999000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Construction Intelligence",
+      "size_bytes": null,
+      "top_folder": "Construction Intelligence"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779655173000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Daily Notes",
+      "size_bytes": null,
+      "top_folder": "Daily Notes"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1780469882000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Inbox",
+      "size_bytes": null,
+      "top_folder": "Inbox"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779625626000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Knowledge",
+      "size_bytes": null,
+      "top_folder": "Knowledge"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782736500000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "MCP Smoke",
+      "size_bytes": null,
+      "top_folder": "MCP Smoke"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782736461000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "MCP Write Smoke",
+      "size_bytes": null,
+      "top_folder": "MCP Write Smoke"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779625567000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "People",
+      "size_bytes": null,
+      "top_folder": "People"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779625626000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Side Hustle",
+      "size_bytes": null,
+      "top_folder": "Side Hustle"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782763101000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Source Notes",
+      "size_bytes": null,
+      "top_folder": "Source Notes"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782736520000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Templates",
+      "size_bytes": null,
+      "top_folder": "Templates"
+    },
+    {
+      "classification": "non_markdown_other",
+      "ext": "canvas",
+      "kind": "file",
+      "mtime_ns": 1782727069328666927,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Untitled.canvas",
+      "size_bytes": 0,
+      "top_folder": "Untitled.canvas"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782809827000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "Work",
+      "size_bytes": null,
+      "top_folder": "Work"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1782736461000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "auto",
+      "size_bytes": null,
+      "top_folder": "auto"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779641579000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "copilot",
+      "size_bytes": null,
+      "top_folder": "copilot"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779693187000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "docs",
+      "size_bytes": null,
+      "top_folder": "docs"
+    },
+    {
+      "classification": "directory",
+      "ext": "",
+      "kind": "dir",
+      "mtime_ns": 1779693088000000000,
+      "planned_disposition": "move_to_quarantine",
+      "rel_path": "scripts",
+      "size_bytes": null,
+      "top_folder": "scripts"
+    }
+  ],
+  "generated_at": "2026-06-30T09:29:29.992254+00:00",
+  "manifest_type": "summary",
+  "session_id": "20260630T090527Z",
+  "vault_path": "/Users/bobbyfetting/Documents/Obsidian Vault",
+  "vault_path_sha256": "7c9fcbea89e5f773"
+}

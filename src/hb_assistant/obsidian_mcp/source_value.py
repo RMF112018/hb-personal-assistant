@@ -15,6 +15,12 @@ from enum import Enum
 from typing import Any
 
 from .config import ObsidianMcpConfig
+from .source_skip_codes import (
+    DEFERRED_PATH,
+    EXCLUDED_PATH,
+    METADATA_ONLY_NO_AUTO_CARD,
+    UNSUPPORTED_FILE_TYPE,
+)
 
 
 class SourceValueDisposition(str, Enum):
@@ -89,7 +95,7 @@ def _build(disposition: SourceValueDisposition, *, reasons: list[str], config: O
     allow_summary = allow_card and disposition in (_D.AUTO_CARD_HIGH, _D.AUTO_CARD_NORMAL)
     code = skip_code
     if code is None and not allow_card and disposition is _D.METADATA_ONLY:
-        code = "metadata_only_no_auto_card"
+        code = METADATA_ONLY_NO_AUTO_CARD
     return SourceValue(
         disposition=disposition,
         priority_score=_DISP_RANK[disposition] * 100,
@@ -114,14 +120,14 @@ def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> 
 
     if rel and _path_has_segment(rel, getattr(config, "source_index_excluded_path_parts", [])):
         return _build(_D.EXCLUDED, reasons=["excluded_path_segment"], config=config,
-                      skip_code="excluded_path", allow_metadata_index=False)
+                      skip_code=EXCLUDED_PATH, allow_metadata_index=False)
     unsupported = {_ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])}
     if ext and ext in unsupported:
         return _build(_D.UNSUPPORTED, reasons=[f"unsupported_ext:{ext}"], config=config,
-                      skip_code="unsupported_file_type", allow_metadata_index=False)
+                      skip_code=UNSUPPORTED_FILE_TYPE, allow_metadata_index=False)
     if rel and _path_has_segment(rel, getattr(config, "source_index_deferred_path_parts", [])):
         return _build(_D.DEFERRED, reasons=["deferred_path_segment"], config=config,
-                      skip_code="deferred_path", allow_metadata_index=True)
+                      skip_code=DEFERRED_PATH, allow_metadata_index=True)
 
     from . import source_analyzers  # lazy: pure module, avoids any import-order surprise
     document_type = source_analyzers.from_detail(detail).document_type

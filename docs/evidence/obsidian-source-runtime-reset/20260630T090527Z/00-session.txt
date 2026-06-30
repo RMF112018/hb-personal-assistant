@@ -1,0 +1,10 @@
+WORKTREE=/Users/bobbyfetting/hb-personal-assistant-worktrees/obsidian-source-runtime-reset-20260630T090527Z
+BRANCH=fix/obsidian-source-runtime-reset-20260630T090527Z
+EVIDENCE_DIR=/Users/bobbyfetting/hb-personal-assistant-worktrees/obsidian-source-runtime-reset-20260630T090527Z/docs/evidence/obsidian-source-runtime-reset/20260630T090527Z
+
+=== repo ===
+fix/obsidian-source-runtime-reset-20260630T090527Z
+e5187c8546c4d53f33ab6d8add52187b9604c617
+e5187c8546c4d53f33ab6d8add52187b9604c617
+--- status ---
+?? docs/evidence/obsidian-source-runtime-reset/
