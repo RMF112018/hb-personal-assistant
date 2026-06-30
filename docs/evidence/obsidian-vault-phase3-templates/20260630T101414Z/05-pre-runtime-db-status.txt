@@ -1,0 +1,13 @@
+=== source_intelligence_events by status/error_code ===
+  done         none                             170
+  skipped      excluded_path                    2870
+  skipped      deferred_insurance_renewals      348
+  skipped      none                             82
+  skipped      deferred_low_value_filetype      9
+
+queued_count=0  processing_count=0
+=== generated notes by status ===
+  generated: 15
+  stale: 52
+
+GATE: PASS (queued=0, processing=0)

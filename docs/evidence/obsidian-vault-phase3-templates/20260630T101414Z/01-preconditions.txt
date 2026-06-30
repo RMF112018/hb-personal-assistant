@@ -1,0 +1,35 @@
+=== required repo artifacts ===
+OK: scripts/obsidian_vault_quarantine_reset.py
+OK: src/hb_assistant/obsidian_mcp/source_skip_codes.py
+OK: src/hb_assistant/obsidian_mcp/source_watch.py
+OK: src/hb_assistant/obsidian_mcp/source_index_repository.py
+OK: docs/runbooks/obsidian-vault-reset.md
+OK: docs/runbooks/obsidian-source-intelligence-runtime.md
+
+=== watcher fail-closed symbols ===
+94:        # FAIL CLOSED: if ownership cannot be proven — a competing live owner OR a lease-check error
+112:            self._last_error_code = "watcher_lease_error"  # safe, sanitized (no exception detail)
+114:                "error_code": "watcher_lease_error"}})
+120:            self._last_error_code = "watcher_not_owner"
+
+=== active vault exists ===
+OK: /Users/bobbyfetting/Documents/Obsidian Vault
+--- top-level ---
+/Users/bobbyfetting/Documents/Obsidian Vault/.smart-env
+/Users/bobbyfetting/Documents/Obsidian Vault/00 Inbox
+/Users/bobbyfetting/Documents/Obsidian Vault/90 Archive
+/Users/bobbyfetting/Documents/Obsidian Vault/99 System
+/Users/bobbyfetting/Documents/Obsidian Vault/Attachments
+/Users/bobbyfetting/Documents/Obsidian Vault/Daily
+/Users/bobbyfetting/Documents/Obsidian Vault/Home
+/Users/bobbyfetting/Documents/Obsidian Vault/MOCs
+/Users/bobbyfetting/Documents/Obsidian Vault/README.md
+/Users/bobbyfetting/Documents/Obsidian Vault/Source Notes
+/Users/bobbyfetting/Documents/Obsidian Vault/Templates
+/Users/bobbyfetting/Documents/Obsidian Vault/Work
+
+=== quarantine exists ===
+OK: quarantine present
+
+=== backend listener ===
+stopped

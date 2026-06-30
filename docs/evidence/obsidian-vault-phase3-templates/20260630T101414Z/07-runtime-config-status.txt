@@ -1,0 +1,29 @@
+=== config (curated; no external paths) ===
+enabled: True
+mode: filesystem
+vault_root: /Users/bobbyfetting/Documents/Obsidian Vault
+external_source_index_enabled: True
+external_source_watch_enabled: True
+source_card_auto_generate_enabled: True
+source_summary_auto_generate_enabled: True
+source_note_auto_refresh_enabled: True
+source_card_auto_max_per_drain: 25
+source_summary_auto_max_per_drain: 2
+summarization_provider: ollama
+summarization_model: qwen2.5:14b
+source_notes_folder: Source Notes
+
+=== source status ===
+queued_count: 0
+processing_count: 0
+error_count: 0
+generated_card_count: 15
+stale_note_count: 52
+summarized_count: 7
+skipped_count: 3309
+skipped_by_code: {'unspecified': 82, 'deferred_insurance_renewals': 348, 'deferred_low_value_filetype': 9, 'excluded_path': 2870}
+queued_by_disposition: {'sampled': 0, 'sample_limit': 500, 'counts': {'auto_card_high': 0, 'auto_card_normal': 0, 'metadata_only': 0, 'deferred': 0, 'excluded': 0, 'unsupported': 0}, 'note': 'coarse path/ext-only sample; document_type-based high/normal is approximate'}
+
+=== watcher ===
+running: True | mode: watchdog | watch_enabled: True | degraded: False | is_owner: True
+owner.pid: 31383 | owner.stale: False | owner.heartbeat_age_seconds: 0.6 | owner.roots_hash: 09299eadc1115225
