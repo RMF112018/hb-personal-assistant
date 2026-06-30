@@ -267,7 +267,9 @@ export type ScheduleControlsComparisonBasis =
   | 'current_contract_baseline'
   | 'previous_progress_update_baseline'
   | 'secondary_progress_update_baseline';
-export type ReviewWorkbenchComparisonBasis = 'prior_update' | 'baseline';
+export type ReviewWorkbenchComparisonBasis =
+  | 'prior_update'
+  | ScheduleControlsComparisonBasis;
 export type ProjectScheduleControlsResponse = {
   available?: boolean;
   reason?: string | null;
@@ -438,7 +440,7 @@ export function updateProjectScheduleBaselines(
 export function getProjectScheduleDriverDetail(
   projectKey: string,
   activityId: string,
-  opts?: { comparisonBasis?: 'prior_update' | 'baseline'; asOf?: string },
+  opts?: { comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline'; asOf?: string },
 ) {
   const params = new URLSearchParams();
   if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
@@ -450,7 +452,7 @@ export function getProjectScheduleDriverDetail(
 }
 export function syncProjectScheduleReviewItems(
   projectKey: string,
-  opts?: { asOf?: string; comparisonBasis?: 'prior_update' | 'baseline' },
+  opts?: { asOf?: string; comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline' },
 ) {
   const params = new URLSearchParams();
   if (opts?.asOf) params.set('as_of', opts.asOf);
@@ -471,7 +473,7 @@ export function getProjectScheduleReviewItems(
     limit?: number;
     offset?: number;
     asOf?: string;
-    comparisonBasis?: 'prior_update' | 'baseline';
+    comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline';
     sourceMetric?: string;
     severity?: string;
     itemType?: string;

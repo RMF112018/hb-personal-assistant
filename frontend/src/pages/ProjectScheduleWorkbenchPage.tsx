@@ -9,6 +9,25 @@ import { LoadingState } from '../components/common/LoadingState'
 import { ReviewCueCard } from '../components/project-schedule/ReviewCueCard'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api, getLocalUiRole } from '../lib/api'
+import type { ReviewWorkbenchComparisonBasis } from '../lib/api'
+
+const NAMED_WORKBENCH_BASIS = new Set<ReviewWorkbenchComparisonBasis>([
+  'current_contract_baseline',
+  'previous_progress_update_baseline',
+  'secondary_progress_update_baseline',
+])
+
+function parseWorkbenchComparisonBasis(raw: string | null): ReviewWorkbenchComparisonBasis {
+  if (raw === 'prior_update' || !raw) return 'prior_update'
+  if (NAMED_WORKBENCH_BASIS.has(raw as ReviewWorkbenchComparisonBasis)) {
+    return raw as ReviewWorkbenchComparisonBasis
+  }
+  return 'prior_update'
+}
+
+function isNamedWorkbenchBasis(basis: ReviewWorkbenchComparisonBasis): boolean {
+  return NAMED_WORKBENCH_BASIS.has(basis)
+}
 
 const STATUSES = ['open', 'watching', 'reviewed', 'dismissed'] as const
 const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
@@ -88,11 +107,14 @@ export function ProjectScheduleWorkbenchPage() {
   const [searchParams] = useSearchParams()
   const asOfDate = searchParams.get('as_of') || undefined
   const focusReview = searchParams.get('review') || undefined
+  const urlComparisonBasis = searchParams.get('comparison_basis')
   const focusRef = useRef<HTMLDivElement | null>(null)
   const queryClient = useQueryClient()
   const role = getLocalUiRole()
   const canSync = role === 'operator' || role === 'admin'
-  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
+  const [comparisonBasis, setComparisonBasis] = useState<ReviewWorkbenchComparisonBasis>(() =>
+    parseWorkbenchComparisonBasis(urlComparisonBasis),
+  )
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({})
   const [statusFilter, setStatusFilter] = useState('')
@@ -101,13 +123,31 @@ export function ProjectScheduleWorkbenchPage() {
   const [confidenceFilter, setConfidenceFilter] = useState('')
   const [phaseFilter, setPhaseFilter] = useState('')
 
+  const namedPreview = isNamedWorkbenchBasis(comparisonBasis)
+  const canSyncWorkbench = canSync && !namedPreview
+
+  const baselinesQuery = useQuery({
+    queryKey: ['project', 'schedule', 'baselines', projectKey, asOfDate],
+    queryFn: () => api.getProjectScheduleBaselines(projectKey, { asOf: asOfDate }),
+    enabled: Boolean(projectKey),
+  })
+
+  useEffect(() => {
+    setComparisonBasis(parseWorkbenchComparisonBasis(urlComparisonBasis))
+  }, [urlComparisonBasis])
+
+  const selectedNamedSlots = useMemo(() => {
+    const slots = Array.isArray((baselinesQuery.data as any)?.slots) ? (baselinesQuery.data as any).slots : []
+    return slots.filter((slot: any) => slot.status === 'selected')
+  }, [baselinesQuery.data])
+
   const reviewItemsQueryKey = [
     'project',
     'schedule',
     'review-items',
     projectKey,
     asOfDate,
-    canSync,
+    canSyncWorkbench,
     comparisonBasis,
     statusFilter,
     severityFilter,
@@ -119,7 +159,7 @@ export function ProjectScheduleWorkbenchPage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: reviewItemsQueryKey,
     queryFn: async () => {
-      if (canSync) {
+      if (canSyncWorkbench) {
         await api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate, comparisonBasis })
       }
       return api.getProjectScheduleReviewItems(projectKey, {
@@ -159,9 +199,8 @@ export function ProjectScheduleWorkbenchPage() {
 
   const envelope = (data || {}) as Record<string, any>
   const workbench = (envelope.workbench || {}) as Record<string, any>
-  const bases = (workbench.bases || {}) as Record<string, any>
-  const baselineAvailable = Boolean(bases.baseline?.available)
   const items = Array.isArray(envelope.items) ? envelope.items : []
+  const readOnlyNamedPreview = namedPreview || Boolean(workbench.read_only_baseline_preview)
 
   const sourceMetrics = useMemo(() => uniqueValues(items, 'source_metric_key'), [items])
   const phases = useMemo(() => uniqueValues(items, 'phase'), [items])
@@ -207,12 +246,16 @@ export function ProjectScheduleWorkbenchPage() {
           <div>
             <h3 className="section-title mb-0">Schedule Workbench</h3>
             <p className="mt-1 text-sm text-[var(--hb-muted)]">
-              Persisted PM review queue with disposition carry-forward across updates.
+              {readOnlyNamedPreview
+                ? 'Live preview for named baseline comparison — dispositions are not persisted.'
+                : 'Persisted PM review queue with disposition carry-forward across updates.'}
               {asOfDate ? ` As of ${asOfDate}.` : ''}
             </p>
-            {!canSync && (
+            {!canSyncWorkbench && (
               <p className="mt-1 text-xs text-[var(--hb-muted)]">
-                Preview only — operator access is required to sync and update dispositions.
+                {namedPreview
+                  ? 'Named baseline workbench is read-only preview.'
+                  : 'Preview only — operator access is required to sync and update dispositions.'}
               </p>
             )}
           </div>
@@ -241,22 +284,23 @@ export function ProjectScheduleWorkbenchPage() {
           </div>
         </div>
 
-        {baselineAvailable && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+            onClick={() => setComparisonBasis('prior_update')}
+          >
+            Since previous update
+          </button>
+          {selectedNamedSlots.map((slot: any) => (
             <button
-              className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-              onClick={() => setComparisonBasis('prior_update')}
+              key={String(slot.slot_key)}
+              className={`badge ${comparisonBasis === slot.slot_key ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              onClick={() => setComparisonBasis(slot.slot_key as ReviewWorkbenchComparisonBasis)}
             >
-              Since previous update
+              {String(slot.slot_label || slot.slot_key).replace(/_/g, ' ')}
             </button>
-            <button
-              className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-              onClick={() => setComparisonBasis('baseline')}
-            >
-              Since selected baseline
-            </button>
-          </div>
-        )}
+          ))}
+        </div>
 
         <div className="card space-y-3">
           <h4 className="text-sm font-semibold">Filters</h4>
@@ -345,7 +389,7 @@ export function ProjectScheduleWorkbenchPage() {
             hint={
               blockedPreviewCount > 0
                 ? 'Some metrics are readiness-only or blocked; they appear only in preview when unfiltered.'
-                : canSync
+                : canSyncWorkbench
                   ? 'Open the schedule hub to sync candidates from drivers, milestones, UDF metrics, and float pressure.'
                   : 'No preview items are available for this schedule update.'
             }
@@ -370,7 +414,7 @@ export function ProjectScheduleWorkbenchPage() {
                   projectKey={projectKey}
                   comparisonBasis={comparisonBasis}
                   asOfDate={asOfDate}
-                  canSync={canSync}
+                  canSync={canSyncWorkbench}
                   expanded={expanded}
                   notesValue={notesValue}
                   focusRef={focusRef}
@@ -408,7 +452,10 @@ export function ProjectScheduleWorkbenchPage() {
         )}
 
         <p className="text-xs text-[var(--hb-muted)]">
-          Sequence cues only — not causation findings. Dispositions persist by stable item key across schedule updates.
+          Sequence cues only — not causation findings.
+          {readOnlyNamedPreview
+            ? ' Named baseline preview does not persist PM dispositions.'
+            : ' Dispositions persist by stable item key across schedule updates.'}
         </p>
       </section>
     </ProjectWorkspaceShell>

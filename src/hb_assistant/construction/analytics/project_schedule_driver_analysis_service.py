@@ -186,9 +186,14 @@ class ProjectScheduleDriverAnalysisService:
         milestones: dict[str, Any] | None = None,
         comparison_ready: bool = True,
         comparison_basis: str = "prior_update",
+        baseline_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not previous_key or not comparison_ready:
-            return {"available": False, "reason": "comparison_unavailable"}
+            return {
+                "available": False,
+                "reason": "comparison_unavailable",
+                "comparison_basis": comparison_basis,
+            }
         analysis = self.build_analysis(
             project_key=project_key,
             current_key=current_key,
@@ -223,7 +228,7 @@ class ProjectScheduleDriverAnalysisService:
             row_by_id=row_by_id,
             moved_milestone_ids=moved_milestone_ids,
         )
-        return {
+        payload = {
             "available": True,
             "activity_id": activity_id,
             "comparison_basis": comparison_basis,
@@ -251,6 +256,9 @@ class ProjectScheduleDriverAnalysisService:
             "sequence_cue": _SEQUENCE_CUE,
             "detail_url": f"/api/projects/{project_key}/schedule/drivers/{activity_id}/detail",
         }
+        if baseline_context:
+            payload["baseline_context"] = baseline_context
+        return payload
 
     def build_narrative(self, analysis: dict[str, Any]) -> dict[str, Any]:
         if not analysis.get("available"):

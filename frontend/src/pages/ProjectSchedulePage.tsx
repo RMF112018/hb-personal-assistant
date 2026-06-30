@@ -225,10 +225,10 @@ function DriverEvidenceSection({
   projectKey: string
   driverHub: Record<string, any>
   asOfDate?: string
-  comparisonBasis: 'prior_update' | 'baseline'
-  onComparisonBasisChange: (basis: 'prior_update' | 'baseline') => void
+  comparisonBasis: ReviewWorkbenchComparisonBasis | 'baseline'
+  onComparisonBasisChange: (basis: ReviewWorkbenchComparisonBasis | 'baseline') => void
 }) {
-  const driverDetailQuery = (activityId: string, basis: 'prior_update' | 'baseline') =>
+  const driverDetailQuery = (activityId: string, basis: ReviewWorkbenchComparisonBasis | 'baseline') =>
     `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(activityId)}?basis=${basis}${
       asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''
     }`
@@ -266,7 +266,9 @@ function DriverEvidenceSection({
     )
   }
 
-  const baselineAvailable = Boolean(driverHub.baseline?.available)
+  const baselineAvailable =
+    Boolean(driverHub.baseline?.available) &&
+    (comparisonBasis === 'prior_update' || comparisonBasis === 'baseline')
 
   return (
     <div className="space-y-3">
@@ -444,7 +446,9 @@ export function ProjectSchedulePage() {
   const [importOpen, setImportOpen] = useState(false)
   const [newImportBanner, setNewImportBanner] = useState(false)
   const [controlsComparisonBasis, setControlsComparisonBasis] = useState<ScheduleControlsComparisonBasis>('prior_update')
-  const [workbenchComparisonBasis, setWorkbenchComparisonBasis] = useState<ReviewWorkbenchComparisonBasis>('prior_update')
+  const [workbenchComparisonBasis, setWorkbenchComparisonBasis] = useState<
+    ReviewWorkbenchComparisonBasis | 'baseline'
+  >('prior_update')
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],

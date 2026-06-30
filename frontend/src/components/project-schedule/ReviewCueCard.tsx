@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import type { ReviewWorkbenchComparisonBasis } from '../../lib/api'
+
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
   return String(value)
@@ -66,7 +68,7 @@ export function ReviewCueTechnicalDetails({ item }: { item: Record<string, any> 
 type ReviewCueCardProps = {
   item: Record<string, any>
   projectKey: string
-  comparisonBasis: 'prior_update' | 'baseline'
+  comparisonBasis: ReviewWorkbenchComparisonBasis | 'baseline'
   asOfDate?: string
   canSync: boolean
   expanded: boolean

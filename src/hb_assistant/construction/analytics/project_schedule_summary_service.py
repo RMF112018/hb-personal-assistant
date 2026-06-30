@@ -1045,11 +1045,56 @@ class ProjectScheduleSummaryService:
         subcontractor: str | None = None,
         cost_code: str | None = None,
     ) -> dict[str, Any]:
-        context = self._review_workbench_context(project_key, as_of=as_of)
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
+        baseline_context: dict[str, Any] | None = None
+        try:
+            context, baseline_context = self.build_resolved_hub_context(
+                project_key,
+                resolved=resolved,
+                as_of=as_of,
+            )
+        except ValueError as exc:
+            reason = str(exc)
+            if reason in {"baseline_not_selected", "baseline_invalid"}:
+                return {
+                    "available": False,
+                    "reason": reason,
+                    "comparison_basis": resolved.comparison_basis,
+                    "baseline_context": baseline_context,
+                }
+            raise
         if not context:
-            return {"available": False, "reason": "no_schedule"}
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        workbench = self._review.build_preview(**context, comparison_basis=basis)
+            return {"available": False, "reason": "no_schedule", "comparison_basis": resolved.comparison_basis}
+        if resolved.source_model == "legacy_v90" and not self._legacy_baseline_available(
+            context.get("baseline_summary") or {}
+        ):
+            return {
+                "available": False,
+                "reason": str((context.get("baseline_summary") or {}).get("reason") or "baseline_unavailable"),
+                "comparison_basis": resolved.comparison_basis,
+            }
+        named_preview = resolved.source_model == "named_slot"
+        workbench = self._review.build_preview(
+            project_key=context["project_key"],
+            schedule_version_key=context["schedule_version_key"],
+            driver_analysis=context.get("driver_analysis"),
+            milestones=context.get("milestones"),
+            remaining_health=context.get("remaining_health"),
+            cpm_summary=context.get("cpm_summary"),
+            change_impact=context.get("change_impact"),
+            remaining_activities=context.get("remaining_activities"),
+            comparison_basis=resolved.preview_basis,
+            as_of_date=context.get("as_of_date"),
+            baseline_summary=context.get("baseline_summary"),
+            include_activity_metric_cues=True,
+            response_comparison_basis=resolved.comparison_basis,
+            carry_forward_disposition=not named_preview,
+        )
+        if named_preview:
+            workbench["synced"] = False
+            workbench["read_only_baseline_preview"] = True
         items = workbench.get("items") or []
         items = self._review.filter_items(
             items,
@@ -1065,13 +1110,17 @@ class ProjectScheduleSummaryService:
             cost_code=cost_code,
         )
         sliced = items[offset : offset + max(1, min(limit, 200))]
+        workbench_meta = {k: v for k, v in workbench.items() if k != "items"}
+        if resolved.source_model == "named_slot":
+            workbench_meta["baseline_context"] = baseline_context
         return {
             "available": True,
             "count": len(items),
             "limit": limit,
             "offset": offset,
             "items": sliced,
-            "workbench": {k: v for k, v in workbench.items() if k != "items"},
+            "comparison_basis": resolved.comparison_basis,
+            "workbench": workbench_meta,
         }
 
     def sync_review_workbench(
@@ -1081,11 +1130,35 @@ class ProjectScheduleSummaryService:
         as_of: date | None = None,
         comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
+        if resolved.source_model == "named_slot":
+            raise ValueError("named_baseline_sync_not_supported")
         context = self._review_workbench_context(project_key, as_of=as_of)
         if not context:
             return {"available": False, "reason": "no_schedule"}
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        return self._review.sync_and_list(**context, comparison_basis=basis)
+        if resolved.source_model == "legacy_v90" and not self._legacy_baseline_available(
+            context.get("baseline_summary") or {}
+        ):
+            return {
+                "available": False,
+                "reason": str((context.get("baseline_summary") or {}).get("reason") or "baseline_unavailable"),
+                "comparison_basis": resolved.comparison_basis,
+            }
+        return self._review.sync_and_list(
+            project_key=context["project_key"],
+            schedule_version_key=context["schedule_version_key"],
+            driver_analysis=context.get("driver_analysis"),
+            milestones=context.get("milestones"),
+            remaining_health=context.get("remaining_health"),
+            cpm_summary=context.get("cpm_summary"),
+            change_impact=context.get("change_impact"),
+            remaining_activities=context.get("remaining_activities"),
+            as_of_date=context.get("as_of_date"),
+            baseline_summary=context.get("baseline_summary"),
+            comparison_basis=resolved.preview_basis,
+        )
 
     def build_driver_detail(
         self,
@@ -1095,32 +1168,80 @@ class ProjectScheduleSummaryService:
         comparison_basis: str = "prior_update",
         as_of: date | None = None,
     ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+        from .project_schedule_named_baseline_service import ProjectScheduleNamedBaselineService
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
         as_of_date = as_of or datetime.now(timezone.utc).date()
         versions = self._hub_project_versions(project_key)
         if not versions:
-            return {"available": False, "reason": "no_schedule"}
+            return {"available": False, "reason": "no_schedule", "comparison_basis": resolved.comparison_basis}
         current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
         if not current_choice:
-            return {"available": False, "reason": "review_required"}
+            return {"available": False, "reason": "review_required", "comparison_basis": resolved.comparison_basis}
         current_key = str(current_choice.version["schedule_version_key"])
-        previous_choice = self._resolve_previous(project_key, current_choice, versions)
-        previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
-        baseline = self._hub_repo.get_active_baseline_selection(
-            project_key=project_key,
-            current_schedule_version_key=current_key,
-        )
-        baseline_key = str(baseline["selected_baseline_schedule_version_key"]) if baseline else None
-        comparison_key = previous_key if comparison_basis != "baseline" else baseline_key
+        comparison_key: str | None = None
+        diff_id: int | None = current_choice.version.get("default_diff_id")
+        baseline_context: dict[str, Any] | None = None
+
+        if resolved.source_model == "prior_update":
+            previous_choice = self._resolve_previous(project_key, current_choice, versions)
+            comparison_key = (
+                str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+            )
+        elif resolved.source_model == "legacy_v90":
+            baseline = self._hub_repo.get_active_baseline_selection(
+                project_key=project_key,
+                current_schedule_version_key=current_key,
+            )
+            comparison_key = (
+                str(baseline["selected_baseline_schedule_version_key"]) if baseline else None
+            )
+            diff_id = None
+            if not comparison_key:
+                return {
+                    "available": False,
+                    "reason": "baseline_unavailable",
+                    "comparison_basis": resolved.comparison_basis,
+                }
+        else:
+            slot_key = str(resolved.slot_key or resolved.comparison_basis)
+            resolution = ProjectScheduleNamedBaselineService(db_path=self._db_path).resolve_slot_for_controls(
+                project_key,
+                slot_key=slot_key,
+                as_of=as_of_date,
+            )
+            baseline_context = self._baseline_context_from_named_resolution(resolution)
+            status = str(resolution.get("selection_status") or "missing")
+            if status == "missing":
+                return {
+                    "available": False,
+                    "reason": "baseline_not_selected",
+                    "comparison_basis": resolved.comparison_basis,
+                    "baseline_context": baseline_context,
+                }
+            if status == "invalid":
+                return {
+                    "available": False,
+                    "reason": "baseline_invalid",
+                    "comparison_basis": resolved.comparison_basis,
+                    "baseline_context": baseline_context,
+                }
+            comparison_key = str(resolution.get("schedule_version_key") or "")
+            diff_id = None
+
         milestones = self._milestones(current_key, comparison_key, {"completed_milestone_count": 0})
         return self._drivers.build_driver_detail(
             project_key=project_key,
             activity_id=activity_id,
             current_key=current_key,
             previous_key=comparison_key,
-            diff_id=current_choice.version.get("default_diff_id") if comparison_basis != "baseline" else None,
+            diff_id=diff_id,
             milestones=milestones,
-            comparison_ready=bool(comparison_key) and not _requires_identity_review(current_choice.identity_match),
-            comparison_basis=comparison_basis,
+            comparison_ready=bool(comparison_key)
+            and not _requires_identity_review(current_choice.identity_match),
+            comparison_basis=resolved.comparison_basis,
+            baseline_context=baseline_context,
         )
 
     def _review_workbench_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any] | None:
@@ -1324,6 +1445,66 @@ class ProjectScheduleSummaryService:
         enriched["baseline_summary"] = baseline_summary
         enriched["schedule_data_date"] = _date_str(self._data_date(current))
         return enriched
+
+    def build_resolved_hub_context(
+        self,
+        project_key: str,
+        *,
+        resolved: Any,
+        as_of: date | None = None,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        from .project_schedule_comparison_basis_resolver import ResolvedComparisonBasis
+        from .project_schedule_named_baseline_service import ProjectScheduleNamedBaselineService
+
+        if not isinstance(resolved, ResolvedComparisonBasis):
+            raise TypeError("resolved_must_be_ResolvedComparisonBasis")
+
+        if resolved.source_model == "named_slot":
+            slot_key = str(resolved.slot_key or resolved.comparison_basis)
+            named = ProjectScheduleNamedBaselineService(db_path=self._db_path)
+            resolution = named.resolve_slot_for_controls(project_key, slot_key=slot_key, as_of=as_of)
+            baseline_context = self._baseline_context_from_named_resolution(resolution)
+            status = str(resolution.get("selection_status") or "missing")
+            if status == "missing":
+                raise ValueError("baseline_not_selected")
+            if status == "invalid":
+                raise ValueError("baseline_invalid")
+            context = self.build_schedule_hub_context_with_named_baseline(
+                project_key,
+                as_of=as_of,
+                baseline_version_key=str(resolution.get("schedule_version_key") or ""),
+            )
+            return context, baseline_context
+
+        if resolved.source_model == "legacy_v90":
+            context = self._review_workbench_context(project_key, as_of=as_of)
+            return context, {"basis": "baseline", "selection_status": "legacy_v90"}
+
+        context = self._review_workbench_context(project_key, as_of=as_of)
+        return context, {"basis": "prior_update", "selection_status": "not_applicable"}
+
+    @staticmethod
+    def _legacy_baseline_available(baseline_summary: dict[str, Any]) -> bool:
+        return bool(
+            baseline_summary.get("available")
+            or baseline_summary.get("selected_baseline_available")
+            or baseline_summary.get("_selected_baseline_schedule_version_key")
+        )
+
+    @staticmethod
+    def _baseline_context_from_named_resolution(resolution: dict[str, Any]) -> dict[str, Any]:
+        from .project_schedule_baseline_vocabulary import label_for_slot
+
+        slot_key = str(resolution.get("slot_key") or "")
+        return {
+            "basis": slot_key,
+            "slot_key": slot_key,
+            "slot_label": str(resolution.get("slot_label") or label_for_slot(slot_key)),
+            "selection_status": str(resolution.get("selection_status") or "missing"),
+            "schedule_version_key": resolution.get("schedule_version_key"),
+            "schedule_data_date": resolution.get("schedule_data_date"),
+            "display_name": resolution.get("display_name"),
+        }
 
     def build_export(
         self,

@@ -1,0 +1,4 @@
+branch=feature/schedule-named-baseline-workbench-phase8-20260630T233345Z
+base=e2acc41d07ddba52773c6a96890e3c89a653b00d
+commit=3e637540
+message=feat(schedule): support named baseline workbench comparisons

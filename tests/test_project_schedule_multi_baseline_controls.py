@@ -290,7 +290,7 @@ def test_controls_top_controls_use_named_label(tmp_path: Path) -> None:
     assert "Current Contract Baseline" in combined
 
 
-def test_controls_named_omits_workbench_links(tmp_path: Path) -> None:
+def test_controls_named_includes_workbench_links(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
     _seed_comparable_versions(db)
     ProjectScheduleNamedBaselineService(db_path=str(db)).update_baselines(
@@ -304,10 +304,15 @@ def test_controls_named_omits_workbench_links(tmp_path: Path) -> None:
         as_of=date(2026, 7, 3),
         comparison_basis="current_contract_baseline",
     )
-    assert "review_workbench" not in payload["links"]
+    assert "review_workbench" in payload["links"]
+    assert "comparison_basis=current_contract_baseline" in payload["links"]["review_workbench"]
     for control in payload["top_controls"]:
-        assert control["links"]["review_item"] is None
-        assert control["links"]["driver_detail"] is None
+        if control.get("activity_id"):
+            assert control["links"]["review_item"]
+            assert control["links"]["driver_detail"]
+            break
+    else:
+        pytest.fail("expected at least one activity-backed control")
 
 
 def test_controls_language_qa_passes_named_baseline(tmp_path: Path) -> None:
