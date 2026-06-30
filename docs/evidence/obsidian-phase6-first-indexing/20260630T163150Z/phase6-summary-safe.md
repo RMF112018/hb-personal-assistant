@@ -66,3 +66,31 @@
 - Materialize a set of high-value syn-work files (make-available-offline) so >=25 readable
   auto_card_high candidates exist, then re-run the bounded apply (no code change needed); OR obtain
   separate approval to scan beyond 5000 files or target a different (materialized) root.
+
+## Phase 6D — first real bounded batch GENERATED (after operator materialized files)
+- Operator materialized the listed syn-work candidates (offline). Placeholder-aware preview then
+  showed readable_considered=356 (>=25) of the 1,411 high-value pool; 1,055 still online-only.
+- Bounded apply (root syn-work, max_files=5000, max_cards=25, max_summaries=0, require-empty-queue):
+  **generated_card_count=25**, readable_considered=25, processed=25, errors=0, summary_count=0,
+  enqueued_count=0, queued_event_delta(at apply)=0, reached_cap=true, all_routed_under_work=true;
+  skips during the walk: online_only_or_dataless=3.
+- Validation: Source Notes/Work = 25 new cards (+README); Home/Shared unchanged (README only);
+  DB work generated=25, legacy not_generated=67 (untouched), stale=0; 25 syn-work source rows;
+  summaries table=7 (pre-existing, unchanged). One sampled card: filename `<basename>__<id12>.md`,
+  frontmatter domain:work + source_disposition/source_confidence/review_status/template_version/
+  card_version, PM sections (Why This Matters / PM Review Cues / Source Basis / Follow-Up); no
+  source-directory replication.
+- Runtime check: generated=25, processing=0, errors=0; watcher running, watchdog, degraded false,
+  is_owner true; backend stopped at closeout; port 8000 clear.
+
+## DEVIATION + operational note (queue not 0/0 after runtime check)
+- The runtime status check left queued=4 (processing=0). These are watcher-enqueued `modified` events
+  on syn-work files that the cloud client was still syncing during the ~8s backend window (NOT from
+  the apply, whose queued_event_delta was 0; NOT processed; no cards generated from them). Per the
+  rules, did NOT manually drain or mutate them.
+- Operational implication: the runtime config has external_source_watch_enabled=true AND
+  source_card_auto_generate_enabled=true. With ~356 syn-work files now materialized, the next real
+  backend run will auto-generate cards from them (and drain the 4 queued events) UNCONTROLLED, beyond
+  this bounded 25. To keep generation bounded, the operator should decide before next backend start:
+  clear the 4 queued events and/or disable auto-card-generation until a controlled wider pass is
+  authorized.
