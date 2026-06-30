@@ -1,8 +1,8 @@
-"""A1.5 — file-type analyzer templates (deterministic card body) + per-type advisory prompts.
+"""A1.5 — per-file-type advisory prompts (`llm._prompt_for`) + Phase 8 card-body shape.
 
-The deterministic ``_analyzer_block`` derives file-type-specific evidence from existing index
-metadata (no model, no file dump; sensitive sources withhold the outline). ``_prompt_for``
-selects a file-type-tuned advisory system prompt with the same JSON output contract.
+Phase 8 removed the deterministic ``## File Analysis`` block (and its ``_analyzer_block`` helper):
+file-type/extraction evidence now lives in the Source Summary / Key Facts / Source Basis sections of
+the canonical 11-section card. The per-file-type advisory *prompts* are unchanged and still tested.
 """
 
 from __future__ import annotations
@@ -15,59 +15,8 @@ from hb_assistant.obsidian_mcp import llm
 from hb_assistant.obsidian_mcp.config import ObsidianMcpConfig
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.obsidian_mcp.source_indexer import index_source_file
-from hb_assistant.obsidian_mcp.source_notes import _analyzer_block, generate_source_card
+from hb_assistant.obsidian_mcp.source_notes import generate_source_card
 from hb_assistant.store.migrator import SQLiteMigrator
-
-
-def _detail(**over: object) -> dict:
-    base = {"file_ext": "txt", "rel_path": "a.txt", "source_kind": "external_file",
-            "extraction_status": "ok", "text_excerpt": "hello"}
-    base.update(over)
-    return base
-
-
-# ----------------------------------------------------------------------------- _analyzer_block
-
-
-def test_md_outline() -> None:
-    block = "\n".join(_analyzer_block(_detail(
-        file_ext="md", rel_path="n.md",
-        text_excerpt="# Title\n\nintro\n\n## Scope\n\n- a\n\n### Detail\n",
-    )))
-    assert "File Analysis — Markdown note" in block
-    assert "Title" in block and "Scope" in block and "Detail" in block
-
-
-def test_pdf_text_vs_scanned() -> None:
-    text_pdf = "\n".join(_analyzer_block(_detail(file_ext="pdf", rel_path="d.pdf", page_count=12)))
-    assert "Pages: 12" in text_pdf
-    assert "text-based PDF" in text_pdf
-
-    scanned = "\n".join(_analyzer_block(_detail(
-        file_ext="pdf", rel_path="d.pdf", page_count=3, extraction_status="failed", text_excerpt=None,
-    )))
-    assert "scanned/image-only" in scanned
-
-
-def test_xlsx_and_docx_and_unknown() -> None:
-    xlsx = "\n".join(_analyzer_block(_detail(file_ext="xlsx", rel_path="b.xlsx", sheet_count=4)))
-    assert "Excel workbook" in xlsx and "Sheets: 4" in xlsx
-
-    docx = "\n".join(_analyzer_block(_detail(file_ext="docx", rel_path="c.docx", paragraph_count=20)))
-    assert "Word document" in docx and "Paragraphs: 20" in docx
-
-    unknown = "\n".join(_analyzer_block(_detail(file_ext="bin", rel_path="x.bin", text_excerpt=None)))
-    assert "Binary or unsupported" in unknown
-
-
-def test_sensitive_source_has_no_outline() -> None:
-    # sensitive source: text stored encrypted (text_vault_ref) → no excerpt → no heading outline.
-    block = "\n".join(_analyzer_block(_detail(
-        file_ext="md", rel_path="s.md", text_excerpt=None, text_vault_ref="vault:123",
-    )))
-    assert "File Analysis — Markdown note" in block
-    assert "Heading outline" not in block
-
 
 # --------------------------------------------------------------------------------- _prompt_for
 
@@ -89,7 +38,9 @@ def test_all_prompts_keep_json_contract() -> None:
 # ---------------------------------------------------------------------------------- integration
 
 
-def test_generated_card_includes_analyzer_block(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generated_card_uses_template_sections_not_file_analysis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     vault = tmp_path / "vault"
     vault.mkdir(exist_ok=True)
     cfg = tmp_path / "c.yml"
@@ -112,5 +63,8 @@ def test_generated_card_includes_analyzer_block(tmp_path: Path, monkeypatch: pyt
     sid = index_source_file(f, config.external_sources[0], repo, config)
     out = generate_source_card(repo, config, source_id=sid, overwrite=False, principal_kind="local")
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "## File Analysis — Markdown note" in card
-    assert "Scope" in card
+    # Phase 8: deterministic file-type evidence is in Source Summary / Source Basis, not File Analysis.
+    assert "## Source Summary" in card and "## Key Facts" in card and "## Source Basis" in card
+    assert "## File Analysis" not in card
+    # The Markdown extension + extraction facts surface in the Source Summary line.
+    assert "Markdown note" in card

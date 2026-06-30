@@ -533,21 +533,95 @@ _DOCNUM_RE: dict[str, "re.Pattern[str]"] = {
     "submittal": re.compile(r"(?i)\bsubmittal\s*#?\s*(\d{2}(?:[ ]?\d{2}){1,3}|\d{1,5})"),
 }
 _ISO_DATE_RE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
-_AMOUNT_RE = re.compile(r"\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?\b")
-_STATUS_RE = re.compile(
-    r"(?i)\b(approved|executed|rejected|voided|void|superseded|for review|"
-    r"draft|open|closed|in review|pending)\b")
+_AMOUNT_VALUE_RE = re.compile(r"\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?")
 # Trailing " - <Name>" segment is treated as the counterparty for these classes.
 _VENDOR_TYPES = {"subcontract", "contract", "purchase_order", "pay_application"}
+
+# --- Tightened deterministic extraction (Phase 8) -------------------------------------------------
+# Canonical PM status words. Status is extracted ONLY from a labeled body field or a discrete
+# filename segment — never a bare keyword scan (which mistook dropdown lists/instructions for status).
+_STATUS_WORDS = (
+    "approved as noted", "revise and resubmit", "for review", "in review", "approved",
+    "executed", "rejected", "voided", "void", "superseded", "submitted", "issued",
+    "draft", "open", "closed", "pending",
+)
+_STATUS_LABEL_RE = re.compile(r"(?i)\b(?:submittal\s+)?status\s*[:\-]\s*([A-Za-z][A-Za-z /]{2,40})")
+# Reject status read out of a dropdown/instruction/example/template context.
+_STATUS_REJECT_CTX = re.compile(
+    r"(?i)(select|option|dropdown|choose|mark one|for template use|example|e\.g\.|sample|legend)")
+# Amounts: explicit "$" value, but never an example/template/placeholder/sample/$0.00/range value.
+_AMOUNT_REJECT_CTX = re.compile(r"(?i)(example|e\.g\.|template|placeholder|sample)")
+# Labeled date in the body (filename ISO is handled separately). Drops the old unlabeled body-ISO scan.
+_DATE_LABEL_RE = re.compile(
+    r"(?i)\b(?:date|dated|issued)\s*[:\-]\s*(20\d{2}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{2,4})")
+# Template / blank / sample / form documents — detected from the FILENAME only (body "sample"/
+# "example" is far too noisy in real specs/submittals). Checked with HIGH precedence in from_detail.
+_TEMPLATE_FORM_RE = re.compile(
+    r"(?i)\btemplate\b|\bblank\b|\bsample\b|\bexample\b|cover sheet|sign[- ]?off form|"
+    r"checklist template|cover template")
+
+
+def _is_template_form(rel_path: str) -> bool:
+    """True when the FILENAME marks a blank template/form/sample (not a live instrument)."""
+    return bool(_TEMPLATE_FORM_RE.search(Path(rel_path).name))
+
+
+def _extract_status(segments: list[str], blob: str) -> str | None:
+    """Status only from a discrete filename segment or a labeled body field; else None."""
+    for seg in segments:
+        low = seg.strip().lower()
+        if low in _STATUS_WORDS:
+            return low
+    for m in _STATUS_LABEL_RE.finditer(blob):
+        val = re.sub(r"\s+", " ", m.group(1)).strip().lower()
+        if "/" in val:
+            continue  # a dropdown list of options, not a single resolved status
+        window = blob[max(0, m.start() - 40):m.end() + 40]
+        if _STATUS_REJECT_CTX.search(window):
+            continue
+        for word in _STATUS_WORDS:
+            if val == word or val.startswith(word + " ") or val.startswith(word):
+                return word
+    return None
+
+
+def _extract_amount(text: str) -> str | None:
+    """Explicit "$" amount; reject example/template/placeholder/sample context, $0.00, and ranges."""
+    for m in _AMOUNT_VALUE_RE.finditer(text):
+        raw = re.sub(r"\s+", "", m.group(0))
+        if raw in ("$0", "$0.00"):
+            continue
+        before = text[max(0, m.start() - 30):m.start()]
+        if _AMOUNT_REJECT_CTX.search(before):
+            continue
+        if before.rstrip().endswith(("-", "–")):  # right side of a "$x - $y" range
+            continue
+        if re.match(r"\s*[-–]\s*\$", text[m.end():m.end() + 40]):  # left side of a range
+            continue
+        return raw
+    return None
+
+
+def _extract_doc_date(stem: str, text: str) -> str | None:
+    """Filename ISO date, else a labeled body date; no unlabeled body-ISO fallback."""
+    m = _ISO_DATE_RE.search(stem)
+    if m:
+        return m.group(1)
+    lm = _DATE_LABEL_RE.search(text)
+    if lm:
+        return lm.group(1)
+    return None
 
 
 def _pm_document_fields(rel_path: str, text: str, document_type: str) -> dict[str, str | None]:
     """Deterministic PM fields from filename/excerpt ONLY — never invented, never from an LLM.
 
     Returns document_number/title/vendor/amount/doc_date/doc_status (each None when not explicit).
+    Status/amount are suppressed for template_form (a blank form is not status/cost evidence).
     """
     stem = Path(rel_path).stem
     blob = f"{stem}\n{text[:2000]}"
+    is_template = document_type == "template_form"
     out: dict[str, str | None] = {
         "document_number": None, "title": None, "vendor": None,
         "amount": None, "doc_date": None, "doc_status": None,
@@ -557,23 +631,19 @@ def _pm_document_fields(rel_path: str, text: str, document_type: str) -> dict[st
         m = pat.search(blob)
         if m:
             out["document_number"] = re.sub(r"\s+", " ", m.group(1)).strip()
-    # Trailing " - <text>" segment of the filename → vendor (procurement/contract/pay) or title.
     segs = [s.strip() for s in re.split(r"\s[-–]\s", stem) if s.strip()]
+    out["doc_status"] = None if is_template else _extract_status(segs, blob)
+    # Trailing " - <text>" segment → vendor (procurement/contract/pay) or title — never a status word.
     trailing = segs[-1] if len(segs) >= 2 else None
-    if trailing and not _ISO_DATE_RE.search(trailing):
+    if trailing and trailing.lower() in _STATUS_WORDS:
+        trailing = segs[-2] if len(segs) >= 3 else None  # the status segment is not the title
+    if trailing and not _ISO_DATE_RE.search(trailing) and trailing.lower() not in _STATUS_WORDS:
         if document_type in _VENDOR_TYPES:
             out["vendor"] = _clip(trailing)
         else:
             out["title"] = _clip(trailing)
-    dm = _ISO_DATE_RE.search(stem) or _ISO_DATE_RE.search(text[:2000])
-    if dm:
-        out["doc_date"] = dm.group(1)
-    am = _AMOUNT_RE.search(text[:4000])  # amounts only from explicit "$" in the body, never invented
-    if am:
-        out["amount"] = re.sub(r"\s+", "", am.group(0))
-    sm = _STATUS_RE.search(blob)
-    if sm:
-        out["doc_status"] = sm.group(1).lower()
+    out["doc_date"] = _extract_doc_date(stem, text[:2000])
+    out["amount"] = None if is_template else _extract_amount(text[:4000])
     return out
 
 
@@ -594,6 +664,11 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
         if sheet_number is None:
             doctype_guess = "general_pdf" if ext == "pdf" else "general_document"
         document_type = _classify_non_spreadsheet(rel_path, text, sheet_number, doctype_guess)
+
+    # Template / blank-form documents take HIGH precedence over every classified type (they are not
+    # live instruments): a "Change Order Template" must not be treated as a real change order.
+    if _is_template_form(rel_path):
+        document_type = "template_form"
 
     sheet_title = _sheet_title_from_filename(rel_path, sheet_number)
     number, date, description = _revision(text)

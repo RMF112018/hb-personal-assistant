@@ -26,20 +26,22 @@ def test_high_value_spreadsheet_card_has_sections_and_basis():
         sheet_count=2, project_number="25-244",
     )
     md = source_notes._render_card(_config(), detail, "2026-06-29T00:00:00Z")
+    # Phase 8: spreadsheet detail is folded into Key Facts; basis/caveat live in Source Basis.
     assert "- Card basis: spreadsheet metadata + bounded cell sample" in md
-    for section in ("## Spreadsheet Identity", "## PM Relevance",
-                    "## Detected Workbook Signals", "## Review / Verification Notes"):
-        assert section in md
+    assert "## Key Facts" in md and "## Source Basis" in md
+    assert "## Spreadsheet Identity" not in md
     assert "cost_report" in md  # high-value class surfaced (cost-report split from project_controls)
     assert "Sheet names: Summary, Detail" in md
+    assert "Detected workbook signals:" in md
     assert "no formulas evaluated, no macros executed" in md
 
 
 def test_generic_spreadsheet_card_labels_no_high_value_class():
     detail = _detail("25-244/Misc/Tracker.xlsx", "xlsx", "--- Sheet1 ---\nA | B", sheet_count=1)
     md = source_notes._render_card(_config(), detail, "2026-06-29T00:00:00Z")
-    assert "## Spreadsheet Identity" in md
-    assert "no high-value class detected" in md
+    assert "## Key Facts" in md
+    assert "Document type: spreadsheet" in md
+    assert "no high-value" in md.lower()  # generic-workbook guidance, not a promoted class
 
 
 def test_card_basis_for_full_text_vs_metadata():

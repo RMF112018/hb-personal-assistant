@@ -29,10 +29,11 @@ from .tools import ObsidianMcpToolError
 
 # Card schema markers (kept in sync with Templates/Source Cards/source-card-template.md).
 TEMPLATE_VERSION = "source-card-v1"
-CARD_VERSION = "phase4-v1"
+CARD_VERSION = "phase8-v1"
 # document_type values that are not a confident PM class → flag the card for human review.
+# template_form is ambiguous-by-design: a blank instrument needs a human to confirm blank-vs-executed.
 _AMBIGUOUS_DOC_TYPES = frozenset({
-    "general_pdf", "general_document", "spreadsheet", "cost_document",
+    "general_pdf", "general_document", "spreadsheet", "cost_document", "template_form",
 })
 
 
@@ -83,9 +84,7 @@ SUMMARY_PROMPT_VERSION = "source-card-v2"
 DRAWING_PROMPT_VERSION = "source-card-drawing-v1"
 # Bid packages / scopes of work use their own typed PM-summary prompt + schema.
 BID_PACKAGE_PROMPT_VERSION = "source-card-bid-package-v1"
-_ADVISORY_LIST_KEYS = ("key_points", "action_items", "decisions", "entities")
 _ADVISORY_MAX_ITEMS = 10
-_ADVISORY_ITEM_CHARS = 200
 
 
 def _now() -> str:
@@ -174,107 +173,12 @@ def _frontmatter(detail: dict[str, Any], generated_at: str, advisory: dict[str, 
     return "\n".join(lines)
 
 
-def _render_advisory(advisory: dict[str, Any]) -> list[str]:
-    parts = ["## AI Summary (advisory — model-generated, not authoritative)",
-             str(advisory.get("summary") or "").strip() or "_(model returned no summary text)_", ""]
-    for key in _ADVISORY_LIST_KEYS:
-        items = [str(v).strip()[:_ADVISORY_ITEM_CHARS] for v in (advisory.get(key) or []) if str(v).strip()]
-        if items:
-            parts.append(f"**{key.replace('_', ' ').title()}:**")
-            parts += [f"- {item}" for item in items[:_ADVISORY_MAX_ITEMS]]
-            parts.append("")
-    parts += [
-        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
-        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
-        "Advisory only — verify against the source._",
-        "",
-    ]
-    return parts
-
-
 def _md_list(title: str, items: list[str]) -> list[str]:
     """Render a bounded markdown bullet list under a bold label; empty list → nothing."""
     clean = [str(v).strip() for v in (items or []) if str(v).strip()]
     if not clean:
         return []
     return [f"**{title}:**", *[f"- {v}" for v in clean[:_ADVISORY_MAX_ITEMS]], ""]
-
-
-def _section(title: str, items: list[str]) -> list[str]:
-    """Render a `## title` section from a bounded bullet list; empty list → nothing."""
-    clean = [str(v).strip() for v in (items or []) if str(v).strip()]
-    if not clean:
-        return []
-    return [f"## {title}", *[f"- {v}" for v in clean[:_ADVISORY_MAX_ITEMS]], ""]
-
-
-def _render_drawing_advisory(advisory: dict[str, Any]) -> list[str]:
-    """PM-facing advisory sections for the typed construction-drawing schema."""
-    parts = ["## AI PM Summary (advisory — model-generated, not authoritative)",
-             str(advisory.get("plain_english_summary") or "").strip()
-             or "_(model returned no summary text)_", ""]
-    if str(advisory.get("what_this_sheet_is_for") or "").strip():
-        parts += ["## Why This Sheet Matters", str(advisory["what_this_sheet_is_for"]).strip(), ""]
-    parts += _section("Scope / Assembly Signals", advisory.get("scope_elements") or [])
-    parts += _section("Coordination Items", advisory.get("coordination_items") or [])
-    parts += _section("Submittals / Shop Drawings", advisory.get("submittals_or_shop_drawings") or [])
-    parts += _section("Field / Procurement Risks", advisory.get("field_installation_risks") or [])
-    parts += _section("PM Follow-ups", advisory.get("pm_followups") or [])
-    parts += _section("Revision Impacts", advisory.get("revision_impacts") or [])
-    verify = list(advisory.get("verify_against_source") or [])
-    conf = advisory.get("confidence") or {}
-    if conf:
-        verify = verify + [
-            f"Confidence — sheet identity: {conf.get('sheet_identity', 'low')}, "
-            f"scope: {conf.get('scope_summary', 'low')}, action items: {conf.get('action_items', 'low')}."
-        ]
-    parts += _section("Verification Notes", verify)
-    parts += [
-        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
-        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
-        "Advisory only — verify against the source._",
-        "",
-    ]
-    return parts
-
-
-def _render_drawing_sections(analysis: SourceAnalysis) -> list[str]:
-    """Deterministic PM-grade sections for a construction drawing."""
-    parts: list[str] = ["## Drawing Identity"]
-    parts.append(f"- Document type: {analysis.document_type}")
-    parts.append(f"- Discipline: {analysis.discipline}")
-    if analysis.sheet_number:
-        parts.append(f"- Sheet number: {analysis.sheet_number}")
-    if analysis.sheet_title:
-        parts.append(f"- Sheet title: {analysis.sheet_title}")
-    parts.append("")
-
-    title_block = []
-    if analysis.project_name:
-        title_block.append(f"Project: {analysis.project_name}")
-    if analysis.project_address:
-        title_block.append(f"Address: {analysis.project_address}")
-    if analysis.issue_status:
-        title_block.append(f"Issue status: {analysis.issue_status}")
-    if analysis.scale:
-        title_block.append(f"Scale: {analysis.scale}")
-    parts += _section("Title Block", title_block)
-
-    rev = []
-    if analysis.revision_number:
-        rev.append(f"Revision: {analysis.revision_number}")
-    if analysis.revision_date:
-        rev.append(f"Date: {analysis.revision_date}")
-    if analysis.revision_description:
-        rev.append(f"Description: {analysis.revision_description}")
-    parts += _section("Revision / Issue Information", rev)
-
-    parts += _section("Referenced Sheets and Details", analysis.referenced_sheets)
-    parts += _section("Numbered Notes / Keynotes", analysis.numbered_notes)
-    parts += _section("Rooms / Areas Shown", analysis.spaces)
-    parts += _section("Elevation Datums", analysis.datums)
-    parts += _section("PM Coordination Flags", analysis.coordination_flags)
-    return parts
 
 
 def _card_basis(detail: dict[str, Any]) -> str:
@@ -292,172 +196,431 @@ def _card_basis(detail: dict[str, Any]) -> str:
     return "metadata only"
 
 
-_WHY_BY_TYPE: dict[str, str] = {
-    "change_order": "An executed change order — it moves contract value/scope; verify the amount and status.",
-    "potential_change_order": "A potential change order (PCO/COR) — track pricing and approval before it executes.",
-    "pay_application": "A payment application — drives billing/cash; verify amount, period, and approval.",
-    "contract": "A contract — defines obligations, value, and terms of record.",
-    "subcontract": "A subcontract — defines a trade partner's scope, value, and terms.",
-    "purchase_order": "A purchase order — committed procurement; verify vendor and amount.",
-    "rfi": "An RFI — an open question that can affect cost/schedule until answered.",
-    "submittal": "A submittal — product/shop-drawing approval gating procurement and install.",
-    "meeting_minutes": "Meeting minutes — decisions and action items of record.",
-    "schedule": "A schedule artifact — sequencing/milestones (no CPM computed here).",
-    "specification": "A specification — governs materials/workmanship requirements.",
-    "drawing": "A drawing — design intent; coordinate against current revisions.",
-    "bid_package": "A bid package — defines a procurement scope for pricing.",
-    "daily_log": "A daily log — field record of labor/conditions for the day.",
-    "manpower_log": "A manpower/labor log — staffing record affecting productivity tracking.",
-    "cost_report": "A cost report — current cost position; reconcile against budget/forecast.",
-    "project_controls": "A project-controls report — cost/forecast position of record.",
-    "closeout": "A closeout document — completion/handover record.",
-    "warranty": "A warranty document — coverage and obligations after completion.",
-    "operations_maintenance": "An O&M document — operations/maintenance reference for handover.",
-    "punch_list": "A punch list — open completion items before final acceptance.",
-    "safety": "A safety record — compliance and risk documentation.",
-    "quality": "A quality record — conformance/QA-QC documentation.",
-    "inspection": "An inspection record — verification of work/compliance.",
+# Deterministic, document-type-specific PM guidance (NO model output). Drives the Why This Matters /
+# PM Review Cues / Follow-Up sections so cards carry real PM signal instead of boilerplate.
+_PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
+    "change_order": {
+        "why": ["An executed change order moves contract value and scope of record."],
+        "cues": ["Confirm this is executed (not a request or a template).",
+                 "Verify the amount and the scope/justification basis.",
+                 "Tie it to the originating RFI / PCO / ASI / submittal."],
+        "followup": ["Confirm executed status and amount against the source.",
+                     "Link the originating change event and the affected budget line."],
+    },
+    "potential_change_order": {
+        "why": ["A potential change order (PCO/COR) tracks pricing and approval before it executes."],
+        "cues": ["Confirm the pricing basis and current approval state.",
+                 "Tie it to the originating change event / RFI."],
+        "followup": ["Track pricing and approval through to a decision.",
+                     "Link the originating change event / RFI."],
+    },
+    "pay_application": {
+        "why": ["A payment application drives billing and cash; figures must be verified."],
+        "cues": ["Verify the application amount and billing period.",
+                 "Confirm the approval/certification state and retainage."],
+        "followup": ["Reconcile the amount and period against the schedule of values.",
+                     "Confirm certification before relying on the figures."],
+    },
+    "purchase_order": {
+        "why": ["A purchase order is committed procurement; vendor and amount matter."],
+        "cues": ["Verify the vendor and committed amount.",
+                 "Confirm the PO number ties to the right cost code."],
+        "followup": ["Confirm vendor, amount, and cost-code tie-out."],
+    },
+    "subcontract": {
+        "why": ["A subcontract defines a trade partner's scope, value, and terms."],
+        "cues": ["Confirm the subcontractor, value, and scope of work.",
+                 "Check that exhibits/exclusions are attached."],
+        "followup": ["Confirm executed value and scope; verify required exhibits."],
+    },
+    "contract": {
+        "why": ["A contract defines obligations, value, and terms of record."],
+        "cues": ["Confirm parties, value, and key terms.",
+                 "Confirm execution state (executed vs draft)."],
+        "followup": ["Confirm execution and value; file the conformed copy."],
+    },
+    "rfi": {
+        "why": ["An RFI is an open question that can affect cost/schedule until answered."],
+        "cues": ["Confirm the RFI number and whether it is open or closed.",
+                 "Check the cost/schedule impact and the responsible party."],
+        "followup": ["Confirm status (open/closed) and any cost/schedule impact.",
+                     "Link the resulting change event if one was issued."],
+    },
+    "submittal": {
+        "why": ["A submittal gates procurement and installation through product/shop-drawing approval."],
+        "cues": ["Confirm the submittal/spec section and the review status.",
+                 "Reject any status read from a dropdown/template — confirm the real disposition."],
+        "followup": ["Confirm the review disposition and the governing spec section."],
+    },
+    "schedule": {
+        "why": ["A schedule artifact carries sequencing and milestones (no CPM computed here)."],
+        "cues": ["Confirm the data date and whether this is baseline or an update.",
+                 "Check critical-path milestones and total float."],
+        "followup": ["Confirm data date and baseline-vs-update; review critical path and float."],
+    },
+    "specification": {
+        "why": ["A specification governs materials and workmanship requirements."],
+        "cues": ["Confirm the spec section and revision/addendum state."],
+        "followup": ["Confirm the governing section and current revision/addenda."],
+    },
+    "drawing": {
+        "why": ["A drawing carries design intent; coordinate against current revisions."],
+        "cues": ["Confirm the sheet number, title, and revision/date.",
+                 "Drawing content is not text-extracted — verify against the actual sheet."],
+        "followup": ["Confirm sheet identity and current revision against the issued set."],
+    },
+    "bid_package": {
+        "why": ["A bid package defines a procurement scope for pricing."],
+        "cues": ["Confirm inclusions, exclusions, alternates, and allowances.",
+                 "Check that all addenda are incorporated."],
+        "followup": ["Confirm scope inclusions/exclusions and that addenda are incorporated."],
+    },
+    "daily_log": {
+        "why": ["A daily log is the field record of labor and conditions for the day."],
+        "cues": ["Confirm the date and the crews/conditions recorded."],
+        "followup": ["Confirm date and crew/condition entries if used as a claim record."],
+    },
+    "manpower_log": {
+        "why": ["A manpower/labor log is a staffing record affecting productivity tracking."],
+        "cues": ["Confirm the period and the headcount/hours recorded."],
+        "followup": ["Confirm period and hours before using for productivity analysis."],
+    },
+    "cost_report": {
+        "why": ["A cost report is the current cost position; reconcile against budget/forecast."],
+        "cues": ["Confirm the reporting period and the cost-to-date basis.",
+                 "Reconcile against the budget and forecast of record."],
+        "followup": ["Reconcile the period figures against budget and forecast."],
+    },
+    "project_controls": {
+        "why": ["A project-controls report is the cost/forecast position of record."],
+        "cues": ["Confirm the period and the forecast basis."],
+        "followup": ["Confirm the forecast basis and period before relying on it."],
+    },
+    "staffing_report": {
+        "why": ["A staffing/labor workbook tracks planned-vs-actual labor."],
+        "cues": ["Confirm the period and the planned-vs-actual basis."],
+        "followup": ["Confirm period and basis before productivity analysis."],
+    },
+    "closeout": {
+        "why": ["A closeout document is a completion/handover record."],
+        "cues": ["Confirm completeness against the closeout checklist."],
+        "followup": ["Confirm completeness against the closeout requirements."],
+    },
+    "warranty": {
+        "why": ["A warranty document defines coverage and obligations after completion."],
+        "cues": ["Confirm coverage scope, term, and start date."],
+        "followup": ["Confirm coverage term and start date; file with O&M."],
+    },
+    "operations_maintenance": {
+        "why": ["An O&M document is operations/maintenance reference for handover."],
+        "cues": ["Confirm the systems covered and that it is the final issue."],
+        "followup": ["Confirm coverage and final-issue status for handover."],
+    },
+    "punch_list": {
+        "why": ["A punch list is open completion items before final acceptance."],
+        "cues": ["Confirm the area/scope and open-vs-closed item state."],
+        "followup": ["Track open items to closure before final acceptance."],
+    },
+    "safety": {
+        "why": ["A safety record is compliance and risk documentation."],
+        "cues": ["Confirm the date and the activity/inspection recorded."],
+        "followup": ["Confirm date and follow up on any noted hazards."],
+    },
+    "quality": {
+        "why": ["A quality record is conformance / QA-QC documentation."],
+        "cues": ["Confirm any non-conformance and its disposition."],
+        "followup": ["Track any non-conformance to disposition."],
+    },
+    "inspection": {
+        "why": ["An inspection record verifies work/compliance."],
+        "cues": ["Confirm the inspection result (pass/fail) and date."],
+        "followup": ["Confirm result and follow up on any deficiencies."],
+    },
+    "meeting_minutes": {
+        "why": ["Meeting minutes capture decisions and action items of record."],
+        "cues": ["Confirm the meeting date and the open action items/owners."],
+        "followup": ["Track open action items and owners to closure."],
+    },
+    "template_form": {
+        "why": ["A blank template/form — reference only, NOT a live instrument or status evidence."],
+        "cues": ["Confirm this is a blank template, not a completed/executed document.",
+                 "Do not treat any value on it (status, amount, date) as project data."],
+        "followup": ["Confirm blank-vs-executed; do not record any value from a template."],
+    },
+    "cost_document": {
+        "why": ["A cost-related document — reconcile any figures against the records of account."],
+        "cues": ["Confirm the figures against the budget/forecast of record."],
+        "followup": ["Reconcile figures against the records of account."],
+    },
+    "spreadsheet": {
+        "why": ["A workbook retained for reference; no high-value cost/pay class was detected."],
+        "cues": ["Confirm the workbook's purpose and verify figures against the source."],
+        "followup": ["Confirm purpose; verify any figures before relying on them."],
+    },
+}
+_PM_GUIDANCE_FALLBACK = {
+    "why": ["Indexed source retained for reference and search; classification is low-signal."],
+    "cues": ["Open the source and confirm what it is before relying on this card."],
+    "followup": ["Confirm the document type and key facts against the source."],
 }
 
-
-def _pm_value_sections(detail: dict[str, Any], analysis: SourceAnalysis | None,
-                       value: SourceValue | None, confidence: str | None,
-                       review_status: str) -> list[str]:
-    """Deterministic PM sections (no model summary): Why This Matters / PM Review Cues / Source Basis /
-    Follow-Up. All content is derived from filename/metadata classification only."""
-    doc_type = analysis.document_type if analysis is not None else None
-    out: list[str] = ["## Why This Matters"]
-    out.append(f"- {_WHY_BY_TYPE.get(doc_type or '', 'Indexed source retained for reference and search.')}")
-    out.append("")
-    out += ["## PM Review Cues"]
-    cues: list[str] = []
-    if analysis and analysis.document_number:
-        cues.append(f"Confirm document number {analysis.document_number}.")
-    if analysis and analysis.amount:
-        cues.append(f"Verify amount {analysis.amount} against the source (deterministic extract).")
-    if analysis and analysis.doc_status:
-        cues.append(f"Confirm status '{analysis.doc_status}'.")
-    if analysis and analysis.doc_date:
-        cues.append(f"Confirm date {analysis.doc_date}.")
-    if detail.get("project_number"):
-        cues.append(f"Tie to project {detail['project_number']}.")
-    if review_status == "needs_review":
-        cues.append("Low-confidence/ambiguous classification — confirm document type before relying on this card.")
-    if not cues:
-        cues.append("Review the source and confirm classification.")
-    out += [f"- {c}" for c in cues]
-    out.append("")
-    out += ["## Source Basis",
-            f"- Card basis: {_card_basis(detail)}",
-            f"- Document type: {doc_type or 'unknown'} (deterministic — filename/metadata)"]
-    if value is not None:
-        out.append(f"- Disposition: {value.disposition.value}")
-    if confidence is not None:
-        out.append(f"- Confidence: {confidence} (deterministic; not model-derived)")
-    if value is not None and value.reasons:
-        out.append(f"- Classification reasons: {', '.join(value.reasons[:6])}")
-    out.append("")
-    out += ["## Follow-Up",
-            "- [ ] Confirm classification and key fields above.",
-            "- [ ] Link related project / people / decisions.",
-            ""]
-    return out
-
-
+# Workbook signal terms surfaced as Key Facts for spreadsheets (metadata + bounded cell sample only).
 _SPREADSHEET_SIGNAL_TERMS = (
     "pay app", "payment application", "cost", "budget", "forecast", "staffing", "manpower",
     "labor", "schedule", "total", "subtotal", "contract", "change order",
 )
 
 
-def _render_spreadsheet_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
-    """Deterministic PM sections for an Excel workbook (metadata + bounded cell-sample only).
+def _pm_guidance(doc_type: str | None) -> dict[str, list[str]]:
+    """Deterministic PM guidance for a document type (drawing disciplines + bid types normalized)."""
+    if doc_type in source_analyzers.DRAWING_DOCUMENT_TYPES:
+        doc_type = "drawing"
+    elif doc_type in source_analyzers.BID_DOCUMENT_TYPES:
+        doc_type = "bid_package"
+    elif doc_type in ("general_pdf", "general_document", "presentation", "marketing", "site_map"):
+        return _PM_GUIDANCE_FALLBACK
+    return _PM_GUIDANCE.get(doc_type or "", _PM_GUIDANCE_FALLBACK)
 
-    No formula evaluation and no macro execution — signals come from the already-extracted bounded
-    excerpt (sheet names + cell sample). The card states its basis explicitly.
-    """
-    identity = [f"Document type: {analysis.document_type}"]
-    if detail.get("file_ext"):
-        identity.append(f"File type: {detail['file_ext']}")
-    if detail.get("sheet_count") is not None:
-        identity.append(f"Sheets: {detail['sheet_count']}")
+
+def _source_summary_lines(detail: dict[str, Any], analysis: SourceAnalysis | None) -> list[str]:
+    """Deterministic 1–2 line summary (source kind/ext/size/counts/extraction/type). NOT raw body."""
+    if not detail.get("rel_path"):
+        return [f"- Linked record: `{detail.get('domain_ref_table')}` / `{detail.get('domain_ref_id')}` "
+                f"(source kind: {detail['source_kind']}); body is not stored in this card.",
+                f"- Document type: {analysis.document_type if analysis else 'linked_record'} "
+                "(deterministic — metadata)"]
+    ext = (detail.get("file_ext") or "").lower()
+    label = _FILE_TYPE_LABELS.get(ext, f"{ext.upper()} file" if ext else "Unknown file type")
+    bits = [label]
+    if detail.get("size_bytes") is not None:
+        bits.append(f"{detail['size_bytes']} bytes")
+    for word, key in (("pages", "page_count"), ("sheets", "sheet_count"),
+                      ("paragraphs", "paragraph_count")):
+        if detail.get(key) is not None:
+            bits.append(f"{detail[key]} {word}")
+    if detail.get("extraction_status"):
+        bits.append(f"extraction {detail['extraction_status']}")
+    doc_type = analysis.document_type if analysis else "unknown"
+    return [f"- {' · '.join(bits)}",
+            f"- Document type: {doc_type} (deterministic — filename/metadata)"]
+
+
+def _review_cues(detail: dict[str, Any], analysis: SourceAnalysis | None,
+                 guidance: dict[str, list[str]], review_status: str) -> list[str]:
+    """Type-specific cues + dynamic cues from the deterministic fields + a needs-review note."""
+    cues: list[str] = list(guidance["cues"])
+    if analysis and analysis.document_number:
+        cues.append(f"Confirm document number {analysis.document_number}.")
+    if analysis and analysis.amount:
+        cues.append(f"Verify amount {analysis.amount} against the source (deterministic extract).")
+    if analysis and analysis.doc_status:
+        cues.append(f"Confirm status '{analysis.doc_status}'.")
     if detail.get("project_number"):
-        identity.append(f"Project number: {detail['project_number']}")
-    parts = _section("Spreadsheet Identity", identity)
+        cues.append(f"Tie to project {detail['project_number']}.")
+    if review_status == "needs_review":
+        cues.append("Low-confidence / ambiguous classification — confirm the document type first.")
+    return cues
 
-    high_value = {
-        "pay_application": "Pay application / payment workbook",
-        "project_controls": "Project controls / cost report / forecast / budget workbook",
-        "staffing_report": "Staffing / manpower / labor workbook",
-    }
-    relevance = high_value.get(analysis.document_type, "Generic spreadsheet (no high-value class detected)")
-    parts += _section("PM Relevance", [relevance])
 
+def _referenced_sheet_facts(repo: SourceIndexRepository | None, source_id: str,
+                            analysis: SourceAnalysis) -> list[str]:
+    """One Key-Facts line listing referenced sheets, marking which resolved to an indexed source."""
+    if not analysis.referenced_sheets:
+        return []
+    linked: dict[str, str] = {}
+    if repo is not None:
+        for row in repo.list_relationships(source_id):
+            if row.get("relation") == "links_to" and row.get("dst_kind") == "source":
+                evidence = row.get("evidence") or {}
+                sheet = str(evidence.get("sheet") or "").strip()
+                if sheet:
+                    linked[sheet] = str(row.get("dst_rel_path") or row.get("dst_ref") or "")
+    rendered: list[str] = []
+    for sheet in analysis.referenced_sheets[:_ADVISORY_MAX_ITEMS]:
+        if sheet in linked and linked[sheet]:
+            rendered.append(f"{sheet} → `{linked[sheet]}` (linked in index)")
+        else:
+            rendered.append(f"{sheet} (not linked in index)")
+    return ["Referenced sheets: " + "; ".join(rendered)]
+
+
+def _key_facts(detail: dict[str, Any], analysis: SourceAnalysis | None,
+               repo: SourceIndexRepository | None) -> list[str]:
+    """Deterministic fields + folded type-specific facts (drawing/bid/spreadsheet). Never empty."""
+    facts: list[str] = []
+    if detail.get("project_number"):
+        facts.append(f"Project number: {detail['project_number']}")
+    if analysis is not None:
+        for label, val in (("Document number", analysis.document_number), ("Title", analysis.title),
+                           ("Vendor", analysis.vendor), ("Amount", analysis.amount),
+                           ("Date", analysis.doc_date), ("Status", analysis.doc_status)):
+            if val:
+                facts.append(f"{label}: {val}")
+        ext = (detail.get("file_ext") or "").lower()
+        if analysis.is_drawing:
+            facts += _drawing_facts(detail, analysis, repo)
+        elif analysis.is_bid_package:
+            facts += _bid_facts(analysis)
+        elif ext in ("xlsx", "xlsm"):
+            facts += _spreadsheet_facts(detail, analysis)
+    if not facts:
+        facts.append("No deterministic key facts extracted (filename/metadata only).")
+    return facts
+
+
+def _drawing_facts(detail: dict[str, Any], analysis: SourceAnalysis,
+                   repo: SourceIndexRepository | None) -> list[str]:
+    facts: list[str] = []
+    if analysis.sheet_number:
+        facts.append(f"Sheet number: {analysis.sheet_number}")
+    if analysis.sheet_title:
+        facts.append(f"Sheet title: {analysis.sheet_title}")
+    if analysis.discipline and analysis.discipline != "unknown":
+        facts.append(f"Discipline: {analysis.discipline}")
+    if analysis.issue_status:
+        facts.append(f"Issue status: {analysis.issue_status}")
+    if analysis.revision_number or analysis.revision_date or analysis.revision_description:
+        rev = " ".join(p for p in (analysis.revision_number, analysis.revision_date) if p)
+        if analysis.revision_description:
+            rev = f"{rev} — {analysis.revision_description}".strip(" —")
+        facts.append(f"Revision: {rev}".strip())
+    facts += _referenced_sheet_facts(repo, detail["source_id"], analysis)
+    if analysis.coordination_flags:
+        facts.append("Coordination flags: " + ", ".join(analysis.coordination_flags[:_ADVISORY_MAX_ITEMS]))
+    if analysis.datums:
+        facts.append("Elevation datums: " + ", ".join(analysis.datums[:_ADVISORY_MAX_ITEMS]))
+    if not detail.get("text_excerpt"):
+        facts.append("Extraction unsupported — card built from filename/metadata only.")
+    return facts
+
+
+def _bid_facts(analysis: SourceAnalysis) -> list[str]:
+    facts: list[str] = []
+    if analysis.bid_package_number:
+        facts.append(f"Package number: {analysis.bid_package_number}")
+    if analysis.bid_package_title:
+        facts.append(f"Scope / package title: {analysis.bid_package_title}")
+    if analysis.inclusions:
+        facts.append("Inclusions: " + "; ".join(analysis.inclusions[:_ADVISORY_MAX_ITEMS]))
+    if analysis.exclusions:
+        facts.append("Exclusions: " + "; ".join(analysis.exclusions[:_ADVISORY_MAX_ITEMS]))
+    if analysis.trade_scope:
+        facts.append("Trade scope: " + ", ".join(analysis.trade_scope[:_ADVISORY_MAX_ITEMS]))
+    if analysis.procurement_signals:
+        facts.append("Procurement signals: " + ", ".join(analysis.procurement_signals[:_ADVISORY_MAX_ITEMS]))
+    return facts
+
+
+def _spreadsheet_facts(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
+    facts: list[str] = []
+    if detail.get("sheet_count") is not None:
+        facts.append(f"Sheets: {detail['sheet_count']}")
     excerpt = str(detail.get("text_excerpt") or "")
-    sheet_names = [ln[4:-4].strip() for ln in excerpt.splitlines() if ln.startswith("--- ") and ln.endswith(" ---")]
+    sheet_names = [ln[4:-4].strip() for ln in excerpt.splitlines()
+                   if ln.startswith("--- ") and ln.endswith(" ---")]
+    if sheet_names:
+        facts.append("Sheet names: " + ", ".join(sheet_names[:_ADVISORY_MAX_ITEMS]))
     low = excerpt.lower()
     hits = [term for term in _SPREADSHEET_SIGNAL_TERMS if term in low]
-    signals: list[str] = []
-    if sheet_names:
-        signals.append("Sheet names: " + ", ".join(sheet_names[:_ADVISORY_MAX_ITEMS]))
     if hits:
-        signals.append("Detected terms: " + ", ".join(hits))
-    parts += _section("Detected Workbook Signals", signals)
-
-    parts += _section("Review / Verification Notes", [
-        "Derived from spreadsheet metadata and a bounded cell sample (no formulas evaluated, no "
-        "macros executed). Verify figures against the source workbook before relying on them.",
-    ])
-    return parts
+        facts.append("Detected workbook signals: " + ", ".join(hits))
+    return facts
 
 
-def _render_fallback_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
-    """Deterministic PM-relevant sections for non-drawing documents."""
-    identity = [f"Document type: {analysis.document_type}"]
-    if analysis.discipline and analysis.discipline != "unknown":
-        identity.append(f"Discipline: {analysis.discipline}")
+def _related_project(detail: dict[str, Any]) -> list[str]:
+    """Distinguish a DETECTED project number from a RESOLVED project record (none resolved here)."""
+    number = detail.get("project_number")
+    if number:
+        return [f"- Detected project number: {number}; no project record linked yet."]
+    return ["- No project number detected; none linked yet."]
+
+
+def _related_people_companies(analysis: SourceAnalysis | None) -> list[str]:
+    """Detected counterparty (vendor), never implying a resolved company/person record."""
+    if analysis and analysis.vendor:
+        return [f"- Detected counterparty: {analysis.vendor}; no company record linked yet."]
+    return ["- No people or companies detected; none linked yet."]
+
+
+def _source_basis(detail: dict[str, Any], analysis: SourceAnalysis | None,
+                  value: SourceValue | None, confidence: str | None,
+                  config: ObsidianMcpConfig) -> list[str]:
+    """Strengthened deterministic evidence of how the card was classified/produced. No full path."""
+    doc_type = analysis.document_type if analysis is not None else "unknown"
+    out = [f"- Card basis: {_card_basis(detail)}",
+           f"- Document type: {doc_type} (deterministic — filename/metadata)"]
+    if value is not None and value.reasons:
+        out.append(f"- Classification reason: {', '.join(value.reasons[:6])}")
+    tokens = _matched_filename_tokens(detail, config)
+    if tokens:
+        out.append(f"- Matched filename tokens: {', '.join(tokens)}")
     if detail.get("file_ext"):
-        identity.append(f"File type: {detail['file_ext']}")
-    parts = _section("Document Identity", identity)
+        out.append(f"- Extension: {detail['file_ext']}")
+    if (detail.get("file_ext") or "").lower() in ("xlsx", "xlsm"):
+        out.append("- Spreadsheet basis: metadata + bounded cell sample (no formulas evaluated, no "
+                   "macros executed).")
+    if doc_type == "template_form":
+        out.append("- Template/form detected from filename — treated as a blank instrument, not live data.")
+    if analysis is not None:
+        extracted = []
+        if analysis.doc_status:
+            extracted.append("status (labeled field / filename segment)")
+        if analysis.amount:
+            extracted.append("amount (explicit \"$\")")
+        if analysis.doc_date:
+            extracted.append("date (filename / labeled)")
+        if extracted:
+            out.append("- Deterministic extraction: " + ", ".join(extracted) + ".")
+    if value is not None:
+        out.append(f"- Disposition: {value.disposition.value}")
+    if confidence is not None:
+        out.append(f"- Confidence: {confidence} (deterministic; not model-derived)")
+    out.append(f"- Source ID: `{detail['source_id']}`")
+    if detail.get("content_sha256"):
+        out.append(f"- SHA-256: `{detail['content_sha256']}`")
+    if detail.get("indexed_at"):
+        out.append(f"- Indexed at: {detail['indexed_at']}")
+    return out
 
-    meta = []
-    if analysis.project_name:
-        meta.append(f"Project: {analysis.project_name}")
-    if analysis.issue_status:
-        meta.append(f"Issue status: {analysis.issue_status}")
-    if analysis.revision_number:
-        meta.append(f"Revision: {analysis.revision_number} {analysis.revision_date or ''}".strip())
-    parts += _section("Extracted Metadata", meta)
 
-    signals = list(analysis.coordination_flags) + list(analysis.pm_followup_categories)
-    parts += _section("PM-Relevant Signals", signals)
-    return parts
+def _matched_filename_tokens(detail: dict[str, Any], config: ObsidianMcpConfig) -> list[str]:
+    """High-priority path-signal words present in the FILENAME (safe — never the full path)."""
+    name = Path(str(detail.get("rel_path") or "")).name.lower()
+    if not name:
+        return []
+    signals = getattr(config, "source_value_high_priority_path_signals", []) or []
+    return [str(s).strip() for s in signals if str(s).strip().lower() in name][:_ADVISORY_MAX_ITEMS]
 
 
-def _render_bid_package_sections(detail: dict[str, Any], analysis: SourceAnalysis) -> list[str]:
-    """Deterministic PM-grade sections for a bid package / scope-of-work document."""
-    identity = [f"Document type: {analysis.document_type}"]
-    if detail.get("project_number"):
-        identity.append(f"Project number: {detail['project_number']}")
-    if analysis.bid_package_number:
-        identity.append(f"Package number: {analysis.bid_package_number}")
-    if analysis.bid_package_title:
-        identity.append(f"Scope / package title: {analysis.bid_package_title}")
-    if analysis.issue_status:
-        identity.append(f"Issue status: {analysis.issue_status}")
-    if detail.get("file_ext"):
-        identity.append(f"Source file type: {detail['file_ext']}")
-    parts = _section("Bid Package Identity", identity)
-
-    # Scope Summary: prefer extracted inclusions, else the trade scope.
-    parts += _section("Scope Summary", list(analysis.inclusions) or list(analysis.trade_scope))
-    parts += _section("Inclusions", analysis.inclusions)
-    parts += _section("Exclusions", analysis.exclusions)
-    parts += _section("Procurement / Estimating Signals", analysis.procurement_signals)
-    parts += _section(
-        "PM Coordination Flags", list(analysis.trade_scope) + list(analysis.coordination_flags)
-    )
-    return parts
+def _advisory_summary(advisory: dict[str, Any] | None) -> list[str]:
+    """The advisory block (clearly labelled) or an honest 'no advisory' line — never fabricated."""
+    if not advisory:
+        return ["- No advisory summary (deterministic card; summaries disabled)."]
+    kind = advisory.get("kind")
+    if kind in ("drawing", "bid_package"):
+        summary = str(advisory.get("plain_english_summary") or "").strip()
+        if kind == "drawing":
+            list_fields = [("Scope / assembly", "scope_elements"),
+                           ("Coordination items", "coordination_items"),
+                           ("Submittals / shop drawings", "submittals_or_shop_drawings"),
+                           ("PM follow-ups", "pm_followups")]
+        else:
+            list_fields = [("Scope covered", "scope_covered"),
+                           ("Procurement risks", "procurement_risks"),
+                           ("Bid clarifications needed", "bid_clarifications_needed"),
+                           ("PM follow-ups", "pm_followups")]
+    else:
+        summary = str(advisory.get("summary") or "").strip()
+        list_fields = [("Key points", "key_points"), ("Action items", "action_items"),
+                       ("Decisions", "decisions")]
+    out = ["_Advisory — model-generated, not authoritative. Verify against the source._", "",
+           summary or "_(model returned no summary text)_", ""]
+    for label, key in list_fields:
+        out += _md_list(label, advisory.get(key) or [])
+    out.append(
+        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
+        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}._")
+    return out
 
 
 def _sheet_in_name(name: str, sheet: str) -> bool:
@@ -510,28 +673,6 @@ def _resolve_and_record_relationships(repo: SourceIndexRepository, detail: dict[
     )
     if matched:
         repo.record_relationships(detail["source_id"], matched)
-
-
-def _render_related_sources(repo: SourceIndexRepository, source_id: str,
-                            analysis: SourceAnalysis) -> list[str]:
-    """`## Related Sources` (matched referenced sheets) + unmatched-reference list."""
-    matched_rows = [
-        r for r in repo.list_relationships(source_id)
-        if r.get("relation") == "links_to" and r.get("dst_kind") == "source"
-    ]
-    matched_sheets: set[str] = set()
-    related: list[str] = []
-    for row in matched_rows:
-        evidence = row.get("evidence") or {}
-        sheet = str(evidence.get("sheet") or "").strip()
-        if sheet:
-            matched_sheets.add(sheet)
-        target = row.get("dst_rel_path") or row.get("dst_ref")
-        related.append(f"{sheet + ' → ' if sheet else ''}`{target}`")
-    parts = _section("Related Sources", related)
-    unmatched = [s for s in analysis.referenced_sheets if s not in matched_sheets]
-    parts += _section("Referenced Sheets Not Found in Index", unmatched)
-    return parts
 
 
 def _build_drawing_prompt(detail: dict[str, Any], analysis: SourceAnalysis, text: str) -> str:
@@ -589,35 +730,6 @@ def _build_bid_package_prompt(detail: dict[str, Any], analysis: SourceAnalysis, 
     return "\n".join(facts)
 
 
-def _render_bid_package_advisory(advisory: dict[str, Any]) -> list[str]:
-    """PM-facing advisory sections for the typed bid-package schema."""
-    parts = ["## AI PM Summary (advisory — model-generated, not authoritative)",
-             str(advisory.get("plain_english_summary") or "").strip()
-             or "_(model returned no summary text)_", ""]
-    parts += _section("Scope Covered", advisory.get("scope_covered") or [])
-    parts += _section("Included Work", advisory.get("included_work") or [])
-    parts += _section("Excluded / Unclear Work", advisory.get("excluded_or_unclear_work") or [])
-    parts += _section("Procurement Risks", advisory.get("procurement_risks") or [])
-    parts += _section("Coordination Items", advisory.get("coordination_items") or [])
-    parts += _section("Bid Clarifications Needed", advisory.get("bid_clarifications_needed") or [])
-    parts += _section("PM Follow-ups", advisory.get("pm_followups") or [])
-    verify = list(advisory.get("verify_against_source") or [])
-    conf = advisory.get("confidence") or {}
-    if conf:
-        verify = verify + [
-            f"Confidence — package identity: {conf.get('package_identity', 'low')}, "
-            f"scope: {conf.get('scope_summary', 'low')}, follow-ups: {conf.get('followups', 'low')}."
-        ]
-    parts += _section("Verification Notes", verify)
-    parts += [
-        f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
-        f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}. "
-        "Advisory only — verify against the source._",
-        "",
-    ]
-    return parts
-
-
 _FILE_TYPE_LABELS = {
     "md": "Markdown note", "markdown": "Markdown note", "txt": "Plain-text file",
     "pdf": "PDF document", "docx": "Word document", "xlsx": "Excel workbook",
@@ -625,77 +737,17 @@ _FILE_TYPE_LABELS = {
 }
 
 
-def _heading_outline(text: str, *, limit: int = 8) -> list[str]:
-    """First few Markdown headings from indexed text, as an indented outline (bounded)."""
-    out: list[str] = []
-    for line in text.splitlines():
-        stripped = line.lstrip()
-        if stripped.startswith("#"):
-            level = len(stripped) - len(stripped.lstrip("#"))
-            title = stripped[level:].strip()
-            if title:
-                out.append(f"  {'  ' * (level - 1)}- {title[:120]}")
-        if len(out) >= limit:
-            break
-    return out
-
-
-def _analyzer_block(detail: dict[str, Any]) -> list[str]:
-    """Deterministic, file-type-specific evidence derived from existing index metadata.
-
-    Uses only ``source_intelligence_metadata`` fields (file_ext, page/paragraph/sheet counts,
-    extraction_status) plus, for non-sensitive markdown, a bounded heading outline from the
-    indexed excerpt. Never dumps the file; sensitive sources have no excerpt so no outline.
-    """
-    ext = (detail.get("file_ext") or "").lower()
-    label = _FILE_TYPE_LABELS.get(ext, f"{ext.upper()} file" if ext else "Unknown file type")
-    status = detail.get("extraction_status")
-    has_text = bool(detail.get("text_excerpt"))
-    lines = [f"## File Analysis — {label}"]
-
-    if ext in {"md", "markdown"}:
-        if has_text:
-            outline = _heading_outline(str(detail["text_excerpt"]))
-            if outline:
-                lines.append("- Heading outline:")
-                lines += outline
-            else:
-                lines.append("- No Markdown headings detected in the indexed excerpt.")
-        if detail.get("paragraph_count") is not None:
-            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
-    elif ext == "txt":
-        lines.append("- Plain text (no structure extracted).")
-        if detail.get("paragraph_count") is not None:
-            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
-    elif ext == "pdf":
-        if detail.get("page_count") is not None:
-            lines.append(f"- Pages: {detail['page_count']}")
-        if status == "ok" and has_text:
-            lines.append("- Contains extractable text (text-based PDF).")
-        elif status in {"failed", "unsupported"} or not has_text:
-            lines.append("- No extractable text — likely a scanned/image-only PDF.")
-    elif ext == "docx":
-        if detail.get("paragraph_count") is not None:
-            lines.append(f"- Paragraphs: {detail['paragraph_count']}")
-        lines.append("- Word document (styles/tables not separately indexed).")
-    elif ext == "xlsx":
-        if detail.get("sheet_count") is not None:
-            lines.append(f"- Sheets: {detail['sheet_count']}")
-        lines.append("- Spreadsheet workbook (cell-level data not indexed).")
-    elif ext == "csv":
-        lines.append("- Tabular CSV (column/row structure not separately indexed).")
-    else:
-        lines.append("- Binary or unsupported file type — indexed as metadata/link only.")
-        if status:
-            lines.append(f"- Extraction status: {status}")
-    lines.append("")
-    return lines
-
-
 def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at: str,
                  advisory: dict[str, Any] | None = None, *,
                  repo: SourceIndexRepository | None = None) -> str:
-    cap = int(getattr(config, "source_card_excerpt_chars", 600))
+    """Render a source card with the canonical 11-section template body (no raw text preview).
+
+    Section order is fixed and matches ``Templates/Source Cards/source-card-template.md``: Source
+    Summary, Why This Matters, PM Review Cues, Key Facts, Related Project, Related People / Companies,
+    Related Decisions, Related Meetings, Source Basis, Advisory Summary, Follow-Up. Type-specific
+    deterministic detail is folded into Key Facts; the Related sections distinguish DETECTED facts
+    from RESOLVED records (no relationship is implied unless one was actually resolved).
+    """
     display = Path(detail["rel_path"]).name if detail.get("rel_path") else str(detail.get("domain_ref_id"))
     # Deterministic construction analysis (file sources only; sensitive sources have no excerpt).
     analysis = source_analyzers.from_detail(detail) if detail.get("rel_path") else None
@@ -706,85 +758,23 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     needs_review = confidence == "low" or (
         analysis is not None and analysis.document_type in _AMBIGUOUS_DOC_TYPES)
     review_status = "needs_review" if needs_review else "unreviewed"
+    guidance = _pm_guidance(analysis.document_type if analysis is not None else None)
+
     parts = [_frontmatter(detail, generated_at, advisory, analysis, value=value, domain=domain,
                           review_status=review_status, confidence=confidence),
              "", f"# Source Card: {display}", ""]
-    if advisory:
-        kind = advisory.get("kind")
-        if kind == "drawing":
-            parts += _render_drawing_advisory(advisory)
-        elif kind == "bid_package":
-            parts += _render_bid_package_advisory(advisory)
-        else:
-            parts += _render_advisory(advisory)
-
-    parts += ["## Overview (deterministic — no model summary)",
-              f"- Source kind: {detail['source_kind']}"]
-    if detail.get("file_ext"):
-        parts.append(f"- Extension: {detail['file_ext']}")
-    if detail.get("size_bytes") is not None:
-        parts.append(f"- Size (bytes): {detail['size_bytes']}")
-    for label, key in (("Pages", "page_count"), ("Paragraphs", "paragraph_count"), ("Sheets", "sheet_count")):
-        if detail.get(key) is not None:
-            parts.append(f"- {label}: {detail[key]}")
-    if detail.get("extraction_status"):
-        parts.append(f"- Extraction status: {detail['extraction_status']}")
-    if detail.get("project_number"):
-        parts.append(f"- Project number: {detail['project_number']}")
-    parts.append(f"- Card basis: {_card_basis(detail)}")
-    parts.append("")
-
-    # PM-grade deterministic value sections (Why This Matters / PM Review Cues / Source Basis / Follow-Up).
-    parts += _pm_value_sections(detail, analysis, value, confidence, review_status)
-
-    # PM-grade deterministic sections: spreadsheet, drawing-specific, bid-package, or fallback.
-    if analysis is not None:
-        if (detail.get("file_ext") or "").lower() in ("xlsx", "xlsm"):
-            parts += _render_spreadsheet_sections(detail, analysis)
-        elif analysis.is_drawing:
-            parts += _render_drawing_sections(analysis)
-            if repo is not None:
-                parts += _render_related_sources(repo, detail["source_id"], analysis)
-        elif analysis.is_bid_package:
-            parts += _render_bid_package_sections(detail, analysis)
-        else:
-            parts += _render_fallback_sections(detail, analysis)
-
-    # File-type-specific deterministic evidence (file sources only).
-    if detail.get("rel_path"):
-        parts += _analyzer_block(detail)
-
-    # Bounded preview — only for non-sensitive file sources that have indexed text.
-    if detail.get("rel_path"):
-        if detail.get("text_vault_ref") and not detail.get("text_excerpt"):
-            parts += ["## Indexed Text Preview",
-                      "_Extracted text is stored encrypted (sensitive source); preview withheld._", ""]
-        elif detail.get("text_excerpt"):
-            preview = str(detail["text_excerpt"])[:cap]
-            truncated = bool(detail.get("excerpt_truncated")) or len(str(detail["text_excerpt"])) > cap
-            parts.append("## Indexed Text Preview (bounded — not the full file)")
-            parts += [f"> {line}" if line else ">" for line in preview.splitlines()]
-            if truncated:
-                parts.append(">")
-                parts.append("> _(truncated preview of indexed text; the full file stays in its source location)_")
-            parts.append("")
-    else:
-        parts += ["## Linked Record",
-                  f"- Reference: `{detail.get('domain_ref_table')}` / `{detail.get('domain_ref_id')}`",
-                  "- Body is not stored in this card (link-only source).", ""]
-
-    parts += ["## Source Reference",
-              f"- Source ID: `{detail['source_id']}`"]
-    if detail.get("rel_path"):
-        root = detail.get("source_root_key") or "?"
-        parts.append(f"- Original location (outside the vault): root `{root}` -> `{detail['rel_path']}`")
-    else:
-        parts.append(f"- Linked record: `{detail.get('domain_ref_table')}` id `{detail.get('domain_ref_id')}`")
-    parts += [f"- SHA-256: `{detail.get('content_sha256')}`",
-              f"- Indexed at: {detail.get('indexed_at')}",
-              "",
-              "_The raw source remains in its system of record; this card is a curated index entry._",
-              ""]
+    parts += ["## Source Summary", *_source_summary_lines(detail, analysis), ""]
+    parts += ["## Why This Matters", *[f"- {w}" for w in guidance["why"]], ""]
+    parts += ["## PM Review Cues",
+              *[f"- {c}" for c in _review_cues(detail, analysis, guidance, review_status)], ""]
+    parts += ["## Key Facts", *[f"- {f}" for f in _key_facts(detail, analysis, repo)], ""]
+    parts += ["## Related Project", *_related_project(detail), ""]
+    parts += ["## Related People / Companies", *_related_people_companies(analysis), ""]
+    parts += ["## Related Decisions", "- No related decisions linked yet.", ""]
+    parts += ["## Related Meetings", "- No related meetings linked yet.", ""]
+    parts += ["## Source Basis", *_source_basis(detail, analysis, value, confidence, config), ""]
+    parts += ["## Advisory Summary", *_advisory_summary(advisory), ""]
+    parts += ["## Follow-Up", *[f"- [ ] {f}" for f in guidance["followup"]], ""]
     return "\n".join(parts)
 
 

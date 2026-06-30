@@ -151,6 +151,11 @@ def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> 
     from . import source_analyzers  # lazy: pure module, avoids any import-order surprise
     document_type = source_analyzers.from_detail(detail).document_type
     reasons = [f"doc_type:{document_type}"]
+    # Template / blank-form documents are never auto-carded and never path-signal-promoted (a template
+    # filed under a "Change Orders" folder must not be promoted to high). Stays metadata_only.
+    if document_type == "template_form":
+        return _build(_D.METADATA_ONLY, reasons=reasons + ["template_form_no_auto_card"],
+                      config=config, skip_code=None, allow_metadata_index=True)
     if document_type in HIGH_DOCUMENT_TYPES:
         disposition = _D.AUTO_CARD_HIGH
     elif document_type in NORMAL_DOCUMENT_TYPES:

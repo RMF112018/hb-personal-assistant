@@ -140,30 +140,27 @@ def test_pm_grade_card_has_drawing_sections(env) -> None:
     sid = _index(env, A312_NAME, A312_TEXT)
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
+    # Phase 8: drawing facts are folded under Key Facts (no competing top-level Drawing Identity).
     for needle in (
-        "## Drawing Identity", "A-312", "WALL SECTIONS",
-        "## Title Block", "## Revision / Issue Information", "ADD 01 Bldg Dept Comments",
-        "## Referenced Sheets and Details", "A-611",
-        "## Numbered Notes / Keynotes", "## Elevation Datums",
-        "## PM Coordination Flags", "waterproofing",
-        "## Source Reference",
+        "## Key Facts", "A-312", "WALL SECTIONS", "ADD 01 Bldg Dept Comments",
+        "Referenced sheets:", "A-611", "Coordination flags:", "waterproofing",
+        "## Source Basis",
         'document_type: "architectural_drawing"', 'sheet_number: "A-312"',
     ):
         assert needle in card, needle
+    assert "## Drawing Identity" not in card
 
 
 def test_card_does_not_persist_full_body(env) -> None:
     repo, config, _root, vault = env
-    # A body longer than the bounded preview cap must be truncated in the card.
+    # The full body must never be dumped into the card (Phase 8 drops the raw text preview entirely).
     big = A312_TEXT + ("\nEXTRA LINE WITH UNIQUE MARKER ZZZUNIQUE " * 200)
     sid = _index(env, A312_NAME, big)
     out = generate_source_card(repo, config, source_id=sid)
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    cap = int(config.source_card_excerpt_chars)
-    # Preview is bounded: the marker repeated 200x cannot all be present.
-    assert card.count("ZZZUNIQUE") < 200
+    assert "ZZZUNIQUE" not in card
+    assert "Indexed Text Preview" not in card
     assert len(card) < len(big)
-    assert cap <= 4000
 
 
 # ----- Slice 4: typed PM-summary prompt --------------------------------------------------------
@@ -180,9 +177,11 @@ def test_drawing_summary_prompt_includes_deterministic_facts(env) -> None:
     for fact in ("DETERMINISTIC FACTS", "A-312", "WALL SECTIONS", "A-611", "Rev", "ADD 01 Bldg Dept Comments"):
         assert fact in prompt, fact
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    for sec in ("## AI PM Summary (advisory", "## Why This Sheet Matters", "## Coordination Items",
-                "## PM Follow-ups", "## Verification Notes"):
-        assert sec in card, sec
+    # The advisory is folded into the single labelled Advisory Summary section.
+    assert "## Advisory Summary" in card
+    for needle in ("model-generated, not authoritative", "Architectural sheet A-312",
+                   "Coordination items", "PM follow-ups"):
+        assert needle in card, needle
     assert repo.get_summary(sid)["prompt_version"] == DRAWING_PROMPT_VERSION
 
 
@@ -200,10 +199,11 @@ def test_referenced_sheet_links_to_matching_indexed_source(env) -> None:
     assert len(rels) == 1
     assert rels[0]["evidence"]["sheet"] == "A-611"
     card = (vault / out["note_path"]).read_text(encoding="utf-8")
-    assert "## Related Sources" in card
+    # Resolved referenced-sheet links are surfaced under Key Facts (marked "linked in index").
     assert "A-611-CURTAIN-WALL-Rev.0.txt" in card
+    assert "linked in index" in card
     # Unmatched refs are render-only (not written as relationship rows).
-    assert "## Referenced Sheets Not Found in Index" in card
+    assert "not linked in index" in card
 
 
 def test_referenced_sheet_match_does_not_cross_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

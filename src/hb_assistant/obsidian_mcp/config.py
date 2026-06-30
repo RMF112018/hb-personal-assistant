@@ -35,6 +35,9 @@ DEFAULT_DEFERRED_PATH_PARTS = [
 # but do not auto-card unless a high-value class is detected. Path signals are substring promotions.
 DEFAULT_UNSUPPORTED_FILE_TYPES = [
     "url", "aspx", "lnk", "webloc", "tmp", "lock", "png", "jpg", "jpeg", "heic", "gif", "webp",
+    # Internal-app / binary-data files that are not readable PM documents (Phase 8). `pcp` is an
+    # internal app file; bak/ini/db/dat are backup/config/binary-data, never source documents.
+    "pcp", "bak", "ini", "db", "dat",
 ]
 DEFAULT_METADATA_ONLY_FILE_TYPES = ["xlsx", "xlsm", "csv"]
 DEFAULT_HIGH_PRIORITY_PATH_SIGNALS = [

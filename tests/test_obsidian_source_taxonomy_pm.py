@@ -97,10 +97,14 @@ def test_amount_status_only_when_explicit() -> None:
     # No explicit $ or status in the filename → fields stay None (never invented).
     bare = _analyze("25-123-01 - PCCO 004 - Added Lobby Millwork.pdf")
     assert bare.amount is None and bare.doc_status is None
-    # Explicit $ and status in the excerpt → extracted.
+    # Explicit "$" amount is extracted, but an UNLABELED body "APPROVED" no longer yields a status
+    # (Phase 8 dropped the bare-keyword scan — status must be labeled or a filename segment).
     rich = _analyze("25-123-01 - PCCO 005 - HVAC.pdf", "pdf",
                     "This change order is APPROVED for the amount of $12,500.00 total.")
-    assert rich.amount == "$12,500.00" and rich.doc_status == "approved"
+    assert rich.amount == "$12,500.00" and rich.doc_status is None
+    # A labeled status field IS extracted.
+    labeled = _analyze("25-123-01 - PCCO 006 - HVAC.pdf", "pdf", "Status: Approved")
+    assert labeled.doc_status == "approved"
 
 
 def test_punchlist_backward_compatible() -> None:
