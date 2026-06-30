@@ -1,0 +1,11 @@
+WORKTREE=/Users/bobbyfetting/hb-personal-assistant-worktrees/obsidian-vault-phase3-templates-20260630T101414Z
+BRANCH=feat/obsidian-vault-phase3-templates-20260630T101414Z
+EVIDENCE_DIR=/Users/bobbyfetting/hb-personal-assistant-worktrees/obsidian-vault-phase3-templates-20260630T101414Z/docs/evidence/obsidian-vault-phase3-templates/20260630T101414Z
+TIMESTAMP=20260630T101414Z
+
+=== repo ===
+feat/obsidian-vault-phase3-templates-20260630T101414Z
+ecbd6b0254227c9574e43f0923a050310367260b
+ecbd6b0254227c9574e43f0923a050310367260b
+--- status ---
+?? docs/evidence/obsidian-vault-phase3-templates/
