@@ -1,0 +1,7 @@
+date_utc=2026-06-30T20:44:42Z
+branch=feature/project-schedule-import-ux-20260630T204437Z
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/project-schedule-import-ux-20260630T204437Z
+base_head=ca7cc527f2cd83f039171549c311fda5b658e406
+
+status:
+?? docs/evidence/project-schedule-hub/frontend-import-ux-20260630T204437Z/

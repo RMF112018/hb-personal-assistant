@@ -1,0 +1,200 @@
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:1:"""Project-scoped schedule import pipeline orchestration (Phase A1)."""
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:7:from hb_assistant.construction.analytics.schedule_cpm_read_service import ScheduleCpmReadService
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:8:from hb_assistant.construction.analytics.schedule_cpm_recompute_service import (
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:11:from hb_assistant.construction.analytics.schedule_file_parser import ScheduleImportError
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:12:from hb_assistant.construction.analytics.schedule_import_service import (
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:16:from hb_assistant.construction.analytics.schedule_trust_service import ScheduleTrustService
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:18:from hb_assistant.store.project_schedule_hub_repository import (
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:22:from hb_assistant.store.schedule_cpm_import_observability_repository import (
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:25:from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:26:from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:34:    ("cpm_recompute", "Computed CPM recompute"),
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:51:        self._cpm_recompute = ScheduleCpmRecomputeService(db_path=db_path)
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:74:        out["pipeline_scope"] = "project_schedule_import"
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:98:        out["pipeline_scope"] = "project_schedule_import"
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:103:    def retry_cpm(self, *, project_key: str, import_id: str) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:108:                "schedule_import_invalid",
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:109:                message="import has no schedule version to recompute",
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:111:        cpm = self._cpm_recompute.recompute(
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:122:            "pipeline_scope": "project_schedule_import",
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:192:            "cpm_recompute": cpm_status,
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:236:            schedule_version_key=str(preview.get("schedule_version_key") or cached.get("schedule_version_key") or ""),
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:247:            raise ScheduleImportError("schedule_not_found", message=f"unknown import_id {import_id}")
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:337:            "cpm_recompute_status": self._map_cpm_status(
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:370:            "cpm_recompute_triggered": cpm.get("cpm_recompute_triggered"),
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:371:            "cpm_recompute_status": cpm.get("cpm_recompute_status"),
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:389:        status = cpm.get("cpm_recompute_status") or "pending"
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:391:            "cpm_recompute_triggered": status not in {"not_started", "unavailable"},
+src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py:392:            "cpm_recompute_status": status,
+src/hb_assistant/construction/analytics/schedule_import_service.py:20:from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+src/hb_assistant/construction/analytics/schedule_import_service.py:21:from hb_assistant.store.schedule_identity_repository import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:25:from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+src/hb_assistant/construction/analytics/schedule_import_service.py:26:from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+src/hb_assistant/construction/analytics/schedule_import_service.py:28:from .schedule_cost_loading import assess_cost_loaded_status
+src/hb_assistant/construction/analytics/schedule_import_service.py:29:from .schedule_csv_parser import PARSER_NAME as CSV_PARSER
+src/hb_assistant/construction/analytics/schedule_import_service.py:30:from .schedule_csv_parser import PARSER_VERSION as CSV_VER
+src/hb_assistant/construction/analytics/schedule_import_service.py:31:from .schedule_csv_parser import parse_csv_bytes
+src/hb_assistant/construction/analytics/schedule_import_service.py:32:from .schedule_dto import ScheduleImportPreviewDTO, ScheduleVersionSummaryDTO
+src/hb_assistant/construction/analytics/schedule_import_service.py:33:from .schedule_evidence import write_import_evidence
+src/hb_assistant/construction/analytics/schedule_import_service.py:34:from .schedule_file_parser import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:43:from .schedule_package_assembly import assemble_schedule_package
+src/hb_assistant/construction/analytics/schedule_import_service.py:44:from .schedule_xml_parser import PARSER_NAME as XML_PARSER
+src/hb_assistant/construction/analytics/schedule_import_service.py:45:from .schedule_xml_parser import PARSER_VERSION as XML_VER
+src/hb_assistant/construction/analytics/schedule_import_service.py:46:from .schedule_xml_parser import parse_pmxml_bytes
+src/hb_assistant/construction/analytics/schedule_import_service.py:58:    from hb_assistant.store.schedule_schema_verify import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:87:        from hb_assistant.store.schedule_schema_verify import verify_schedule_import_fk_targets
+src/hb_assistant/construction/analytics/schedule_import_service.py:89:        fk_issues = verify_schedule_import_fk_targets(conn3)
+src/hb_assistant/construction/analytics/schedule_import_service.py:102:                "schedule_import_fk_drift": fk_issues,
+src/hb_assistant/construction/analytics/schedule_import_service.py:108:    schedule_id = bundle.schedule_id or f"import-{import_id}"
+src/hb_assistant/construction/analytics/schedule_import_service.py:109:    return f"{project_key}|{schedule_id}|{bundle.data_date or import_id}"
+src/hb_assistant/construction/analytics/schedule_import_service.py:119:    from .schedule_project_catalog import ScheduleProjectCatalog
+src/hb_assistant/construction/analytics/schedule_import_service.py:236:                    from .schedule_xml_parser import parse_pmxml_package_bytes
+src/hb_assistant/construction/analytics/schedule_import_service.py:598:        self._import_repo.insert_schedule_package(
+src/hb_assistant/construction/analytics/schedule_import_service.py:885:            from .schedule_version_diff import compute_version_diff
+src/hb_assistant/construction/analytics/schedule_import_service.py:886:            from .schedule_diff_intelligence import build_detail_facts, summarize_detail_facts
+src/hb_assistant/construction/analytics/schedule_import_service.py:1014:            raise ScheduleImportError("schedule_import_invalid", message="empty upload payload")
+src/hb_assistant/construction/analytics/schedule_import_service.py:1090:        from .schedule_project_catalog import ScheduleProjectCatalog
+src/hb_assistant/construction/analytics/schedule_import_service.py:1137:                "schedule_import_invalid",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1164:                    "schedule_import_invalid",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1172:                "schedule_import_invalid",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1176:        schedule_id = bundle.schedule_id or f"import-{import_id}"
+src/hb_assistant/construction/analytics/schedule_import_service.py:1233:        record_key = f"svk-{_sha256(f'{project_key}|{schedule_id}|{import_id}')[:32]}"
+src/hb_assistant/construction/analytics/schedule_import_service.py:1295:                        self._import_repo.prepare_schedule_package_supersede(
+src/hb_assistant/construction/analytics/schedule_import_service.py:1312:                            "endpoint_key": "schedule_import",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1363:                "schedule import commit persistence failed import_id=%s project_key=%s version_key=%s",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1369:                "schedule_import_persistence_failed",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1380:            from hb_assistant.construction.analytics.schedule_trust_service import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:1403:        from hb_assistant.construction.analytics.schedule_quality_service import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:1406:        from hb_assistant.construction.analytics.schedule_quality_worker import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:1426:        from hb_assistant.construction.analytics.schedule_cpm_recompute_service import (
+src/hb_assistant/construction/analytics/schedule_import_service.py:1431:            "cpm_recompute_triggered": False,
+src/hb_assistant/construction/analytics/schedule_import_service.py:1432:            "cpm_recompute_status": "unavailable",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1443:                "schedule import post-commit CPM recompute failed import_id=%s version_key=%s",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1448:                "cpm_recompute_triggered": True,
+src/hb_assistant/construction/analytics/schedule_import_service.py:1449:                "cpm_recompute_status": "failed",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1450:                "failure_reason": "cpm_recompute_exception",
+src/hb_assistant/construction/analytics/schedule_import_service.py:1454:        from .schedule_project_catalog import ScheduleProjectCatalog
+src/hb_assistant/construction/analytics/schedule_import_service.py:1482:            "cpm_recompute_triggered": cpm_result.get("cpm_recompute_triggered"),
+src/hb_assistant/construction/analytics/schedule_import_service.py:1483:            "cpm_recompute_status": cpm_result.get("cpm_recompute_status"),
+src/hb_assistant/construction/analytics/schedule_import_service.py:1567:        from .schedule_critical_path_analytics import compute_source_critical_path_analytics
+src/hb_assistant/construction/analytics/schedule_import_service.py:1739:            "schedule import commit context import_id=%s project_key=%s preview_project_key=%s "
+src/hb_assistant/construction/analytics/schedule_import_service.py:1832:                from .schedule_msp_xml_parser import PARSER_NAME as MSP_PARSER
+src/hb_assistant/construction/analytics/schedule_import_service.py:1833:                from .schedule_msp_xml_parser import PARSER_VERSION as MSP_VER
+src/hb_assistant/construction/analytics/schedule_import_service.py:1834:                from .schedule_msp_xml_parser import parse_msp_xml_bytes
+src/hb_assistant/construction/analytics/schedule_import_service.py:1841:            from .schedule_xer_parser import PARSER_NAME as XER_PARSER
+src/hb_assistant/construction/analytics/schedule_import_service.py:1842:            from .schedule_xer_parser import PARSER_VERSION as XER_VER
+src/hb_assistant/construction/analytics/schedule_import_service.py:1843:            from .schedule_xer_parser import parse_xer_bytes
+src/hb_assistant/construction/analytics/schedule_import_service.py:2185:        from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
+src/hb_assistant/construction/analytics/schedule_import_service.py:2193:        from .schedule_project_catalog import ScheduleProjectCatalog
+src/hb_assistant/construction/analytics/schedule_import_service.py:2204:        from .schedule_project_catalog import ScheduleProjectCatalog
+src/hb_assistant/construction/analytics/schedule_import_service.py:2503:        package = self._import_repo.get_package_for_version(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2504:        capabilities = self._import_repo.list_capabilities(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2505:        baselines = self._import_repo.list_baseline_projects(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2506:        baseline_facts = self._import_repo.list_baseline_health_facts(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2507:        diff_facts = self._import_repo.list_diff_facts(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2508:        package_lineage = self._import_repo.list_package_field_lineage(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_import_service.py:2509:        package_equivalence = self._import_repo.list_package_equivalence_facts(schedule_version_key)
+src/hb_assistant/construction/analytics/service.py:1239:        from hb_assistant.store.procore_schedule_exposure import build_schedule_exposure
+src/hb_assistant/construction/analytics/schedule_cpm_criticality.py:24:from .schedule_cpm_forward_pass import (
+src/hb_assistant/construction/analytics/schedule_cpm_criticality.py:28:from .schedule_cpm_graph import GraphBuildResult
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:8:from .schedule_baseline_quality import compute_baseline_quality_evidence, resolve_status_date
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:9:from .schedule_critical_path_analytics import compute_source_critical_path_analytics
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:10:from .schedule_float_derivation import supports_finish_float_derivation
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:11:from .schedule_quality_normalization import cost_resource_posture
+src/hb_assistant/construction/analytics/schedule_quality_posture.py:182:        schedule_posture = cost_resource_posture(import_meta)
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:1:"""Synchronous application-computed CPM recompute for committed schedule versions."""
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:9:from hb_assistant.construction.analytics.schedule_cpm_read_service import ScheduleCpmReadService
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:10:from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:12:from hb_assistant.store.schedule_cpm_import_observability_repository import (
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:172:        status = str(envelope.get("cpm_recompute_status") or "unavailable")
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:214:            "cpm_recompute_triggered": triggered,
+src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py:215:            "cpm_recompute_status": status,
+src/hb_assistant/construction/analytics/schedule_source_posture.py:1:"""Source-format capability tagging for schedule imports."""
+src/hb_assistant/construction/analytics/schedule_evidence.py:1:"""Lightweight evidence references for schedule imports (audit trail only)."""
+src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py:167:        "schedule_file_imports": (
+src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py:196:                "schedule_file_imports",
+src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py:254:            source_tables=("procore_ep_schedule_activities", "schedule_file_imports"),
+src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py:280:            source_tables=("procore_ep_schedule_activities", "schedule_file_imports"),
+src/hb_assistant/construction/analytics/project_schedule_visualization_metric_contract.py:772:        from .project_schedule_udf_normalization_service import (
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:10:from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:12:from .project_schedule_canonical_metrics import ProjectScheduleCanonicalMetricService
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:13:from .project_schedule_summary_service import _date_str, _parse_date
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:14:from .project_schedule_visualization_metric_contract import NON_CAUSATION_CAVEAT
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:1133:                SELECT project_key, schedule_version_key, import_id, activity_id,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:1180:                FROM schedule_file_imports
+src/hb_assistant/construction/analytics/schedule_procore_activity_adapter.py:12:from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+src/hb_assistant/construction/analytics/schedule_procore_activity_adapter.py:13:from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+src/hb_assistant/construction/analytics/schedule_quality_worker.py:7:from .schedule_quality_service import ScheduleQualityService
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:8:from hb_assistant.store.project_schedule_hub_repository import (
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:25:        from .project_schedule_review_cue_service import ProjectScheduleReviewCueService
+src/hb_assistant/construction/analytics/schedule_baseline_quality.py:9:from .schedule_quality_normalization import is_logic_excluded_activity
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:3:This service is deliberately read-only. It summarizes already-persisted schedule import,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:19:from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHubRepository
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:20:from hb_assistant.store.schedule_identity_repository import ScheduleIdentityRepository
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:21:from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:22:from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:24:from .project_schedule_comparison import (
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:32:from .project_schedule_canonical_metrics import ProjectScheduleCanonicalMetricService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:33:from .project_schedule_drilldown_service import ProjectScheduleDrilldownService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:34:from .project_schedule_driver_analysis_service import ProjectScheduleDriverAnalysisService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:35:from .project_schedule_memo_service import ProjectScheduleMemoService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:36:from .project_schedule_narrative_qa import validate_summary as validate_schedule_narrative
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:37:from .project_schedule_review_service import ProjectScheduleReviewService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:38:from .schedule_trust_service import ScheduleTrustService
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:39:from .schedule_import_service import ensure_schedule_schema
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:538:            "tie_breakers": ["schedule_data_date_desc", "imported_at_desc"],
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:588:            SELECT i.import_id, i.project_key, i.schedule_version_key, i.source_type,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:593:            FROM schedule_file_imports i
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:602:            SELECT import_id, project_key, schedule_version_key, source_type,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:605:            FROM schedule_file_imports
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:621:                SELECT import_id, project_key, schedule_version_key, source_type,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:624:                FROM schedule_file_imports
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:905:        from .project_schedule_selected_baseline_service import (
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:950:                SELECT import_id, project_key, schedule_version_key, source_format,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:952:                FROM schedule_file_imports
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:953:                WHERE project_key=? AND schedule_version_key=? AND import_status='committed'
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1672:            add(90, "no_prior_update", "Import or confirm a prior update", "No comparable prior update is available, so movement and trend context are limited.", "no prior comparable schedule", "Confirm whether an earlier update should be imported or matched.")
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2043:            "no_schedule": {"required": True, "reason": "no committed schedule imports for project"},
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2064:                "headline": "No schedule update is imported for this project.",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2067:                "recent_progress_summary": "Recent progress is unavailable until a schedule is imported.",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2068:                "remaining_work_summary": "Remaining work is unavailable until a schedule is imported.",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2071:                "caveats": ["No schedule conclusions are available without imported schedule data."],
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2079:            "computed_cpm": {"available": False, "summary": "Computed CPM is unavailable because no schedule is imported."},
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2085:                    "code": "import_schedule",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2087:                    "explanation": "No schedule is imported for this project.",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2088:                    "evidence_basis": "schedule import list",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2089:                    "recommended_review": "Open schedule import and upload the current project schedule.",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2090:                    "drilldown_anchor": "import_schedule",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2096:                "schedule_import_url": f"/projects/{project_key}/schedule/import",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2157:            "schedule_import_url": f"/projects/{project_key}/schedule/import",
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:1:"""Service for CPM analysis over one committed schedule version.
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:41:from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:42:from hb_assistant.store.schedule_cpm_repository import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:46:from hb_assistant.store.schedule_identity_repository import parse_schedule_version_data_date
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:48:from .schedule_cpm_backward_pass import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:54:from .schedule_cpm_criticality import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:60:from .schedule_cpm_dcma_integration import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:64:from .schedule_cpm_float import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:69:from .schedule_cpm_forward_pass import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:75:from .schedule_cpm_graph import GraphBuildResult, build_graph
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:76:from .schedule_cpm_longest_path import (
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:147:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:270:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:442:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:742:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:752:                schedule_version_key, project_key, import_id, graph, result, backward_run=None
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:757:                schedule_version_key, project_key, import_id, graph, result, backward_run=None
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:973:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:983:                schedule_version_key, project_key, import_id, graph, result, float_run=None
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:991:                schedule_version_key, project_key, import_id, graph, result, float_run=None
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:998:            schedule_version_key, project_key, import_id, graph, result, float_run=float_run
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:1193:        project_key, import_id = self._run_metadata(schedule_version_key)
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:1210:                schedule_version_key, project_key, import_id, graph, result,
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:1222:                schedule_version_key, project_key, import_id, graph, result,
+src/hb_assistant/construction/analytics/schedule_cpm_service.py:1237:            schedule_version_key, project_key, import_id, graph, result,
+src/hb_assistant/construction/analytics/schedule_cpm_graph.py:4:from committed schedule activities and relationships and reports structural diagnostics
+src/hb_assistant/construction/analytics/schedule_cpm_graph.py:24:from .schedule_graph import build_adjacency
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:10:from .project_schedule_udf_normalization_service import ProjectScheduleUdfNormalizationService
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:11:from .project_schedule_visualization_metric_contract import NON_CAUSATION_CAVEAT
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:89:        preview = self._preview_only_cues(project_key, schedule_version_key, as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_comparison.py:120:        from .project_schedule_canonical_metrics import ProjectScheduleCanonicalMetricService

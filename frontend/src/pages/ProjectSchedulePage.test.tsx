@@ -605,7 +605,7 @@ describe('ProjectSchedulePage', () => {
     expect(screen.getByText('Review item 6')).toBeInTheDocument()
   })
 
-  it('links no-schedule state to schedule import with project query', async () => {
+  it('shows import button on no-schedule state', async () => {
     renderPage(scheduleResponse({
       status: 'no_schedule',
       current_schedule: { available: false },
@@ -616,10 +616,7 @@ describe('ProjectSchedulePage', () => {
     }))
 
     expect(await screen.findByText('No schedule update is imported for this project.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Import Schedule' })).toHaveAttribute(
-      'href',
-      '/schedules/imports?project=tropical',
-    )
+    expect(screen.getByRole('button', { name: /Import schedule package/i })).toBeInTheDocument()
   })
 
   it('does not render raw technical identifiers in the default view', async () => {

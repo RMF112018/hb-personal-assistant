@@ -1,0 +1,32 @@
+
+> frontend@0.0.0 test
+> vitest run scheduleImport ProjectSchedulePage ProjectScheduleImport scheduleApiAsOf
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/project-schedule-import-ux-20260630T204437Z/frontend
+
+ ✓ src/lib/scheduleApiAsOf.test.ts  (2 tests) 3ms
+ ✓ src/lib/scheduleImportApi.test.ts  (4 tests) 5ms
+stderr | src/components/project-schedule/ScheduleImportFlow.test.tsx > ScheduleImportFlow > renders preview panel with files counts baselines and equivalence
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+stderr | src/pages/ScheduleImportsPage.test.tsx > ScheduleImportsPage > shows 50 MB upload label with XER and zip-package support
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/components/project-schedule/ScheduleImportFlow.test.tsx  (6 tests) 77ms
+stderr | src/pages/ProjectScheduleImportPage.test.tsx > ProjectScheduleImportPage > renders project-scoped import page without project picker
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders a PM-facing above-fold schedule story and scoped project tab
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleImportPage.test.tsx  (6 tests) 152ms
+ ✓ src/pages/ScheduleImportsPage.test.tsx  (21 tests) 437ms
+ ✓ src/pages/ProjectSchedulePage.test.tsx  (12 tests) 536ms
+
+ Test Files  6 passed (6)
+      Tests  51 passed (51)
+   Start at  16:59:51
+   Duration  1.68s (transform 418ms, setup 378ms, collect 1.50s, tests 1.21s, environment 2.15s, prepare 913ms)
+

@@ -1,0 +1,24 @@
+[feature/project-schedule-import-ux-20260630T204437Z feb345c8] fix(schedule): propagate as-of context consistently
+ Date: Tue Jun 30 16:00:38 2026 -0400
+ 27 files changed, 1043 insertions(+), 34 deletions(-)
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/as-of-acceptance-proof.md
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-diff-check.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-diff-stat-final.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-head-final.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-status-final.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-status-start.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-as-of.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-build-summary-project-key.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-frontend-summary-helper.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/npm-typecheck.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/phase3-summary.md
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/prerequisite-proof.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/py-compile.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/pytest-focused-backend.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/pytest-schedule-as-of.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/route-map-before-after.md
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/scripts-test-schedule.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/session-start.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/vitest-api-target-probe.txt
+ create mode 100644 docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/vitest-project-schedule-page-api.txt
+ create mode 100644 frontend/src/lib/scheduleApiAsOf.test.ts
