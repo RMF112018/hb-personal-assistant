@@ -7,6 +7,29 @@ import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
+import type { ReviewWorkbenchComparisonBasis } from '../lib/api'
+
+const NAMED_BASIS = new Set<string>([
+  'current_contract_baseline',
+  'previous_progress_update_baseline',
+  'secondary_progress_update_baseline',
+])
+
+function resolveDriverComparisonBasis(
+  comparisonBasisParam: string | null,
+  basisParam: string | null,
+): ReviewWorkbenchComparisonBasis | 'baseline' {
+  const comparisonBasis = comparisonBasisParam?.trim() || null
+  const basis = basisParam?.trim() || null
+  if (comparisonBasis && basis && comparisonBasis !== basis) {
+    return 'prior_update'
+  }
+  const raw = comparisonBasis || basis || 'prior_update'
+  if (raw === 'prior_update' || raw === 'baseline' || NAMED_BASIS.has(raw)) {
+    return raw as ReviewWorkbenchComparisonBasis | 'baseline'
+  }
+  return 'prior_update'
+}
 
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
@@ -17,7 +40,16 @@ export function ProjectScheduleDriverDetailPage() {
   const { projectKey = '', activityId = '' } = useParams()
   const [searchParams] = useSearchParams()
   const asOfDate = searchParams.get('as_of') || undefined
-  const comparisonBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
+  const comparisonBasis = resolveDriverComparisonBasis(
+    searchParams.get('comparison_basis'),
+    searchParams.get('basis'),
+  )
+  const workbenchHref = (() => {
+    const params = new URLSearchParams()
+    params.set('comparison_basis', comparisonBasis)
+    if (asOfDate) params.set('as_of', asOfDate)
+    return `/projects/${projectKey}/schedule/workbench?${params.toString()}`
+  })()
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['project', 'schedule', 'driver-detail', projectKey, activityId, asOfDate, comparisonBasis],
@@ -69,9 +101,6 @@ export function ProjectScheduleDriverDetailPage() {
   const scheduleHref = asOfDate
     ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
     : `/projects/${projectKey}/schedule`
-  const workbenchHref = asOfDate
-    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(asOfDate)}`
-    : `/projects/${projectKey}/schedule/workbench`
 
   const activity = detail.activity || {}
   const downstream = Array.isArray(detail.downstream_impacts) ? detail.downstream_impacts : []

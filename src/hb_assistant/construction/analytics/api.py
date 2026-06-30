@@ -1327,13 +1327,19 @@ def create_app(*, db_path: str | None = None) -> Any:
     def project_schedule_driver_detail(
         project_key: str,
         activity_id: str,
-        comparison_basis: str = "prior_update",
+        comparison_basis: str | None = None,
+        basis: str | None = None,
         as_of: str | None = None,
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
         from datetime import date as date_type
 
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_comparison_basis_resolver import (
+            reconcile_driver_detail_comparison_params,
+        )
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
@@ -1344,11 +1350,20 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        try:
+            resolved_basis = reconcile_driver_detail_comparison_params(
+                comparison_basis=comparison_basis,
+                basis=basis,
+            )
+        except ValueError as exc:
+            detail = str(exc)
+            if detail in {"invalid_comparison_basis", "conflicting_comparison_params"}:
+                raise HTTPException(status_code=400, detail=detail) from exc
+            raise
         return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_driver_detail(
             project_key,
             activity_id,
-            comparison_basis=basis,
+            comparison_basis=resolved_basis,
             as_of=as_of_date,
         )
 
@@ -1374,6 +1389,11 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         from datetime import date as date_type
 
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_comparison_basis_resolver import (
+            resolve_workbench_comparison_basis,
+        )
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
@@ -1384,14 +1404,19 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        try:
+            resolve_workbench_comparison_basis(comparison_basis)
+        except ValueError as exc:
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
+            raise
         return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_review_items(
             project_key,
             review_status=review_status,
             limit=limit,
             offset=offset,
             as_of=as_of_date,
-            comparison_basis=basis,
+            comparison_basis=comparison_basis,
             source_metric=source_metric,
             severity=severity,
             item_type=item_type,
@@ -1461,6 +1486,11 @@ def create_app(*, db_path: str | None = None) -> Any:
         require_operator_role(role)
         from datetime import date as date_type
 
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_comparison_basis_resolver import (
+            resolve_workbench_comparison_basis,
+        )
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
@@ -1471,12 +1501,22 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        workbench = ProjectScheduleSummaryService(db_path=_schedule_db_path()).sync_review_workbench(
-            project_key,
-            as_of=as_of_date,
-            comparison_basis=basis,
-        )
+        try:
+            resolve_workbench_comparison_basis(comparison_basis)
+        except ValueError as exc:
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
+            raise
+        try:
+            workbench = ProjectScheduleSummaryService(db_path=_schedule_db_path()).sync_review_workbench(
+                project_key,
+                as_of=as_of_date,
+                comparison_basis=comparison_basis,
+            )
+        except ValueError as exc:
+            if str(exc) == "named_baseline_sync_not_supported":
+                raise HTTPException(status_code=400, detail="named_baseline_sync_not_supported") from exc
+            raise
         return {"available": workbench.get("available", True), "workbench": workbench}
 
     @app.patch("/api/projects/{project_key}/schedule/review-items/{review_item_id}")

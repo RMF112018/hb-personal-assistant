@@ -98,7 +98,7 @@ class ProjectScheduleControlsService:
                 baseline_version_key=str(named_resolution.get("schedule_version_key") or ""),
             )
             preview_basis = "baseline"
-            include_workbench_links = False
+            include_workbench_links = status == "selected"
         else:
             context = self._summary.build_schedule_hub_context(project_key, as_of=as_of)
 
@@ -222,7 +222,9 @@ class ProjectScheduleControlsService:
         baseline_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         as_of_date = as_of or datetime.now(timezone.utc).date()
-        include_workbench_link = comparison_basis in {"prior_update", "baseline"}
+        include_workbench_link = comparison_basis in {"prior_update", "baseline"} or (
+            is_named_baseline_basis(comparison_basis) and str(baseline_context.get("selection_status")) == "selected"
+        )
         return {
             "available": False,
             "reason": reason,

@@ -24,6 +24,10 @@ CONTROLS_COMPARISON_BASIS_ACCEPTED: frozenset[str] = frozenset(
     {*CONTROLS_COMPARISON_BASIS_VALUES, "baseline"}
 )
 
+WORKBENCH_COMPARISON_BASIS_ACCEPTED: frozenset[str] = frozenset(
+    {"prior_update", "baseline", *NAMED_COMPARISON_BASIS_VALUES}
+)
+
 BASELINE_SLOT_ORDER: tuple[str, ...] = (
     "current_contract_baseline",
     "previous_progress_update_baseline",

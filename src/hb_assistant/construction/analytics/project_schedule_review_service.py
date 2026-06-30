@@ -88,6 +88,8 @@ class ProjectScheduleReviewService:
         as_of_date: date | None = None,
         baseline_summary: dict[str, Any] | None = None,
         include_activity_metric_cues: bool = True,
+        response_comparison_basis: str | None = None,
+        carry_forward_disposition: bool = True,
     ) -> dict[str, Any]:
         """Read-only workbench preview — merges live candidates with persisted disposition."""
         return self._build_workbench(
@@ -104,6 +106,8 @@ class ProjectScheduleReviewService:
             baseline_summary=baseline_summary,
             include_activity_metric_cues=include_activity_metric_cues,
             synced=False,
+            carry_forward_disposition=carry_forward_disposition,
+            response_comparison_basis=response_comparison_basis,
         )
 
     def sync_and_list(
@@ -172,6 +176,8 @@ class ProjectScheduleReviewService:
         include_activity_metric_cues: bool = True,
         synced: bool,
         use_persisted: bool = False,
+        carry_forward_disposition: bool = True,
+        response_comparison_basis: str | None = None,
     ) -> dict[str, Any]:
         as_of = as_of_date or datetime.now(timezone.utc).date()
         bases: dict[str, Any] = {}
@@ -218,17 +224,29 @@ class ProjectScheduleReviewService:
                     )
                 ]
             else:
-                items = [
-                    self._public_item(
-                        self._merge_candidate(
-                            project_key=project_key,
-                            schedule_version_key=schedule_version_key,
-                            candidate=candidate,
-                            live_keys=live_keys,
+                if carry_forward_disposition:
+                    items = [
+                        self._public_item(
+                            self._merge_candidate(
+                                project_key=project_key,
+                                schedule_version_key=schedule_version_key,
+                                candidate=candidate,
+                                live_keys=live_keys,
+                            )
                         )
-                    )
-                    for candidate in candidates
-                ]
+                        for candidate in candidates
+                    ]
+                else:
+                    items = [
+                        self._public_item(
+                            self._preview_candidate(
+                                project_key=project_key,
+                                schedule_version_key=schedule_version_key,
+                                candidate=candidate,
+                            )
+                        )
+                        for candidate in candidates
+                    ]
             bases[basis_key] = self._workbench_envelope(
                 project_key=project_key,
                 items=items,
@@ -238,8 +256,36 @@ class ProjectScheduleReviewService:
         active = bases.get(comparison_basis) or bases.get("prior_update") or {"available": False}
         envelope = dict(active)
         envelope["bases"] = bases
-        envelope["comparison_basis"] = comparison_basis
+        outward_basis = response_comparison_basis or comparison_basis
+        envelope["comparison_basis"] = outward_basis
+        if response_comparison_basis and response_comparison_basis != comparison_basis:
+            envelope["read_only_baseline_preview"] = True
         return envelope
+
+    def _preview_candidate(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        candidate: dict[str, Any],
+    ) -> dict[str, Any]:
+        merged = {
+            "review_item_id": None,
+            "project_key": project_key,
+            "schedule_version_key": schedule_version_key,
+            "stable_item_key": candidate["stable_item_key"],
+            "item_type": candidate["item_type"],
+            "item_title": candidate["item_title"],
+            "priority": candidate["priority"],
+            "review_status": REVIEW_OPEN,
+            "pm_notes": None,
+            "evidence": candidate.get("evidence") or {},
+            "source_activity_id": candidate.get("source_activity_id"),
+            "reviewed_by_operator": None,
+            "reviewed_at": None,
+        }
+        merged.update(self._lineage_flags(prior=None, schedule_version_key=schedule_version_key, existing=False))
+        return merged
 
     def list_items(
         self,
