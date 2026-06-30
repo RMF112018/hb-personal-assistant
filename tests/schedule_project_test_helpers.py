@@ -119,3 +119,47 @@ def seed_named_schedule_udfs(
                     ),
                 )
         conn.commit()
+
+
+def seed_schedule_quality_findings(
+    db_path: str | Path,
+    *,
+    project_key: str,
+    schedule_version_key: str,
+    import_id: str,
+    evaluation_run_id: str = "quality-run-latest",
+    activity_id: str = "A100",
+    finding_code: str = "missing_predecessor",
+) -> None:
+    """Seed latest quality evaluation run + finding for review cue tests."""
+    with sqlite3.connect(str(db_path)) as conn:
+        conn.execute(
+            """
+            INSERT INTO schedule_quality_evaluation_runs (
+              evaluation_run_id, project_key, schedule_version_key, import_id,
+              assessment_profile, assessment_profile_version, method_source,
+              trigger_source, idempotency_key, status, is_latest,
+              completed_at, engine_version, checker_version
+            ) VALUES (?, ?, ?, ?, 'default', '1', 'test', 'manual_rerun', ?, 'completed', 1,
+              '2026-07-01T10:00:00Z', 'test', 'test')
+            """,
+            (evaluation_run_id, project_key, schedule_version_key, import_id, f"{evaluation_run_id}-key"),
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_quality_findings (
+              project_key, schedule_version_key, import_id, evaluation_run_id,
+              finding_type, severity, category, activity_id, finding_code, finding_summary
+            ) VALUES (?, ?, ?, ?, 'logic_quality', 'high', 'logic_quality', ?, ?, ?)
+            """,
+            (
+                project_key,
+                schedule_version_key,
+                import_id,
+                evaluation_run_id,
+                activity_id,
+                finding_code,
+                f"Quality finding {finding_code} on {activity_id}",
+            ),
+        )
+        conn.commit()

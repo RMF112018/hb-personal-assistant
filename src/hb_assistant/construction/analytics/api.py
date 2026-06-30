@@ -1311,6 +1311,15 @@ def create_app(*, db_path: str | None = None) -> Any:
         offset: int = 0,
         as_of: str | None = None,
         comparison_basis: str = "prior_update",
+        source_metric: str | None = None,
+        severity: str | None = None,
+        item_type: str | None = None,
+        confidence: str | None = None,
+        phase: str | None = None,
+        floor: str | None = None,
+        sector_area: str | None = None,
+        subcontractor: str | None = None,
+        cost_code: str | None = None,
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
@@ -1334,7 +1343,64 @@ def create_app(*, db_path: str | None = None) -> Any:
             offset=offset,
             as_of=as_of_date,
             comparison_basis=basis,
+            source_metric=source_metric,
+            severity=severity,
+            item_type=item_type,
+            confidence=confidence,
+            phase=phase,
+            floor=floor,
+            sector_area=sector_area,
+            subcontractor=subcontractor,
+            cost_code=cost_code,
         )
+
+    @app.get("/api/projects/{project_key}/schedule/review-items/{review_item_id}")
+    def project_schedule_review_item_detail_get(
+        project_key: str,
+        review_item_id: str,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del project_key, role
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_review_service import (
+            ProjectScheduleReviewService,
+        )
+
+        try:
+            return ProjectScheduleReviewService(db_path=_schedule_db_path()).get_item_detail(
+                review_item_id=review_item_id,
+            )
+        except ValueError as exc:
+            if str(exc) == "review_item_not_found":
+                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+            raise
+
+    @app.get("/api/projects/{project_key}/schedule/review-items/{review_item_id}/events")
+    def project_schedule_review_item_events_get(
+        project_key: str,
+        review_item_id: str,
+        limit: int = 100,
+        offset: int = 0,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del project_key, role
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_review_service import (
+            ProjectScheduleReviewService,
+        )
+
+        try:
+            return ProjectScheduleReviewService(db_path=_schedule_db_path()).list_item_events(
+                review_item_id=review_item_id,
+                limit=limit,
+                offset=offset,
+            )
+        except ValueError as exc:
+            if str(exc) == "review_item_not_found":
+                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+            raise
 
     @app.post("/api/projects/{project_key}/schedule/review-items")
     def project_schedule_review_items_sync(
@@ -1370,6 +1436,8 @@ def create_app(*, db_path: str | None = None) -> Any:
     ) -> dict[str, Any]:
         del project_key
         require_operator_role(role)
+        from fastapi import HTTPException
+
         from hb_assistant.construction.analytics.project_schedule_review_service import (
             ProjectScheduleReviewService,
         )

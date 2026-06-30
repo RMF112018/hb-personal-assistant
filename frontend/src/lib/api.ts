@@ -388,6 +388,15 @@ export function getProjectScheduleReviewItems(
     offset?: number;
     asOf?: string;
     comparisonBasis?: 'prior_update' | 'baseline';
+    sourceMetric?: string;
+    severity?: string;
+    itemType?: string;
+    confidence?: string;
+    phase?: string;
+    floor?: string;
+    sectorArea?: string;
+    subcontractor?: string;
+    costCode?: string;
   },
 ) {
   const params = new URLSearchParams();
@@ -396,9 +405,36 @@ export function getProjectScheduleReviewItems(
   if (opts?.offset != null) params.set('offset', String(opts.offset));
   if (opts?.asOf) params.set('as_of', opts.asOf);
   if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
+  if (opts?.sourceMetric) params.set('source_metric', opts.sourceMetric);
+  if (opts?.severity) params.set('severity', opts.severity);
+  if (opts?.itemType) params.set('item_type', opts.itemType);
+  if (opts?.confidence) params.set('confidence', opts.confidence);
+  if (opts?.phase) params.set('phase', opts.phase);
+  if (opts?.floor) params.set('floor', opts.floor);
+  if (opts?.sectorArea) params.set('sector_area', opts.sectorArea);
+  if (opts?.subcontractor) params.set('subcontractor', opts.subcontractor);
+  if (opts?.costCode) params.set('cost_code', opts.costCode);
   const qs = params.toString();
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items${qs ? `?${qs}` : ''}`,
+  );
+}
+export function getProjectScheduleReviewItemDetail(projectKey: string, reviewItemId: string) {
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items/${encodeURIComponent(reviewItemId)}`,
+  );
+}
+export function getProjectScheduleReviewItemEvents(
+  projectKey: string,
+  reviewItemId: string,
+  opts?: { limit?: number; offset?: number },
+) {
+  const params = new URLSearchParams();
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null) params.set('offset', String(opts.offset));
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items/${encodeURIComponent(reviewItemId)}/events${qs ? `?${qs}` : ''}`,
   );
 }
 export function patchProjectScheduleReviewItem(
@@ -2627,6 +2663,8 @@ export const api = {
   getProjectScheduleDriverDetail,
   syncProjectScheduleReviewItems,
   getProjectScheduleReviewItems,
+  getProjectScheduleReviewItemDetail,
+  getProjectScheduleReviewItemEvents,
   patchProjectScheduleReviewItem,
   downloadProjectScheduleExport,
   getMyItems,

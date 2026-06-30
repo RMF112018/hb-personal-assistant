@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,7 @@ import { ProjectScheduleWorkbenchPage } from './ProjectScheduleWorkbenchPage'
 
 const syncProjectScheduleReviewItemsMock = vi.fn()
 const getProjectScheduleReviewItemsMock = vi.fn()
+const getProjectScheduleReviewItemEventsMock = vi.fn()
 const patchProjectScheduleReviewItemMock = vi.fn()
 const getProjectsMock = vi.fn()
 const getLocalUiRoleMock = vi.fn(() => 'operator' as 'operator' | 'viewer' | 'admin')
@@ -21,6 +22,7 @@ vi.mock('../lib/api', async () => {
       getProjects: (...args: unknown[]) => getProjectsMock(...args),
       syncProjectScheduleReviewItems: (...args: unknown[]) => syncProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItems: (...args: unknown[]) => getProjectScheduleReviewItemsMock(...args),
+      getProjectScheduleReviewItemEvents: (...args: unknown[]) => getProjectScheduleReviewItemEventsMock(...args),
       patchProjectScheduleReviewItem: (...args: unknown[]) => patchProjectScheduleReviewItemMock(...args),
     },
     getLocalUiRole: () => getLocalUiRoleMock(),
@@ -39,6 +41,15 @@ const reviewItems = {
       priority: 85,
       review_status: 'open',
       source_activity_id: 'DRV-A',
+      source_metric_key: 'change_driver_analysis',
+      source_signal_type: 'driver',
+      confidence: 'production_backed',
+      severity: 'high',
+      cue_summary: 'Candidate driver sequence cue for PM review.',
+      caveats: [
+        'This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.',
+      ],
+      phase: 'Phase 1',
     },
     {
       review_item_id: 'psri-2',
@@ -48,6 +59,9 @@ const reviewItems = {
       priority: 72,
       review_status: 'watching',
       source_activity_id: 'MS-1',
+      source_metric_key: 'milestones',
+      confidence: 'production_backed',
+      severity: 'high',
     },
   ],
 }
@@ -75,6 +89,10 @@ describe('ProjectScheduleWorkbenchPage', () => {
     })
     syncProjectScheduleReviewItemsMock.mockResolvedValue({ available: true, workbench: { available: true } })
     getProjectScheduleReviewItemsMock.mockResolvedValue(reviewItems)
+    getProjectScheduleReviewItemEventsMock.mockResolvedValue({
+      available: true,
+      events: [{ event_type: 'created', created_at: '2026-07-03T10:00:00Z' }],
+    })
     patchProjectScheduleReviewItemMock.mockResolvedValue({ item: reviewItems.items[0] })
   })
 
@@ -87,6 +105,11 @@ describe('ProjectScheduleWorkbenchPage', () => {
     expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
       asOf: '2026-07-03',
       comparisonBasis: 'prior_update',
+      reviewStatus: undefined,
+      severity: undefined,
+      sourceMetric: undefined,
+      confidence: undefined,
+      phase: undefined,
     })
     expect(await screen.findByText('Review driver: Concrete pour')).toBeInTheDocument()
   })
@@ -99,26 +122,52 @@ describe('ProjectScheduleWorkbenchPage', () => {
       expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
       asOf: '2026-07-03',
       comparisonBasis: 'prior_update',
+      reviewStatus: undefined,
+      severity: undefined,
+      sourceMetric: undefined,
+      confidence: undefined,
+      phase: undefined,
     })
     })
     expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
     expect(await screen.findByText(/Preview only/)).toBeInTheDocument()
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    const card = screen.getByText('Review driver: Concrete pour').closest('article')
+    expect(card).toBeTruthy()
+    expect(within(card as HTMLElement).queryByText('Save notes')).not.toBeInTheDocument()
   })
 
-  it('patches disposition for operators', async () => {
+  it('patches disposition and saves notes for operators', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await screen.findByText('Review driver: Concrete pour')
+    const detailButtons = screen.getAllByRole('button', { name: 'Show detail' })
+    await user.click(detailButtons[0])
 
-    const selects = screen.getAllByRole('combobox')
-    await user.selectOptions(selects[0], 'reviewed')
+    await waitFor(() => {
+      expect(getProjectScheduleReviewItemEventsMock).toHaveBeenCalledWith('tropical', 'psri-1')
+    })
+    expect(screen.getByText(/not a causation/i)).toBeInTheDocument()
+
+    const card = screen.getByText('Review driver: Concrete pour').closest('article')
+    const select = within(card as HTMLElement).getByRole('combobox')
+    await user.selectOptions(select, 'reviewed')
 
     await waitFor(() => {
       expect(patchProjectScheduleReviewItemMock).toHaveBeenCalledWith('tropical', 'psri-1', {
         review_status: 'reviewed',
         pm_notes: undefined,
+      })
+    })
+
+    const notes = screen.getByRole('textbox')
+    await user.type(notes, 'checked driver')
+    await user.click(screen.getByRole('button', { name: 'Save notes' }))
+
+    await waitFor(() => {
+      expect(patchProjectScheduleReviewItemMock).toHaveBeenCalledWith('tropical', 'psri-1', {
+        review_status: 'open',
+        pm_notes: 'checked driver',
       })
     })
   })

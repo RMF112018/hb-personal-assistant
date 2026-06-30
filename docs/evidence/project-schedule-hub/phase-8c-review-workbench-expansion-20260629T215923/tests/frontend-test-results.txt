@@ -1,0 +1,17 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectScheduleWorkbenchPage
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant/frontend
+
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (3 tests) 226ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  18:01:54
+   Duration  1.12s (transform 88ms, setup 56ms, collect 167ms, tests 226ms, environment 304ms, prepare 190ms)
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+

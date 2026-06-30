@@ -1,0 +1,48 @@
+{
+  "available": true,
+  "count": 3,
+  "events": [
+    {
+      "created_at": "2026-06-29T21:59:30.311805+00:00",
+      "event_id": "psre-1eab94dae40f46718d291757d5d5602e",
+      "event_type": "notes_changed",
+      "new_notes": "phase-8c evidence",
+      "new_status": null,
+      "operator_id": "operator",
+      "prior_notes": null,
+      "prior_status": null,
+      "project_key": "tropical",
+      "review_item_id": "psri-dc26fb995d264b06b463ce481d5b894e",
+      "schedule_version_key": "tropical|S1|2026-07-01"
+    },
+    {
+      "created_at": "2026-06-29T21:59:30.311805+00:00",
+      "event_id": "psre-25dfd44b6b3646eea3d10897c2589a9d",
+      "event_type": "status_changed",
+      "new_notes": null,
+      "new_status": "watching",
+      "operator_id": "operator",
+      "prior_notes": null,
+      "prior_status": "open",
+      "project_key": "tropical",
+      "review_item_id": "psri-dc26fb995d264b06b463ce481d5b894e",
+      "schedule_version_key": "tropical|S1|2026-07-01"
+    },
+    {
+      "created_at": "2026-06-29T21:59:28.947071+00:00",
+      "event_id": "psre-66fbcdc020b24fa38344f50ba326c1e4",
+      "event_type": "created",
+      "new_notes": null,
+      "new_status": "open",
+      "operator_id": null,
+      "prior_notes": null,
+      "prior_status": null,
+      "project_key": "tropical",
+      "review_item_id": "psri-dc26fb995d264b06b463ce481d5b894e",
+      "schedule_version_key": "tropical|S1|2026-07-01"
+    }
+  ],
+  "limit": 100,
+  "offset": 0,
+  "review_item_id": "psri-dc26fb995d264b06b463ce481d5b894e"
+}
