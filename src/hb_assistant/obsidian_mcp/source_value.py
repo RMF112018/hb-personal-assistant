@@ -41,10 +41,14 @@ _DISP_RANK: dict[SourceValueDisposition, int] = {
 
 # document_type -> disposition mapping (the analyzer is the single source of types).
 HIGH_DOCUMENT_TYPES = frozenset({
-    "architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing",
+    "architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing", "drawing",
     "bid_package", "rfi", "submittal", "meeting_minutes", "schedule", "specification",
-    "cost_document", "change_order", "pay_application", "contract", "daily_log",
-    "punchlist", "closeout", "project_controls", "staffing_report",
+    "cost_document", "change_order", "potential_change_order", "pay_application",
+    "contract", "subcontract", "purchase_order", "daily_log", "manpower_log",
+    "punch_list", "punchlist",  # punch_list canonical; punchlist kept for backward compatibility
+    "closeout", "warranty", "operations_maintenance",
+    "cost_report", "project_controls", "staffing_report",
+    "safety", "quality", "inspection",
 })
 # NORMAL also covers unknown-but-real project documents (general_pdf/general_document): they still
 # get a card, just not prioritized ahead of recognized PM/control artifacts. METADATA_ONLY is reserved
@@ -106,6 +110,21 @@ def _build(disposition: SourceValueDisposition, *, reasons: list[str], config: O
         skip_code=code,
         reasons=reasons,
     )
+
+
+def derive_confidence(value: SourceValue) -> str:
+    """Deterministic, explainable confidence label (high/medium/low) for a source card.
+
+    HIGH disposition driven by the document_type itself → ``high``; a HIGH reached only via a
+    filename/path signal promotion → ``medium`` (weaker evidence); NORMAL → ``medium``; everything
+    else (metadata-only/deferred/unsupported) → ``low``. Purely a function of disposition + reasons.
+    """
+    promoted = any(r in ("high_path_signal", "normal_path_signal") for r in value.reasons)
+    if value.disposition is _D.AUTO_CARD_HIGH:
+        return "medium" if promoted else "high"
+    if value.disposition is _D.AUTO_CARD_NORMAL:
+        return "medium"
+    return "low"
 
 
 def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> SourceValue:

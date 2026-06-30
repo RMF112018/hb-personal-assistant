@@ -1,0 +1,16 @@
+{
+  "candidate_count": 67,
+  "generation_status_after": {
+    "not_generated": 67
+  },
+  "generation_status_before": {
+    "generated": 15,
+    "stale": 52
+  },
+  "mode": "apply",
+  "retired_count": 67,
+  "skipped_file_exists_count": 0,
+  "skipped_invalid_path_count": 0,
+  "skipped_not_under_folder_count": 0,
+  "transition": "generated|stale -> not_generated"
+}
