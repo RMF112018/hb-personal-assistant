@@ -28,7 +28,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import (
 from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
 from hb_assistant.store.migrator import SQLiteMigrator
 from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
-from tests.schedule_project_test_helpers import seed_procore_ep_project
+from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
 
 XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
 
@@ -227,8 +227,7 @@ def test_import_minimal_xer_and_persist_graph_diagnostics(tmp_path: Path) -> Non
     # Persisted and readable via the repository.
     repo = ScheduleCpmDiagnosticsRepository(db_path=str(db))
     runs = repo.list_runs(svk)
-    assert len(runs) == 1
-    run = runs[0]
+    run = next(row for row in runs if row["cpm_run_id"] == summary["cpm_run_id"])
     assert run["cpm_run_id"] == summary["cpm_run_id"]
     assert run["is_acyclic"] == 1
     assert json.loads(run["topological_order_json"]) == ["A1000", "A1010"]
@@ -265,6 +264,7 @@ def test_rerun_is_idempotent(tmp_path: Path) -> None:
         import_id=preview["import_id"], project_key="tropical", confirm=True
     )
     svk = commit["schedule_version_key"]
+    clear_schedule_cpm_runs(db, svk)
 
     cpm = ScheduleCpmGraphService(db_path=str(db))
     first = cpm.run_graph_diagnostics(svk)

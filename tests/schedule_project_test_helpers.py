@@ -66,6 +66,35 @@ def seed_procore_ep_project(
     )
 
 
+def clear_schedule_cpm_runs(db_path: str | Path, schedule_version_key: str) -> None:
+    """Remove auto-created CPM rows so tests can exercise isolated stage dependencies."""
+
+    with sqlite3.connect(str(db_path)) as conn:
+        run_ids = [
+            str(row[0])
+            for row in conn.execute(
+                "SELECT cpm_run_id FROM schedule_cpm_runs WHERE schedule_version_key=?",
+                (schedule_version_key,),
+            ).fetchall()
+        ]
+        if not run_ids:
+            return
+        placeholders = ", ".join("?" for _ in run_ids)
+        for table in (
+            "schedule_cpm_path_activities",
+            "schedule_cpm_paths",
+            "schedule_cpm_relationship_results",
+            "schedule_cpm_activity_results",
+            "schedule_cpm_diagnostics",
+        ):
+            conn.execute(f"DELETE FROM {table} WHERE cpm_run_id IN ({placeholders})", run_ids)
+        conn.execute(
+            "DELETE FROM schedule_cpm_runs WHERE schedule_version_key=?",
+            (schedule_version_key,),
+        )
+        conn.commit()
+
+
 def seed_named_schedule_udfs(
     db_path: str | Path,
     *,

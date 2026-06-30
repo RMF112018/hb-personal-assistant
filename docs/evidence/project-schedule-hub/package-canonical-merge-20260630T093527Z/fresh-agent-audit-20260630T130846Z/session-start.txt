@@ -1,0 +1,20 @@
+date_utc=2026-06-30T13:08:46Z
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-canonical-package-merge-20260630T093009Z
+branch=feature/schedule-canonical-package-merge-20260630T093009Z
+head=e5187c8546c4d53f33ab6d8add52187b9604c617
+
+git status:
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/construction/analytics/schedule_package_assembly.py
+ M src/hb_assistant/store/schedule_activity_repository.py
+ M tests/schedule_project_test_helpers.py
+ M tests/test_schedule_cpm_backward_pass.py
+ M tests/test_schedule_cpm_criticality.py
+ M tests/test_schedule_cpm_float.py
+ M tests/test_schedule_cpm_graph.py
+ M tests/test_schedule_cpm_longest_path.py
+ M tests/test_schedule_health_cpm_aggregation.py
+ M tests/test_schedule_import_health_foundation.py
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/
+?? scripts/prove_schedule_canonical_package_merge.py
+?? tests/fixtures/project_schedule_import_packages/

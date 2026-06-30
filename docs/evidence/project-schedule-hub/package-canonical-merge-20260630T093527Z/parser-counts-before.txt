@@ -1,0 +1,26 @@
+PACKAGE TWNU18.zip
+assembly unified_companion_package
+files
+  TWNU18.xer primavera_xer role=current_candidate activities=1378 relationships=3718 baselines=0
+  TWNU18.xml primavera_pmxml role=current_candidate activities=3975 relationships=10156 baselines=2
+currents
+  primavera_xer project_id=1069 name=TWNU18 data_date=2026-05-26 08:00 activities=1378 relationships=3718 codes=5171 udfs=4311
+  primavera_pmxml project_id=TWNU18 name=Tropical World Nursery - U18 05/26/26 data_date=2026-05-26T08:00:00 activities=1378 relationships=3718 codes=5171 udfs=4311
+baselines
+  project_id=TWNU07-BL-OWN name=Tropical World Nursery - U07 04/17/25 activities=1177 relationships=2658 codes=962 udfs=2
+  project_id=TWNU16-BL-PROG name=Tropical World Nursery - U16 01/29/26 activities=1420 relationships=3780 codes=5352 udfs=4474
+merged activities=1378 relationships=3718 codes=9990 udfs=8622 schedule_id=1069 data_date=2026-05-26 08:00
+equivalence {'status': 'compatible', 'primary_source_file_id': 'pf-050a2e8bcbf7-1-47505f6a', 'primary_source_format': 'primavera_xer', 'candidate_count': 2, 'companion_count': 1, 'equivalent_companion_count': 1, 'incompatible_candidate_count': 0}
+PACKAGE TWNU19.zip
+assembly unified_companion_package
+files
+  TWNU19.xer primavera_xer role=current_candidate activities=1507 relationships=3921 baselines=0
+  TWNU19.xml primavera_pmxml role=current_candidate activities=4062 relationships=10297 baselines=2
+currents
+  primavera_xer project_id=1071 name=TWNU19 data_date=2026-06-23 08:00 activities=1507 relationships=3921 codes=5171 udfs=4311
+  primavera_pmxml project_id=TWNU19 name=Tropical World Nursery - U19 06/23/26 data_date=2026-06-23T08:00:00 activities=1507 relationships=3921 codes=5171 udfs=4311
+baselines
+  project_id=TWNU07-BL-OWN name=Tropical World Nursery - U07 04/17/25 activities=1177 relationships=2658 codes=962 udfs=2
+  project_id=TWNU18-BL-PROG name=Tropical World Nursery - U18 05/26/26 activities=1378 relationships=3718 codes=5171 udfs=4311
+merged activities=1507 relationships=3921 codes=9990 udfs=8622 schedule_id=1071 data_date=2026-06-23 08:00
+equivalence {'status': 'compatible', 'primary_source_file_id': 'pf-ac38b94e3379-1-38cc20da', 'primary_source_format': 'primavera_xer', 'candidate_count': 2, 'companion_count': 1, 'equivalent_companion_count': 1, 'incompatible_candidate_count': 0}

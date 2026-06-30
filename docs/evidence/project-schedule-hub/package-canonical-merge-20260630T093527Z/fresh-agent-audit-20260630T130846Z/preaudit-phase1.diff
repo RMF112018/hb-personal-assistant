@@ -1,0 +1,965 @@
+diff --git a/src/hb_assistant/construction/analytics/schedule_import_service.py b/src/hb_assistant/construction/analytics/schedule_import_service.py
+index 49695d9d..5f4d62f4 100644
+--- a/src/hb_assistant/construction/analytics/schedule_import_service.py
++++ b/src/hb_assistant/construction/analytics/schedule_import_service.py
+@@ -1041,10 +1041,17 @@ class ScheduleImportService:
+             project_key=project_key, bundle=bundle, import_id=import_id
+         )
+         existing = self._activity_repo.get_version_summary(version_key)
++        idempotent_reimport = bool(
++            package.package_mode == "zip_package"
++            and existing
++            and str(existing.get("import_status") or "") == "committed"
++            and str(existing.get("source_file_sha256") or "") == file_sha
++        )
+         if (
+             existing
+             and str(existing.get("import_status") or "") == "committed"
+             and not confirm_supersede
++            and not idempotent_reimport
+         ):
+             raise ScheduleImportError(
+                 "duplicate_schedule_version",
+@@ -1074,6 +1081,7 @@ class ScheduleImportService:
+             ).encode()),
+             "column_roles": column_roles,
+             "confirm_supersede": bool(confirm_supersede),
++            "idempotent_reimport": idempotent_reimport,
+             "schedule_version_key": version_key,
+             "duplicate_exists": duplicate_exists,
+             "package": package,
+@@ -1176,7 +1184,8 @@ class ScheduleImportService:
+         )
+         cached_supersede = bool(cached.get("confirm_supersede"))
+         if duplicate_exists:
+-            if not cached_supersede:
++            idempotent_reimport = bool(cached.get("idempotent_reimport"))
++            if not cached_supersede and not idempotent_reimport:
+                 if confirm_supersede:
+                     raise ScheduleImportError(
+                         "schedule_supersede_state_mismatch",
+@@ -1197,7 +1206,7 @@ class ScheduleImportService:
+                         "view_path": duplicate_view_path(version_key),
+                     },
+                 )
+-            if not confirm_supersede:
++            if not confirm_supersede and not idempotent_reimport:
+                 raise ScheduleImportError(
+                     "schedule_supersede_confirmation_required",
+                     message="supersede preview requires explicit commit confirmation",
+@@ -1766,7 +1775,23 @@ class ScheduleImportService:
+         )
+         self._activity_repo.bulk_upsert_activities(activities, conn=conn)
+ 
+-        rels = [{**base, **r, "raw_json_redacted": json.dumps(r, default=str)} for r in bundle.relationships]
++        rel_cols = {
++            "predecessor_activity_id",
++            "successor_activity_id",
++            "relationship_type",
++            "lag_value",
++            "lag_unit",
++            "source_relationship_object_id",
++            "source_row_hash",
++        }
++        rels = [
++            {
++                **base,
++                **{k: r.get(k) for k in rel_cols},
++                "raw_json_redacted": json.dumps(r, default=str),
++            }
++            for r in bundle.relationships
++        ]
+         self._activity_repo.bulk_insert_table("procore_ep_schedule_relationships", rels, conn=conn)
+ 
+         wbs = [{**base, **w} for w in bundle.wbs_nodes]
+diff --git a/src/hb_assistant/construction/analytics/schedule_package_assembly.py b/src/hb_assistant/construction/analytics/schedule_package_assembly.py
+index 5bccd1e1..cb2fa261 100644
+--- a/src/hb_assistant/construction/analytics/schedule_package_assembly.py
++++ b/src/hb_assistant/construction/analytics/schedule_package_assembly.py
+@@ -71,7 +71,7 @@ def assemble_schedule_package(package: ParsedSchedulePackage) -> ParsedScheduleP
+             },
+         )
+ 
+-    merged = _merge_current_bundle(primary, companions)
++    merged = _merge_current_bundle(primary, companions, package=package)
+     package.selected_current_entity = primary
+     package.primary_current_entity = primary
+     package.companion_current_entities = companions
+@@ -117,7 +117,7 @@ def _relationship_keys(entity: ParsedScheduleEntity) -> set[tuple[str, str, str,
+             (
+                 pred,
+                 succ,
+-                _normal(rel.get("relationship_type") or "FS"),
++                _relationship_type_key(rel.get("relationship_type")),
+                 _normal(rel.get("lag_value") or "0"),
+                 _normal(rel.get("lag_unit") or ""),
+             )
+@@ -254,6 +254,8 @@ def _equivalence_fact(
+ def _merge_current_bundle(
+     primary: ParsedScheduleEntity,
+     companions: list[ParsedScheduleEntity],
++    *,
++    package: ParsedSchedulePackage | None = None,
+ ) -> ParsedScheduleBundle:
+     bundle = primary.to_bundle()
+     bundle.schedule_options = dict(bundle.schedule_options or {})
+@@ -262,19 +264,273 @@ def _merge_current_bundle(
+     bundle.schedule_options["companion_source_formats"] = sorted(
+         {e.source_format for e in companions if e.source_format}
+     )
+-    bundle.code_assignments = _merge_rows(
+-        primary.code_assignments,
+-        [row for e in companions for row in e.code_assignments],
++    source_meta = _source_metadata(package)
++    bundle.activities = _merge_activity_rows(primary, companions, source_meta=source_meta)
++    bundle.relationships = _merge_relationship_rows(primary, companions, source_meta=source_meta)
++    bundle.code_assignments = _merge_canonical_collection(
++        primary,
++        companions,
++        attr="code_assignments",
+         keys=("activity_id", "code_type", "code_value"),
++        source_meta=source_meta,
+     )
+-    bundle.udf_values = _merge_rows(
+-        primary.udf_values,
+-        [row for e in companions for row in e.udf_values],
+-        keys=("activity_id", "udf_type_name", "udf_value", "source_object_id"),
++    bundle.udf_values = _merge_canonical_collection(
++        primary,
++        companions,
++        attr="udf_values",
++        keys=("activity_id", "udf_type_name", "udf_value"),
++        source_meta=source_meta,
+     )
+     return bundle
+ 
+ 
++def _source_metadata(package: ParsedSchedulePackage | None) -> dict[str, dict[str, Any]]:
++    if package is None:
++        return {}
++    return {
++        str(file.source_file_id): {
++            "source_file_id": file.source_file_id,
++            "filename": file.filename,
++            "source_format": file.source_format,
++            "parser_name": file.parser_name,
++            "parser_version": file.parser_version,
++        }
++        for file in package.files
++    }
++
++
++def _entity_meta(
++    entity: ParsedScheduleEntity,
++    source_meta: dict[str, dict[str, Any]],
++) -> dict[str, Any]:
++    meta = source_meta.get(str(entity.source_file_id), {})
++    return {
++        "source_file_id": entity.source_file_id,
++        "filename": meta.get("filename"),
++        "source_format": entity.source_format,
++        "parser_name": meta.get("parser_name"),
++        "parser_version": meta.get("parser_version"),
++    }
++
++
++def _has_value(value: Any) -> bool:
++    return value is not None and str(value).strip() != ""
++
++
++def _canonical_activity_id(row: dict[str, Any]) -> str:
++    return _normal(row.get("activity_id"))
++
++
++def _merge_activity_rows(
++    primary: ParsedScheduleEntity,
++    companions: list[ParsedScheduleEntity],
++    *,
++    source_meta: dict[str, dict[str, Any]],
++) -> list[dict[str, Any]]:
++    merged: dict[str, dict[str, Any]] = {}
++    order: list[str] = []
++    source_order = [primary, *companions]
++    for entity in source_order:
++        meta = _entity_meta(entity, source_meta)
++        for row in entity.activities:
++            key = _canonical_activity_id(row)
++            if not key:
++                continue
++            if key not in merged:
++                merged[key] = dict(row)
++                order.append(key)
++            _merge_activity_into(
++                merged[key],
++                row,
++                source_meta=meta,
++            )
++    out = [merged[key] for key in order]
++    for row in out:
++        row["source_row_hash"] = _row_hash({k: row[k] for k in row if k != "source_row_hash"})
++    return out
++
++
++def _merge_activity_into(
++    target: dict[str, Any],
++    incoming: dict[str, Any],
++    *,
++    source_meta: dict[str, Any],
++) -> None:
++    lineage = _json_list(target.get("field_lineage_json"))
++    conflicts = _json_list(target.get("field_conflicts_json"))
++    object_ids = _json_list(target.get("source_object_ids_json"))
++    merged_sources = _json_list(target.get("merged_from_files_json"))
++    source_object_id = incoming.get("source_activity_object_id")
++    if _has_value(source_object_id):
++        entry = {**source_meta, "source_activity_object_id": source_object_id}
++        if entry not in object_ids:
++            object_ids.append(entry)
++    file_entry = {k: source_meta.get(k) for k in ("source_file_id", "filename", "source_format", "parser_name", "parser_version")}
++    if file_entry not in merged_sources:
++        merged_sources.append(file_entry)
++    skip = {
++        "source_row_hash",
++        "field_lineage_json",
++        "field_conflicts_json",
++        "source_object_ids_json",
++        "merged_from_files_json",
++        "raw_merged_json",
++    }
++    for field, value in incoming.items():
++        if field in skip:
++            continue
++        existing = target.get(field)
++        selected = existing
++        strategy = "kept_existing"
++        if not _has_value(existing) and _has_value(value):
++            target[field] = value
++            selected = value
++            strategy = "filled_empty"
++        elif _has_value(existing) and _has_value(value):
++            if str(existing) == str(value):
++                strategy = "confirmed_equal"
++            else:
++                strategy = "conflict_kept_existing"
++                conflicts.append(
++                    {
++                        "field": field,
++                        "selected_value": existing,
++                        "conflicting_value": value,
++                        "source": source_meta,
++                    }
++                )
++        elif _has_value(existing):
++            strategy = "ignored_empty"
++        lineage.append(
++            {
++                "field": field,
++                "source": source_meta,
++                "source_object_id": source_object_id,
++                "value": value,
++                "selected_value": selected,
++                "strategy": strategy,
++            }
++        )
++    target["field_lineage_json"] = json.dumps(lineage, sort_keys=True, default=str)
++    target["field_conflicts_json"] = json.dumps(conflicts, sort_keys=True, default=str)
++    target["source_object_ids_json"] = json.dumps(object_ids, sort_keys=True, default=str)
++    target["merged_from_files_json"] = json.dumps(merged_sources, sort_keys=True, default=str)
++    target["raw_merged_json"] = json.dumps(
++        {
++            "merged_from_files": merged_sources,
++            "source_object_ids": object_ids,
++            "field_conflicts": conflicts,
++        },
++        sort_keys=True,
++        default=str,
++    )
++
++
++def _json_list(value: Any) -> list[Any]:
++    if isinstance(value, list):
++        return list(value)
++    if not value:
++        return []
++    try:
++        parsed = json.loads(str(value))
++    except (TypeError, ValueError):
++        return []
++    return parsed if isinstance(parsed, list) else []
++
++
++def _relationship_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
++    return (
++        _normal(row.get("predecessor_activity_id")),
++        _normal(row.get("successor_activity_id")),
++        _relationship_type_key(row.get("relationship_type")),
++        _normal(row.get("lag_value") or "0"),
++    )
++
++
++def _relationship_type_key(value: Any) -> str:
++    raw = str(value or "FS").strip().lower()
++    return {
++        "finish to start": "fs",
++        "finish-to-start": "fs",
++        "fs": "fs",
++        "finish to finish": "ff",
++        "finish-to-finish": "ff",
++        "ff": "ff",
++        "start to start": "ss",
++        "start-to-start": "ss",
++        "ss": "ss",
++        "start to finish": "sf",
++        "start-to-finish": "sf",
++        "sf": "sf",
++    }.get(raw, _normal(raw))
++
++
++def _merge_relationship_rows(
++    primary: ParsedScheduleEntity,
++    companions: list[ParsedScheduleEntity],
++    *,
++    source_meta: dict[str, dict[str, Any]],
++) -> list[dict[str, Any]]:
++    out: list[dict[str, Any]] = []
++    by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
++    for entity in [primary, *companions]:
++        meta = _entity_meta(entity, source_meta)
++        for row in entity.relationships:
++            key = _relationship_key(row)
++            if not key[0] or not key[1]:
++                continue
++            if key not in by_key:
++                merged = dict(row)
++                merged["merged_from_files_json"] = json.dumps([meta], sort_keys=True, default=str)
++                if _has_value(row.get("source_relationship_object_id")):
++                    merged["source_relationship_object_ids_json"] = json.dumps(
++                        [{**meta, "source_relationship_object_id": row.get("source_relationship_object_id")}],
++                        sort_keys=True,
++                        default=str,
++                    )
++                by_key[key] = merged
++                out.append(merged)
++                continue
++            merged = by_key[key]
++            files = _json_list(merged.get("merged_from_files_json"))
++            if meta not in files:
++                files.append(meta)
++            merged["merged_from_files_json"] = json.dumps(files, sort_keys=True, default=str)
++            if _has_value(row.get("source_relationship_object_id")):
++                ids = _json_list(merged.get("source_relationship_object_ids_json"))
++                entry = {**meta, "source_relationship_object_id": row.get("source_relationship_object_id")}
++                if entry not in ids:
++                    ids.append(entry)
++                merged["source_relationship_object_ids_json"] = json.dumps(ids, sort_keys=True, default=str)
++    for row in out:
++        row["source_row_hash"] = _row_hash({k: row[k] for k in row if k != "source_row_hash"})
++    return out
++
++
++def _merge_canonical_collection(
++    primary: ParsedScheduleEntity,
++    companions: list[ParsedScheduleEntity],
++    *,
++    attr: str,
++    keys: tuple[str, ...],
++    source_meta: dict[str, dict[str, Any]],
++) -> list[dict[str, Any]]:
++    primary_rows = [dict(r) for r in getattr(primary, attr)]
++    companion_rows = [dict(r) for e in companions for r in getattr(e, attr)]
++    # Real equivalent XER/XML exports can encode the same code/UDF dimensions with
++    # different display labels. If both sources cover the same current activities and
++    # have the same row count, keep one canonical set and persist companion evidence
++    # through package field lineage instead of doubling analytical rows.
++    if (
++        companions
++        and primary_rows
++        and sum(len(getattr(e, attr)) for e in companions) == len(primary_rows)
++        and all(_activity_ids(e) == _activity_ids(primary) for e in companions)
++    ):
++        return primary_rows
++    return _merge_rows(primary_rows, companion_rows, keys=keys)
++
++
+ def _merge_rows(
+     primary_rows: list[dict[str, Any]],
+     companion_rows: list[dict[str, Any]],
+@@ -296,6 +552,10 @@ def _row_key(row: dict[str, Any], keys: tuple[str, ...]) -> tuple[str, ...]:
+     return tuple(_normal(row.get(k)) for k in keys)
+ 
+ 
++def _row_hash(payload: dict[str, Any]) -> str:
++    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
++
++
+ def _source_file(package: ParsedSchedulePackage, source_file_id: str | None) -> str | None:
+     for file in package.files:
+         if file.source_file_id == source_file_id:
+diff --git a/src/hb_assistant/store/schedule_activity_repository.py b/src/hb_assistant/store/schedule_activity_repository.py
+index 01404eb3..942a31e0 100644
+--- a/src/hb_assistant/store/schedule_activity_repository.py
++++ b/src/hb_assistant/store/schedule_activity_repository.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ 
++import json
+ import sqlite3
+ from contextlib import contextmanager
+ from typing import Any, Iterable, Iterator
+@@ -100,6 +101,17 @@ _ACTIVITY_COLS = (
+ )
+ 
+ 
++def _loads_json(value: Any) -> Any:
++    if value in (None, ""):
++        return {}
++    if isinstance(value, (dict, list)):
++        return value
++    try:
++        return json.loads(str(value))
++    except (TypeError, ValueError, json.JSONDecodeError):
++        return {}
++
++
+ class ScheduleActivityRepository:
+     def __init__(self, *, db_path: str) -> None:
+         self._db_path = db_path
+@@ -303,6 +315,36 @@ class ScheduleActivityRepository:
+             )
+             return [dict(r) for r in cur.fetchall()]
+ 
++    def get_activity_merge_lineage(
++        self, *, schedule_version_key: str, activity_id: str
++    ) -> dict[str, Any] | None:
++        """Return inspectable canonical package merge lineage for one activity."""
++
++        with self._conn() as conn:
++            row = conn.execute(
++                """
++                SELECT activity_id, source_activity_object_id, raw_source_fields_json
++                FROM procore_ep_schedule_activities
++                WHERE schedule_version_key=? AND activity_id=?
++                ORDER BY updated_at DESC, id DESC
++                LIMIT 1
++                """,
++                (schedule_version_key, activity_id),
++            ).fetchone()
++        if row is None:
++            return None
++        raw = _loads_json(dict(row).get("raw_source_fields_json"))
++        return {
++            "schedule_version_key": schedule_version_key,
++            "activity_id": activity_id,
++            "source_activity_object_id": row["source_activity_object_id"],
++            "merged_from_files": _loads_json(raw.get("merged_from_files_json")),
++            "source_object_ids": _loads_json(raw.get("source_object_ids_json")),
++            "field_lineage": _loads_json(raw.get("field_lineage_json")),
++            "field_conflicts": _loads_json(raw.get("field_conflicts_json")),
++            "raw_merged": _loads_json(raw.get("raw_merged_json")),
++        }
++
+     def list_relationships(self, schedule_version_key: str) -> list[dict[str, Any]]:
+         with self._conn() as conn:
+             cur = conn.execute(
+diff --git a/tests/schedule_project_test_helpers.py b/tests/schedule_project_test_helpers.py
+index c7249d77..fb2579f2 100644
+--- a/tests/schedule_project_test_helpers.py
++++ b/tests/schedule_project_test_helpers.py
+@@ -66,6 +66,35 @@ def seed_procore_ep_project(
+     )
+ 
+ 
++def clear_schedule_cpm_runs(db_path: str | Path, schedule_version_key: str) -> None:
++    """Remove auto-created CPM rows so tests can exercise isolated stage dependencies."""
++
++    with sqlite3.connect(str(db_path)) as conn:
++        run_ids = [
++            str(row[0])
++            for row in conn.execute(
++                "SELECT cpm_run_id FROM schedule_cpm_runs WHERE schedule_version_key=?",
++                (schedule_version_key,),
++            ).fetchall()
++        ]
++        if not run_ids:
++            return
++        placeholders = ", ".join("?" for _ in run_ids)
++        for table in (
++            "schedule_cpm_path_activities",
++            "schedule_cpm_paths",
++            "schedule_cpm_relationship_results",
++            "schedule_cpm_activity_results",
++            "schedule_cpm_diagnostics",
++        ):
++            conn.execute(f"DELETE FROM {table} WHERE cpm_run_id IN ({placeholders})", run_ids)
++        conn.execute(
++            "DELETE FROM schedule_cpm_runs WHERE schedule_version_key=?",
++            (schedule_version_key,),
++        )
++        conn.commit()
++
++
+ def seed_named_schedule_udfs(
+     db_path: str | Path,
+     *,
+@@ -162,4 +191,4 @@ def seed_schedule_quality_findings(
+                 f"Quality finding {finding_code} on {activity_id}",
+             ),
+         )
+-        conn.commit()
+\ No newline at end of file
++        conn.commit()
+diff --git a/tests/test_schedule_cpm_backward_pass.py b/tests/test_schedule_cpm_backward_pass.py
+index 18cfd215..25fd1d44 100644
+--- a/tests/test_schedule_cpm_backward_pass.py
++++ b/tests/test_schedule_cpm_backward_pass.py
+@@ -31,7 +31,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import build_graph
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ ANCHOR = datetime(2026, 1, 1)
+@@ -317,7 +317,9 @@ def _import_minimal(tmp_path: Path):
+         filename=XER_FIXTURE.name, data=XER_FIXTURE.read_bytes(), project_key="tropical"
+     )
+     commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+-    return db, commit["schedule_version_key"]
++    svk = commit["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
++    return db, svk
+ 
+ 
+ def test_import_run_forward_then_backward_persists_late_dates(tmp_path: Path) -> None:
+diff --git a/tests/test_schedule_cpm_criticality.py b/tests/test_schedule_cpm_criticality.py
+index 1bc23ef2..f9a44332 100644
+--- a/tests/test_schedule_cpm_criticality.py
++++ b/tests/test_schedule_cpm_criticality.py
+@@ -28,7 +28,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import build_graph
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ 
+@@ -222,7 +222,9 @@ def _import_minimal(tmp_path: Path):
+         filename=XER_FIXTURE.name, data=XER_FIXTURE.read_bytes(), project_key="tropical"
+     )
+     commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+-    return db, commit["schedule_version_key"]
++    svk = commit["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
++    return db, svk
+ 
+ 
+ def _full_chain(cpm, svk):
+diff --git a/tests/test_schedule_cpm_float.py b/tests/test_schedule_cpm_float.py
+index 32d4629a..ea737111 100644
+--- a/tests/test_schedule_cpm_float.py
++++ b/tests/test_schedule_cpm_float.py
+@@ -32,7 +32,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import build_graph
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ ANCHOR = datetime(2026, 1, 1)
+@@ -392,7 +392,9 @@ def _import_minimal(tmp_path: Path):
+         filename=XER_FIXTURE.name, data=XER_FIXTURE.read_bytes(), project_key="tropical"
+     )
+     commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+-    return db, commit["schedule_version_key"]
++    svk = commit["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
++    return db, svk
+ 
+ 
+ def test_import_full_chain_then_float_persists(tmp_path: Path) -> None:
+diff --git a/tests/test_schedule_cpm_graph.py b/tests/test_schedule_cpm_graph.py
+index 703007f5..6dc02148 100644
+--- a/tests/test_schedule_cpm_graph.py
++++ b/tests/test_schedule_cpm_graph.py
+@@ -28,7 +28,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import (
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ 
+@@ -227,8 +227,7 @@ def test_import_minimal_xer_and_persist_graph_diagnostics(tmp_path: Path) -> Non
+     # Persisted and readable via the repository.
+     repo = ScheduleCpmDiagnosticsRepository(db_path=str(db))
+     runs = repo.list_runs(svk)
+-    assert len(runs) == 1
+-    run = runs[0]
++    run = next(row for row in runs if row["cpm_run_id"] == summary["cpm_run_id"])
+     assert run["cpm_run_id"] == summary["cpm_run_id"]
+     assert run["is_acyclic"] == 1
+     assert json.loads(run["topological_order_json"]) == ["A1000", "A1010"]
+@@ -265,6 +264,7 @@ def test_rerun_is_idempotent(tmp_path: Path) -> None:
+         import_id=preview["import_id"], project_key="tropical", confirm=True
+     )
+     svk = commit["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
+ 
+     cpm = ScheduleCpmGraphService(db_path=str(db))
+     first = cpm.run_graph_diagnostics(svk)
+diff --git a/tests/test_schedule_cpm_longest_path.py b/tests/test_schedule_cpm_longest_path.py
+index 8c5912de..b865d824 100644
+--- a/tests/test_schedule_cpm_longest_path.py
++++ b/tests/test_schedule_cpm_longest_path.py
+@@ -33,7 +33,7 @@ from hb_assistant.construction.analytics.schedule_cpm_longest_path import (
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ ANCHOR = datetime(2026, 1, 1)
+@@ -353,7 +353,9 @@ def _import_minimal(tmp_path: Path):
+         filename=XER_FIXTURE.name, data=XER_FIXTURE.read_bytes(), project_key="tropical"
+     )
+     commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
+-    return db, commit["schedule_version_key"]
++    svk = commit["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
++    return db, svk
+ 
+ 
+ def test_full_chain_then_longest_path_persists(tmp_path: Path) -> None:
+diff --git a/tests/test_schedule_health_cpm_aggregation.py b/tests/test_schedule_health_cpm_aggregation.py
+index dae2a959..215dc0f0 100644
+--- a/tests/test_schedule_health_cpm_aggregation.py
++++ b/tests/test_schedule_health_cpm_aggregation.py
+@@ -14,7 +14,7 @@ from hb_assistant.construction.analytics.api import create_app
+ from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
+ from hb_assistant.store.migrator import SQLiteMigrator
+ from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
+-from tests.schedule_project_test_helpers import seed_procore_ep_project
++from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
+ 
+ XER = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+ 
+@@ -44,7 +44,9 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, str]:
+         headers=_op(),
+         json={"import_id": import_id, "project_key": "tropical", "confirm": True},
+     )
+-    return client, commit.json()["schedule_version_key"], str(db)
++    svk = commit.json()["schedule_version_key"]
++    clear_schedule_cpm_runs(db, svk)
++    return client, svk, str(db)
+ 
+ 
+ def _run_chain(db: str, svk: str) -> None:
+diff --git a/tests/test_schedule_import_health_foundation.py b/tests/test_schedule_import_health_foundation.py
+index b58c104c..936db9a7 100644
+--- a/tests/test_schedule_import_health_foundation.py
++++ b/tests/test_schedule_import_health_foundation.py
+@@ -3,6 +3,7 @@
+ from __future__ import annotations
+ 
+ import io
++import json
+ import sqlite3
+ import zipfile
+ from pathlib import Path
+@@ -16,8 +17,17 @@ except RuntimeError as exc:  # pragma: no cover - environment guard
+     pytest.skip(str(exc), allow_module_level=True)
+ 
+ from hb_assistant.construction.analytics import create_app
++from hb_assistant.construction.analytics.schedule_file_parser import (
++    ParsedScheduleEntity,
++    ParsedScheduleFile,
++    ParsedSchedulePackage,
++)
++from hb_assistant.construction.analytics.schedule_package_assembly import (
++    assemble_schedule_package,
++)
+ from hb_assistant.construction.analytics.schedule_xml_parser import parse_pmxml_package_bytes
+ from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
++from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
+ from hb_assistant.store.schedule_import_health_tables import (
+     V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
+     V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
+@@ -26,6 +36,25 @@ from hb_assistant.store.schedule_import_repository import ScheduleImportReposito
+ from tests.schedule_project_test_helpers import seed_procore_ep_project
+ 
+ XER_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
++PACKAGE_FIXTURES = (
++    (
++        "TWNU18.zip",
++        1378,
++        3718,
++        5171,
++        4311,
++        (("TWNU07-BL-OWN", 1177, 2658), ("TWNU16-BL-PROG", 1420, 3780)),
++    ),
++    (
++        "TWNU19.zip",
++        1507,
++        3921,
++        5171,
++        4311,
++        (("TWNU07-BL-OWN", 1177, 2658), ("TWNU18-BL-PROG", 1378, 3718)),
++    ),
++)
++PACKAGE_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "project_schedule_import_packages"
+ 
+ 
+ def _operator() -> dict[str, str]:
+@@ -460,6 +489,246 @@ def test_zip_xer_xml_current_companions_import_as_unified_schedule(tmp_path: Pat
+     }
+ 
+ 
++def test_canonical_activity_merge_records_inspectable_field_conflict() -> None:
++    package = ParsedSchedulePackage(
++        package_id="pkg-conflict",
++        package_mode="zip_package",
++        files=[
++            ParsedScheduleFile(
++                source_file_id="xer-file",
++                filename="conflict.xer",
++                source_type="xer",
++                source_format="primavera_xer",
++                parser_name="schedule_xer_parser",
++                parser_version="1.0.0",
++            ),
++            ParsedScheduleFile(
++                source_file_id="xml-file",
++                filename="conflict.xml",
++                source_type="xml",
++                source_format="primavera_pmxml",
++                parser_name="schedule_xml_parser",
++                parser_version="1.2.0",
++            ),
++        ],
++        schedule_entities=[
++            ParsedScheduleEntity(
++                role="current",
++                source_format="primavera_xer",
++                source_file_id="xer-file",
++                project_id="DEMO",
++                project_name="Demo",
++                data_date="2026-06-01",
++                activities=[
++                    {
++                        "activity_id": "A1",
++                        "source_activity_object_id": "100",
++                        "activity_name": "Primary Name",
++                    }
++                ],
++            ),
++            ParsedScheduleEntity(
++                role="current",
++                source_format="primavera_pmxml",
++                source_file_id="xml-file",
++                project_id="DEMO",
++                project_name="Demo",
++                data_date="2026-06-01",
++                activities=[
++                    {
++                        "activity_id": "A1",
++                        "source_activity_object_id": "100",
++                        "activity_name": "Conflicting Name",
++                        "activity_status": "Active",
++                    }
++                ],
++            ),
++        ],
++    )
++
++    assembled = assemble_schedule_package(package)
++    activity = assembled.merged_current_bundle.activities[0]
++    conflicts = json.loads(activity["field_conflicts_json"])
++    lineage = json.loads(activity["field_lineage_json"])
++    merged_files = json.loads(activity["merged_from_files_json"])
++
++    assert activity["activity_name"] == "Primary Name"
++    assert activity["activity_status"] == "Active"
++    assert any(c["field"] == "activity_name" for c in conflicts)
++    assert {f["filename"] for f in merged_files} == {"conflict.xer", "conflict.xml"}
++    assert any(row["field"] == "activity_status" and row["strategy"] == "filled_empty" for row in lineage)
++
++
++@pytest.mark.parametrize(
++    (
++        "fixture_name",
++        "activity_count",
++        "relationship_count",
++        "code_count",
++        "udf_count",
++        "baseline_expectations",
++    ),
++    PACKAGE_FIXTURES,
++)
++def test_real_twn_xer_xml_zip_import_is_canonical_and_idempotent(
++    tmp_path: Path,
++    fixture_name: str,
++    activity_count: int,
++    relationship_count: int,
++    code_count: int,
++    udf_count: int,
++    baseline_expectations: tuple[tuple[str, int, int], ...],
++) -> None:
++    db = tmp_path / f"{fixture_name}.db"
++    SQLiteMigrator(db_path=str(db)).apply()
++    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
++    client = TestClient(create_app(db_path=str(db)))
++    fixture = PACKAGE_FIXTURE_DIR / fixture_name
++    assert fixture.exists(), fixture
++
++    def _preview_and_commit() -> dict:
++        preview = client.post(
++            "/api/schedules/import-preview",
++            headers=_operator(),
++            files={"file": (fixture.name, fixture.read_bytes(), "application/zip")},
++            data={"project_key": "tropical"},
++        )
++        assert preview.status_code == 200, preview.text
++        body = preview.json()
++        assert body["assembly_mode"] == "unified_companion_package"
++        assert body["activity_count"] == activity_count
++        assert body["relationship_count"] == relationship_count
++        assert body["code_count"] == code_count
++        assert body["udf_count"] == udf_count
++        assert body["equivalence_report"]["status"] == "compatible"
++        assert len(body["baseline_project_candidates"]) == 2
++        commit = client.post(
++            "/api/schedules/import-commit",
++            headers=_operator(),
++            json={"import_id": body["import_id"], "project_key": "tropical", "confirm": True},
++        )
++        assert commit.status_code == 200, commit.text
++        return commit.json()
++
++    first = _preview_and_commit()
++    second = _preview_and_commit()
++    svk = second["schedule_version_key"]
++    assert first["schedule_version_key"] == svk
++    assert second["supersede_performed"] is True
++    assert second["superseded_import_id"] == first["import_id"]
++    assert second["activity_count"] == activity_count
++    assert second["computed_activity_count"] == activity_count
++
++    with sqlite3.connect(db) as conn:
++        conn.row_factory = sqlite3.Row
++        counts = dict(
++            conn.execute(
++                """
++                SELECT
++                  (SELECT COUNT(*) FROM schedule_file_imports
++                   WHERE schedule_version_key=? AND import_status='committed') AS committed_imports,
++                  (SELECT COUNT(*) FROM procore_ep_schedule_activities
++                   WHERE schedule_version_key=?) AS activities,
++                  (SELECT COUNT(*) FROM procore_ep_schedule_relationships
++                   WHERE schedule_version_key=?) AS relationships,
++                  (SELECT COUNT(*) FROM procore_ep_schedule_activity_code_assignments
++                   WHERE schedule_version_key=?) AS codes,
++                  (SELECT COUNT(*) FROM procore_ep_schedule_udf_values
++                   WHERE schedule_version_key=?) AS udfs,
++                  (SELECT COUNT(*) FROM schedule_baseline_projects
++                   WHERE current_schedule_version_key=?) AS baselines
++                """,
++                (svk, svk, svk, svk, svk, svk),
++            ).fetchone()
++        )
++        duplicate_buckets = dict(
++            conn.execute(
++                """
++                SELECT
++                  (SELECT COUNT(*) FROM (
++                    SELECT activity_id FROM procore_ep_schedule_activities
++                    WHERE schedule_version_key=?
++                    GROUP BY schedule_version_key, activity_id HAVING COUNT(*) > 1
++                  )) AS activity_dupes,
++                  (SELECT COUNT(*) FROM (
++                    SELECT predecessor_activity_id, successor_activity_id, relationship_type, lag_value
++                    FROM procore_ep_schedule_relationships
++                    WHERE schedule_version_key=?
++                    GROUP BY schedule_version_key, predecessor_activity_id, successor_activity_id,
++                             relationship_type, lag_value
++                    HAVING COUNT(*) > 1
++                  )) AS relationship_dupes,
++                  (SELECT COUNT(*) FROM (
++                    SELECT activity_id, code_type, code_value
++                    FROM procore_ep_schedule_activity_code_assignments
++                    WHERE schedule_version_key=?
++                    GROUP BY schedule_version_key, activity_id, code_type, code_value
++                    HAVING COUNT(*) > 1
++                  )) AS code_dupes,
++                  (SELECT COUNT(*) FROM (
++                    SELECT activity_id, udf_type_name, udf_value
++                    FROM procore_ep_schedule_udf_values
++                    WHERE schedule_version_key=?
++                    GROUP BY schedule_version_key, activity_id, udf_type_name, udf_value
++                    HAVING COUNT(*) > 1
++                  )) AS udf_dupes
++                """,
++                (svk, svk, svk, svk),
++            ).fetchone()
++        )
++        baseline_rows = [
++            (row["baseline_project_id"], row["activity_count"], row["relationship_count"])
++            for row in conn.execute(
++                """
++                SELECT baseline_project_id, activity_count, relationship_count
++                FROM schedule_baseline_projects
++                WHERE current_schedule_version_key=?
++                ORDER BY baseline_project_id
++                """,
++                (svk,),
++            ).fetchall()
++        ]
++        sample_activity = conn.execute(
++            """
++            SELECT activity_id FROM procore_ep_schedule_activities
++            WHERE schedule_version_key=?
++            ORDER BY activity_id
++            LIMIT 1
++            """,
++            (svk,),
++        ).fetchone()["activity_id"]
++
++    assert counts == {
++        "committed_imports": 1,
++        "activities": activity_count,
++        "relationships": relationship_count,
++        "codes": code_count,
++        "udfs": udf_count,
++        "baselines": 2,
++    }
++    assert duplicate_buckets == {
++        "activity_dupes": 0,
++        "relationship_dupes": 0,
++        "code_dupes": 0,
++        "udf_dupes": 0,
++    }
++    assert baseline_rows == sorted(baseline_expectations)
++
++    lineage = ScheduleActivityRepository(db_path=str(db)).get_activity_merge_lineage(
++        schedule_version_key=svk,
++        activity_id=sample_activity,
++    )
++    assert lineage is not None
++    assert {row["filename"] for row in lineage["merged_from_files"]} == {
++        fixture_name.replace(".zip", ".xer"),
++        fixture_name.replace(".zip", ".xml"),
++    }
++    assert {row["source_format"] for row in lineage["source_object_ids"]} == {
++        "primavera_xer",
++        "primavera_pmxml",
++    }
++
++
+ def test_package_evidence_operational_error_returns_structured_persistence_failure(
+     tmp_path: Path,
+     monkeypatch: pytest.MonkeyPatch,
