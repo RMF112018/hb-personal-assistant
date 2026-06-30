@@ -669,7 +669,7 @@ def _contracts() -> tuple[VisualizationMetricContract, ...]:
             metric_key="critical_issues_category_model",
             display_name="Critical Issues Category Model",
             category="review_cue",
-            pm_facing_purpose="Define issue categories for future critical issue panels and review item generation.",
+            pm_facing_purpose="Define issue categories for critical issue panels and category-level review cues.",
             formula_summary="Classify issue candidates into five PM-facing categories with severity, drilldown basis, review eligibility, and caveats.",
             formula_detail=(
                 "Categories: negative float and critical path erosion; schedule compression on critical path; logic and quality findings; execution and status gaps; "
@@ -692,11 +692,11 @@ def _contracts() -> tuple[VisualizationMetricContract, ...]:
             configurable_thresholds={"high_priority_min_score": 80, "medium_priority_min_score": 50},
             configurable_weights={"float_erosion": 0.25, "compression": 0.2, "logic_quality": 0.2, "execution_status": 0.2, "review_external": 0.15},
             readiness_status="ready_after_udf_normalization",
-            blockers=("review item generation remains deferred to a later workbench phase",),
+            blockers=(),
             caveats=(NON_CAUSATION_CAVEAT, "Review item eligibility is advisory until operator action."),
             future_api_payload_shape=_shape("category", "severity", "candidate_count", "drilldown_basis", "review_item_eligible"),
             required_tests=("five categories are documented", "non-causation caveat is present", "UDF dependency blocks ready_now"),
-            notes=("This model defines future critical issue panels; Phase 5 does not create review items.",),
+            notes=("Category-level review cues materialize in Phase 8C when candidate counts are positive.",),
             basis_labels=("source_export", "computed_cpm", "quality_derived", "prior_update", "current_update", "udf_derived"),
         ),
     )

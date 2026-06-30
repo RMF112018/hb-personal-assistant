@@ -322,6 +322,250 @@ class ProjectScheduleUdfNormalizationService:
             data_date=data_date,
         )
 
+    def get_should_have_finished_activity_cues(
+        self,
+        *,
+        project_key: str,
+        version_key: str,
+        as_of_date: date,
+        limit: int = 25,
+    ) -> list[dict[str, Any]]:
+        payload = self.build_metric_payload(
+            metric_key="should_have_finished_status",
+            project_key=project_key,
+            version_key=version_key,
+            as_of_date=as_of_date,
+        )
+        if not payload.get("available"):
+            return []
+        confidence = (
+            "partial_dimension_support"
+            if payload.get("partial_dimension_support")
+            else "production_backed"
+        )
+        at_risk_float_days = 5
+        dimensions = {
+            rec["activity_id"]: rec
+            for rec in self.get_normalized_activity_dimensions(
+                project_key=project_key,
+                version_key=version_key,
+            )["records"]
+        }
+        cues: list[dict[str, Any]] = []
+        cpm_run = self._canonical.selected_cpm_run(version_key)
+        cpm_flags: dict[str, dict[str, Any]] = {}
+        if cpm_run:
+            with open_connection(self._db_path) as conn:
+                rows = conn.execute(
+                    """
+                    SELECT activity_id, computed_total_float
+                    FROM schedule_cpm_activity_results
+                    WHERE schedule_version_key=? AND cpm_run_id=?
+                    """,
+                    (version_key, cpm_run["cpm_run_id"]),
+                ).fetchall()
+                cpm_flags = {str(r["activity_id"]): dict(r) for r in rows}
+        with open_connection(self._db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT activity_id, activity_name, wbs_code, planned_finish, early_finish,
+                       actual_finish, total_float, derived_total_float_days, explicit_total_float_days
+                FROM procore_ep_schedule_activities
+                WHERE schedule_version_key=?
+                """,
+                (version_key,),
+            ).fetchall()
+        for row in rows:
+            aid = str(row["activity_id"])
+            dim = dimensions.get(aid, {})
+            if dim.get("filter_out_parsed") is True:
+                continue
+            due = _parse_date(row["planned_finish"]) or _parse_date(row["early_finish"])
+            if not due or due > as_of_date:
+                continue
+            if _parse_date(row["actual_finish"]) is not None:
+                continue
+            float_days = self._activity_float(row, cpm_flags.get(aid))
+            if float_days is not None and float_days < 0:
+                status = "delayed"
+            elif float_days is not None and float_days <= at_risk_float_days:
+                status = "at_risk"
+            else:
+                continue
+            cues.append(
+                {
+                    "activity_id": aid,
+                    "activity_name": row["activity_name"],
+                    "wbs_code": row["wbs_code"],
+                    "status": status,
+                    "confidence": confidence,
+                    "partial_dimension_support": payload.get("partial_dimension_support", False),
+                    "phase": dim.get("phase"),
+                    "floor": dim.get("floor"),
+                    "sector_area": dim.get("sector_area"),
+                    "subcontractor": dim.get("subcontractor"),
+                    "cost_code": dim.get("cost_code"),
+                    "cue_summary": f"Activity due by data date is {status.replace('_', ' ')} and needs PM review.",
+                    "data_quality_notes": payload.get("data_quality_notes", []),
+                }
+            )
+        cues.sort(key=lambda cue: (0 if cue.get("status") == "delayed" else 1, str(cue.get("activity_id"))))
+        return cues[: max(1, min(limit, 100))]
+
+    def get_window_start_activity_cues(
+        self,
+        *,
+        project_key: str,
+        version_key: str,
+        as_of_date: date,
+        limit: int = 25,
+    ) -> list[dict[str, Any]]:
+        payload = self.build_metric_payload(
+            metric_key="window_start_accuracy",
+            project_key=project_key,
+            version_key=version_key,
+            as_of_date=as_of_date,
+        )
+        if not payload.get("available"):
+            return []
+        confidence = (
+            "partial_dimension_support"
+            if payload.get("partial_dimension_support")
+            else "production_backed"
+        )
+        lookback, lookahead = 7, 21
+        window_start = as_of_date - timedelta(days=lookback)
+        window_end = as_of_date + timedelta(days=lookahead)
+        dimensions = {
+            rec["activity_id"]: rec
+            for rec in self.get_normalized_activity_dimensions(
+                project_key=project_key,
+                version_key=version_key,
+            )["records"]
+        }
+        cues: list[dict[str, Any]] = []
+        with open_connection(self._db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT activity_id, activity_name, wbs_code, planned_start, start_date, actual_start
+                FROM procore_ep_schedule_activities
+                WHERE schedule_version_key=?
+                """,
+                (version_key,),
+            ).fetchall()
+        for row in rows:
+            aid = str(row["activity_id"])
+            dim = dimensions.get(aid, {})
+            if dim.get("filter_out_parsed") is True:
+                continue
+            planned = _parse_date(row["planned_start"]) or _parse_date(row["start_date"])
+            if not planned or planned < window_start or planned > window_end:
+                continue
+            actual = _parse_date(row["actual_start"])
+            if actual is None:
+                signal_type = "did_not_start"
+            elif actual > planned:
+                signal_type = "late_start"
+            else:
+                continue
+            cues.append(
+                {
+                    "activity_id": aid,
+                    "activity_name": row["activity_name"],
+                    "wbs_code": row["wbs_code"],
+                    "signal_type": signal_type,
+                    "confidence": confidence,
+                    "partial_dimension_support": payload.get("partial_dimension_support", False),
+                    "phase": dim.get("phase"),
+                    "cue_summary": f"Planned start in window but activity {signal_type.replace('_', ' ')}.",
+                    "data_quality_notes": payload.get("data_quality_notes", []),
+                }
+            )
+        cues.sort(
+            key=lambda cue: (
+                0 if cue.get("signal_type") == "did_not_start" else 1,
+                str(cue.get("activity_id")),
+            )
+        )
+        return cues[: max(1, min(limit, 100))]
+
+    def get_window_finish_activity_cues(
+        self,
+        *,
+        project_key: str,
+        version_key: str,
+        as_of_date: date,
+        limit: int = 25,
+    ) -> list[dict[str, Any]]:
+        payload = self.build_metric_payload(
+            metric_key="window_finish_accuracy",
+            project_key=project_key,
+            version_key=version_key,
+            as_of_date=as_of_date,
+        )
+        if not payload.get("available"):
+            return []
+        confidence = (
+            "partial_dimension_support"
+            if payload.get("partial_dimension_support")
+            else "production_backed"
+        )
+        lookback, lookahead = 7, 21
+        window_start = as_of_date - timedelta(days=lookback)
+        window_end = as_of_date + timedelta(days=lookahead)
+        dimensions = {
+            rec["activity_id"]: rec
+            for rec in self.get_normalized_activity_dimensions(
+                project_key=project_key,
+                version_key=version_key,
+            )["records"]
+        }
+        cues: list[dict[str, Any]] = []
+        with open_connection(self._db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT activity_id, activity_name, wbs_code, planned_finish, finish_date, actual_finish
+                FROM procore_ep_schedule_activities
+                WHERE schedule_version_key=?
+                """,
+                (version_key,),
+            ).fetchall()
+        for row in rows:
+            aid = str(row["activity_id"])
+            dim = dimensions.get(aid, {})
+            if dim.get("filter_out_parsed") is True:
+                continue
+            planned = _parse_date(row["planned_finish"]) or _parse_date(row["finish_date"])
+            if not planned or planned < window_start or planned > window_end:
+                continue
+            actual = _parse_date(row["actual_finish"])
+            if actual is None:
+                signal_type = "did_not_finish"
+            elif actual > planned:
+                signal_type = "late_finish"
+            else:
+                continue
+            cues.append(
+                {
+                    "activity_id": aid,
+                    "activity_name": row["activity_name"],
+                    "wbs_code": row["wbs_code"],
+                    "signal_type": signal_type,
+                    "confidence": confidence,
+                    "partial_dimension_support": payload.get("partial_dimension_support", False),
+                    "phase": dim.get("phase"),
+                    "cue_summary": f"Planned finish in window but activity {signal_type.replace('_', ' ')}.",
+                    "data_quality_notes": payload.get("data_quality_notes", []),
+                }
+            )
+        cues.sort(
+            key=lambda cue: (
+                0 if cue.get("signal_type") == "did_not_finish" else 1,
+                str(cue.get("activity_id")),
+            )
+        )
+        return cues[: max(1, min(limit, 100))]
+
     def _window_start_accuracy_payload(
         self,
         *,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
 from typing import Any
 
 from hb_assistant.store.project_schedule_hub_repository import (
@@ -17,16 +18,13 @@ from hb_assistant.store.project_schedule_hub_repository import (
 _PREVIEW_LIMIT = 12
 _QUEUE_LIMIT = 100
 
-_ITEM_DRIVER = "driver"
-_ITEM_MILESTONE = "milestone"
-_ITEM_NEGATIVE_FLOAT = "negative_float"
-_ITEM_WORSENED_FLOAT = "worsened_float"
-_ITEM_CRITICAL = "critical_remaining"
-
 
 class ProjectScheduleReviewService:
     def __init__(self, *, db_path: str) -> None:
         self._repo = ProjectScheduleHubRepository(db_path=db_path)
+        from .project_schedule_review_cue_service import ProjectScheduleReviewCueService
+
+        self._cues = ProjectScheduleReviewCueService(db_path=db_path)
 
     def sync_queue(
         self,
@@ -39,17 +37,29 @@ class ProjectScheduleReviewService:
         cpm_summary: dict[str, Any] | None = None,
         change_impact: dict[str, Any] | None = None,
         remaining_activities: list[dict[str, Any]] | None = None,
+        as_of_date: date | None = None,
+        baseline_summary: dict[str, Any] | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
+        as_of = as_of_date or datetime.now(timezone.utc).date()
         candidates = self._collect_candidates(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
             driver_analysis=driver_analysis,
             milestones=milestones,
             remaining_health=remaining_health,
             cpm_summary=cpm_summary,
             change_impact=change_impact,
             remaining_activities=remaining_activities,
+            as_of_date=as_of,
+            baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
+            materializable_only=True,
         )
         synced = 0
         for item in candidates:
+            if not (item.get("evidence") or {}).get("materializable", item.get("materializable", True)):
+                continue
             self._repo.upsert_review_item(
                 project_key=project_key,
                 schedule_version_key=schedule_version_key,
@@ -75,6 +85,9 @@ class ProjectScheduleReviewService:
         change_impact: dict[str, Any] | None = None,
         remaining_activities: list[dict[str, Any]] | None = None,
         comparison_basis: str = "prior_update",
+        as_of_date: date | None = None,
+        baseline_summary: dict[str, Any] | None = None,
+        include_activity_metric_cues: bool = True,
     ) -> dict[str, Any]:
         """Read-only workbench preview — merges live candidates with persisted disposition."""
         return self._build_workbench(
@@ -87,6 +100,9 @@ class ProjectScheduleReviewService:
             change_impact=change_impact,
             remaining_activities=remaining_activities,
             comparison_basis=comparison_basis,
+            as_of_date=as_of_date,
+            baseline_summary=baseline_summary,
+            include_activity_metric_cues=include_activity_metric_cues,
             synced=False,
         )
 
@@ -101,6 +117,8 @@ class ProjectScheduleReviewService:
         cpm_summary: dict[str, Any] | None = None,
         change_impact: dict[str, Any] | None = None,
         remaining_activities: list[dict[str, Any]] | None = None,
+        as_of_date: date | None = None,
+        baseline_summary: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         sync = self.sync_queue(
             project_key=project_key,
@@ -111,6 +129,8 @@ class ProjectScheduleReviewService:
             cpm_summary=cpm_summary,
             change_impact=change_impact,
             remaining_activities=remaining_activities,
+            as_of_date=as_of_date,
+            baseline_summary=baseline_summary,
         )
         envelope = self._build_workbench(
             project_key=project_key,
@@ -122,6 +142,8 @@ class ProjectScheduleReviewService:
             change_impact=change_impact,
             remaining_activities=remaining_activities,
             comparison_basis="prior_update",
+            as_of_date=as_of_date,
+            baseline_summary=baseline_summary,
             synced=True,
             use_persisted=True,
         )
@@ -140,10 +162,36 @@ class ProjectScheduleReviewService:
         change_impact: dict[str, Any] | None,
         remaining_activities: list[dict[str, Any]] | None,
         comparison_basis: str,
+        as_of_date: date | None,
+        baseline_summary: dict[str, Any] | None,
+        include_activity_metric_cues: bool = True,
         synced: bool,
         use_persisted: bool = False,
     ) -> dict[str, Any]:
+        as_of = as_of_date or datetime.now(timezone.utc).date()
         bases: dict[str, Any] = {}
+        candidate_cache: dict[tuple[str, bool], list[dict[str, Any]]] = {}
+
+        def cached_candidates(basis_key: str, materializable_only: bool) -> list[dict[str, Any]]:
+            cache_key = (basis_key, materializable_only)
+            if cache_key not in candidate_cache:
+                candidate_cache[cache_key] = self._collect_candidates(
+                    project_key=project_key,
+                    schedule_version_key=schedule_version_key,
+                    driver_analysis=driver_analysis,
+                    milestones=milestones,
+                    remaining_health=remaining_health,
+                    cpm_summary=cpm_summary,
+                    change_impact=change_impact,
+                    remaining_activities=remaining_activities,
+                    as_of_date=as_of,
+                    baseline_summary=baseline_summary,
+                    comparison_basis=basis_key,
+                    materializable_only=materializable_only,
+                    include_activity_metric_cues=include_activity_metric_cues,
+                )
+            return candidate_cache[cache_key]
+
         for basis_key, basis_driver in (
             ("prior_update", (driver_analysis or {}).get("prior_update") or driver_analysis),
             ("baseline", (driver_analysis or {}).get("baseline") or {}),
@@ -151,18 +199,13 @@ class ProjectScheduleReviewService:
             if basis_key == "baseline" and not basis_driver.get("available"):
                 bases[basis_key] = {"available": False, "reason": basis_driver.get("reason", "baseline_unavailable")}
                 continue
-            candidates = self._collect_candidates(
-                driver_analysis=driver_analysis,
-                milestones=milestones,
-                remaining_health=remaining_health,
-                cpm_summary=cpm_summary,
-                change_impact=change_impact,
-                remaining_activities=remaining_activities,
-                comparison_basis=basis_key,
-            )
+            live_keys = {
+                str(c["stable_item_key"]) for c in cached_candidates(basis_key, True)
+            }
+            candidates = cached_candidates(basis_key, False)
             if use_persisted and basis_key == "prior_update":
                 items = [
-                    self._public_item(self._enrich_persisted_item(row))
+                    self._public_item(self._enrich_persisted_item(row, live_keys=live_keys))
                     for row in self._repo.list_review_items(
                         project_key=project_key,
                         schedule_version_key=schedule_version_key,
@@ -176,6 +219,7 @@ class ProjectScheduleReviewService:
                             project_key=project_key,
                             schedule_version_key=schedule_version_key,
                             candidate=candidate,
+                            live_keys=live_keys,
                         )
                     )
                     for candidate in candidates
@@ -219,6 +263,41 @@ class ProjectScheduleReviewService:
             "items": items,
         }
 
+    def get_item_detail(self, *, review_item_id: str) -> dict[str, Any]:
+        row = self._repo.get_review_item(review_item_id=review_item_id)
+        if not row:
+            raise ValueError("review_item_not_found")
+        enriched = self._enrich_persisted_item(row)
+        events = self._repo.list_review_item_events(review_item_id=review_item_id, limit=100)
+        item = self._public_item(enriched)
+        return {
+            "available": True,
+            "item": item,
+            "events": events,
+            "lineage": {
+                "lineage": item.get("lineage"),
+                "new_since_last_review": item.get("new_since_last_review"),
+                "still_open_from_prior": item.get("still_open_from_prior"),
+            },
+        }
+
+    def list_item_events(self, *, review_item_id: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        row = self._repo.get_review_item(review_item_id=review_item_id)
+        if not row:
+            raise ValueError("review_item_not_found")
+        events = self._repo.list_review_item_events(
+            review_item_id=review_item_id,
+            limit=max(1, min(limit, 200)),
+        )
+        return {
+            "available": True,
+            "review_item_id": review_item_id,
+            "count": len(events),
+            "limit": limit,
+            "offset": max(0, offset),
+            "events": events,
+        }
+
     def update_item(
         self,
         *,
@@ -235,138 +314,83 @@ class ProjectScheduleReviewService:
         )
         if not updated:
             raise ValueError("review_item_not_found")
-        return {"item": updated}
+        return {"item": self._public_item(self._enrich_persisted_item(updated))}
+
+    def filter_items(
+        self,
+        items: list[dict[str, Any]],
+        *,
+        review_status: str | None = None,
+        severity: str | None = None,
+        source_metric: str | None = None,
+        item_type: str | None = None,
+        confidence: str | None = None,
+        phase: str | None = None,
+        floor: str | None = None,
+        sector_area: str | None = None,
+        subcontractor: str | None = None,
+        cost_code: str | None = None,
+    ) -> list[dict[str, Any]]:
+        return self._cues.filter_cues(
+            items,
+            review_status=review_status,
+            severity=severity,
+            source_metric=source_metric,
+            item_type=item_type,
+            confidence=confidence,
+            phase=phase,
+            floor=floor,
+            sector_area=sector_area,
+            subcontractor=subcontractor,
+            cost_code=cost_code,
+        )
 
     def _collect_candidates(
         self,
         *,
+        project_key: str,
+        schedule_version_key: str,
         driver_analysis: dict[str, Any] | None,
         milestones: dict[str, Any] | None,
         remaining_health: dict[str, Any] | None,
         cpm_summary: dict[str, Any] | None,
         change_impact: dict[str, Any] | None,
         remaining_activities: list[dict[str, Any]] | None,
+        as_of_date: date,
+        baseline_summary: dict[str, Any] | None = None,
         comparison_basis: str = "prior_update",
+        materializable_only: bool = False,
+        include_activity_metric_cues: bool = True,
     ) -> list[dict[str, Any]]:
-        seen: set[str] = set()
-        out: list[dict[str, Any]] = []
-
-        def add(
-            *,
-            stable_item_key: str,
-            item_type: str,
-            item_title: str,
-            priority: int,
-            source_activity_id: str | None = None,
-            evidence: dict[str, Any] | None = None,
-        ) -> None:
-            if stable_item_key in seen:
-                return
-            seen.add(stable_item_key)
-            out.append(
-                {
-                    "stable_item_key": stable_item_key,
-                    "item_type": item_type,
-                    "item_title": item_title,
-                    "priority": priority,
-                    "source_activity_id": source_activity_id,
-                    "evidence": evidence or {},
-                }
+        if materializable_only:
+            return self._cues.collect_materializable_cues(
+                project_key=project_key,
+                schedule_version_key=schedule_version_key,
+                as_of_date=as_of_date,
+                driver_analysis=driver_analysis,
+                milestones=milestones,
+                remaining_health=remaining_health,
+                cpm_summary=cpm_summary,
+                change_impact=change_impact,
+                remaining_activities=remaining_activities,
+                comparison_basis=comparison_basis,
+                baseline_summary=baseline_summary,
+                include_activity_metric_cues=include_activity_metric_cues,
             )
-
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        driver_source = (driver_analysis or {}).get(basis) or (
-            driver_analysis if basis == "prior_update" else {}
+        return self._cues.collect_review_cues(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            as_of_date=as_of_date,
+            driver_analysis=driver_analysis,
+            milestones=milestones,
+            remaining_health=remaining_health,
+            cpm_summary=cpm_summary,
+            change_impact=change_impact,
+            remaining_activities=remaining_activities,
+            comparison_basis=comparison_basis,
+            baseline_summary=baseline_summary,
+            include_activity_metric_cues=include_activity_metric_cues,
         )
-        if driver_source.get("available"):
-            for driver in driver_source.get("top_drivers") or []:
-                aid = str(driver.get("activity_id") or "")
-                if not aid:
-                    continue
-                add(
-                    stable_item_key=f"driver:{aid}",
-                    item_type=_ITEM_DRIVER,
-                    item_title=f"Review driver: {driver.get('activity_name') or aid}",
-                    priority=int(driver.get("review_priority") or 50),
-                    source_activity_id=aid,
-                    evidence={
-                        "driver_score": driver.get("driver_score"),
-                        "downstream_moved_later_count": driver.get("downstream_moved_later_count"),
-                        "wbs_code": driver.get("wbs_code"),
-                        "comparison_basis": basis,
-                    },
-                )
-
-        for ms in (milestones or {}).get("items") or []:
-            movement = int(ms.get("movement_days") or 0)
-            if movement <= 0:
-                continue
-            aid = str(ms.get("activity_id") or "")
-            if not aid:
-                continue
-            add(
-                stable_item_key=f"milestone:{aid}",
-                item_type=_ITEM_MILESTONE,
-                item_title=f"Milestone moved later: {ms.get('activity_name') or aid}",
-                priority=min(95, 60 + movement),
-                source_activity_id=aid,
-                evidence={"movement_days": movement, "forecast_date": ms.get("forecast_date")},
-            )
-
-        neg_preview = (remaining_health or {}).get("float_pressure", {}).get("preview") or []
-        neg_count = int((remaining_health or {}).get("float_pressure", {}).get("negative_float_count") or 0)
-        if neg_count and not neg_preview and remaining_activities:
-            neg_preview = [
-                a
-                for a in remaining_activities
-                if self._float_value(a) is not None and self._float_value(a) < 0
-            ][:5]
-        for row in neg_preview:
-            aid = str(row.get("activity_id") or "")
-            if not aid:
-                continue
-            add(
-                stable_item_key=f"negative_float:{aid}",
-                item_type=_ITEM_NEGATIVE_FLOAT,
-                item_title=f"Negative float: {row.get('activity_name') or aid}",
-                priority=78,
-                source_activity_id=aid,
-                evidence={"total_float": row.get("total_float")},
-            )
-
-        worsened = (change_impact or {}).get("direct_remaining_changes", {}).get("items") or []
-        for row in worsened:
-            delta = row.get("float_delta_days")
-            if delta is None or float(delta) >= 0:
-                continue
-            aid = str(row.get("activity_id") or "")
-            if not aid:
-                continue
-            add(
-                stable_item_key=f"worsened_float:{aid}",
-                item_type=_ITEM_WORSENED_FLOAT,
-                item_title=f"Worsened float: {row.get('activity_name') or aid}",
-                priority=72,
-                source_activity_id=aid,
-                evidence={"float_delta_days": delta},
-            )
-
-        critical_preview = (cpm_summary or {}).get("critical_path", {}).get("items") or []
-        for row in critical_preview[:5]:
-            aid = str(row.get("activity_id") or "")
-            if not aid:
-                continue
-            add(
-                stable_item_key=f"critical:{aid}",
-                item_type=_ITEM_CRITICAL,
-                item_title=f"Critical remaining: {row.get('activity_name') or aid}",
-                priority=68,
-                source_activity_id=aid,
-                evidence={"computed_cpm_critical": True},
-            )
-
-        out.sort(key=lambda item: (-int(item.get("priority") or 0), str(item.get("item_title") or "")))
-        return out
 
     def _merge_candidate(
         self,
@@ -374,6 +398,7 @@ class ProjectScheduleReviewService:
         project_key: str,
         schedule_version_key: str,
         candidate: dict[str, Any],
+        live_keys: set[str] | None = None,
     ) -> dict[str, Any]:
         stable_item_key = str(candidate["stable_item_key"])
         persisted = self._repo.get_latest_review_item_by_stable_key(
@@ -383,6 +408,7 @@ class ProjectScheduleReviewService:
         if persisted and str(persisted.get("schedule_version_key")) == schedule_version_key:
             merged = dict(persisted)
             merged.update(self._lineage_flags(prior=persisted, schedule_version_key=schedule_version_key, existing=True))
+            merged = self._apply_stale_signal(merged, stable_item_key=stable_item_key, live_keys=live_keys)
             return merged
         if persisted:
             merged = {
@@ -420,7 +446,12 @@ class ProjectScheduleReviewService:
         merged.update(self._lineage_flags(prior=None, schedule_version_key=schedule_version_key, existing=False))
         return merged
 
-    def _enrich_persisted_item(self, row: dict[str, Any]) -> dict[str, Any]:
+    def _enrich_persisted_item(
+        self,
+        row: dict[str, Any],
+        *,
+        live_keys: set[str] | None = None,
+    ) -> dict[str, Any]:
         enriched = dict(row)
         events = self._repo.list_review_item_events(
             review_item_id=str(row["review_item_id"]),
@@ -434,7 +465,34 @@ class ProjectScheduleReviewService:
             REVIEW_OPEN,
             REVIEW_WATCHING,
         }
-        return enriched
+        return self._apply_stale_signal(
+            enriched,
+            stable_item_key=str(row.get("stable_item_key") or ""),
+            live_keys=live_keys,
+        )
+
+    @staticmethod
+    def _apply_stale_signal(
+        row: dict[str, Any],
+        *,
+        stable_item_key: str,
+        live_keys: set[str] | None,
+    ) -> dict[str, Any]:
+        if not live_keys or not stable_item_key or stable_item_key in live_keys:
+            return row
+        if str(row.get("review_status")) in {REVIEW_REVIEWED, REVIEW_DISMISSED}:
+            return row
+        evidence = dict(row.get("evidence") or row.get("evidence_json") or {})
+        evidence["stale_signal"] = True
+        notes = list(evidence.get("data_quality_notes") or [])
+        if "Live signal no longer present in current schedule intelligence." not in notes:
+            notes.append("Live signal no longer present in current schedule intelligence.")
+        evidence["data_quality_notes"] = notes
+        row = dict(row)
+        row["evidence"] = evidence
+        row["stale_signal"] = True
+        row["data_quality_notes"] = notes
+        return row
 
     @staticmethod
     def _lineage_flags(
@@ -466,11 +524,42 @@ class ProjectScheduleReviewService:
 
     @staticmethod
     def _public_item(row: dict[str, Any]) -> dict[str, Any]:
-        return {
+        evidence = row.get("evidence")
+        if evidence is None:
+            evidence = row.get("evidence_json") or {}
+        if not isinstance(evidence, dict):
+            evidence = {}
+        item = {
             key: value
             for key, value in row.items()
             if key not in {"schedule_version_key", "project_key", "evidence_json"}
         }
+        item["evidence"] = evidence
+        for key in (
+            "source_metric_key",
+            "source_signal_type",
+            "confidence",
+            "severity",
+            "phase",
+            "floor",
+            "sector_area",
+            "subcontractor",
+            "cost_code",
+            "cue_summary",
+            "caveats",
+            "partial_dimension_support",
+            "data_quality_notes",
+            "stale_signal",
+            "comparison_basis",
+            "data_date",
+            "activity_name",
+            "wbs_code",
+        ):
+            if item.get(key) in (None, "", []):
+                value = evidence.get(key)
+                if value not in (None, "", []):
+                    item[key] = value
+        return item
 
     @staticmethod
     def _workbench_envelope(
@@ -505,13 +594,3 @@ class ProjectScheduleReviewService:
             "workbench_url": f"/projects/{project_key}/schedule/workbench",
             "export_url": f"/api/projects/{project_key}/schedule/export?format=markdown",
         }
-
-    @staticmethod
-    def _float_value(row: dict[str, Any]) -> float | None:
-        raw = row.get("total_float")
-        if raw in (None, ""):
-            raw = row.get("derived_total_float_days")
-        try:
-            return float(raw) if raw not in (None, "") else None
-        except (TypeError, ValueError):
-            return None

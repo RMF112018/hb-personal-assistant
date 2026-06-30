@@ -325,3 +325,23 @@ def test_review_items_api_and_export(tmp_path: Path, monkeypatch: pytest.MonkeyP
     )
     assert patch.status_code == 200
     assert patch.json()["item"]["review_status"] == "reviewed"
+
+    events = client.get(
+        f"/api/projects/tropical/schedule/review-items/{first_item['review_item_id']}/events",
+        headers=_viewer(),
+    )
+    assert events.status_code == 200
+    assert events.json()["count"] >= 1
+
+    filtered = client.get(
+        "/api/projects/tropical/schedule/review-items?as_of=2026-07-03&source_metric=change_driver_analysis",
+        headers=_viewer(),
+    )
+    assert filtered.status_code == 200
+    assert all(
+        item.get("source_metric_key") == "change_driver_analysis"
+        for item in filtered.json()["items"]
+    )
+
+    viewer_sync = client.post("/api/projects/tropical/schedule/review-items", headers=_viewer())
+    assert viewer_sync.status_code == 403

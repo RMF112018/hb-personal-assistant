@@ -268,6 +268,9 @@ class ProjectScheduleSummaryService:
                 cpm_summary=cpm_summary,
                 change_impact=change_impact,
                 remaining_activities=remaining,
+                as_of_date=as_of_date,
+                baseline_summary=baseline_summary,
+                include_activity_metric_cues=False,
             ),
         )
         source_float_summary = {
@@ -1032,6 +1035,15 @@ class ProjectScheduleSummaryService:
         offset: int = 0,
         as_of: date | None = None,
         comparison_basis: str = "prior_update",
+        source_metric: str | None = None,
+        severity: str | None = None,
+        item_type: str | None = None,
+        confidence: str | None = None,
+        phase: str | None = None,
+        floor: str | None = None,
+        sector_area: str | None = None,
+        subcontractor: str | None = None,
+        cost_code: str | None = None,
     ) -> dict[str, Any]:
         context = self._review_workbench_context(project_key, as_of=as_of)
         if not context:
@@ -1039,8 +1051,19 @@ class ProjectScheduleSummaryService:
         basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
         workbench = self._review.build_preview(**context, comparison_basis=basis)
         items = workbench.get("items") or []
-        if review_status:
-            items = [item for item in items if item.get("review_status") == review_status]
+        items = self._review.filter_items(
+            items,
+            review_status=review_status,
+            severity=severity,
+            source_metric=source_metric,
+            item_type=item_type,
+            confidence=confidence,
+            phase=phase,
+            floor=floor,
+            sector_area=sector_area,
+            subcontractor=subcontractor,
+            cost_code=cost_code,
+        )
         sliced = items[offset : offset + max(1, min(limit, 200))]
         return {
             "available": True,
@@ -1155,6 +1178,8 @@ class ProjectScheduleSummaryService:
             "cpm_summary": cpm_summary,
             "change_impact": change_impact,
             "remaining_activities": remaining,
+            "as_of_date": as_of_date,
+            "baseline_summary": baseline_summary,
         }
 
     def build_export(
