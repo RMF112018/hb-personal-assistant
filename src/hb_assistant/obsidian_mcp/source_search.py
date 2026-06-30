@@ -83,10 +83,49 @@ def source_index_status(repo: SourceIndexRepository, config: ObsidianMcpConfig,
     status["deferred_policy"] = {
         "deferred_path_parts": list(getattr(config, "source_index_deferred_path_parts", []) or [])
     }
+    # PM Source Value Policy (A1.11): what gets auto-carded first / deferred / metadata-only / skipped.
+    status["source_value_policy"] = {
+        "high_priority_path_signals": list(getattr(config, "source_value_high_priority_path_signals", []) or []),
+        "normal_priority_path_signals": list(getattr(config, "source_value_normal_priority_path_signals", []) or []),
+        "metadata_only_file_types": list(getattr(config, "source_index_metadata_only_file_types", []) or []),
+        "unsupported_file_types": list(getattr(config, "source_index_unsupported_file_types", []) or []),
+        "deferred_path_parts": list(getattr(config, "source_index_deferred_path_parts", []) or []),
+        "auto_card_metadata_only_enabled": bool(getattr(config, "source_card_auto_metadata_only_enabled", False)),
+    }
+    # Coarse, bounded queue-composition diagnostic (path/ext-only — NOT authoritative; document_type
+    # is unavailable for not-yet-indexed events, so high/normal here is filename-signal-based).
+    status["queued_by_disposition"] = _queued_by_disposition(repo, config)
     status["search_backend"] = "source_index"
     if watcher is not None:
         status["watcher"] = watcher
     return status
+
+
+def _queued_by_disposition(repo: SourceIndexRepository, config: ObsidianMcpConfig,
+                           *, sample_limit: int = 500) -> dict[str, Any]:
+    """Bounded path/ext-only classification of queued events (coarse diagnostic)."""
+    from .source_value import SourceValueDisposition, classify_path_disposition
+
+    counts: dict[str, int] = {d.value: 0 for d in SourceValueDisposition}
+    sampled = 0
+    try:
+        events = repo.sample_queued_events(limit=sample_limit)
+    except Exception:  # noqa: BLE001 - diagnostic must never break status
+        return {"sampled": 0, "sample_limit": sample_limit, "counts": counts, "note": "unavailable"}
+    from pathlib import PurePosixPath
+
+    for ev in events:
+        sampled += 1
+        rel = ev.get("rel_path") or ""
+        ext = PurePosixPath(rel.replace("\\", "/")).suffix if rel else ""
+        disp = classify_path_disposition(rel, ext, config)
+        counts[disp.value] += 1
+    return {
+        "sampled": sampled,
+        "sample_limit": sample_limit,
+        "counts": counts,
+        "note": "coarse path/ext-only sample; document_type-based high/normal is approximate",
+    }
 
 
 def search_vault_indexed(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, query: str,

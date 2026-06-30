@@ -1,0 +1,5 @@
+## branch
+feat/source-card-pm-priority-policy-20260629T214004Z
+
+## base commit
+9238a28c Merge project schedule controls phases 1-8B

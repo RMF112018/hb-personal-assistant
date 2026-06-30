@@ -348,6 +348,32 @@ describe('ObsidianMcpPanel — source intelligence generation policy', () => {
     )
   })
 
+  it('displays the PM source-value policy controls seeded from config', async () => {
+    renderPanelWith({ config: {
+      source_index_unsupported_file_types: ['url', 'aspx'],
+      source_value_high_priority_path_signals: ['pay app', 'rfi'],
+    } })
+    await screen.findByText('Source Intelligence')
+    await waitFor(() =>
+      expect((screen.getByLabelText('Unsupported file types') as HTMLInputElement).value).toBe('url, aspx'),
+    )
+    expect((screen.getByLabelText('High-priority path signals') as HTMLInputElement).value).toBe('pay app, rfi')
+    expect(document.body.textContent).toContain('PM source value policy')
+  })
+
+  it('submits edited unsupported file types as an array on blur', async () => {
+    renderPanelWith({ config: { source_index_unsupported_file_types: ['url'] } })
+    await screen.findByText('Source Intelligence')
+    const input = await screen.findByLabelText('Unsupported file types')
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe('url'))
+    fireEvent.change(input, { target: { value: 'url, aspx, png' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(patchObsidianMcpConfig).toHaveBeenCalled())
+    expect(lastPatch()).toEqual(
+      expect.objectContaining({ source_index_unsupported_file_types: ['url', 'aspx', 'png'] }),
+    )
+  })
+
   it('shows generated-card and last-generation counts when the backend returns them', async () => {
     renderPanelWith({
       sourceIndex: {

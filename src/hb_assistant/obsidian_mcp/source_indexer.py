@@ -19,6 +19,7 @@ from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
 from . import pathsafe
 from .config import ExternalSourceRoot, ObsidianMcpConfig
 from .source_index_repository import SourceIndexRepository
+from .source_value import SourceValue, _ext_norm, classify_source_value
 
 _logger = logging.getLogger("hb_assistant.obsidian_mcp.source_index")
 
@@ -369,6 +370,7 @@ def _auto_generate(
     root: ExternalSourceRoot,
     *,
     summaries_remaining: int,
+    disposition: "SourceValue | None" = None,
 ) -> tuple[int, int]:
     """Policy-driven card/summary generation after a successful index.
 
@@ -377,15 +379,19 @@ def _auto_generate(
     (indexing already succeeded); a failure is counted as 0 (a skip). Sensitive roots get a card
     (preview withheld by the renderer) but never an advisory summary. Vault writes go through the
     existing write-policy in ``source_notes``.
+
+    The PM Source Value disposition (A1.11) gates auto-card/auto-summary: only AUTO_CARD_HIGH/NORMAL
+    (or METADATA_ONLY when explicitly enabled) auto-card. Deferred/unsupported/metadata are a
+    deliberate skip, not an error; manual generation can still override a deferred source.
     """
     from . import source_notes  # lazy import to avoid a module cycle
 
     detail = repo.get_source_detail(source_id)
     if detail is None or detail.get("deleted") or detail["source_kind"] == "obsidian_note":
         return 0, 0
-    # Deferred classes (e.g. insurance renewals) are indexed/searchable but never AUTO-carded or
-    # auto-summarized — a deliberate skip, not an error. Manual generation can still override.
-    if detail.get("rel_path") and is_deferred_source_path(str(detail["rel_path"]), config):
+    if disposition is None:
+        disposition = classify_source_value(detail, config)
+    if not disposition.allow_auto_card:
         return 0, 0
     kind = detail["source_kind"]
 
@@ -408,6 +414,7 @@ def _auto_generate(
 
     want_summary = (
         summaries_remaining > 0
+        and disposition.allow_auto_summary
         and getattr(config, "source_summary_auto_generate_enabled", False)
         and getattr(config, "source_summary_enabled", True)
         and kind in getattr(config, "source_summary_auto_generate_kinds", [])
@@ -421,6 +428,30 @@ def _auto_generate(
         if out.get("summarized"):
             return cards, 1
     return cards, 0
+
+
+def _unsupported_exts(config: ObsidianMcpConfig) -> set[str]:
+    return {_ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])}
+
+
+def _order_eligible_sources(
+    repo: SourceIndexRepository, config: ObsidianMcpConfig, source_ids: list[str]
+) -> list[tuple[str, SourceValue]]:
+    """Filter to auto_card-eligible sources and order them by PM value (deterministic).
+
+    HIGH before NORMAL via ``priority_score``; ties broken by ``rel_path`` for stable ordering.
+    In-memory over this scan's source list only — NOT a persistent DB queue-priority model.
+    """
+    eligible: list[tuple[int, str, str, SourceValue]] = []
+    for sid in source_ids:
+        detail = repo.get_source_detail(sid)
+        if not detail:
+            continue
+        disp = classify_source_value(detail, config)
+        if disp.allow_auto_card:
+            eligible.append((disp.priority_score, str(detail.get("rel_path") or ""), sid, disp))
+    eligible.sort(key=lambda t: (t[0], t[1]))
+    return [(sid, disp) for _score, _rel, sid, disp in eligible]
 
 
 def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch: int = 50) -> int:
@@ -450,17 +481,21 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                         # Indexing succeeded; auto-generate per changed source AFTER the scan.
                         # _auto_generate never raises, so a card/summary failure is a skip — it
                         # must not flip this rebuild event to error.
-                        pending = report.indexed_source_ids
+                        # PM-value ordering (A1.11): card only auto_card-eligible sources, HIGH before
+                        # NORMAL (deterministic by priority_score then rel_path). Non-eligible sources
+                        # are already indexed — no card, no re-enqueue. Ordering is in-memory over this
+                        # scan's source list only (NOT a persistent DB queue-priority model).
+                        eligible = _order_eligible_sources(repo, config, report.indexed_source_ids)
                         budget = max(0, card_cap - cards_done)
-                        for sid in pending[:budget]:
+                        for sid, disp in eligible[:budget]:
                             c, s = _auto_generate(
                                 repo, config, sid, root,
                                 summaries_remaining=summary_cap - summaries_done,
+                                disposition=disp,
                             )
                             cards_done += c
                             summaries_done += s
-                        overflow = pending[budget:]
-                        for sid in overflow:
+                        for sid, _disp in eligible[budget:]:
                             # Resume the remainder on a later drain (bounded, no giant burst).
                             with suppress(Exception):
                                 detail = repo.get_source_detail(sid)
@@ -485,21 +520,33 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                     with suppress(Exception):
                         index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
                 repo.complete_event(event["event_id"], "skipped", error_code="deferred_path")
+            elif event["rel_path"] and _ext_norm(Path(event["rel_path"]).suffix) in _unsupported_exts(config):
+                # Unsupported/placeholder type (.url/.aspx/screenshot/etc.): do NOT index (no fragile
+                # parsing, no garbage rows). A clean policy skip, NOT an error.
+                repo.complete_event(event["event_id"], "skipped", error_code="unsupported_file_type")
             else:  # created / modified / reindex_requested
                 root = roots.get(event["source_root_key"])
+                event_status, event_code = "done", None
                 if root and event["rel_path"]:
                     source_id = index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
                     if source_id is not None:
-                        # One card per single-file event (naturally bounded by the claim batch);
-                        # the card_cap bounds the rebuild scan-burst, not per-file events. Summaries
-                        # stay capped via summaries_remaining.
-                        c, s = _auto_generate(
-                            repo, config, source_id, root,
-                            summaries_remaining=summary_cap - summaries_done,
-                        )
-                        cards_done += c
-                        summaries_done += s
-                repo.complete_event(event["event_id"], "done")
+                        # PM-value gate (A1.11): card only auto_card-eligible sources. A metadata-only
+                        # source that indexed cleanly is a successful policy skip (NOT an error).
+                        detail = repo.get_source_detail(source_id)
+                        disp = classify_source_value(detail, config) if detail else None
+                        if disp is not None and disp.allow_auto_card:
+                            # One card per single-file event (naturally bounded by the claim batch);
+                            # the card_cap bounds the rebuild scan-burst, not per-file events.
+                            c, s = _auto_generate(
+                                repo, config, source_id, root,
+                                summaries_remaining=summary_cap - summaries_done,
+                                disposition=disp,
+                            )
+                            cards_done += c
+                            summaries_done += s
+                        elif disp is not None and disp.skip_code:
+                            event_status, event_code = "skipped", disp.skip_code
+                repo.complete_event(event["event_id"], event_status, error_code=event_code)
             processed += 1
         except Exception as exc:
             repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)

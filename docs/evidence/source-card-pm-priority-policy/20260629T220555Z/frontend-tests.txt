@@ -1,0 +1,2 @@
+frontend: npm run typecheck clean (tsc -b, exit 0); vitest ObsidianMcpPanel.test.tsx => 22 passed (20 prior + 2 new PM-value-policy control tests).
+ruff check (changed obsidian_mcp/*.py + source_value.py): All checks passed.

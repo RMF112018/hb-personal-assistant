@@ -18,16 +18,22 @@ from .source_indexer import is_deferred_source_path, is_excluded_source_path
 from .tools import ObsidianMcpToolError
 
 _SAMPLE_LIMIT = 25
+# Path signals (substring, lowercased) that mark a generated card as a manual/test artifact eligible
+# for retirement — e.g. the old ``Source Notes/source-summary-test.txt.md`` card.
+TEST_CARD_PATH_SIGNALS = ("source-summary-test", "manual-test")
 
 
-def _matches_retire_policy(source_rel_path: str | None, config: ObsidianMcpConfig) -> str | None:
-    """Return the matching policy ('excluded'|'deferred') for a source path, else None."""
-    if not source_rel_path:
-        return None
-    if is_excluded_source_path(source_rel_path, config):
-        return "excluded"
-    if is_deferred_source_path(source_rel_path, config):
-        return "deferred"
+def _matches_retire_policy(row: dict[str, Any], config: ObsidianMcpConfig) -> str | None:
+    """Return the matching policy ('excluded'|'deferred'|'test') for a generated-card row, else None."""
+    source_rel = row.get("source_rel_path")
+    if source_rel:
+        if is_excluded_source_path(source_rel, config):
+            return "excluded"
+        if is_deferred_source_path(source_rel, config):
+            return "deferred"
+    haystack = f"{source_rel or ''}\n{row.get('note_rel_path') or ''}".lower()
+    if any(sig in haystack for sig in TEST_CARD_PATH_SIGNALS):
+        return "test"
     return None
 
 
@@ -42,7 +48,7 @@ def retire_source_cards(repo: SourceIndexRepository, config: ObsidianMcpConfig, 
     rows = repo.list_generated_notes(statuses=("generated",))
     matched: list[dict[str, Any]] = []
     for row in rows:
-        policy = _matches_retire_policy(row.get("source_rel_path"), config)
+        policy = _matches_retire_policy(row, config)
         if policy is not None:
             matched.append({**row, "policy": policy})
 
@@ -53,6 +59,7 @@ def retire_source_cards(repo: SourceIndexRepository, config: ObsidianMcpConfig, 
         "by_policy": {
             "excluded": sum(1 for m in matched if m["policy"] == "excluded"),
             "deferred": sum(1 for m in matched if m["policy"] == "deferred"),
+            "test": sum(1 for m in matched if m["policy"] == "test"),
         },
         "sample_paths": [m["note_rel_path"] for m in matched[:_SAMPLE_LIMIT]],
         "retired_count": 0,

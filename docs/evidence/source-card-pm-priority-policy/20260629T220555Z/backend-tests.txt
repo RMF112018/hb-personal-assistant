@@ -1,0 +1,20 @@
+A1.11 backend test results
+
+Focused suite (new + extended + regression), 11 files:
+  tests/test_obsidian_source_value.py            (classifier: dispositions, ext-normalize, COI segment, priority)
+  tests/test_obsidian_source_pm_priority_drain.py (drain: HIGH before NORMAL; skip codes; no-card delete)
+  tests/test_obsidian_source_spreadsheet_card.py (xlsx card sections + card basis; macro-safe parser)
+  tests/test_obsidian_source_maintenance.py      (test-card retire by_policy.test + insurance still works)
+  tests/test_obsidian_source_deferred.py
+  tests/test_obsidian_source_self_index_guard.py
+  tests/test_obsidian_source_watch_reliability.py
+  tests/test_obsidian_source_bid_package_analyzer.py
+  tests/test_obsidian_source_rebuild_autogen.py
+  tests/test_obsidian_source_auto_generate.py
+  tests/test_obsidian_mcp_backend.py             (source_value_policy + skipped_count + policy PATCH/normalize)
+  => 87 passed, 1 warning in 75.81s
+
+Broad obsidian/source regression (-k "obsidian or source_index or source_value or deferred or maintenance
+  or spreadsheet or pm_priority or self_index or bid_package or rebuild_autogen or watch"): exit 0 (all passed).
+
+py_compile all src: OK. ruff check (changed obsidian_mcp/*.py + source_value.py): All checks passed.

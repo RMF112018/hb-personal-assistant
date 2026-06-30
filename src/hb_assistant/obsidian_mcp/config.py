@@ -26,7 +26,36 @@ DEFAULT_EXCLUDED_PATH_PARTS = [
 ]
 # Path SEGMENTS for DEFERRED business classes: valid records that are indexed/searchable but
 # intentionally NOT auto-carded/summarized (distinct from hard exclusions). Opt-in; safe default.
-DEFAULT_DEFERRED_PATH_PARTS = ["HB INSURANCE RENEWALS"]
+# STRICT segment-equality only — "COI" matches a folder exactly named COI, never as a substring.
+DEFAULT_DEFERRED_PATH_PARTS = [
+    "HB INSURANCE RENEWALS", "CERTIFICATES OF INSURANCE", "COI", "INSURANCE RENEWAL",
+]
+# PM Source Value Policy (A1.11). File-type lists normalize to a canonical ext (no dot, lowercase).
+# Unsupported types are never auto-carded and are skipped (not indexed). Metadata-only types index
+# but do not auto-card unless a high-value class is detected. Path signals are substring promotions.
+DEFAULT_UNSUPPORTED_FILE_TYPES = [
+    "url", "aspx", "lnk", "webloc", "tmp", "lock", "png", "jpg", "jpeg", "heic", "gif", "webp",
+]
+DEFAULT_METADATA_ONLY_FILE_TYPES = ["xlsx", "xlsm", "csv"]
+DEFAULT_HIGH_PRIORITY_PATH_SIGNALS = [
+    "pay app", "payment application", "change order", "pcco", "pco", "rfi", "submittal",
+    "contract", "subcontract", "daily log", "punch list", "closeout", "schedule",
+    "drawings", "bid package", "cost report", "project controls",
+]
+DEFAULT_NORMAL_PRIORITY_PATH_SIGNALS = [
+    "presentation", "marketing", "site map", "parcel map", "project map",
+    "client package", "project overview",
+]
+
+
+def _normalize_file_types(value: list[str]) -> list[str]:
+    """Canonical, deduped file extensions: strip a leading dot + lowercase ('PNG'/'.png' -> 'png')."""
+    normalized: list[str] = []
+    for item in value:
+        ext = str(item).strip().lower().lstrip(".")
+        if ext and ext not in normalized:
+            normalized.append(ext)
+    return normalized
 
 
 class ExternalSourceRoot(BaseModel):
@@ -123,6 +152,20 @@ class ObsidianMcpConfig(BaseModel):
     source_index_deferred_path_parts: list[str] = Field(
         default_factory=lambda: list(DEFAULT_DEFERRED_PATH_PARTS)
     )
+    # PM Source Value Policy (A1.11).
+    source_index_unsupported_file_types: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_UNSUPPORTED_FILE_TYPES)
+    )
+    source_index_metadata_only_file_types: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_METADATA_ONLY_FILE_TYPES)
+    )
+    source_value_high_priority_path_signals: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_HIGH_PRIORITY_PATH_SIGNALS)
+    )
+    source_value_normal_priority_path_signals: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_NORMAL_PRIORITY_PATH_SIGNALS)
+    )
+    source_card_auto_metadata_only_enabled: bool = False
     schema_version: int = 7
 
     model_config = {"extra": "forbid"}
@@ -225,6 +268,32 @@ class ObsidianMcpConfig(BaseModel):
             part = item.strip().replace("\\", "/").strip("/").lower()
             if part and part not in normalized:
                 normalized.append(part)
+        return normalized
+
+    @field_validator("source_index_unsupported_file_types")
+    @classmethod
+    def validate_unsupported_file_types(cls, value: list[str]) -> list[str]:
+        # File types normalize to a canonical ext (no dot, lowercase). Fall back to defaults if
+        # emptied (clearing the safety net by accident should not re-enable carding of placeholders).
+        normalized = _normalize_file_types(value)
+        return normalized or list(DEFAULT_UNSUPPORTED_FILE_TYPES)
+
+    @field_validator("source_index_metadata_only_file_types")
+    @classmethod
+    def validate_metadata_only_file_types(cls, value: list[str]) -> list[str]:
+        normalized = _normalize_file_types(value)
+        return normalized or list(DEFAULT_METADATA_ONLY_FILE_TYPES)
+
+    @field_validator("source_value_high_priority_path_signals",
+                     "source_value_normal_priority_path_signals")
+    @classmethod
+    def validate_path_signals(cls, value: list[str]) -> list[str]:
+        # Substring promotion signals — clearable (empty list disables promotions for that tier).
+        normalized: list[str] = []
+        for item in value:
+            sig = item.strip().lower()
+            if sig and sig not in normalized:
+                normalized.append(sig)
         return normalized
 
     @field_validator("chatgpt_initial_scopes")
@@ -333,6 +402,11 @@ class ObsidianMcpConfigPatch(BaseModel):
     source_card_auto_max_per_drain: int | None = None
     source_index_excluded_path_parts: list[str] | None = None
     source_index_deferred_path_parts: list[str] | None = None
+    source_index_unsupported_file_types: list[str] | None = None
+    source_index_metadata_only_file_types: list[str] | None = None
+    source_value_high_priority_path_signals: list[str] | None = None
+    source_value_normal_priority_path_signals: list[str] | None = None
+    source_card_auto_metadata_only_enabled: bool | None = None
 
     model_config = {"extra": "forbid"}
 

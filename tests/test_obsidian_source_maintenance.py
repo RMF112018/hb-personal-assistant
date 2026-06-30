@@ -86,3 +86,23 @@ def test_delete_files_removes_only_the_card_file(env) -> None:
     assert not (vault / note_path).exists()           # card file removed
     assert repo.lookup_by_path("external_file", INS_REL) is not None  # source row intact
     assert _status(db, sid_ins) == "stale"
+
+
+def test_retire_matches_manual_test_card(env) -> None:
+    # A1.11: test/manual cards (path signal 'source-summary-test') are retire-eligible too.
+    repo, config, vault, db, sid_ins, _note = env
+    root = Path(config.external_sources[0].path)
+    (root / "manual").mkdir(parents=True, exist_ok=True)
+    (root / "manual" / "source-summary-test.txt").write_text("test card", encoding="utf-8")
+    sid_test = index_source_file(root / "manual" / "source-summary-test.txt",
+                                 config.external_sources[0], repo, config)
+    generate_source_card(repo, config, source_id=sid_test)
+
+    res = retire_source_cards(repo, config, apply=False)
+    assert res["by_policy"]["test"] == 1
+    assert res["by_policy"]["deferred"] == 1  # insurance still matches
+    assert any("source-summary-test" in p for p in res["sample_paths"])
+    # Apply marks only those stale; the normal scope card is untouched.
+    res2 = retire_source_cards(repo, config, apply=True)
+    assert res2["retired_count"] == 2
+    assert _status(db, sid_test) == "stale"
