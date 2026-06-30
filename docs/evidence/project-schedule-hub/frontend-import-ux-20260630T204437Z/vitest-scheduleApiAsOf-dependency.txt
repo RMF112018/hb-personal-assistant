@@ -1,0 +1,14 @@
+
+> frontend@0.0.0 test
+> vitest run scheduleApiAsOf
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/project-schedule-import-ux-20260630T204437Z/frontend
+
+ ✓ src/lib/scheduleApiAsOf.test.ts  (2 tests) 2ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:54:21
+   Duration  585ms (transform 46ms, setup 48ms, collect 38ms, tests 2ms, environment 246ms, prepare 136ms)
+

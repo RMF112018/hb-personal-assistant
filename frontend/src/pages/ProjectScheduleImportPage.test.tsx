@@ -88,7 +88,9 @@ describe('ProjectScheduleImportPage', () => {
     uploadMock.mockResolvedValue({
       import_id: 'imp-1',
       activity_count: 2,
+      relationship_count: 1,
       source_format: 'primavera_xer',
+      equivalence_report: { status: 'compatible' },
       trust_preview: { warnings: [{ code: 'likely_new_schedule_series', message: 'Review identity after commit.' }] },
     })
     renderImportPage()
@@ -98,18 +100,22 @@ describe('ProjectScheduleImportPage', () => {
     await waitFor(() => {
       expect(uploadMock).toHaveBeenCalledWith('tropical', file, null, false)
     })
-    expect(await screen.findByText(/Identity \/ trust preview/i)).toBeInTheDocument()
+    expect(await screen.findByTestId('schedule-import-preview-panel')).toBeInTheDocument()
   })
 
   it('shows processing checklist after commit', async () => {
     uploadMock.mockResolvedValue({
       import_id: 'imp-2',
       activity_count: 2,
+      relationship_count: 1,
       source_format: 'primavera_xer',
+      equivalence_report: { status: 'compatible' },
       trust_preview: { warnings: [] },
     })
     commitMock.mockResolvedValue({
       import_id: 'imp-2',
+      schedule_version_key: 'svk-1',
+      activity_count: 2,
       cpm_recompute_status: 'complete',
       pipeline: {
         stages: [{ stage: 'cpm_recompute', label: 'Computed CPM recompute', status: 'complete' }],
@@ -118,25 +124,32 @@ describe('ProjectScheduleImportPage', () => {
     renderImportPage()
     const input = await screen.findByLabelText(/Upload Primavera XER/i)
     fireEvent.change(input, { target: { files: [new File(['xer'], 'minimal.xer')] } })
-    await screen.findByText(/Preview schedule update and commit/i)
-    fireEvent.click(screen.getByText(/Preview schedule update and commit/i))
+    await screen.findByTestId('schedule-import-commit')
+    fireEvent.click(screen.getByTestId('schedule-import-commit'))
     expect(await screen.findByText(/Processing checklist/i)).toBeInTheDocument()
     expect(screen.getByText(/Return to Project Schedule/i)).toBeInTheDocument()
+  })
+
+  it('uses shared ScheduleImportFlow on route page', async () => {
+    renderImportPage()
+    expect(await screen.findByTestId('schedule-import-flow')).toBeInTheDocument()
   })
 })
 
 describe('ProjectSchedulePage import action', () => {
   beforeEach(() => {
+    uploadMock.mockReset()
+    commitMock.mockReset()
     projectsMock.mockResolvedValue(projectsResponse)
     summaryMock.mockResolvedValue({
       status: 'ok',
       as_of_date: '2026-07-03',
       schedule_story: { headline: 'Schedule update ready' },
-      current_schedule: { friendly_label: 'Jul 3 update', data_date: '2026-07-03' },
+      current_schedule: { friendly_label: 'Jul 3 update', data_date: '2026-07-03', available: true },
       previous_update: { available: false },
       readiness: { items: [] },
       command_summary: {},
-      remaining_health: { float_pressure: {} },
+      remaining_health: { float_pressure: {}, status: 'ok' },
       computed_cpm: {},
       critical_path: {},
       change_impact: { direct_remaining_changes: {} },
@@ -155,11 +168,15 @@ describe('ProjectSchedulePage import action', () => {
     })
   })
 
-  it('shows Import Schedule action on hub page', async () => {
+  it('shows Import schedule package button on hub page', async () => {
     renderSchedulePage()
-    expect(await screen.findByRole('link', { name: /Import Schedule/i })).toHaveAttribute(
-      'href',
-      '/projects/tropical/schedule/import',
-    )
+    expect(await screen.findByRole('button', { name: /Import schedule package/i })).toBeInTheDocument()
+  })
+
+  it('opens import modal from hub button', async () => {
+    renderSchedulePage()
+    fireEvent.click(await screen.findByRole('button', { name: /Import schedule package/i }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByTestId('schedule-import-flow')).toBeInTheDocument()
   })
 })

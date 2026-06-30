@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { TechnicalDetails } from '../components/common/TechnicalDetails'
+import { ForecastDialog } from '../components/forecast/ForecastDialog'
+import { ScheduleImportFlow } from '../components/project-schedule/ScheduleImportFlow'
+import type { ProjectScheduleImportCommitResult } from '../components/project-schedule/scheduleImportTypes'
 import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
@@ -417,6 +420,7 @@ function DriverEvidenceSection({
 export function ProjectSchedulePage() {
   const { projectKey = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  const queryClient = useQueryClient()
   const focusDriver = searchParams.get('driver')
   const focusReview = searchParams.get('review')
   const focusBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
@@ -424,6 +428,38 @@ export function ProjectSchedulePage() {
   const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : ''
   const requestAsOf = asOf || undefined
   const [showAllActions, setShowAllActions] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [newImportBanner, setNewImportBanner] = useState(false)
+
+  const { data: projectsData } = useQuery({
+    queryKey: ['projects'],
+    queryFn: api.getProjects,
+  })
+  const projectDisplayName = projectsData?.projects.find((p) => p.project_key === projectKey)?.display_name
+
+  const invalidateScheduleQueries = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', projectKey] })
+  }, [queryClient, projectKey])
+
+  const handleImportCommitSuccess = useCallback(
+    (_result: ProjectScheduleImportCommitResult) => {
+      if (asOf) {
+        setNewImportBanner(true)
+      } else {
+        invalidateScheduleQueries()
+        setNewImportBanner(false)
+      }
+    },
+    [asOf, invalidateScheduleQueries],
+  )
+
+  const handleViewLatestAfterImport = useCallback(() => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('as_of')
+    setSearchParams(next, { replace: true })
+    setNewImportBanner(false)
+    invalidateScheduleQueries()
+  }, [searchParams, setSearchParams, invalidateScheduleQueries])
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['project', 'schedule', projectKey, asOf || 'latest'],
     queryFn: () => api.getProjectScheduleSummary(projectKey, { asOf: requestAsOf }),
@@ -527,12 +563,29 @@ export function ProjectSchedulePage() {
             title={text(story.headline)}
             hint={text(story.synopsis)}
             actions={
-              <Link className="badge" to={text(links.schedule_import_url, `/schedules/imports?project=${projectKey}`)}>
-                Import Schedule
-              </Link>
+              <button className="badge" type="button" onClick={() => setImportOpen(true)}>
+                Import schedule package
+              </button>
             }
           />
         </section>
+        <ForecastDialog
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          title="Import schedule package"
+          description={`Upload a schedule update for ${projectDisplayName || projectKey}.`}
+        >
+          <ScheduleImportFlow
+            projectKey={projectKey}
+            projectDisplayName={projectDisplayName}
+            variant="modal"
+            onCommitSuccess={handleImportCommitSuccess}
+            onClose={() => {
+              setImportOpen(false)
+              if (!asOf) invalidateScheduleQueries()
+            }}
+          />
+        </ForecastDialog>
       </ProjectWorkspaceShell>
     )
   }
@@ -540,6 +593,14 @@ export function ProjectSchedulePage() {
   return (
     <ProjectWorkspaceShell>
       <section className="space-y-4">
+        {newImportBanner ? (
+          <div className="card text-sm flex flex-wrap items-center justify-between gap-2" data-testid="new-import-banner">
+            <span>New import is available in latest view.</span>
+            <button className="badge" type="button" onClick={handleViewLatestAfterImport}>
+              View latest
+            </button>
+          </div>
+        ) : null}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="section-title mb-0">Schedule</h3>
@@ -566,9 +627,9 @@ export function ProjectSchedulePage() {
                 }}
               />
             </label>
-            <Link className="badge" to={`/projects/${projectKey}/schedule/import`}>
-              Import Schedule
-            </Link>
+            <button className="badge" type="button" onClick={() => setImportOpen(true)}>
+              Import schedule package
+            </button>
             <Link
               className="badge"
               to={
@@ -924,6 +985,23 @@ export function ProjectSchedulePage() {
           }
         />
       </section>
+      <ForecastDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import schedule package"
+        description={`Upload a schedule update for ${projectDisplayName || projectKey}.`}
+      >
+        <ScheduleImportFlow
+          projectKey={projectKey}
+          projectDisplayName={projectDisplayName}
+          variant="modal"
+          onCommitSuccess={handleImportCommitSuccess}
+          onClose={() => {
+            setImportOpen(false)
+            if (!asOf) invalidateScheduleQueries()
+          }}
+        />
+      </ForecastDialog>
     </ProjectWorkspaceShell>
   )
 }
