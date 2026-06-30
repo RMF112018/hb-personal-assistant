@@ -236,23 +236,37 @@ def _spreadsheet_doc_type(rel_path: str, text: str) -> str:
     """
     name = Path(rel_path).name.lower()
     blob = f"{name}\n{text[:2000].lower()}"
+    # Master/standard cost-code & reference list workbooks are reference metadata, never high-value.
+    if _REFERENCE_RE.search(blob):
+        return "reference_document"
     if re.search(r"pay app|payapp|payment application|application for payment", blob):
         return "pay_application"
-    if re.search(r"\bcost report\b", blob):
+    if re.search(r"\bcost report\b|cost to complete|\bctc\b", blob):
         return "cost_report"
     if re.search(r"cost entries|\bforecast\b|\bbudget\b|project controls", blob):
         return "project_controls"
     if re.search(r"\bstaffing\b|\bmanpower\b|\blabor\b", blob):
         return "staffing_report"
+    # Generic coordination/communication matrices are informative but NOT high-value workbook classes.
+    if re.search(r"communications? matrix|contact matrix", blob):
+        return "communications_matrix"
+    if re.search(r"coordination matrix", blob):
+        return "coordination_matrix"
     return "spreadsheet"
 
 
 def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
     name = Path(rel_path).name.lower()
     blob = f"{name}\n{text[:2000].lower()}"
+    # Master/standard cost-code & reference lists FIRST (else "cost" drifts them into cost_document).
+    if _REFERENCE_RE.search(blob):
+        return "reference_document"
     # Bid packages BEFORE rfi: a bid doc that merely mentions RFIs must not become an RFI.
     if _bid_package_signal(rel_path, text):
         return "bid_package"
+    # Scope-of-work / SOW exhibits (procurement scope) — amount-gated like bid packages.
+    if re.search(r"scope of work|\bsow\b", blob) or re.search(r"exhibit\s+[a-z]\b.*scope", name):
+        return "scope_of_work"
     # Stricter RFI: require an explicit RFI marker (incl. a numbered "RFI 032"), not a bare substring.
     if re.search(r"request for information|\brfi\s*#|\brfi\s+no\.?|\brfi\s*#?\s*\d|\brfi log\b", blob):
         return "rfi"
@@ -293,7 +307,8 @@ def _doc_type_from_text(rel_path: str, text: str, fallback: str) -> str:
         return "cost_report"
     if re.search(r"project controls|cost forecast", blob):
         return "project_controls"
-    if re.search(r"\bschedule\b", name):
+    # Strong construction-schedule signal only (bare "schedule" over-matched discussion/agenda docs).
+    if _STRONG_SCHEDULE_RE.search(blob):
         return "schedule"
     # Safety BEFORE quality BEFORE inspection (so "Safety Inspection" → safety).
     if re.search(r"\bsafety\b|toolbox talk|\bjha\b|\bjsa\b|\bswms\b", blob):
@@ -560,10 +575,67 @@ _TEMPLATE_FORM_RE = re.compile(
     r"(?i)\btemplate\b|\bblank\b|\bsample\b|\bexample\b|cover sheet|sign[- ]?off form|"
     r"checklist template|cover template")
 
+# --- Phase 10A taxonomy ---------------------------------------------------------------------------
+# Binary CAD/BIM drawing files (no text extraction) — always classify as a drawing metadata card.
+_CAD_EXTS = frozenset({"dwg", "dxf", "dwf", "rvt", "rfa", "skp", "nwd", "nwc", "ifc"})
+# Native scheduling files — always classify as a schedule.
+_SCHEDULE_EXTS = frozenset({"xer", "mpp", "mpx"})
+# Workbook extensions handled by the spreadsheet classifier.
+_SPREADSHEET_EXTS = frozenset({"xlsx", "xlsm", "xls", "xlsb"})
+# A STRONG construction-schedule signal (used for PDFs/docs). Bare "schedule" is NOT enough — that
+# over-matched "Schedule Discussion"/"Schedule Question". Matches glued forms (constructionschedule).
+_STRONG_SCHEDULE_RE = re.compile(
+    r"(?i)construction\s*schedule|baseline\s*schedule|project\s*schedule|schedule\s*update|"
+    r"schedule\s*narrative|look\s?ahead|3[- ]?week|critical path|\bcpm\b|\bgantt\b|primavera|\bp6\b")
+# Master/standard cost-code & reference list files — reference metadata, NOT a project cost instrument.
+_REFERENCE_RE = re.compile(
+    r"(?i)master cost codes?|cost code master|standard cost codes?|chart of accounts|"
+    r"cost code (?:list|library)|\bmaster codes\b")
+# Strong, type-appropriate amount labels. For money document types, an amount is extracted ONLY when
+# tied to one of these labels — a bare "$" (e.g. "$1", "$42.00") in a scope/bid doc is not enough.
+_AMOUNT_STRONG_LABEL_RE = re.compile(
+    r"(?i)(?:contract amount|subcontract amount|purchase order amount|po amount|"
+    r"change order amount|pcco amount|pco amount|proposal amount|bid amount|total bid|"
+    r"total proposal|total amount|schedule of values total|application amount|"
+    r"current payment due|retainage|allowance|alternate|contract sum|grand total)"
+    r"\s*[:#]?\s*(?:of\s+)?(\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?)")
+# Document types whose amounts must be strong-label-gated (scope/bid stray $ values are suppressed).
+_LABEL_REQUIRED_AMOUNT_TYPES = frozenset({
+    "bid_package", "scope_of_work", "procurement_document", "subcontract", "contract",
+    "purchase_order", "change_order", "potential_change_order", "pay_application",
+    "cost_report", "project_controls",
+})
+# Evidence that a "submittal cover/transmittal" is an ACTUAL submittal, not a blank cover template.
+_SUBMITTAL_EVIDENCE_RE = re.compile(
+    r"(?i)submittal\s*#?\s*\d|\bspec(?:ification)?\s*section|\b\d{6}\b|\b\d{2} \d{2} \d{2}\b|"
+    r"package\s*\d")
+
 
 def _is_template_form(rel_path: str) -> bool:
     """True when the FILENAME marks a blank template/form/sample (not a live instrument)."""
     return bool(_TEMPLATE_FORM_RE.search(Path(rel_path).name))
+
+
+def _is_blank_submittal_cover(rel_path: str, text: str) -> bool:
+    """A submittal COVER/TRANSMITTAL with no actual submittal number/spec/package evidence."""
+    name = Path(rel_path).name.lower()
+    if "submittal" not in name or not re.search(r"cover|transmittal", name):
+        return False
+    blob = f"{name}\n{text[:2000].lower()}"
+    return not _SUBMITTAL_EVIDENCE_RE.search(blob)
+
+
+def _extract_labeled_amount(text: str) -> str | None:
+    """A "$" amount only when adjacent to a strong, type-appropriate label; else None."""
+    for m in _AMOUNT_STRONG_LABEL_RE.finditer(text):
+        raw = re.sub(r"\s+", "", m.group(1))
+        if raw in ("$0", "$0.00"):
+            continue
+        before = text[max(0, m.start() - 30):m.start()]
+        if _AMOUNT_REJECT_CTX.search(before):
+            continue
+        return raw
+    return None
 
 
 def _extract_status(segments: list[str], blob: str) -> str | None:
@@ -643,7 +715,15 @@ def _pm_document_fields(rel_path: str, text: str, document_type: str) -> dict[st
         else:
             out["title"] = _clip(trailing)
     out["doc_date"] = _extract_doc_date(stem, text[:2000])
-    out["amount"] = None if is_template else _extract_amount(text[:4000])
+    # Amount: suppressed for templates; strong-label-gated for money docs (scope/bid stray $ ignored);
+    # otherwise an explicit "$" value.
+    amount_blob = f"{stem}\n{text[:4000]}"
+    if is_template:
+        out["amount"] = None
+    elif document_type in _LABEL_REQUIRED_AMOUNT_TYPES:
+        out["amount"] = _extract_labeled_amount(amount_blob)
+    else:
+        out["amount"] = _extract_amount(text[:4000])
     return out
 
 
@@ -654,7 +734,7 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     text = str(detail.get("text_excerpt") or "")[: _MAX_ITEM_CHARS * _MAX_SCAN_LINES]
     lines = text.splitlines()[:_MAX_SCAN_LINES]
 
-    if ext in ("xlsx", "xlsm"):
+    if ext in _SPREADSHEET_EXTS:
         # Spreadsheets never imply a drawing sheet number; classify by narrow Excel phrases.
         sheet_number, discipline = None, "unknown"
         document_type = _spreadsheet_doc_type(rel_path, text)
@@ -665,6 +745,15 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
             doctype_guess = "general_pdf" if ext == "pdf" else "general_document"
         document_type = _classify_non_spreadsheet(rel_path, text, sheet_number, doctype_guess)
 
+    # Phase 10A extension precedence: native scheduling files → schedule; binary CAD/BIM → drawing
+    # (CAD wins over a schedule keyword in the name, e.g. "M301 Mechanical Schedule.dwg" → drawing).
+    if ext in _SCHEDULE_EXTS:
+        document_type = "schedule"
+    if ext in _CAD_EXTS:
+        document_type = "drawing"
+    # A blank submittal cover/transmittal (no submittal number/spec/package) is a template, not a record.
+    if document_type == "submittal" and _is_blank_submittal_cover(rel_path, text):
+        document_type = "template_form"
     # Template / blank-form documents take HIGH precedence over every classified type (they are not
     # live instruments): a "Change Order Template" must not be treated as a real change order.
     if _is_template_form(rel_path):

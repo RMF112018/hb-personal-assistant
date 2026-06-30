@@ -1,0 +1,46 @@
+{
+  "all_phase10a": true,
+  "canonical_sections": {
+    "fail": 0,
+    "pass": 25
+  },
+  "card_version": {
+    "fail": 0,
+    "pass": 25
+  },
+  "domain": {
+    "fail": 0,
+    "pass": 25
+  },
+  "frontmatter": {
+    "fail": 0,
+    "pass": 25
+  },
+  "local_summary_block": {
+    "fail": 0,
+    "pass": 25
+  },
+  "no_invented_relationship": {
+    "fail": 0,
+    "pass": 25
+  },
+  "no_raw_preview": {
+    "fail": 0,
+    "pass": 25
+  },
+  "old_sections_absent": {
+    "fail": 0,
+    "pass": 25
+  },
+  "one_block_each": true,
+  "passed": {
+    "fail": 0,
+    "pass": 25
+  },
+  "production_card_count": 25,
+  "required_sections_nonempty": {
+    "fail": 0,
+    "pass": 25
+  },
+  "total": 25
+}

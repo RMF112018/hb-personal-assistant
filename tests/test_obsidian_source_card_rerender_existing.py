@@ -305,11 +305,11 @@ def test_staged_cards_have_canonical_sections_in_order(tmp_path, monkeypatch, ca
         assert headings == mod.CANONICAL_SECTIONS
 
 
-def test_staged_cards_have_phase8_card_version(tmp_path, monkeypatch, capsys):
+def test_staged_cards_have_current_card_version(tmp_path, monkeypatch, capsys):
     env = _env(tmp_path, monkeypatch)
     _run(_args(env), capsys)
     for f in _staged_files(env):
-        assert mod._frontmatter_value(f.read_text(), "card_version") == "phase8-v1"
+        assert mod._frontmatter_value(f.read_text(), "card_version") == "phase10a-v1"
         assert mod._frontmatter_value(f.read_text(), "domain") == "work"
 
 

@@ -144,11 +144,14 @@ def test_status_rejects_dropdown_lists() -> None:
 
 
 def test_amount_rejects_zero_example_and_range_keeps_explicit() -> None:
+    # change_order is a label-gated money type (Phase 10A): unlabeled/zero/example/range/stray → None.
     assert _analyze("25-123-01 PCCO 5.pdf", "pdf", "Total: $0.00").amount is None
     assert _analyze("25-123-01 PCCO 5.pdf", "pdf", "for example $5,000.00 budget").amount is None
     assert _analyze("25-123-01 PCCO 5.pdf", "pdf", "range of $1,000.00 - $2,000.00").amount is None
+    assert _analyze("25-123-01 PCCO 5.pdf", "pdf", "incidental scope value $42.00 each").amount is None
+    # A strong, type-appropriate label extracts.
     assert _analyze("25-123-01 PCCO 5.pdf", "pdf",
-                    "This change order is for the amount of $12,500.00.").amount == "$12,500.00"
+                    "Change Order Amount: $12,500.00").amount == "$12,500.00"
 
 
 def test_date_only_filename_iso_or_labeled() -> None:
@@ -176,9 +179,10 @@ def test_source_basis_is_meaningful_without_a_model() -> None:
     for needle in ("Card basis:", "Document type: rfi", "Classification reason:",
                    "Matched filename tokens:", "Source ID:"):
         assert needle in basis, needle
-    # Deterministic card: the advisory section is honest about having no model summary.
+    # Deterministic card: the advisory section is the qwen2.5:14b pending block, not fabricated text.
     advisory = "\n".join(_section_body(card, "## Advisory Summary"))
-    assert "No advisory summary" in advisory
+    assert 'hb-local-summary:start model="qwen2.5:14b" status="pending"' in advisory
+    assert "ready for local summarization" in advisory
     assert "## AI Summary" not in card
 
 

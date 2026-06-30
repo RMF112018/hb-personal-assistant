@@ -42,7 +42,7 @@ _DISP_RANK: dict[SourceValueDisposition, int] = {
 # document_type -> disposition mapping (the analyzer is the single source of types).
 HIGH_DOCUMENT_TYPES = frozenset({
     "architectural_drawing", "structural_drawing", "mep_drawing", "civil_drawing", "drawing",
-    "bid_package", "rfi", "submittal", "meeting_minutes", "schedule", "specification",
+    "bid_package", "scope_of_work", "rfi", "submittal", "meeting_minutes", "schedule", "specification",
     "cost_document", "change_order", "potential_change_order", "pay_application",
     "contract", "subcontract", "purchase_order", "daily_log", "manpower_log",
     "punch_list", "punchlist",  # punch_list canonical; punchlist kept for backward compatibility
@@ -55,6 +55,13 @@ HIGH_DOCUMENT_TYPES = frozenset({
 # for generic spreadsheets/CSV (no high-value class) — images/placeholders are UNSUPPORTED.
 NORMAL_DOCUMENT_TYPES = frozenset({
     "presentation", "marketing", "site_map", "general_pdf", "general_document",
+})
+# Generic/reference workbook classes the analyzer did NOT promote to a high-value class. These must
+# never be path-signal-promoted to auto_card_high (Phase 10A internal-consistency guard): a card that
+# reports "no high-value workbook class detected" cannot also sit at auto_card_high.
+_NO_AUTO_HIGH_TYPES = frozenset({
+    "spreadsheet", "communications_matrix", "coordination_matrix", "equipment_log",
+    "reference_document",
 })
 
 
@@ -169,10 +176,12 @@ def classify_source_value(detail: dict[str, Any], config: ObsidianMcpConfig) -> 
         disposition = _D.METADATA_ONLY
         reasons.append(f"metadata_only_ext:{ext}")
 
-    # Path-signal promotions (upgrade only — never demote a HIGH).
-    if disposition is not _D.AUTO_CARD_HIGH and _path_has_signal(
-        rel, getattr(config, "source_value_high_priority_path_signals", [])
-    ):
+    # Path-signal promotions (upgrade only — never demote a HIGH). Internal-consistency guard
+    # (Phase 10A): a generic/reference workbook (no high-value class detected) is NEVER promoted to
+    # high by a folder path signal — else a card would say "no high-value class" yet be auto_card_high.
+    if (disposition is not _D.AUTO_CARD_HIGH and document_type not in _NO_AUTO_HIGH_TYPES
+            and _path_has_signal(
+                rel, getattr(config, "source_value_high_priority_path_signals", []))):
         disposition = _D.AUTO_CARD_HIGH
         reasons.append("high_path_signal")
     elif disposition is _D.METADATA_ONLY and _path_has_signal(
