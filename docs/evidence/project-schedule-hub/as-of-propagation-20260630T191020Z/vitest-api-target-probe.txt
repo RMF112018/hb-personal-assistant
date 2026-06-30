@@ -1,0 +1,14 @@
+
+> frontend@0.0.0 test
+> vitest run api
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-as-of-propagation-20260630T191020Z/frontend
+
+ ✓ src/lib/scheduleApiAsOf.test.ts  (2 tests) 2ms
+ ✓ src/lib/sourcesApi.test.ts  (15 tests) 4ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  16:13:33
+   Duration  417ms (transform 54ms, setup 54ms, collect 86ms, tests 6ms, environment 317ms, prepare 67ms)

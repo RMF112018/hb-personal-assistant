@@ -416,30 +416,38 @@ function DriverEvidenceSection({
 
 export function ProjectSchedulePage() {
   const { projectKey = '' } = useParams()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const focusDriver = searchParams.get('driver')
   const focusReview = searchParams.get('review')
   const focusBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
+  const rawAsOf = searchParams.get('as_of') || ''
+  const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : ''
+  const requestAsOf = asOf || undefined
   const [showAllActions, setShowAllActions] = useState(false)
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['project', 'schedule', projectKey],
-    queryFn: () => api.getProjectScheduleSummary(projectKey),
+    queryKey: ['project', 'schedule', projectKey, asOf || 'latest'],
+    queryFn: () => api.getProjectScheduleSummary(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey),
   })
   const trendSchedule = (data || {}) as ProjectScheduleSummaryResponse
   const trendCurrent = trendSchedule.current_schedule || {}
-  const trendAsOf = String(trendSchedule.as_of_date || trendCurrent.data_date || '')
+  const trendAsOf = asOf
   const {
     data: controlsTrendPayload,
     isLoading: controlsTrendLoading,
     error: controlsTrendError,
   } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'controls-trends', trendAsOf],
+    queryKey: ['project', 'schedule', projectKey, 'controls-trends', asOf || 'latest'],
     queryFn: () =>
       api.getProjectScheduleMetricTrends(projectKey, {
         asOf: trendAsOf || undefined,
         metrics: [...SCHEDULE_CONTROLS_METRICS],
       }),
+    enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+  })
+  const { data: baselinePayload } = useQuery({
+    queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
+    queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
   })
 
@@ -480,7 +488,8 @@ export function ProjectSchedulePage() {
   const trendSeries = schedule.trend_series || {}
   const scheduleTrust = schedule.schedule_trust || {}
   const identityReview = schedule.identity_review || {}
-  const baseline = schedule.baseline_summary || {}
+  const baselineState = (baselinePayload || {}) as Record<string, any>
+  const baseline = baselineState.baseline_summary || schedule.baseline_summary || {}
   const reviewDrilldowns = schedule.review_drilldowns || {}
   const driverHub = schedule.change_driver_analysis || {}
   const driverAnalysis = driverHub.prior_update || driverHub
@@ -539,15 +548,32 @@ export function ProjectSchedulePage() {
               {previous?.available ? ` · Previous data date ${text(previous.data_date)}` : ''}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-[var(--hb-muted)]">
+              <span>As-of date</span>
+              <input
+                className="rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm text-[var(--hb-text)]"
+                type="date"
+                value={asOf}
+                onChange={(event) => {
+                  const next = new URLSearchParams(searchParams)
+                  if (event.target.value) {
+                    next.set('as_of', event.target.value)
+                  } else {
+                    next.delete('as_of')
+                  }
+                  setSearchParams(next, { replace: true })
+                }}
+              />
+            </label>
             <Link className="badge" to={`/projects/${projectKey}/schedule/import`}>
               Import Schedule
             </Link>
             <Link
               className="badge"
               to={
-                schedule.as_of_date
-                  ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(String(schedule.as_of_date))}`
+                requestAsOf
+                  ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
                   : `/projects/${projectKey}/schedule/workbench`
               }
             >
@@ -559,7 +585,7 @@ export function ProjectSchedulePage() {
                 type="button"
                 onClick={() => {
                   void api.downloadProjectScheduleExport(projectKey, 'markdown', {
-                    asOf: schedule.as_of_date ? String(schedule.as_of_date) : undefined,
+                    asOf: requestAsOf,
                   })
                 }}
               >
@@ -577,7 +603,7 @@ export function ProjectSchedulePage() {
               {focusDriver && (
                 <Link
                   className="badge"
-                  to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(focusDriver)}?basis=${focusBasis}${schedule.as_of_date ? `&as_of=${encodeURIComponent(String(schedule.as_of_date))}` : ''}`}
+                  to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(focusDriver)}?basis=${focusBasis}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
                 >
                   Open driver {focusDriver}
                 </Link>
@@ -585,7 +611,7 @@ export function ProjectSchedulePage() {
               {focusReview && (
                 <Link
                   className="badge"
-                  to={`/projects/${projectKey}/schedule/workbench?review=${encodeURIComponent(focusReview)}${schedule.as_of_date ? `&as_of=${encodeURIComponent(String(schedule.as_of_date))}` : ''}`}
+                  to={`/projects/${projectKey}/schedule/workbench?review=${encodeURIComponent(focusReview)}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
                 >
                   Open review item
                 </Link>
@@ -659,8 +685,8 @@ export function ProjectSchedulePage() {
               <Link
                 className="badge"
                 to={
-                  schedule.as_of_date
-                    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(String(schedule.as_of_date))}`
+                  requestAsOf
+                    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
                     : `/projects/${projectKey}/schedule/workbench`
                 }
               >
@@ -696,7 +722,7 @@ export function ProjectSchedulePage() {
               <DriverEvidenceSection
                 projectKey={projectKey}
                 driverHub={driverHub}
-                asOfDate={schedule.as_of_date}
+                asOfDate={requestAsOf}
               />
             </div>
           </div>
@@ -791,7 +817,7 @@ export function ProjectSchedulePage() {
                     projectKey={projectKey}
                     drilldownType={key}
                     preview={reviewDrilldowns[key] || {}}
-                    asOfDate={schedule.as_of_date}
+                    asOfDate={requestAsOf}
                   />
                 ))}
               </div>

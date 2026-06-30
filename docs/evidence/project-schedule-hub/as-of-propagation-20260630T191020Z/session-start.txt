@@ -1,0 +1,21 @@
+date_utc=2026-06-30T19:10:53Z
+branch=feature/schedule-as-of-propagation-20260630T191020Z
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-as-of-propagation-20260630T191020Z
+base_head=9181d65a800b8836be883de5c4da57bb76f71837
+
+prerequisites:
+9181d65a (HEAD -> feature/schedule-as-of-propagation-20260630T191020Z, origin/main, origin/HEAD) Merge pull request #229 from RMF112018/feature/schedule-canonical-package-merge-20260630T093009Z
+f51dc2bf (origin/feature/schedule-canonical-package-merge-20260630T093009Z, feature/schedule-canonical-package-merge-20260630T093009Z) docs(schedule): record final canonical import merge readiness
+1c546459 merge: reconcile schedule canonical import branch with main
+f4b88678 docs(schedule): close out canonical import evidence
+5d8d1b13 Merge pull request #227 from RMF112018/ops/obsidian-phase6-first-indexing-20260630T163150Z
+773852bc feat(obsidian): add bounded first-indexing apply
+a787d709 fix(schedule): audit cpm recompute after canonical imports
+3a84aab2 fix(schedule): merge equivalent schedule package files canonically
+77cd494c Merge pull request #226 from RMF112018/feat/obsidian-phase5-domain-routing-20260630T130110Z
+7fdfa49c (feat/obsidian-phase5-domain-routing-20260630T130110Z) feat(obsidian): route source notes by domain and add first-indexing dry run
+33aea41a Merge pull request #225 from RMF112018/feat/obsidian-phase4-source-cards-20260630T112541Z
+e312473b (feat/obsidian-phase4-source-cards-20260630T112541Z) feat(obsidian): improve source-card taxonomy and stale note cleanup
+
+status:
+?? docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/

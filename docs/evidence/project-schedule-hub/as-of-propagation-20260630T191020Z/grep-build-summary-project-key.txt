@@ -1,0 +1,37 @@
+$ rg -n 'build_summary\(project_key|build_summary\([^\n]*project_key|build_summary\(' src/hb_assistant/construction/analytics tests -g '*.py'
+exit=0
+
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:100:    def build_summary(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1002:            summary = self.build_summary(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1195:        summary = self.build_summary(project_key, as_of=as_of)
+tests/test_project_schedule_hub_drilldowns.py:37:    summary = service.build_summary("tropical", as_of=date(2026, 7, 3))
+tests/test_project_schedule_hub_drilldowns.py:80:    summary = service.build_summary("tropical", as_of=date(2026, 6, 29))
+tests/test_project_schedule_review_cue_workflow.py:78:    summary = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 7, 3))
+tests/test_project_schedule_narrative_qa.py:27:    summary = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_narrative_qa.py:81:    summary = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+src/hb_assistant/construction/analytics/schedule_cpm_longest_path.py:165:    summary = _build_summary(activities, by_id, path_status, path_notes)
+src/hb_assistant/construction/analytics/schedule_cpm_longest_path.py:395:def _build_summary(
+tests/test_schedule_trust_resolver.py:33:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_schedule_trust_resolver.py:59:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:565:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:579:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1040:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1138:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 6, 29))
+tests/test_project_schedule_hub_api.py:1159:    prior_only = service.build_summary("tropical", as_of=date(2026, 6, 28))
+tests/test_project_schedule_hub_api.py:1160:    current = service.build_summary("tropical", as_of=date(2026, 6, 29))
+tests/test_project_schedule_hub_api.py:1220:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1250:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1283:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1302:        lambda: service.build_summary("tropical", as_of=date(2026, 7, 3)),
+tests/test_project_schedule_hub_api.py:1340:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1352:    no_schedule = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_hub_api.py:1358:    one_update = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical")
+tests/test_project_schedule_hub_api.py:1408:    historical = service.build_summary("tropical", as_of=date(2026, 6, 28))
+tests/test_project_schedule_hub_api.py:1409:    latest = service.build_summary("tropical", as_of=date(2026, 6, 30))
+src/hb_assistant/construction/analytics/api.py:1214:        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(
+src/hb_assistant/construction/analytics/api.py:1613:        summary = service.build_summary(project_key, as_of=as_of_date)
+src/hb_assistant/construction/analytics/api.py:1677:        summary = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(
+tests/test_project_schedule_baseline_selection.py:72:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_baseline_selection.py:90:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary(
+tests/test_project_schedule_review_workbench.py:256:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 7, 3))
+tests/test_project_schedule_review_workbench.py:268:    summary = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 7, 3))

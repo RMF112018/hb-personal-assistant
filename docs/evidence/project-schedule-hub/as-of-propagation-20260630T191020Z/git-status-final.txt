@@ -1,0 +1,16 @@
+$ git status --short --branch
+exit=0
+
+## feature/schedule-as-of-propagation-20260630T191020Z...origin/main [ahead 1]
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-diff-check.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-diff-stat-final.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-head-final.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/git-status-final.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-as-of.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-build-summary-project-key.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/grep-frontend-summary-helper.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/phase3-summary.md
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/prerequisite-proof.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/scripts-test-schedule.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/vitest-api-target-probe.txt
+ M docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/vitest-project-schedule-page-api.txt

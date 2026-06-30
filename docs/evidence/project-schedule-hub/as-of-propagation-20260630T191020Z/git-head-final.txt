@@ -1,0 +1,9 @@
+$ git rev-parse --short HEAD && git log --oneline -5
+exit=0
+
+4767ccc1
+4767ccc1 fix(schedule): propagate as-of context consistently
+112ff008 Merge pull request #228 from RMF112018/ops/obsidian-phase6-first-indexing-20260630T163150Z
+7c61539f ops(obsidian): Phase 6E safety closeout — freeze auto-gen, clear 4 queued events
+9181d65a Merge pull request #229 from RMF112018/feature/schedule-canonical-package-merge-20260630T093009Z
+117a5b9e ops(obsidian): Phase 6D — first real bounded batch (25 Source Notes/Work cards)

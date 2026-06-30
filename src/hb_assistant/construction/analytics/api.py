@@ -1190,13 +1190,30 @@ def create_app(*, db_path: str | None = None) -> Any:
         return AnalyticsService(db_path=db_path).build_project_cost_time(project_key)
 
     @app.get("/api/projects/{project_key}/schedule")
-    def project_schedule(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+    def project_schedule(
+        project_key: str,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
         del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
 
-        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+
+        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(
+            project_key, as_of=as_of_date
+        )
 
     @app.get("/api/projects/{project_key}/schedule/drilldowns")
     def project_schedule_drilldowns(
@@ -1569,8 +1586,14 @@ def create_app(*, db_path: str | None = None) -> Any:
         return Response(content=payload["body"], media_type=payload["content_type"], headers=headers)
 
     @app.get("/api/projects/{project_key}/schedule/baseline")
-    def project_schedule_baseline_get(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+    def project_schedule_baseline_get(
+        project_key: str,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
         del role
+        from datetime import date as date_type
+        from fastapi import HTTPException
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
@@ -1579,8 +1602,15 @@ def create_app(*, db_path: str | None = None) -> Any:
             public_selected_baseline_state,
         )
 
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+
         service = ProjectScheduleSummaryService(db_path=_schedule_db_path())
-        summary = service.build_summary(project_key)
+        summary = service.build_summary(project_key, as_of=as_of_date)
         current = summary.get("current_schedule") or {}
         if not current.get("available"):
             return {"available": False, "reason": "no_schedule"}
@@ -1600,9 +1630,11 @@ def create_app(*, db_path: str | None = None) -> Any:
     def project_schedule_baseline_put(
         project_key: str,
         request: dict[str, Any],
+        as_of: str | None = None,
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         require_operator_role(role)
+        from datetime import date as date_type
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
@@ -1611,6 +1643,13 @@ def create_app(*, db_path: str | None = None) -> Any:
             public_selected_baseline_state,
         )
         from fastapi import HTTPException
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
 
         current_key = str(request.get("current_schedule_version_key") or "")
         baseline_key = str(request.get("selected_baseline_schedule_version_key") or "")
@@ -1635,7 +1674,9 @@ def create_app(*, db_path: str | None = None) -> Any:
             }:
                 raise HTTPException(status_code=400, detail=code) from exc
             raise
-        summary = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(project_key)
+        summary = ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_summary(
+            project_key, as_of=as_of_date
+        )
         return {**public_selected_baseline_state(state), "baseline_summary": summary.get("baseline_summary")}
 
     @app.get("/api/my-items")
