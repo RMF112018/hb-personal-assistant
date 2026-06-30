@@ -46,3 +46,23 @@
   high-value files in the cloud drive for syn-work, then re-run the apply (no code change needed); OR
   authorize scanning deeper than 500 files / a different root, where materialized high-value files may
   exist. The tooling is complete, fast, and placeholder-aware; the only blocker is data materialization.
+
+## Phase 6C — deeper scan (max_files=5000, max_seconds=300), placeholder-aware preview
+- Ran the apply tool in PREVIEW (no writes, stat-only) on root syn-work with max_files=5000.
+- pool_size=1411 (auto_card_high + work within the 5000-file scan); readable_considered=0;
+  skips_by_reason: online_only_or_dataless=1411, read_timeout=0, read_permission_error=0,
+  read_error=0.
+- Decision gate: readable (0) < 25 -> STOPPED. Per the rules, did NOT apply, did NOT expand beyond
+  5000 files, and did NOT switch roots.
+- Zero writes (preview is stat-only): generated_notes unchanged (67 not_generated); 0 syn-work source
+  rows; queue 0/0; Source Notes/Work has only its README. No backend started; port 8000 clear.
+- Conclusion: syn-work's first 5000 files contain 1411 high-value candidates, ALL non-materialized
+  cloud placeholders (st_blocks=0). No readable high-value source exists to generate cards from within
+  the authorized cap. The first real card batch remains blocked on data materialization.
+- Tooling validated: 33 apply+dryrun tests pass; ruff clean. No code change in 6C (existing
+  placeholder-aware tool used as-is).
+
+## Updated recommended next
+- Materialize a set of high-value syn-work files (make-available-offline) so >=25 readable
+  auto_card_high candidates exist, then re-run the bounded apply (no code change needed); OR obtain
+  separate approval to scan beyond 5000 files or target a different (materialized) root.
