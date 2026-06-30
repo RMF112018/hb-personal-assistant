@@ -19,6 +19,12 @@ from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
 from . import pathsafe
 from .config import ExternalSourceRoot, ObsidianMcpConfig
 from .source_index_repository import SourceIndexRepository
+from .source_skip_codes import (
+    DEFERRED_PATH,
+    EXCLUDED_PATH,
+    SOURCE_NOTES_SELF_INDEX_GUARD,
+    UNSUPPORTED_FILE_TYPE,
+)
 from .source_value import SourceValue, _ext_norm, classify_source_value
 
 _logger = logging.getLogger("hb_assistant.obsidian_mcp.source_index")
@@ -509,9 +515,17 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 if event["rel_path"]:
                     repo.mark_deleted("external_file", event["rel_path"])
                 repo.complete_event(event["event_id"], "done")
+            elif (event["source_root_key"] == _VAULT_ROOT_KEY and event["rel_path"]
+                    and is_source_notes_path(event["rel_path"], config)):
+                # Self-index guard (drain backstop): a generated Source Notes card on the VAULT root
+                # must never re-enter source processing. Scoped strictly to the vault root + the
+                # configured source_notes_folder — an EXTERNAL root that merely contains a folder
+                # named "Source Notes" is NOT caught here and is indexed normally below.
+                repo.complete_event(event["event_id"], "skipped",
+                                    error_code=SOURCE_NOTES_SELF_INDEX_GUARD)
             elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
                 # Excluded dependency/build path: skip cleanly (not an error, not indexed, no card).
-                repo.complete_event(event["event_id"], "skipped", error_code="excluded_path")
+                repo.complete_event(event["event_id"], "skipped", error_code=EXCLUDED_PATH)
             elif event["rel_path"] and is_deferred_source_path(event["rel_path"], config):
                 # Deferred business record: index for search (no card/summary), mark a clear skip
                 # receipt (NOT an error). _auto_generate also no-ops for deferred on the rebuild path.
@@ -519,11 +533,11 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 if root and event["rel_path"]:
                     with suppress(Exception):
                         index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
-                repo.complete_event(event["event_id"], "skipped", error_code="deferred_path")
+                repo.complete_event(event["event_id"], "skipped", error_code=DEFERRED_PATH)
             elif event["rel_path"] and _ext_norm(Path(event["rel_path"]).suffix) in _unsupported_exts(config):
                 # Unsupported/placeholder type (.url/.aspx/screenshot/etc.): do NOT index (no fragile
                 # parsing, no garbage rows). A clean policy skip, NOT an error.
-                repo.complete_event(event["event_id"], "skipped", error_code="unsupported_file_type")
+                repo.complete_event(event["event_id"], "skipped", error_code=UNSUPPORTED_FILE_TYPE)
             else:  # created / modified / reindex_requested
                 root = roots.get(event["source_root_key"])
                 event_status, event_code = "done", None

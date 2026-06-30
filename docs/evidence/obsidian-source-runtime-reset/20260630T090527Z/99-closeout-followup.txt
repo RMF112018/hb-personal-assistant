@@ -1,0 +1,22 @@
+=== FOLLOW-UP: lease-check fail-closed correction ===
+Change: watcher lease-check error now FAILS CLOSED (degraded, no drain) instead of fail-open.
+  - source_watch.py start(): on acquire_watcher_lease exception → is_owner=False, degraded=True,
+    mode='degraded', last_error_code='watcher_lease_error' (sanitized), return (no drain thread).
+  - New test: test_lease_check_error_fails_closed (ownership suite).
+  - Runbook updated: lease-check error fails closed.
+
+Validation rerun:
+  ruff check (all changed src/tests/script): All checks passed!
+  pytest (16 targeted files): 138 passed, 1 warning
+
+=== git status (pre follow-up commit) ===
+ M docs/runbooks/obsidian-source-intelligence-runtime.md
+ M src/hb_assistant/obsidian_mcp/source_watch.py
+ M tests/test_obsidian_source_watch_ownership.py
+?? docs/evidence/obsidian-source-runtime-reset/20260630T090527Z/99-closeout-followup.txt
+
+=== diff stat vs HEAD (first commit) ===
+ .../obsidian-source-intelligence-runtime.md        |  4 +++-
+ src/hb_assistant/obsidian_mcp/source_watch.py      | 17 +++++++++-----
+ tests/test_obsidian_source_watch_ownership.py      | 26 ++++++++++++++++++++++
+ 3 files changed, 40 insertions(+), 7 deletions(-)

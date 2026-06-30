@@ -25,6 +25,8 @@ from typing import Any
 from hb_assistant.store.connection import borrow_connection, transaction
 from hb_assistant.store.source_intelligence_tables import fts5_available
 
+from .source_skip_codes import normalize_skip_code
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -535,6 +537,12 @@ class SourceIndexRepository:
 
     def complete_event(self, event_id: str, status: str, *, error_code: str | None = None,
                        conn: sqlite3.Connection | None = None) -> None:
+        # Skip-code normalization at the WRITE boundary: a NEW skip with no code is stamped
+        # ``unspecified_skip`` (a regression signal) rather than NULL, so it never silently merges
+        # into the legacy NULL→``unspecified`` read-time bucket. Non-skip statuses keep error_code
+        # as-is (errors carry the raw exception name; done/processing/queued carry None).
+        if status == "skipped":
+            error_code = normalize_skip_code(error_code)
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             c.execute(
                 "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? WHERE event_id=?",
@@ -550,6 +558,95 @@ class SourceIndexRepository:
                 (_now(), int(ttl_seconds)),
             )
             return cur.rowcount or 0
+
+    # ----- watcher single-owner lease --------------------------------------------------------
+    # Two backend processes pointed at the same DB must not both run the watcher drain loop.
+    # The lease is a pair of singleton k/v rows in the existing source_intelligence_state table
+    # (NO schema change): ``watcher_owner`` (JSON owner_info incl. an opaque per-watcher
+    # owner_token) and ``watcher_heartbeat_at`` (ISO timestamp). A live owner's heartbeat blocks a
+    # competing acquire; a stale heartbeat (older than ttl, e.g. a crashed owner) is reclaimable.
+    def _read_watcher_owner(self, c: sqlite3.Connection) -> dict[str, Any] | None:
+        row = c.execute(
+            "SELECT state_value FROM source_intelligence_state WHERE state_key='watcher_owner'"
+        ).fetchone()
+        if not row or not row[0]:
+            return None
+        try:
+            owner = json.loads(row[0])
+            return owner if isinstance(owner, dict) else None
+        except Exception:
+            return None
+
+    def acquire_watcher_lease(self, *, owner_token: str, owner_info: dict[str, Any],
+                              ttl_seconds: int = 900,
+                              conn: sqlite3.Connection | None = None) -> dict[str, Any]:
+        """Try to claim watcher ownership. Returns ``{acquired, took_over, owner}``.
+
+        Acquires when there is no current owner, the current owner is *this* token (re-entry), or
+        the current owner's heartbeat is stale (> ttl). Refuses (``acquired=False``) when a
+        DIFFERENT owner has a fresh heartbeat — the caller must then run degraded (API only, no
+        drain loop). ``took_over`` is True when a stale different owner was displaced.
+        """
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            current = self._read_watcher_owner(c)
+            hb = c.execute(
+                "SELECT (julianday('now') - julianday(state_value)) * 86400 "
+                "FROM source_intelligence_state WHERE state_key='watcher_heartbeat_at'"
+            ).fetchone()
+            age = float(hb[0]) if hb and hb[0] is not None else None
+            same_owner = bool(current and current.get("owner_token") == owner_token)
+            stale = current is None or age is None or age > float(ttl_seconds)
+            if current is not None and not same_owner and not stale:
+                return {"acquired": False, "took_over": False, "owner": current}
+            took_over = bool(current is not None and not same_owner and stale)
+            payload = dict(owner_info)
+            payload["owner_token"] = owner_token
+            payload["started_at"] = (current.get("started_at") if same_owner and current else None) or now
+            self._set_state(c, "watcher_owner", json.dumps(payload, sort_keys=True))
+            self._set_state(c, "watcher_heartbeat_at", now)
+            return {"acquired": True, "took_over": took_over, "owner": payload}
+
+    def refresh_watcher_heartbeat(self, *, owner_token: str,
+                                  conn: sqlite3.Connection | None = None) -> bool:
+        """Stamp a fresh heartbeat IFF this token still owns the lease. Returns False if not owner."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            current = self._read_watcher_owner(c)
+            if not current or current.get("owner_token") != owner_token:
+                return False
+            self._set_state(c, "watcher_heartbeat_at", _now())
+            return True
+
+    def release_watcher_lease(self, *, owner_token: str,
+                              conn: sqlite3.Connection | None = None) -> bool:
+        """Release the lease IFF this token owns it (so a non-owner stop never clears it)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            current = self._read_watcher_owner(c)
+            if not current or current.get("owner_token") != owner_token:
+                return False
+            c.execute(
+                "DELETE FROM source_intelligence_state "
+                "WHERE state_key IN ('watcher_owner', 'watcher_heartbeat_at')"
+            )
+            return True
+
+    def get_watcher_owner(self, *, ttl_seconds: int = 900,
+                          conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        """Current owner info + heartbeat age + staleness, or None if unowned (status diagnostic)."""
+        with borrow_connection(conn, self.db_path) as c:
+            owner = self._read_watcher_owner(c)
+            if owner is None:
+                return None
+            hb = c.execute(
+                "SELECT state_value, (julianday('now') - julianday(state_value)) * 86400 "
+                "FROM source_intelligence_state WHERE state_key='watcher_heartbeat_at'"
+            ).fetchone()
+        age = round(float(hb[1]), 1) if hb and hb[1] is not None else None
+        owner = dict(owner)
+        owner["heartbeat_at"] = hb[0] if hb else None
+        owner["heartbeat_age_seconds"] = age
+        owner["stale"] = age is None or age > float(ttl_seconds)
+        return owner
 
     # ----- search ----------------------------------------------------------------------------
     def search_sources(self, query: str, *, limit: int = 20, project_key: str | None = None,

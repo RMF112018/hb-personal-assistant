@@ -1,0 +1,130 @@
+=== backend listener (port 8000) ===
+No backend listening on 8000
+
+=== source intelligence files ===
+src/hb_assistant/obsidian_mcp/__init__.py
+src/hb_assistant/obsidian_mcp/config.py
+src/hb_assistant/obsidian_mcp/curation.py
+src/hb_assistant/obsidian_mcp/domain.py
+src/hb_assistant/obsidian_mcp/eml.py
+src/hb_assistant/obsidian_mcp/extract.py
+src/hb_assistant/obsidian_mcp/fileops.py
+src/hb_assistant/obsidian_mcp/frontmatter.py
+src/hb_assistant/obsidian_mcp/graph.py
+src/hb_assistant/obsidian_mcp/llm_chat_args.py
+src/hb_assistant/obsidian_mcp/llm_chat_classify.py
+src/hb_assistant/obsidian_mcp/llm_chat_extract.py
+src/hb_assistant/obsidian_mcp/llm_chat_models.py
+src/hb_assistant/obsidian_mcp/llm_chat_plan_store.py
+src/hb_assistant/obsidian_mcp/llm_chat_redaction.py
+src/hb_assistant/obsidian_mcp/llm_chat_templates.py
+src/hb_assistant/obsidian_mcp/llm_chat.py
+src/hb_assistant/obsidian_mcp/llm.py
+src/hb_assistant/obsidian_mcp/mcp_app.py
+src/hb_assistant/obsidian_mcp/mdutil.py
+src/hb_assistant/obsidian_mcp/mutations.py
+src/hb_assistant/obsidian_mcp/oauth_store.py
+src/hb_assistant/obsidian_mcp/pathsafe.py
+src/hb_assistant/obsidian_mcp/plan_store.py
+src/hb_assistant/obsidian_mcp/search.py
+src/hb_assistant/obsidian_mcp/service.py
+src/hb_assistant/obsidian_mcp/source_analyzers.py
+src/hb_assistant/obsidian_mcp/source_index_repository.py
+src/hb_assistant/obsidian_mcp/source_indexer.py
+src/hb_assistant/obsidian_mcp/source_maintenance.py
+src/hb_assistant/obsidian_mcp/source_notes.py
+src/hb_assistant/obsidian_mcp/source_search.py
+src/hb_assistant/obsidian_mcp/source_value.py
+src/hb_assistant/obsidian_mcp/source_watch.py
+src/hb_assistant/obsidian_mcp/summarize.py
+src/hb_assistant/obsidian_mcp/templates.py
+src/hb_assistant/obsidian_mcp/tools.py
+
+=== relevant tests ===
+tests/test_obsidian_mcp_backend.py
+tests/test_obsidian_mcp_config_forward_compat.py
+tests/test_obsidian_mcp_curation_ext.py
+tests/test_obsidian_mcp_curation.py
+tests/test_obsidian_mcp_domain.py
+tests/test_obsidian_mcp_email.py
+tests/test_obsidian_mcp_fileops.py
+tests/test_obsidian_mcp_frontmatter.py
+tests/test_obsidian_mcp_graph.py
+tests/test_obsidian_mcp_llm_chat.py
+tests/test_obsidian_mcp_oauth.py
+tests/test_obsidian_mcp_ollama_validation.py
+tests/test_obsidian_mcp_read_hardening.py
+tests/test_obsidian_mcp_search.py
+tests/test_obsidian_mcp_summarize.py
+tests/test_obsidian_mcp_templates.py
+tests/test_obsidian_mcp_timeout.py
+tests/test_obsidian_source_analyzer.py
+tests/test_obsidian_source_auto_generate.py
+tests/test_obsidian_source_bid_package_analyzer.py
+tests/test_obsidian_source_cards_pm_grade.py
+tests/test_obsidian_source_deferred.py
+tests/test_obsidian_source_exclusions.py
+tests/test_obsidian_source_index.py
+tests/test_obsidian_source_maintenance.py
+tests/test_obsidian_source_notes.py
+tests/test_obsidian_source_pm_priority_drain.py
+tests/test_obsidian_source_rebuild_autogen.py
+tests/test_obsidian_source_self_index_guard.py
+tests/test_obsidian_source_spreadsheet_card.py
+tests/test_obsidian_source_summaries.py
+tests/test_obsidian_source_value.py
+tests/test_obsidian_source_watch_lifecycle.py
+tests/test_obsidian_source_watch_reliability.py
+tests/test_obsidian_source_watch.py
+
+=== vault top-level (read-only) ===
+total 32
+drwxr-xr-x@ 26 bobbyfetting  staff    832 Jun 30 05:04 .
+drwx------@ 33 bobbyfetting  staff   1056 Jun 30 05:04 ..
+-rw-r--r--@  1 bobbyfetting  staff  14340 Jun 29 03:38 .DS_Store
+drwxr-xr-x@ 12 bobbyfetting  staff    384 May 25 03:13 .git
+drwxr-xr-x@ 13 bobbyfetting  staff    416 Jun 29 15:58 .obsidian
+drwxr-xr-x@  8 bobbyfetting  staff    256 Jun 30 05:04 .smart-env
+drwxr-xr-x@  7 bobbyfetting  staff    224 May 25 03:09 .venv
+drwxr-xr-x@  2 bobbyfetting  staff     64 May 29 07:39 Agent Briefs
+drwxr-xr-x@  9 bobbyfetting  staff    288 Jun 29 08:35 AI Outputs
+drwxr-xr-x@  2 bobbyfetting  staff     64 May 24 08:26 Archive
+drwxr-xr-x@  3 bobbyfetting  staff     96 Jun 29 08:34 auto
+drwxr-xr-x@  4 bobbyfetting  staff    128 Jun  9 06:29 Construction Intelligence
+drwxr-xr-x@  4 bobbyfetting  staff    128 May 24 12:52 copilot
+drwxr-xr-x@  3 bobbyfetting  staff     96 May 24 16:39 Daily Notes
+drwxr-xr-x@  6 bobbyfetting  staff    192 May 25 03:13 docs
+drwxr-xr-x@  3 bobbyfetting  staff     96 Jun  3 02:58 Inbox
+drwxr-xr-x@  7 bobbyfetting  staff    224 May 24 08:27 Knowledge
+drwxr-xr-x@  5 bobbyfetting  staff    160 Jun 29 08:35 MCP Smoke
+drwxr-xr-x@  3 bobbyfetting  staff     96 Jun 29 08:34 MCP Write Smoke
+drwxr-xr-x@  2 bobbyfetting  staff     64 May 24 08:26 People
+drwxr-xr-x@  3 bobbyfetting  staff     96 May 25 03:11 scripts
+drwxr-xr-x@  3 bobbyfetting  staff     96 May 24 08:27 Side Hustle
+drwxr-xr-x@ 10 bobbyfetting  staff    320 Jun 29 15:58 Source Notes
+drwxr-xr-x@ 22 bobbyfetting  staff    704 Jun 29 08:35 Templates
+-rw-r--r--@  1 bobbyfetting  staff      0 Jun 29 05:57 Untitled.canvas
+drwxr-xr-x@ 13 bobbyfetting  staff    416 Jun 30 04:57 Work
+--- top-level dirs ---
+/Users/bobbyfetting/Documents/Obsidian Vault/.git
+/Users/bobbyfetting/Documents/Obsidian Vault/.obsidian
+/Users/bobbyfetting/Documents/Obsidian Vault/.smart-env
+/Users/bobbyfetting/Documents/Obsidian Vault/.venv
+/Users/bobbyfetting/Documents/Obsidian Vault/Agent Briefs
+/Users/bobbyfetting/Documents/Obsidian Vault/AI Outputs
+/Users/bobbyfetting/Documents/Obsidian Vault/Archive
+/Users/bobbyfetting/Documents/Obsidian Vault/auto
+/Users/bobbyfetting/Documents/Obsidian Vault/Construction Intelligence
+/Users/bobbyfetting/Documents/Obsidian Vault/copilot
+/Users/bobbyfetting/Documents/Obsidian Vault/Daily Notes
+/Users/bobbyfetting/Documents/Obsidian Vault/docs
+/Users/bobbyfetting/Documents/Obsidian Vault/Inbox
+/Users/bobbyfetting/Documents/Obsidian Vault/Knowledge
+/Users/bobbyfetting/Documents/Obsidian Vault/MCP Smoke
+/Users/bobbyfetting/Documents/Obsidian Vault/MCP Write Smoke
+/Users/bobbyfetting/Documents/Obsidian Vault/People
+/Users/bobbyfetting/Documents/Obsidian Vault/scripts
+/Users/bobbyfetting/Documents/Obsidian Vault/Side Hustle
+/Users/bobbyfetting/Documents/Obsidian Vault/Source Notes
+/Users/bobbyfetting/Documents/Obsidian Vault/Templates
+/Users/bobbyfetting/Documents/Obsidian Vault/Work

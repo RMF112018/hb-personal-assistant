@@ -1,0 +1,32 @@
+=== final repo status ===
+ M src/hb_assistant/obsidian_mcp/source_index_repository.py
+ M src/hb_assistant/obsidian_mcp/source_indexer.py
+ M src/hb_assistant/obsidian_mcp/source_value.py
+ M src/hb_assistant/obsidian_mcp/source_watch.py
+ M tests/test_obsidian_source_self_index_guard.py
+?? docs/evidence/obsidian-source-runtime-reset/
+?? docs/runbooks/obsidian-source-intelligence-runtime.md
+?? docs/runbooks/obsidian-vault-reset.md
+?? scripts/obsidian_vault_quarantine_reset.py
+?? src/hb_assistant/obsidian_mcp/source_skip_codes.py
+?? tests/test_obsidian_source_skip_codes.py
+?? tests/test_obsidian_source_watch_ownership.py
+?? tests/test_obsidian_vault_quarantine_reset.py
+
+=== diff stat ===
+ .../obsidian_mcp/source_index_repository.py        | 97 ++++++++++++++++++++++
+ src/hb_assistant/obsidian_mcp/source_indexer.py    | 20 ++++-
+ src/hb_assistant/obsidian_mcp/source_value.py      | 14 +++-
+ src/hb_assistant/obsidian_mcp/source_watch.py      | 72 ++++++++++++++++
+ tests/test_obsidian_source_self_index_guard.py     | 66 ++++++++++++++-
+ 5 files changed, 261 insertions(+), 8 deletions(-)
+
+=== untracked (new) files ===
+?? docs/evidence/obsidian-source-runtime-reset/
+?? docs/runbooks/obsidian-source-intelligence-runtime.md
+?? docs/runbooks/obsidian-vault-reset.md
+?? scripts/obsidian_vault_quarantine_reset.py
+?? src/hb_assistant/obsidian_mcp/source_skip_codes.py
+?? tests/test_obsidian_source_skip_codes.py
+?? tests/test_obsidian_source_watch_ownership.py
+?? tests/test_obsidian_vault_quarantine_reset.py
