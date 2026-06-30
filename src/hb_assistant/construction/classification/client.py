@@ -42,6 +42,42 @@ class OllamaChatClient:
     def model(self) -> str:
         return self._model
 
+    @property
+    def base_url(self) -> str:
+        return self._base_url
+
+    def generate_text(self, *, system: str, prompt: str) -> str:
+        """Issue a single-shot FREE-TEXT generation (no ``format: "json"``). Returns the raw text.
+
+        Identical transport to :meth:`generate_json` except the ``format`` field is omitted, so the
+        model returns prose/Markdown rather than constrained JSON. Caller is responsible for bounding
+        and sanitizing the output. ``generate_json`` is intentionally left unchanged.
+        """
+
+        url = self._base_url + self.GENERATE_PATH
+        payload = {
+            "model": self._model,
+            "system": system,
+            "prompt": prompt,
+            "stream": False,
+        }
+        try:
+            r = requests.post(url, json=payload, timeout=self._timeout)
+        except requests.Timeout:
+            raise OllamaUnavailable("ollama_timeout") from None
+        except requests.RequestException:
+            raise OllamaUnavailable("ollama_request_failed") from None
+        if r.status_code != 200:
+            raise OllamaUnavailable(f"ollama_status_{r.status_code}")
+        try:
+            body = r.json()
+        except ValueError:
+            raise OllamaUnavailable("ollama_invalid_envelope") from None
+        response = body.get("response")
+        if not isinstance(response, str):
+            raise OllamaUnavailable("ollama_missing_response_field")
+        return response
+
     def generate_json(self, *, system: str, prompt: str) -> str:
         """Issue a single-shot JSON-mode generation. Returns the raw response text.
 
