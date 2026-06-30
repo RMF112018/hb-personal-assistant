@@ -30,13 +30,13 @@ Plus `tests/test_migrator_v95_cpm_import_observability.py`.
 
 ## Validation (all PASS)
 
-| Gate | Result |
-|------|--------|
-| `pytest tests/test_schedule_cpm_import_observability.py` | 11 passed |
-| Phase 2 bundle (health + pipeline + hub API) | 43 passed |
-| `pytest -k "schedule and import and cpm"` | 23 passed |
-| `py_compile` | PASS |
-| `scripts/test-schedule.sh` | 323 passed |
+| Gate | Result | Evidence |
+|------|--------|----------|
+| `pytest tests/test_schedule_cpm_import_observability.py` | 14 passed | `pytest-cpm-observability.txt` |
+| Phase 2 bundle (health + pipeline + hub API) | 43 passed | `pytest-phase2-bundle.txt` |
+| `pytest -k "schedule and import and cpm"` | 23 passed | `pytest-selected-schedule-import-cpm.txt` |
+| `py_compile` | PASS | `py-compile.txt` |
+| `scripts/test-schedule.sh` | 323 passed, 2 deselected | `scripts-test-schedule.txt` |
 
 ## Commit
 

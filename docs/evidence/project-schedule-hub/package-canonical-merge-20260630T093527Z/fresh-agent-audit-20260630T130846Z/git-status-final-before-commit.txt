@@ -1,0 +1,2 @@
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/git-status-final-before-commit.txt
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/phase1-commit.txt

@@ -61,9 +61,11 @@ Proof output: `fresh-agent-audit-20260630T130846Z/prove-schedule-canonical-packa
 
 ## Commit status
 
-**READY TO COMMIT** — all gates passed after `count_sources` proof-script patch (2026-06-30T13:30Z).
+Phase 1 is committed.
 
-Final evidence: `fresh-agent-audit-20260630T130846Z/*-final.txt`
+- Commit: `3a84aab2f63e7beb903feff785fd747457c7a3cd`
+- Message: `fix(schedule): merge equivalent schedule package files canonically`
+- Final evidence: `fresh-agent-audit-20260630T130846Z/*-final.txt`
 
 ## Remaining gaps (deferred)
 
@@ -76,4 +78,4 @@ Final evidence: `fresh-agent-audit-20260630T130846Z/*-final.txt`
 
 ## Recommended next step
 
-Commit Phase 1, then Phase 2 CPM observability in separate commit.
+Use this Phase 1 commit as the base for Phase 2 CPM observability and final merge-readiness validation.

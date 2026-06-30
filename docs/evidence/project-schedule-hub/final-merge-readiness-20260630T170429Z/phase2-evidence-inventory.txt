@@ -1,0 +1,9 @@
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/git-status-before-commit.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/phase2-commit.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/phase2-summary.md
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/py-compile.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/pytest-cpm-observability.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/pytest-phase2-bundle.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/pytest-selected-schedule-import-cpm.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/recent-commits.txt
+docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/scripts-test-schedule.txt
