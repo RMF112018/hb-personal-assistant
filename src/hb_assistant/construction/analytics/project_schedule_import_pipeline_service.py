@@ -19,6 +19,9 @@ from hb_assistant.store.project_schedule_hub_repository import (
     MEMBERSHIP_ACCEPTED,
     ProjectScheduleHubRepository,
 )
+from hb_assistant.store.schedule_cpm_import_observability_repository import (
+    ScheduleCpmImportObservabilityRepository,
+)
 from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
 from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
@@ -47,6 +50,7 @@ class ProjectScheduleImportPipelineService:
         self._trust = ScheduleTrustService(db_path=db_path)
         self._cpm_recompute = ScheduleCpmRecomputeService(db_path=db_path)
         self._cpm_read = ScheduleCpmReadService(db_path=db_path)
+        self._cpm_observability = ScheduleCpmImportObservabilityRepository(db_path=db_path)
 
     def preview_bytes(
         self,
@@ -104,7 +108,12 @@ class ProjectScheduleImportPipelineService:
                 "schedule_import_invalid",
                 message="import has no schedule version to recompute",
             )
-        cpm = self._cpm_recompute.recompute(version_key)
+        cpm = self._cpm_recompute.recompute(
+            version_key,
+            import_id=import_id,
+            package_id=str(row.get("package_id") or "") or None,
+            trigger_source="manual_retry",
+        )
         pipeline = self.build_status(project_key=project_key, import_id=import_id)
         return {
             "import_id": import_id,
@@ -125,7 +134,10 @@ class ProjectScheduleImportPipelineService:
         quality_status = self._map_quality_status(quality_run, committed=committed)
 
         cpm_summary = self._cpm_read.cpm_summary(version_key) if version_key else {"available": False}
-        cpm_status = self._map_cpm_status(cpm_summary, committed=committed)
+        cpm_observability = self._cpm_observability.get_by_import_id(import_id)
+        cpm_status = self._map_cpm_status(
+            cpm_summary, committed=committed, observability=cpm_observability
+        )
 
         membership = (
             self._hub_repo.get_membership(project_key=project_key, schedule_version_key=version_key)
@@ -205,7 +217,7 @@ class ProjectScheduleImportPipelineService:
             "import_status": import_status,
             "overall_status": overall,
             "stages": stage_list,
-            "cpm": self._cpm_public_fields(cpm_summary),
+            "cpm": self._cpm_public_fields(cpm_summary, observability=cpm_observability),
             "quality_evaluation_status": quality_status,
             "identity_membership_status": (membership or {}).get("membership_status"),
             "hub_ready": hub_ready,
@@ -258,9 +270,16 @@ class ProjectScheduleImportPipelineService:
         return "pending"
 
     @staticmethod
-    def _map_cpm_status(summary: dict[str, Any], *, committed: bool) -> str:
+    def _map_cpm_status(
+        summary: dict[str, Any],
+        *,
+        committed: bool,
+        observability: dict[str, Any] | None = None,
+    ) -> str:
         if not committed:
             return "not_started"
+        if observability and str(observability.get("status") or "") == "failed":
+            return "failed"
         runs = summary.get("runs") or {}
         kinds = (
             "graph_diagnostics",
@@ -304,18 +323,46 @@ class ProjectScheduleImportPipelineService:
             return "partial"
         return "pending"
 
-    def _cpm_public_fields(self, summary: dict[str, Any]) -> dict[str, Any]:
+    def _cpm_public_fields(
+        self,
+        summary: dict[str, Any],
+        *,
+        observability: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         runs = summary.get("runs") or {}
         critical = runs.get("criticality") or {}
         dcma = summary.get("dcma_critical_path") or {}
-        return {
+        out: dict[str, Any] = {
             "available": bool(summary.get("available")),
-            "cpm_recompute_status": self._map_cpm_status(summary, committed=True),
+            "cpm_recompute_status": self._map_cpm_status(
+                summary, committed=True, observability=observability
+            ),
             "cpm_run_id": critical.get("cpm_run_id") if critical.get("available") else None,
             "computed_critical_activity_count": dcma.get("computed_critical_activity_count"),
             "longest_path_available": bool((runs.get("longest_path") or {}).get("available")),
             "diagnostics_count": (runs.get("graph_diagnostics") or {}).get("diagnostic_count"),
         }
+        if observability:
+            out.update(
+                {
+                    "canonical_input_activity_count": observability.get("canonical_input_activity_count"),
+                    "canonical_input_relationship_count": observability.get(
+                        "canonical_input_relationship_count"
+                    ),
+                    "graph_node_count": observability.get("graph_node_count"),
+                    "graph_edge_count": observability.get("graph_edge_count"),
+                    "failure_code": observability.get("failure_code"),
+                    "failure_message": observability.get("failure_message"),
+                    "failed_step": observability.get("failed_step"),
+                    "duration_ms": observability.get("duration_ms"),
+                    "trigger_source": observability.get("trigger_source"),
+                    "started_at": observability.get("started_at"),
+                    "finished_at": observability.get("finished_at"),
+                }
+            )
+            if observability.get("cpm_run_id"):
+                out["cpm_run_id"] = observability.get("cpm_run_id")
+        return out
 
     @staticmethod
     def _cpm_fields_from_result(cpm: dict[str, Any]) -> dict[str, Any]:
@@ -329,6 +376,12 @@ class ProjectScheduleImportPipelineService:
             "longest_path_available": cpm.get("longest_path_available"),
             "diagnostics_count": cpm.get("diagnostics_count"),
             "failure_reason": cpm.get("failure_reason"),
+            "cpm_observability": cpm.get("cpm_observability"),
+            "canonical_input_activity_count": cpm.get("canonical_input_activity_count"),
+            "canonical_input_relationship_count": cpm.get("canonical_input_relationship_count"),
+            "graph_node_count": cpm.get("graph_node_count"),
+            "graph_edge_count": cpm.get("graph_edge_count"),
+            "duration_ms": cpm.get("duration_ms"),
         }
 
     def _cpm_fields_from_pipeline(self, pipeline: dict[str, Any]) -> dict[str, Any]:

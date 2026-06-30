@@ -1432,7 +1432,12 @@ class ScheduleImportService:
             "cpm_recompute_status": "unavailable",
         }
         try:
-            cpm_result = ScheduleCpmRecomputeService(db_path=self._db_path).recompute(version_key)
+            cpm_result = ScheduleCpmRecomputeService(db_path=self._db_path).recompute(
+                version_key,
+                import_id=import_id,
+                package_id=package.package_id if package else None,
+                trigger_source="import_commit",
+            )
         except Exception:
             _logger.exception(
                 "schedule import post-commit CPM recompute failed import_id=%s version_key=%s",
@@ -1483,6 +1488,12 @@ class ScheduleImportService:
             "longest_path_available": cpm_result.get("longest_path_available"),
             "diagnostics_count": cpm_result.get("diagnostics_count"),
             "cpm_failure_reason": cpm_result.get("failure_reason"),
+            "cpm_observability": cpm_result.get("cpm_observability"),
+            "canonical_input_activity_count": cpm_result.get("canonical_input_activity_count"),
+            "canonical_input_relationship_count": cpm_result.get("canonical_input_relationship_count"),
+            "graph_node_count": cpm_result.get("graph_node_count"),
+            "graph_edge_count": cpm_result.get("graph_edge_count"),
+            "cpm_duration_ms": cpm_result.get("duration_ms"),
         }
 
     @staticmethod
