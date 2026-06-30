@@ -12,6 +12,7 @@ const getProjectScheduleMetricTrendsMock = vi.fn()
 const getProjectScheduleBaselineMock = vi.fn()
 const getProjectScheduleDrilldownMock = vi.fn()
 const getProjectScheduleControlsMock = vi.fn()
+const getProjectScheduleBaselinesMock = vi.fn()
 const downloadProjectScheduleExportMock = vi.fn()
 
 vi.mock('../lib/api', async () => {
@@ -27,6 +28,8 @@ vi.mock('../lib/api', async () => {
       getProjectScheduleDrilldown: (...args: unknown[]) => getProjectScheduleDrilldownMock(...args),
       downloadProjectScheduleExport: (...args: unknown[]) => downloadProjectScheduleExportMock(...args),
       getProjectScheduleControls: (...args: unknown[]) => getProjectScheduleControlsMock(...args),
+      getProjectScheduleBaselines: (...args: unknown[]) => getProjectScheduleBaselinesMock(...args),
+      updateProjectScheduleBaselines: vi.fn(),
     },
   }
 })
@@ -414,6 +417,15 @@ function renderPage(
   })
   getProjectScheduleDrilldownMock.mockResolvedValue({ count: 1, items: [] })
   getProjectScheduleControlsMock.mockResolvedValue(controlsResponse())
+  getProjectScheduleBaselinesMock.mockResolvedValue({
+    available: true,
+    slots: [
+      { slot_key: 'current_contract_baseline', slot_label: 'Current Contract Baseline', status: 'missing', selection: null },
+      { slot_key: 'previous_progress_update_baseline', slot_label: 'Previous Progress Update Baseline', status: 'missing', selection: null },
+      { slot_key: 'secondary_progress_update_baseline', slot_label: 'Secondary Progress Update Baseline', status: 'missing', selection: null },
+    ],
+    available_versions: [],
+  })
   downloadProjectScheduleExportMock.mockResolvedValue(undefined)
   return render(
     <QueryClientProvider client={client}>
@@ -430,6 +442,7 @@ describe('ProjectSchedulePage', () => {
     getProjectScheduleBaselineMock.mockReset()
     getProjectScheduleDrilldownMock.mockReset()
     getProjectScheduleControlsMock.mockReset()
+    getProjectScheduleBaselinesMock.mockReset()
     downloadProjectScheduleExportMock.mockReset()
   })
 
@@ -707,7 +720,29 @@ describe('ProjectSchedulePage', () => {
     expect(topControlsRegion?.textContent || '').not.toMatch(/\bDRV-A\b/)
   })
 
-  it('preserves comparison basis on driver detail links when toggled', async () => {
+  it('renders four controls comparison choices and defaults to Prior Update', async () => {
+    renderPage()
+    expect(await screen.findByRole('button', { name: 'Prior Update' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Current Contract Baseline' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous Progress Update Baseline' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Secondary Progress Update Baseline' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Since selected baseline' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Controls Trend Analytics')).toBeInTheDocument()
+  })
+
+  it('requests named baseline comparison for controls when selected', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Current Contract Baseline' }))
+    await waitFor(() => {
+      expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
+        asOf: undefined,
+        comparisonBasis: 'current_contract_baseline',
+      })
+    })
+  })
+
+  it('keeps workbench driver basis separate from controls comparison basis', async () => {
     const user = userEvent.setup()
     renderPage(
       scheduleResponse({
@@ -731,11 +766,9 @@ describe('ProjectSchedulePage', () => {
     )
 
     await user.click(await screen.findByRole('button', { name: 'Since selected baseline' }))
-    await waitFor(() => {
-      expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
-        asOf: undefined,
-        comparisonBasis: 'baseline',
-      })
+    expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
+      asOf: undefined,
+      comparisonBasis: 'prior_update',
     })
     const driverLink = await screen.findByRole('link', { name: 'Envelope Completion' })
     expect(driverLink).toHaveAttribute('href', expect.stringContaining('basis=baseline'))

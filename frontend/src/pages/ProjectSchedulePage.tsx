@@ -8,13 +8,18 @@ import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { TechnicalDetails } from '../components/common/TechnicalDetails'
 import { ForecastDialog } from '../components/forecast/ForecastDialog'
+import { ScheduleBaselineSelector } from '../components/project-schedule/ScheduleBaselineSelector'
 import { ScheduleControlsPanel } from '../components/project-schedule/ScheduleControlsPanel'
 import { ScheduleImportFlow } from '../components/project-schedule/ScheduleImportFlow'
 import type { ProjectScheduleImportCommitResult } from '../components/project-schedule/scheduleImportTypes'
 import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
-import type { ProjectScheduleSummaryResponse } from '../lib/api'
+import type {
+  ProjectScheduleSummaryResponse,
+  ReviewWorkbenchComparisonBasis,
+  ScheduleControlsComparisonBasis,
+} from '../lib/api'
 
 function text(value: unknown, fallback = 'Not available') {
   if (value === null || value === undefined || value === '') return fallback
@@ -438,7 +443,8 @@ export function ProjectSchedulePage() {
   const [showAllActions, setShowAllActions] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [newImportBanner, setNewImportBanner] = useState(false)
-  const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
+  const [controlsComparisonBasis, setControlsComparisonBasis] = useState<ScheduleControlsComparisonBasis>('prior_update')
+  const [workbenchComparisonBasis, setWorkbenchComparisonBasis] = useState<ReviewWorkbenchComparisonBasis>('prior_update')
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
@@ -490,23 +496,26 @@ export function ProjectSchedulePage() {
       }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
   })
+  const { data: baselinesPayload, isLoading: baselinesLoading } = useQuery({
+    queryKey: ['project', 'schedule', projectKey, 'baselines', asOf || 'latest'],
+    queryFn: () => api.getProjectScheduleBaselines(projectKey, { asOf: requestAsOf }),
+    enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+  })
   const { data: baselinePayload } = useQuery({
     queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
     queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
   })
-  const driverHubEarly = (data || {}) as ProjectScheduleSummaryResponse
-  const baselineAvailableEarly = Boolean(driverHubEarly.change_driver_analysis?.baseline?.available)
   const {
     data: controlsPayload,
     isLoading: controlsLoading,
     error: controlsError,
   } = useQuery({
-    queryKey: ['project', 'schedule', 'controls', projectKey, asOf || 'latest', comparisonBasis],
+    queryKey: ['project', 'schedule', 'controls', projectKey, asOf || 'latest', controlsComparisonBasis],
     queryFn: () =>
       api.getProjectScheduleControls(projectKey, {
         asOf: requestAsOf,
-        comparisonBasis,
+        comparisonBasis: controlsComparisonBasis,
       }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
   })
@@ -711,9 +720,15 @@ export function ProjectSchedulePage() {
           controls={controlsPayload}
           loading={controlsLoading}
           error={controlsError}
-          comparisonBasis={comparisonBasis}
-          baselineAvailable={baselineAvailableEarly}
-          onComparisonBasisChange={setComparisonBasis}
+          comparisonBasis={controlsComparisonBasis}
+          onComparisonBasisChange={setControlsComparisonBasis}
+        />
+
+        <ScheduleBaselineSelector
+          projectKey={projectKey}
+          baselines={baselinesPayload as Record<string, any> | undefined}
+          loading={baselinesLoading}
+          asOf={requestAsOf}
         />
 
         <div className={`card ${toneFor(health.status)}`}>
@@ -817,8 +832,8 @@ export function ProjectSchedulePage() {
                 projectKey={projectKey}
                 driverHub={driverHub}
                 asOfDate={requestAsOf}
-                comparisonBasis={comparisonBasis}
-                onComparisonBasisChange={setComparisonBasis}
+                comparisonBasis={workbenchComparisonBasis}
+                onComparisonBasisChange={setWorkbenchComparisonBasis}
               />
             </div>
           </div>

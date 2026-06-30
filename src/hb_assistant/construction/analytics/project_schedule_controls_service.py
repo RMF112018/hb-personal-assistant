@@ -11,6 +11,14 @@ from hb_assistant.store.schedule_cpm_import_observability_repository import (
     ScheduleCpmImportObservabilityRepository,
 )
 
+from .project_schedule_baseline_vocabulary import (
+    comparison_label_for_basis,
+    is_named_baseline_basis,
+    label_for_slot,
+    normalize_controls_comparison_basis,
+    slot_key_for_basis,
+)
+from .project_schedule_named_baseline_service import ProjectScheduleNamedBaselineService
 from .project_schedule_narrative_qa import validate_controls_text
 from .project_schedule_review_cue_taxonomy import taxonomy_for_item_type
 from .project_schedule_review_service import ProjectScheduleReviewService
@@ -46,6 +54,7 @@ class ProjectScheduleControlsService:
         self._summary = ProjectScheduleSummaryService(db_path=db_path)
         self._review = ProjectScheduleReviewService(db_path=db_path)
         self._cpm_obs = ScheduleCpmImportObservabilityRepository(db_path=db_path)
+        self._named_baselines = ProjectScheduleNamedBaselineService(db_path=db_path)
 
     def build_controls(
         self,
@@ -54,19 +63,63 @@ class ProjectScheduleControlsService:
         as_of: date | None = None,
         comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        context = self._summary.build_schedule_hub_context(project_key, as_of=as_of)
+        basis = normalize_controls_comparison_basis(comparison_basis)
+        baseline_context = self._baseline_context_for_basis(project_key, basis=basis, as_of=as_of)
+        include_workbench_links = basis in {"prior_update", "baseline"}
+        preview_basis = basis
+        named_resolution: dict[str, Any] | None = None
+
+        if is_named_baseline_basis(basis):
+            slot_key = str(slot_key_for_basis(basis))
+            named_resolution = self._named_baselines.resolve_slot_for_controls(
+                project_key, slot_key=slot_key, as_of=as_of
+            )
+            status = str(named_resolution.get("selection_status") or "missing")
+            baseline_context = self._baseline_context_from_resolution(basis=basis, resolution=named_resolution)
+            if status == "missing":
+                return self._unavailable(
+                    project_key,
+                    reason="baseline_not_selected",
+                    comparison_basis=basis,
+                    as_of=as_of,
+                    baseline_context=baseline_context,
+                )
+            if status == "invalid":
+                return self._unavailable(
+                    project_key,
+                    reason="baseline_invalid",
+                    comparison_basis=basis,
+                    as_of=as_of,
+                    baseline_context=baseline_context,
+                )
+            context = self._summary.build_schedule_hub_context_with_named_baseline(
+                project_key,
+                as_of=as_of,
+                baseline_version_key=str(named_resolution.get("schedule_version_key") or ""),
+            )
+            preview_basis = "baseline"
+            include_workbench_links = False
+        else:
+            context = self._summary.build_schedule_hub_context(project_key, as_of=as_of)
+
         if not context:
-            return self._unavailable(project_key, reason="no_schedule", comparison_basis=basis, as_of=as_of)
+            return self._unavailable(
+                project_key,
+                reason="no_schedule",
+                comparison_basis=basis,
+                as_of=as_of,
+                baseline_context=baseline_context,
+            )
 
         baseline_summary = context.get("baseline_summary") or {}
-        if basis == "baseline" and not baseline_summary.get("available"):
+        if basis == "baseline" and not self._legacy_baseline_available(baseline_summary):
             return self._unavailable(
                 project_key,
                 reason=str(baseline_summary.get("reason") or "baseline_unavailable"),
                 comparison_basis=basis,
                 as_of=as_of,
                 schedule_version_key=str(context.get("schedule_version_key") or ""),
+                baseline_context=baseline_context,
             )
 
         as_of_date = context.get("as_of_date") or datetime.now(timezone.utc).date()
@@ -82,7 +135,7 @@ class ProjectScheduleControlsService:
             cpm_summary=context.get("cpm_summary"),
             change_impact=context.get("change_impact"),
             remaining_activities=context.get("remaining_activities"),
-            comparison_basis=basis,
+            comparison_basis=preview_basis,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
             include_activity_metric_cues=True,
@@ -98,6 +151,7 @@ class ProjectScheduleControlsService:
             else {}
         )
         wb_summary = workbench.get("summary") or {}
+        comparison_label = comparison_label_for_basis(basis)
 
         sections = self._build_sections(
             direct=direct,
@@ -114,6 +168,8 @@ class ProjectScheduleControlsService:
             schedule_data_date=schedule_data_date,
             as_of_date=as_of_date,
             comparison_basis=basis,
+            include_workbench_links=include_workbench_links,
+            comparison_label=comparison_label,
         )
         overall = self._overall_summary(
             remaining_health=remaining_health,
@@ -121,7 +177,11 @@ class ProjectScheduleControlsService:
             cpm_obs_row=cpm_obs_row,
             direct=direct,
             top_controls=top_controls,
+            comparison_label=comparison_label,
         )
+
+        if is_named_baseline_basis(basis) and named_resolution:
+            baseline_context = self._baseline_context_from_resolution(basis=basis, resolution=named_resolution)
 
         as_of_str = as_of_date.isoformat() if isinstance(as_of_date, date) else str(as_of_date)
         payload: dict[str, Any] = {
@@ -132,12 +192,20 @@ class ProjectScheduleControlsService:
             "schedule_data_date": schedule_data_date or None,
             "as_of_date": as_of_str,
             "comparison_basis": basis,
+            "baseline_context": baseline_context,
             "advisory_posture": _ADVISORY_POSTURE,
             "summary": overall,
             "sections": sections,
             "top_controls": top_controls,
-            "provenance": self._provenance(context, cpm_obs_row, top_controls),
-            "links": self._links(project_key, as_of_str=as_of_str, comparison_basis=basis),
+            "provenance": self._provenance(
+                context, cpm_obs_row, top_controls, comparison_label=comparison_label
+            ),
+            "links": self._links(
+                project_key,
+                as_of_str=as_of_str,
+                comparison_basis=basis,
+                include_workbench_link=include_workbench_links,
+            ),
         }
         qa = validate_controls_text(payload)
         payload["controls_language_qa"] = qa
@@ -151,8 +219,10 @@ class ProjectScheduleControlsService:
         comparison_basis: str,
         as_of: date | None,
         schedule_version_key: str = "",
+        baseline_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         as_of_date = as_of or datetime.now(timezone.utc).date()
+        include_workbench_link = comparison_basis in {"prior_update", "baseline"}
         return {
             "available": False,
             "reason": reason,
@@ -161,6 +231,8 @@ class ProjectScheduleControlsService:
             "schedule_data_date": None,
             "as_of_date": as_of_date.isoformat(),
             "comparison_basis": comparison_basis,
+            "baseline_context": baseline_context
+            or self._baseline_context_for_basis(project_key, basis=comparison_basis, as_of=as_of),
             "advisory_posture": _ADVISORY_POSTURE,
             "summary": {
                 "overall_status": "unknown",
@@ -173,7 +245,12 @@ class ProjectScheduleControlsService:
             "sections": {},
             "top_controls": [],
             "provenance": {"source_services": ["project_schedule_controls_service"]},
-            "links": self._links(project_key, as_of_str=as_of_date.isoformat(), comparison_basis=comparison_basis),
+            "links": self._links(
+                project_key,
+                as_of_str=as_of_date.isoformat(),
+                comparison_basis=comparison_basis,
+                include_workbench_link=include_workbench_link,
+            ),
         }
 
     def _build_sections(
@@ -226,7 +303,7 @@ class ProjectScheduleControlsService:
                 "watching_count": int(wb_summary.get("watching_count") or 0),
                 "headline": "Review workbench preview counts for the selected comparison basis.",
                 "comparison_basis": comparison_basis,
-                "read_only_baseline_preview": comparison_basis == "baseline",
+                "read_only_baseline_preview": comparison_basis == "baseline" or is_named_baseline_basis(comparison_basis),
             },
         }
 
@@ -281,6 +358,8 @@ class ProjectScheduleControlsService:
         schedule_data_date: str,
         as_of_date: date,
         comparison_basis: str,
+        include_workbench_links: bool = True,
+        comparison_label: str | None = None,
     ) -> list[dict[str, Any]]:
         candidates: list[dict[str, Any]] = []
         as_of_str = as_of_date.isoformat()
@@ -302,6 +381,8 @@ class ProjectScheduleControlsService:
                 or item.get("evidence_summary")
                 or "Sequence cue for PM review."
             )
+            if comparison_label:
+                summary = f"{comparison_label}. {summary}"
             recommended = str(
                 item.get("recommended_review_action")
                 or item.get("evidence", {}).get("recommended_review_action")
@@ -326,12 +407,12 @@ class ProjectScheduleControlsService:
                 "driver_detail": None,
                 "schedule_hub": f"/projects/{project_key}/schedule",
             }
-            if stable_key:
+            if include_workbench_links and stable_key:
                 params = {"review": stable_key, "comparison_basis": comparison_basis}
                 if as_of_str:
                     params["as_of"] = as_of_str
                 links["review_item"] = f"/projects/{project_key}/schedule/workbench?{urlencode(params)}"
-            if activity_id:
+            if include_workbench_links and activity_id:
                 params = {"basis": comparison_basis}
                 if as_of_str:
                     params["as_of"] = as_of_str
@@ -387,6 +468,7 @@ class ProjectScheduleControlsService:
         cpm_obs_row: dict[str, Any] | None,
         direct: dict[str, Any],
         top_controls: list[dict[str, Any]],
+        comparison_label: str | None = None,
     ) -> dict[str, Any]:
         open_count = int(wb_summary.get("open_count") or 0)
         high_priority = sum(1 for c in top_controls if c.get("severity") in {"critical", "review"})
@@ -411,6 +493,8 @@ class ProjectScheduleControlsService:
             headline = "Schedule controls are available with limited comparison context."
 
         supporting: list[str] = []
+        if comparison_label:
+            supporting.append(comparison_label)
         if later:
             supporting.append(f"{later} remaining activities moved later in the comparison window.")
         if neg_float:
@@ -438,6 +522,7 @@ class ProjectScheduleControlsService:
         context: dict[str, Any],
         cpm_obs_row: dict[str, Any] | None,
         top_controls: list[dict[str, Any]],
+        comparison_label: str | None = None,
     ) -> dict[str, Any]:
         metric_keys = sorted({str(c.get("source_metric_key")) for c in top_controls if c.get("source_metric_key")})
         return {
@@ -455,19 +540,83 @@ class ProjectScheduleControlsService:
                 "canonical_input_relationship_count"
             ),
             "schedule_version_key": context.get("schedule_version_key"),
+            "comparison_label": comparison_label,
         }
 
     @staticmethod
-    def _links(project_key: str, *, as_of_str: str, comparison_basis: str) -> dict[str, str]:
+    def _links(
+        project_key: str,
+        *,
+        as_of_str: str,
+        comparison_basis: str,
+        include_workbench_link: bool = True,
+    ) -> dict[str, str]:
         params: dict[str, str] = {"comparison_basis": comparison_basis}
         if as_of_str:
             params["as_of"] = as_of_str
         qs = urlencode(params)
-        return {
+        links = {
             "schedule_hub": f"/projects/{project_key}/schedule",
-            "review_workbench": f"/projects/{project_key}/schedule/workbench?{qs}",
             "export": f"/api/projects/{project_key}/schedule/export?format=markdown&{qs}",
         }
+        if include_workbench_link:
+            links["review_workbench"] = f"/projects/{project_key}/schedule/workbench?{qs}"
+        return links
+
+    @staticmethod
+    def _legacy_baseline_available(baseline_summary: dict[str, Any]) -> bool:
+        return bool(
+            baseline_summary.get("available")
+            or baseline_summary.get("selected_baseline_available")
+            or baseline_summary.get("_selected_baseline_schedule_version_key")
+        )
+
+    def _baseline_context_for_basis(
+        self,
+        project_key: str,
+        *,
+        basis: str,
+        as_of: date | None,
+    ) -> dict[str, Any]:
+        if basis == "prior_update":
+            return {"basis": "prior_update", "selection_status": "not_applicable"}
+        if is_named_baseline_basis(basis):
+            slot_key = str(slot_key_for_basis(basis))
+            resolution = self._named_baselines.resolve_slot_for_controls(
+                project_key, slot_key=slot_key, as_of=as_of
+            )
+            return self._baseline_context_from_resolution(basis=basis, resolution=resolution)
+        if basis == "baseline":
+            return {"basis": "baseline", "selection_status": "not_applicable"}
+        return {"basis": basis, "selection_status": "not_applicable"}
+
+    @staticmethod
+    def _baseline_context_from_resolution(
+        *,
+        basis: str,
+        resolution: dict[str, Any],
+    ) -> dict[str, Any]:
+        slot_key = str(resolution.get("slot_key") or basis)
+        status = str(resolution.get("selection_status") or "missing")
+        context: dict[str, Any] = {
+            "basis": basis,
+            "slot_key": slot_key,
+            "slot_label": resolution.get("slot_label") or label_for_slot(slot_key),
+            "selection_status": status,
+        }
+        if status == "selected":
+            context.update(
+                {
+                    "baseline_schedule_version_key": resolution.get("schedule_version_key"),
+                    "baseline_schedule_data_date": resolution.get("schedule_data_date"),
+                    "baseline_display_name": resolution.get("display_name"),
+                    "selected_at": resolution.get("selected_at"),
+                    "selected_by": resolution.get("selected_by"),
+                    "notes": resolution.get("notes"),
+                }
+            )
+        return context
+
 
     @staticmethod
     def _control_id(

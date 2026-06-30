@@ -1,0 +1,11 @@
+ .../project-schedule/ScheduleControlsPanel.tsx     |  58 ++++---
+ frontend/src/lib/api.ts                            |  46 +++++-
+ frontend/src/lib/scheduleApiAsOf.test.ts           |  25 +++
+ frontend/src/pages/ProjectSchedulePage.test.tsx    |  45 +++++-
+ frontend/src/pages/ProjectSchedulePage.tsx         |  37 +++--
+ src/hb_assistant/construction/analytics/api.py     |  81 +++++++++-
+ .../analytics/project_schedule_controls_service.py | 177 +++++++++++++++++++--
+ .../analytics/project_schedule_narrative_qa.py     |  30 ++++
+ .../analytics/project_schedule_summary_service.py  | 118 ++++++++++++++
+ src/hb_assistant/store/migrator.py                 |  20 ++-
+ 10 files changed, 580 insertions(+), 57 deletions(-)

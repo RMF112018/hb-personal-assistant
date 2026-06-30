@@ -1227,6 +1227,9 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         from fastapi import HTTPException
 
+        from hb_assistant.construction.analytics.project_schedule_baseline_vocabulary import (
+            normalize_controls_comparison_basis,
+        )
         from hb_assistant.construction.analytics.project_schedule_controls_service import (
             ProjectScheduleControlsService,
         )
@@ -1237,7 +1240,7 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        basis = normalize_controls_comparison_basis(comparison_basis)
         return ProjectScheduleControlsService(db_path=_schedule_db_path()).build_controls(
             project_key,
             as_of=as_of_date,
@@ -1710,6 +1713,82 @@ def create_app(*, db_path: str | None = None) -> Any:
             project_key, as_of=as_of_date
         )
         return {**public_selected_baseline_state(state), "baseline_summary": summary.get("baseline_summary")}
+
+    @app.get("/api/projects/{project_key}/schedule/baselines")
+    def project_schedule_baselines_get(
+        project_key: str,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_named_baseline_service import (
+            ProjectScheduleNamedBaselineService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        return ProjectScheduleNamedBaselineService(db_path=_schedule_db_path()).get_baselines_state(
+            project_key, as_of=as_of_date
+        )
+
+    @app.put("/api/projects/{project_key}/schedule/baselines")
+    def project_schedule_baselines_put(
+        project_key: str,
+        request: dict[str, Any],
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_named_baseline_service import (
+            ProjectScheduleNamedBaselineService,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        selections = request.get("selections")
+        if not isinstance(selections, dict):
+            raise HTTPException(status_code=400, detail="invalid_selections_payload")
+        try:
+            return ProjectScheduleNamedBaselineService(db_path=_schedule_db_path()).update_baselines(
+                project_key,
+                selections=selections,
+                as_of=as_of_date,
+                selected_by=role.get("role"),
+            )
+        except ValueError as exc:
+            code = str(exc)
+            if code in {
+                "unknown_slot_key",
+                "invalid_selections_payload",
+                "invalid_slot_selection",
+                "schedule_version_key_required",
+                "no_schedule",
+                "baseline_cannot_equal_current_schedule_version",
+                "invalid_schedule_version_key",
+                "baseline_project_mismatch",
+                "baseline_must_not_be_future_of_current",
+                "baseline_identity_mismatch",
+                "duplicate_schedule_version_across_slots",
+            }:
+                raise HTTPException(status_code=400, detail=code) from exc
+            raise
+
 
     @app.get("/api/my-items")
     def my_items(role: dict[str, str] = role_dep) -> dict[str, Any]:

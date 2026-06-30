@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 95
+LATEST_SCHEMA_VERSION = 96
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6932,6 +6932,13 @@ class SQLiteMigrator:
 
         return V95_STATEMENTS
 
+    @staticmethod
+    def _v96_statements() -> list[str]:
+        from hb_assistant.store.project_schedule_named_baseline_tables import V96_STATEMENTS
+
+        return V96_STATEMENTS
+
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8589,6 +8596,17 @@ class SQLiteMigrator:
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (95, 'v95_cpm_import_observability', ?)",
                     (now,),
                 )
+
+            # v96 Project Schedule Hub named baseline slots (additive).
+            for stmt in self._v96_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 96")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (96, 'v96_project_schedule_named_baseline_slots', ?)",
+                    (now,),
+                )
+
 
         # Return latest version, then release the migration connection. get_connection's
         # contract is that the caller closes it; left open, this WAL connection is only
