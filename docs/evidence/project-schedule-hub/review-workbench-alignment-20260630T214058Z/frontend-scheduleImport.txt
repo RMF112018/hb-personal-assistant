@@ -1,0 +1,27 @@
+
+> frontend@0.0.0 test
+> vitest run scheduleImport
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-workbench-alignment-20260630T213439Z/frontend
+
+ ✓ src/lib/scheduleImportApi.test.ts  (4 tests) 4ms
+stderr | src/components/project-schedule/ScheduleImportFlow.test.tsx > ScheduleImportFlow > renders preview panel with files counts baselines and equivalence
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ ✓ src/components/project-schedule/ScheduleImportFlow.test.tsx  (6 tests) 80ms
+stderr | src/pages/ScheduleImportsPage.test.tsx > ScheduleImportsPage > shows 50 MB upload label with XER and zip-package support
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleImportPage.test.tsx > ProjectScheduleImportPage > renders project-scoped import page without project picker
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleImportPage.test.tsx  (6 tests) 192ms
+ ✓ src/pages/ScheduleImportsPage.test.tsx  (21 tests) 518ms
+
+ Test Files  4 passed (4)
+      Tests  37 passed (37)
+   Start at  17:54:44
+   Duration  1.21s (transform 353ms, setup 137ms, collect 758ms, tests 794ms, environment 770ms, prepare 186ms)
+

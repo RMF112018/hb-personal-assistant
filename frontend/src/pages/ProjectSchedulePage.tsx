@@ -218,6 +218,10 @@ function DriverEvidenceSection({
   driverHub: Record<string, any>
   asOfDate?: string
 }) {
+  const driverDetailQuery = (activityId: string, basis: 'prior_update' | 'baseline') =>
+    `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(activityId)}?basis=${basis}${
+      asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''
+    }`
   const [comparisonBasis, setComparisonBasis] = useState<'prior_update' | 'baseline'>('prior_update')
   const driverAnalysis =
     comparisonBasis === 'baseline'
@@ -292,7 +296,7 @@ function DriverEvidenceSection({
         >
           {topDrivers.map((driver: any) => (
             <option key={String(driver.activity_id)} value={String(driver.activity_id)}>
-              {text(driver.activity_name)} ({text(driver.activity_id)})
+              {text(driver.activity_name) || 'Unnamed activity'}
             </option>
           ))}
         </select>
@@ -352,9 +356,9 @@ function DriverEvidenceSection({
                     <td className="px-3 py-2">
                       <Link
                         className="underline"
-                        to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(String(item.activity_id || ''))}`}
+                        to={driverDetailQuery(String(item.activity_id || ''), comparisonBasis)}
                       >
-                        {text(item.activity_name)}
+                        {text(item.activity_name) || 'Unnamed activity'}
                       </Link>
                     </td>
                     <td className="px-3 py-2">{formatWbs(item)}</td>

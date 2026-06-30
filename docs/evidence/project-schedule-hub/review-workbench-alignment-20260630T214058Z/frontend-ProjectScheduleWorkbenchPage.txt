@@ -1,0 +1,17 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectScheduleWorkbenchPage
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-workbench-alignment-20260630T213439Z/frontend
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (4 tests) 260ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  17:54:42
+   Duration  845ms (transform 92ms, setup 32ms, collect 172ms, tests 260ms, environment 180ms, prepare 48ms)
+

@@ -1074,11 +1074,18 @@ class ProjectScheduleSummaryService:
             "workbench": {k: v for k, v in workbench.items() if k != "items"},
         }
 
-    def sync_review_workbench(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
+    def sync_review_workbench(
+        self,
+        project_key: str,
+        *,
+        as_of: date | None = None,
+        comparison_basis: str = "prior_update",
+    ) -> dict[str, Any]:
         context = self._review_workbench_context(project_key, as_of=as_of)
         if not context:
             return {"available": False, "reason": "no_schedule"}
-        return self._review.sync_and_list(**context)
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        return self._review.sync_and_list(**context, comparison_basis=basis)
 
     def build_driver_detail(
         self,

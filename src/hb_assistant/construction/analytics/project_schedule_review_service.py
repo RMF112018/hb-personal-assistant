@@ -119,19 +119,24 @@ class ProjectScheduleReviewService:
         remaining_activities: list[dict[str, Any]] | None = None,
         as_of_date: date | None = None,
         baseline_summary: dict[str, Any] | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
-        sync = self.sync_queue(
-            project_key=project_key,
-            schedule_version_key=schedule_version_key,
-            driver_analysis=driver_analysis,
-            milestones=milestones,
-            remaining_health=remaining_health,
-            cpm_summary=cpm_summary,
-            change_impact=change_impact,
-            remaining_activities=remaining_activities,
-            as_of_date=as_of_date,
-            baseline_summary=baseline_summary,
-        )
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        sync = {"synced_count": 0, "candidate_count": 0}
+        if basis == "prior_update":
+            sync = self.sync_queue(
+                project_key=project_key,
+                schedule_version_key=schedule_version_key,
+                driver_analysis=driver_analysis,
+                milestones=milestones,
+                remaining_health=remaining_health,
+                cpm_summary=cpm_summary,
+                change_impact=change_impact,
+                remaining_activities=remaining_activities,
+                as_of_date=as_of_date,
+                baseline_summary=baseline_summary,
+                comparison_basis="prior_update",
+            )
         envelope = self._build_workbench(
             project_key=project_key,
             schedule_version_key=schedule_version_key,
@@ -141,11 +146,11 @@ class ProjectScheduleReviewService:
             cpm_summary=cpm_summary,
             change_impact=change_impact,
             remaining_activities=remaining_activities,
-            comparison_basis="prior_update",
+            comparison_basis=basis,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
-            synced=True,
-            use_persisted=True,
+            synced=basis == "prior_update",
+            use_persisted=basis == "prior_update",
         )
         envelope["sync"] = sync
         return envelope
@@ -551,9 +556,19 @@ class ProjectScheduleReviewService:
             "data_quality_notes",
             "stale_signal",
             "comparison_basis",
+            "as_of",
+            "schedule_data_date",
             "data_date",
             "activity_name",
             "wbs_code",
+            "cue_category",
+            "cue_label",
+            "recommended_review_action",
+            "evidence_summary",
+            "source_file_names",
+            "source_formats",
+            "field_lineage_available",
+            "technical_evidence_available",
         ):
             if item.get(key) in (None, "", []):
                 value = evidence.get(key)

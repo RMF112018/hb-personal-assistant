@@ -6,7 +6,10 @@ from datetime import date
 from typing import Any
 
 from hb_assistant.store.connection import open_connection
+from hb_assistant.store.schedule_identity_repository import parse_schedule_version_data_date
 
+from .project_schedule_review_cue_taxonomy import apply_taxonomy_fields
+from .project_schedule_review_evidence_service import ProjectScheduleReviewEvidenceService
 from .project_schedule_udf_normalization_service import ProjectScheduleUdfNormalizationService
 from .project_schedule_visualization_metric_contract import NON_CAUSATION_CAVEAT
 
@@ -39,6 +42,7 @@ class ProjectScheduleReviewCueService:
     def __init__(self, *, db_path: str) -> None:
         self._db_path = db_path
         self._udf = ProjectScheduleUdfNormalizationService(db_path=db_path)
+        self._evidence = ProjectScheduleReviewEvidenceService(db_path=db_path)
 
     def cue_source_map(self) -> list[dict[str, Any]]:
         return [
@@ -88,9 +92,9 @@ class ProjectScheduleReviewCueService:
         )
         preview = self._preview_only_cues(project_key, schedule_version_key, as_of_date)
         seen = {c["stable_item_key"] for c in cues}
-        for cue in preview:
-            if cue["stable_item_key"] not in seen:
-                cues.append(cue)
+        preview_only = [cue for cue in preview if cue["stable_item_key"] not in seen]
+        if preview_only:
+            cues.extend(self._evidence.enrich_cues(preview_only, schedule_version_key=schedule_version_key))
         return cues
 
     def collect_materializable_cues(
@@ -120,7 +124,8 @@ class ProjectScheduleReviewCueService:
             out.append(candidate)
 
         basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
-        data_date = as_of_date.isoformat()
+        as_of = as_of_date.isoformat()
+        schedule_data_date = self._schedule_data_date(schedule_version_key)
 
         driver_source = (driver_analysis or {}).get(basis) or (
             driver_analysis if basis == "prior_update" else {}
@@ -134,7 +139,7 @@ class ProjectScheduleReviewCueService:
                     self._candidate(
                         stable_item_key=f"driver:{aid}",
                         item_type="driver",
-                        item_title=f"Review driver: {driver.get('activity_name') or aid}",
+                        item_title=f"Review driver: {_activity_label(driver.get('activity_name'))}",
                         priority=int(driver.get("review_priority") or 50),
                         source_activity_id=aid,
                         source_metric_key="change_driver_analysis",
@@ -142,8 +147,9 @@ class ProjectScheduleReviewCueService:
                         confidence=CONFIDENCE_PRODUCTION,
                         severity="high",
                         comparison_basis=basis,
-                        data_date=data_date,
-                        activity_name=str(driver.get("activity_name") or aid),
+                        as_of=as_of,
+                        schedule_data_date=schedule_data_date,
+                        activity_name=str(driver.get("activity_name") or ""),
                         wbs_code=driver.get("wbs_code"),
                         cue_summary="Candidate driver sequence cue for PM review.",
                         caveats=[NON_CAUSATION_CUE],
@@ -161,7 +167,7 @@ class ProjectScheduleReviewCueService:
                 self._candidate(
                     stable_item_key=f"milestone:{aid}",
                     item_type="milestone",
-                    item_title=f"Milestone moved later: {ms.get('activity_name') or aid}",
+                    item_title=f"Milestone moved later: {_activity_label(ms.get('activity_name'))}",
                     priority=min(95, 60 + movement),
                     source_activity_id=aid,
                     source_metric_key="milestones",
@@ -169,9 +175,11 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high" if movement >= 7 else "medium",
                     comparison_basis=basis,
-                    data_date=data_date,
-                    activity_name=str(ms.get("activity_name") or aid),
+                    as_of=as_of,
+                    schedule_data_date=schedule_data_date,
+                    activity_name=str(ms.get("activity_name") or ""),
                     cue_summary=f"Milestone forecast moved {movement} days later since prior update.",
+                    caveats=[NON_CAUSATION_CUE],
                 )
             )
 
@@ -184,7 +192,7 @@ class ProjectScheduleReviewCueService:
                 self._candidate(
                     stable_item_key=f"negative_float:{aid}",
                     item_type="negative_float",
-                    item_title=f"Negative float: {row.get('activity_name') or aid}",
+                    item_title=f"Negative float: {_activity_label(row.get('activity_name'))}",
                     priority=78,
                     source_activity_id=aid,
                     source_metric_key="remaining_health",
@@ -192,9 +200,11 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high",
                     comparison_basis=basis,
-                    data_date=data_date,
-                    activity_name=str(row.get("activity_name") or aid),
+                    as_of=as_of,
+                    schedule_data_date=schedule_data_date,
+                    activity_name=str(row.get("activity_name") or ""),
                     cue_summary="Activity has negative source/export float remaining.",
+                    caveats=[NON_CAUSATION_CUE],
                 )
             )
 
@@ -209,7 +219,7 @@ class ProjectScheduleReviewCueService:
                 self._candidate(
                     stable_item_key=f"worsened_float:{aid}",
                     item_type="worsened_float",
-                    item_title=f"Worsened float: {row.get('activity_name') or aid}",
+                    item_title=f"Worsened float: {_activity_label(row.get('activity_name'))}",
                     priority=72,
                     source_activity_id=aid,
                     source_metric_key="schedule_changes_over_time",
@@ -217,9 +227,11 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="medium",
                     comparison_basis=basis,
-                    data_date=data_date,
-                    activity_name=str(row.get("activity_name") or aid),
+                    as_of=as_of,
+                    schedule_data_date=schedule_data_date,
+                    activity_name=str(row.get("activity_name") or ""),
                     cue_summary="Float eroded between updates.",
+                    caveats=[NON_CAUSATION_CUE],
                 )
             )
 
@@ -231,7 +243,7 @@ class ProjectScheduleReviewCueService:
                 self._candidate(
                     stable_item_key=f"critical:{aid}",
                     item_type="critical_remaining",
-                    item_title=f"Critical remaining: {row.get('activity_name') or aid}",
+                    item_title=f"Critical remaining: {_activity_label(row.get('activity_name'))}",
                     priority=68,
                     source_activity_id=aid,
                     source_metric_key="critical_path_length_index",
@@ -239,9 +251,11 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high",
                     comparison_basis=basis,
-                    data_date=data_date,
-                    activity_name=str(row.get("activity_name") or aid),
+                    as_of=as_of,
+                    schedule_data_date=schedule_data_date,
+                    activity_name=str(row.get("activity_name") or ""),
                     cue_summary="Activity is on critical/near-critical remaining work.",
+                    caveats=[NON_CAUSATION_CUE],
                 )
             )
 
@@ -260,7 +274,7 @@ class ProjectScheduleReviewCueService:
                     self._candidate(
                         stable_item_key=f"metric:should_have_finished:{status}:{aid}",
                         item_type=_ITEM_METRIC_SHOULD_HAVE_FINISHED,
-                        item_title=f"Should have finished ({status}): {activity_cue.get('activity_name') or aid}",
+                        item_title=f"Should have finished ({status}): {_activity_label(activity_cue.get('activity_name'))}",
                         priority=_SEVERITY_PRIORITY["high" if status == "delayed" else "medium"],
                         source_activity_id=aid,
                         source_metric_key="should_have_finished_status",
@@ -268,7 +282,8 @@ class ProjectScheduleReviewCueService:
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="high" if status == "delayed" else "medium",
                         comparison_basis=basis,
-                        data_date=data_date,
+                        as_of=as_of,
+                        schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
                         wbs_code=activity_cue.get("wbs_code"),
                         phase=activity_cue.get("phase"),
@@ -297,7 +312,7 @@ class ProjectScheduleReviewCueService:
                     self._candidate(
                         stable_item_key=f"metric:window_start:{signal}:{aid}",
                         item_type=_ITEM_METRIC_WINDOW_START,
-                        item_title=f"Window start ({signal.replace('_', ' ')}): {activity_cue.get('activity_name') or aid}",
+                        item_title=f"Window start ({signal.replace('_', ' ')}): {_activity_label(activity_cue.get('activity_name'))}",
                         priority=_SEVERITY_PRIORITY["medium"],
                         source_activity_id=aid,
                         source_metric_key="window_start_accuracy",
@@ -305,12 +320,14 @@ class ProjectScheduleReviewCueService:
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="medium",
                         comparison_basis=basis,
-                        data_date=data_date,
+                        as_of=as_of,
+                        schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
                         wbs_code=activity_cue.get("wbs_code"),
                         phase=activity_cue.get("phase"),
                         partial_dimension_support=activity_cue.get("partial_dimension_support", False),
                         cue_summary=activity_cue.get("cue_summary", "Near-term start reliability miss."),
+                        caveats=[NON_CAUSATION_CUE],
                     )
                 )
 
@@ -328,7 +345,7 @@ class ProjectScheduleReviewCueService:
                     self._candidate(
                         stable_item_key=f"metric:window_finish:{signal}:{aid}",
                         item_type=_ITEM_METRIC_WINDOW_FINISH,
-                        item_title=f"Window finish ({signal.replace('_', ' ')}): {activity_cue.get('activity_name') or aid}",
+                        item_title=f"Window finish ({signal.replace('_', ' ')}): {_activity_label(activity_cue.get('activity_name'))}",
                         priority=_SEVERITY_PRIORITY["medium"],
                         source_activity_id=aid,
                         source_metric_key="window_finish_accuracy",
@@ -336,12 +353,14 @@ class ProjectScheduleReviewCueService:
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="medium",
                         comparison_basis=basis,
-                        data_date=data_date,
+                        as_of=as_of,
+                        schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
                         wbs_code=activity_cue.get("wbs_code"),
                         phase=activity_cue.get("phase"),
                         partial_dimension_support=activity_cue.get("partial_dimension_support", False),
                         cue_summary=activity_cue.get("cue_summary", "Near-term finish reliability miss."),
+                        caveats=[NON_CAUSATION_CUE],
                     )
                 )
 
@@ -370,7 +389,8 @@ class ProjectScheduleReviewCueService:
                             confidence=confidence,
                             severity="high" if count >= 5 else "medium",
                             comparison_basis=basis,
-                            data_date=data_date,
+                            as_of=as_of,
+                            schedule_data_date=schedule_data_date,
                             partial_dimension_support=critical_payload.get("partial_dimension_support", False),
                             cue_summary=f"{count} candidate issue(s) in this category require PM review.",
                             caveats=[NON_CAUSATION_CUE],
@@ -388,7 +408,7 @@ class ProjectScheduleReviewCueService:
                 point = (delay_payload.get("points") or [{}])[0]
                 add(
                     self._candidate(
-                        stable_item_key=f"metric:delay_analysis:{data_date}",
+                        stable_item_key=f"metric:delay_analysis:{as_of}",
                         item_type=_ITEM_METRIC_DELAY,
                         item_title="Delay analysis review cue",
                         priority=70,
@@ -397,7 +417,8 @@ class ProjectScheduleReviewCueService:
                         confidence=CONFIDENCE_PARTIAL if delay_payload.get("partial_dimension_support") else CONFIDENCE_PRODUCTION,
                         severity="medium",
                         comparison_basis=basis,
-                        data_date=data_date,
+                        as_of=as_of,
+                        schedule_data_date=schedule_data_date,
                         partial_dimension_support=delay_payload.get("partial_dimension_support", False),
                         cue_summary="Prior-update finish movement suggests follow-up review.",
                         caveats=[NON_CAUSATION_CUE, NON_CAUSATION_CAVEAT],
@@ -425,9 +446,11 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_PRODUCTION,
                     severity=str(finding.get("severity") or "medium"),
                     comparison_basis=basis,
-                    data_date=data_date,
+                    as_of=as_of,
+                    schedule_data_date=schedule_data_date,
                     activity_name=finding.get("activity_name"),
                     cue_summary=str(finding.get("finding_summary") or "Schedule quality finding requires review."),
+                    caveats=[NON_CAUSATION_CUE],
                 )
             )
 
@@ -446,13 +469,15 @@ class ProjectScheduleReviewCueService:
                             confidence=CONFIDENCE_PRODUCTION,
                             severity="medium",
                             comparison_basis="selected_baseline",
-                            data_date=data_date,
+                            as_of=as_of,
+                            schedule_data_date=schedule_data_date,
                             cue_summary="Selected-baseline compression metric needs operator follow-up.",
+                            caveats=[NON_CAUSATION_CUE],
                         )
                     )
 
         out.sort(key=lambda item: (-int(item.get("priority") or 0), str(item.get("item_title") or "")))
-        return out
+        return self._evidence.enrich_cues(out, schedule_version_key=schedule_version_key)
 
     def filter_cues(
         self,
@@ -518,7 +543,8 @@ class ProjectScheduleReviewCueService:
                     confidence=CONFIDENCE_BLOCKED,
                     severity="low",
                     comparison_basis="prior_update",
-                    data_date=as_of_date.isoformat(),
+                    as_of=as_of_date.isoformat(),
+                    schedule_data_date=self._schedule_data_date(schedule_version_key),
                     materializable=False,
                     cue_summary="Backend metric is readiness-only; no review item was materialized.",
                     data_quality_notes=info.get("blockers", []),
@@ -546,6 +572,11 @@ class ProjectScheduleReviewCueService:
         return [dict(row) for row in rows]
 
     @staticmethod
+    def _schedule_data_date(schedule_version_key: str) -> str | None:
+        parsed = parse_schedule_version_data_date(schedule_version_key)
+        return parsed.date().isoformat() if parsed is not None else None
+
+    @staticmethod
     def _candidate(
         *,
         stable_item_key: str,
@@ -557,7 +588,8 @@ class ProjectScheduleReviewCueService:
         confidence: str,
         severity: str,
         comparison_basis: str,
-        data_date: str,
+        as_of: str,
+        schedule_data_date: str | None = None,
         source_activity_id: str | None = None,
         activity_name: str | None = None,
         wbs_code: str | None = None,
@@ -579,7 +611,9 @@ class ProjectScheduleReviewCueService:
             "confidence": confidence,
             "severity": severity,
             "comparison_basis": comparison_basis,
-            "data_date": data_date,
+            "as_of": as_of,
+            "schedule_data_date": schedule_data_date,
+            "data_date": schedule_data_date,
             "activity_name": activity_name,
             "wbs_code": wbs_code,
             "phase": phase,
@@ -596,6 +630,7 @@ class ProjectScheduleReviewCueService:
         }
         if evidence_extra:
             evidence.update(evidence_extra)
+        evidence = apply_taxonomy_fields(item_type=item_type, evidence=evidence)
         return {
             "stable_item_key": stable_item_key,
             "item_type": item_type,
@@ -617,3 +652,8 @@ class ProjectScheduleReviewCueService:
             "partial_dimension_support": partial_dimension_support,
             "materializable": materializable,
         }
+
+
+def _activity_label(activity_name: Any) -> str:
+    label = str(activity_name or "").strip()
+    return label or "Unnamed activity"

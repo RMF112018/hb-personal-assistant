@@ -6,6 +6,7 @@ import {
   getProjectScheduleMetricTrends,
   getProjectScheduleReviewItems,
   getProjectScheduleSummary,
+  syncProjectScheduleReviewItems,
 } from './api';
 
 function jsonResponse(body: unknown = {}) {
@@ -52,5 +53,20 @@ describe('schedule API as-of helpers', () => {
       '/api/projects/tropical/schedule/drilldowns?type=upstream_cues&limit=10&as_of=2026-06-16',
       '/api/projects/tropical/schedule/review-items?review_status=open&as_of=2026-06-16',
     ]);
+  });
+
+  it('emits comparison_basis for review sync POST requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await syncProjectScheduleReviewItems('tropical', {
+      asOf: '2026-06-16',
+      comparisonBasis: 'baseline',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/tropical/schedule/review-items?as_of=2026-06-16&comparison_basis=baseline',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });

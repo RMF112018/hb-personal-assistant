@@ -1,0 +1,4 @@
+branch=feature/schedule-review-workbench-alignment-20260630T213439Z
+base=1225de69d127d90015081465d50b27c469115848
+head=1225de69d127d90015081465d50b27c469115848
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-workbench-alignment-20260630T213439Z

@@ -1423,6 +1423,7 @@ def create_app(*, db_path: str | None = None) -> Any:
     def project_schedule_review_items_sync(
         project_key: str,
         as_of: str | None = None,
+        comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         require_operator_role(role)
@@ -1438,9 +1439,11 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
         workbench = ProjectScheduleSummaryService(db_path=_schedule_db_path()).sync_review_workbench(
             project_key,
             as_of=as_of_date,
+            comparison_basis=basis,
         )
         return {"available": workbench.get("available", True), "workbench": workbench}
 

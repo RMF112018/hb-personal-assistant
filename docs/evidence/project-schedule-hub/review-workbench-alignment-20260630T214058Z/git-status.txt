@@ -1,0 +1,17 @@
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectScheduleDriverDetailPage.tsx
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx
+ M frontend/src/pages/ProjectScheduleWorkbenchPage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_narrative_qa.py
+ M src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py
+ M src/hb_assistant/construction/analytics/project_schedule_review_service.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M src/hb_assistant/store/schedule_activity_repository.py
+?? docs/evidence/project-schedule-hub/review-workbench-alignment-20260630T214058Z/
+?? frontend/src/components/project-schedule/ReviewCueCard.tsx
+?? src/hb_assistant/construction/analytics/project_schedule_review_cue_taxonomy.py
+?? src/hb_assistant/construction/analytics/project_schedule_review_evidence_service.py
+?? tests/test_project_schedule_review_alignment.py
