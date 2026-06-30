@@ -262,6 +262,35 @@ export function getProjectScheduleSummary(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule${qs ? `?${qs}` : ''}`,
   );
 }
+export type ProjectScheduleControlsResponse = {
+  available?: boolean;
+  reason?: string | null;
+  project_key?: string;
+  schedule_version_key?: string | null;
+  schedule_data_date?: string | null;
+  as_of_date?: string | null;
+  comparison_basis?: 'prior_update' | 'baseline';
+  advisory_posture?: string;
+  summary?: Record<string, any>;
+  sections?: Record<string, any>;
+  top_controls?: any[];
+  provenance?: Record<string, any>;
+  links?: Record<string, string>;
+  controls_language_qa?: Record<string, any>;
+  [key: string]: any;
+};
+export function getProjectScheduleControls(
+  projectKey: string,
+  opts?: { asOf?: string | null; comparisonBasis?: 'prior_update' | 'baseline' },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
+  const qs = params.toString();
+  return fetchJson<ProjectScheduleControlsResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/controls${qs ? `?${qs}` : ''}`,
+  );
+}
 export type ProjectScheduleMetricTrendResponse = {
   available?: boolean;
   project_key?: string;
@@ -2669,6 +2698,7 @@ export const api = {
   getProjectFieldOperations,
   getProjectCostTime,
   getProjectScheduleSummary,
+  getProjectScheduleControls,
   getProjectScheduleMetricTrend,
   getProjectScheduleMetricTrends,
   getProjectScheduleDrilldown,

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getProjectScheduleBaseline,
+  getProjectScheduleControls,
   getProjectScheduleDrilldown,
   getProjectScheduleMetricTrends,
   getProjectScheduleReviewItems,
@@ -67,6 +68,21 @@ describe('schedule API as-of helpers', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/projects/tropical/schedule/review-items?as_of=2026-06-16&comparison_basis=baseline',
       expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('emits as_of and comparison_basis for controls requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getProjectScheduleControls('tropical', {
+      asOf: '2026-06-16',
+      comparisonBasis: 'baseline',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/tropical/schedule/controls?as_of=2026-06-16&comparison_basis=baseline',
+      expect.objectContaining({}),
     );
   });
 });

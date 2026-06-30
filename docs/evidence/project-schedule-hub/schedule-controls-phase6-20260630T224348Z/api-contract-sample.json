@@ -1,0 +1,99 @@
+{
+  "available": true,
+  "comparison_basis": "prior_update",
+  "advisory_posture": "sequence_cues_not_causation",
+  "summary": {
+    "overall_status": "review",
+    "headline": "Schedule controls recommend PM review of priority sequence and float signals.",
+    "supporting_points": [
+      "4 remaining activities moved later in the comparison window.",
+      "12 open review workbench cues in the selected basis."
+    ],
+    "primary_review_focus": "Candidate change driver: Driver Activity",
+    "open_review_item_count": 12,
+    "high_priority_review_item_count": 5
+  },
+  "sections": {
+    "movement": {
+      "available": true,
+      "headline": "Schedule movement since comparison context",
+      "finish_moved_later_count": 4,
+      "finish_moved_earlier_count": 0,
+      "worsened_float_count": 0,
+      "comparison_basis": "prior_update"
+    },
+    "critical_path": {
+      "available": false,
+      "critical_remaining_count": 0,
+      "near_critical_remaining_count": 0,
+      "headline": "Critical-path and near-critical remaining work indicators"
+    },
+    "float": {
+      "available": true,
+      "negative_float_count": 0,
+      "zero_float_count": 0,
+      "near_critical_count": 0,
+      "headline": "Remaining float pressure indicators"
+    },
+    "execution": {
+      "available": true,
+      "headline": "Execution reliability cues are surfaced via review signals when metric data is ready.",
+      "note": "See top controls for should-have-finished and window accuracy cues."
+    },
+    "quality": {
+      "available": true,
+      "headline": "Schedule quality findings appear as review cues when evaluations are available."
+    },
+    "cpm_observability": {
+      "available": false,
+      "headline": "No CPM observability record found for this schedule version.",
+      "status_summary": "not_found"
+    },
+    "review_workbench": {
+      "available": true,
+      "open_review_item_count": 12,
+      "watching_count": 0,
+      "headline": "Review workbench preview counts for the selected comparison basis.",
+      "comparison_basis": "prior_update",
+      "read_only_baseline_preview": false
+    }
+  },
+  "top_controls": [
+    {
+      "control_id": "driver:DRV-A",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: Driver Activity",
+      "summary": "Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "prior_update",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "DRV-A",
+      "activity_name": "Driver Activity",
+      "wbs_code": "WBS-A",
+      "review_item_id": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3ADRV-A&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/drivers/DRV-A?basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "milestone:MS-1",
+      "category": "movement",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Milestone moved later: Substantial completion",
+      "summary": "Milestone forecast moved 7 days later since prior update.",
+      "why_it_matte

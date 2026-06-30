@@ -1,0 +1,40 @@
+43:class ForecastExternalPreviewRequest(BaseModel):
+514:class ProjectConnectionPreviewResponse(BaseModel):
+515:    # Mirrors the existing preview shape for the normalized path; values are safe metadata only.
+535:    preview: dict[str, Any] | None = None
+778:            "(Prompt 14B: account/project connections, source scope, keywords, daily brief config, preferences, admin sync controls) supported."
+957:    @app.post("/connections/preview")
+958:    def connection_preview(
+965:        return ConnectionSetupService(db_path=db_path).preview_connection(
+1323:    @app.get("/api/projects/{project_key}/schedule/review-items")
+1324:    def project_schedule_review_items_get(
+1326:        review_status: str | None = None,
+1356:        return ProjectScheduleSummaryService(db_path=_schedule_db_path()).build_review_items(
+1358:            review_status=review_status,
+1374:    @app.get("/api/projects/{project_key}/schedule/review-items/{review_item_id}")
+1375:    def project_schedule_review_item_detail_get(
+1377:        review_item_id: str,
+1383:        from hb_assistant.construction.analytics.project_schedule_review_service import (
+1389:                review_item_id=review_item_id,
+1392:            if str(exc) == "review_item_not_found":
+1393:                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+1396:    @app.get("/api/projects/{project_key}/schedule/review-items/{review_item_id}/events")
+1397:    def project_schedule_review_item_events_get(
+1399:        review_item_id: str,
+1407:        from hb_assistant.construction.analytics.project_schedule_review_service import (
+1413:                review_item_id=review_item_id,
+1418:            if str(exc) == "review_item_not_found":
+1419:                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+1422:    @app.post("/api/projects/{project_key}/schedule/review-items")
+1423:    def project_schedule_review_items_sync(
+1443:        workbench = ProjectScheduleSummaryService(db_path=_schedule_db_path()).sync_review_workbench(
+1448:        return {"available": workbench.get("available", True), "workbench": workbench}
+1450:    @app.patch("/api/projects/{project_key}/schedule/review-items/{review_item_id}")
+1451:    def project_schedule_review_item_patch(
+1453:        review_item_id: str,
+1461:        from hb_assistant.construction.analytics.project_schedule_review_service import (
+1467:                review_item_id=review_item_id,
+1468:                review_status=request.get("review_status"),
+1470:                reviewed_by_operator=role.get("role"),
+1473:            if str(exc) == "review_item_not_found":
+1474:                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
