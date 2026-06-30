@@ -1,0 +1,355 @@
+{
+  "available": true,
+  "reason": null,
+  "project_key": "tropical",
+  "schedule_version_key": "tropical|S1|2026-07-01",
+  "schedule_data_date": "2026-07-01",
+  "as_of_date": "2026-07-03",
+  "comparison_basis": "current_contract_baseline",
+  "baseline_context": {
+    "basis": "current_contract_baseline",
+    "slot_key": "current_contract_baseline",
+    "slot_label": "Current Contract Baseline",
+    "selection_status": "selected",
+    "baseline_schedule_version_key": "tropical|S1|2026-06-01",
+    "baseline_schedule_data_date": "2026-06-01",
+    "baseline_display_name": "Contract baseline",
+    "selected_at": "2026-06-30T23:27:54.128012+00:00",
+    "selected_by": "operator",
+    "notes": null
+  },
+  "advisory_posture": "sequence_cues_not_causation",
+  "summary": {
+    "overall_status": "review",
+    "headline": "Schedule controls recommend PM review of priority sequence and float signals.",
+    "supporting_points": [
+      "Compared against Current Contract Baseline",
+      "2 remaining activities moved later in the comparison window.",
+      "1 remaining activities show negative float.",
+      "10 open review workbench cues in the selected basis."
+    ],
+    "primary_review_focus": "Negative float remaining: Area A start",
+    "open_review_item_count": 10,
+    "high_priority_review_item_count": 4
+  },
+  "sections": {
+    "movement": {
+      "available": true,
+      "headline": "Schedule movement since comparison context",
+      "finish_moved_later_count": 2,
+      "finish_moved_earlier_count": 0,
+      "worsened_float_count": 1,
+      "comparison_basis": "current_contract_baseline"
+    },
+    "critical_path": {
+      "available": false,
+      "critical_remaining_count": 0,
+      "near_critical_remaining_count": 0,
+      "headline": "Critical-path and near-critical remaining work indicators"
+    },
+    "float": {
+      "available": true,
+      "negative_float_count": 1,
+      "zero_float_count": 1,
+      "near_critical_count": 1,
+      "headline": "Remaining float pressure indicators"
+    },
+    "execution": {
+      "available": true,
+      "headline": "Execution reliability cues are surfaced via review signals when metric data is ready.",
+      "note": "See top controls for should-have-finished and window accuracy cues."
+    },
+    "quality": {
+      "available": true,
+      "headline": "Schedule quality findings appear as review cues when evaluations are available."
+    },
+    "cpm_observability": {
+      "available": false,
+      "headline": "No CPM observability record found for this schedule version.",
+      "status_summary": "not_found"
+    },
+    "review_workbench": {
+      "available": true,
+      "open_review_item_count": 10,
+      "watching_count": 0,
+      "headline": "Review workbench preview counts for the selected comparison basis.",
+      "comparison_basis": "current_contract_baseline",
+      "read_only_baseline_preview": true
+    }
+  },
+  "top_controls": [
+    {
+      "control_id": "negative_float:A100",
+      "category": "float",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Negative float remaining: Area A start",
+      "summary": "Compared against Current Contract Baseline. Activity has negative source/export float remaining.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review remaining negative-float activities for recovery planning follow-up.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "remaining_health",
+      "source_signal_type": "negative_float",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A100",
+      "activity_name": "Area A start",
+      "wbs_code": null,
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "milestone:A200",
+      "category": "movement",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Milestone moved later: Substantial completion milestone",
+      "summary": "Compared against Current Contract Baseline. Milestone forecast moved 15 days later since prior update.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Confirm milestone forecast movement against the current schedule update context.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A200",
+      "activity_name": "Substantial completion milestone",
+      "wbs_code": null,
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "driver:A200",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: Substantial completion milestone",
+      "summary": "Compared against Current Contract Baseline. Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A200",
+      "activity_name": "Substantial completion milestone",
+      "wbs_code": "WBS-A",
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "driver:A100",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: Area A start",
+      "summary": "Compared against Current Contract Baseline. Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A100",
+      "activity_name": "Area A start",
+      "wbs_code": "WBS-A",
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "metric:critical_issues:execution_and_status_gaps",
+      "category": "quality",
+      "severity": "watch",
+      "confidence": "medium",
+      "title": "Critical issue category",
+      "summary": "Compared against Current Contract Baseline. 2 candidate issue(s) in this category require PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review grouped critical-issue candidates and route follow-up by category.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "critical_issues_category_model",
+      "source_signal_type": "issue_category",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": null,
+      "activity_name": null,
+      "wbs_code": null,
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "metric:window_finish:did_not_finish:A300",
+      "category": "execution",
+      "severity": "watch",
+      "confidence": "medium",
+      "title": "Window finish miss: Closeout work",
+      "summary": "Compared against Current Contract Baseline. Planned finish in window but activity did not finish.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review near-term finish reliability against the current update window.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "window_finish_accuracy",
+      "source_signal_type": "did_not_finish",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A300",
+      "activity_name": "Closeout work",
+      "wbs_code": "WBS-B",
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "metric:window_start:did_not_start:A300",
+      "category": "execution",
+      "severity": "watch",
+      "confidence": "medium",
+      "title": "Window start miss: Closeout work",
+      "summary": "Compared against Current Contract Baseline. Planned start in window but activity did not start.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review near-term start reliability against the current update window.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "window_start_accuracy",
+      "source_signal_type": "did_not_start",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": "A300",
+      "activity_name": "Closeout work",
+      "wbs_code": "WBS-B",
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "preview:blocked:window_start_accuracy",
+      "category": "quality",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Metric readiness preview",
+      "summary": "Compared against Current Contract Baseline. Backend metric is readiness-only; no review item was materialized.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Metric is readiness-only; no persisted review item was materialized.",
+      "comparison_basis": "current_contract_baseline",
+      "source_metric_key": "window_start_accuracy",
+      "source_signal_type": "readiness_blocked",
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "as_of": "2026-07-03",
+      "activity_id": null,
+      "activity_name": null,
+      "wbs_code": null,
+      "review_item_id": null,
+      "links": {
+        "review_item": null,
+        "driver_detail": null,
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": [
+        "udf_field_missing:filter_out",
+        "udf_field_missing:start_previous_status"
+      ]
+    }
+  ],
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "change_driver_analysis",
+      "critical_issues_category_model",
+      "milestones",
+      "remaining_health",
+      "window_finish_accuracy",
+      "window_start_accuracy"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|S1|2026-07-01",
+    "comparison_label": "Compared against Current Contract Baseline"
+  },
+  "links": {
+    "schedule_hub": "/projects/tropical/schedule",
+    "export": "/api/projects/tropical/schedule/export?format=markdown&comparison_basis=current_contract_baseline&as_of=2026-07-03"
+  },
+  "controls_language_qa": {
+    "passed": true,
+    "violations": [],
+    "advisory_posture": "sequence_cues_not_causation"
+  }
+}

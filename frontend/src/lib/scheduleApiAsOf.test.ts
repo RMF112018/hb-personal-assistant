@@ -6,8 +6,10 @@ import {
   getProjectScheduleDrilldown,
   getProjectScheduleMetricTrends,
   getProjectScheduleReviewItems,
+  getProjectScheduleBaselines,
   getProjectScheduleSummary,
   syncProjectScheduleReviewItems,
+  updateProjectScheduleBaselines,
 } from './api';
 
 function jsonResponse(body: unknown = {}) {
@@ -85,4 +87,27 @@ describe('schedule API as-of helpers', () => {
       expect.objectContaining({}),
     );
   });
+
+  it('emits as_of for baselines GET and PUT', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getProjectScheduleBaselines('tropical', { asOf: '2026-06-16' });
+    await updateProjectScheduleBaselines(
+      'tropical',
+      { selections: { current_contract_baseline: { schedule_version_key: 'tropical|S1|2026-06-01' } } },
+      { asOf: '2026-06-16' },
+    );
+    await getProjectScheduleControls('tropical', {
+      asOf: '2026-06-16',
+      comparisonBasis: 'current_contract_baseline',
+    });
+
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      '/api/projects/tropical/schedule/baselines?as_of=2026-06-16',
+      '/api/projects/tropical/schedule/baselines?as_of=2026-06-16',
+      '/api/projects/tropical/schedule/controls?as_of=2026-06-16&comparison_basis=current_contract_baseline',
+    ]);
+  });
+
 });

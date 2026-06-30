@@ -1,0 +1,37 @@
+{
+  "available": false,
+  "reason": "baseline_not_selected",
+  "project_key": "tropical",
+  "schedule_version_key": null,
+  "schedule_data_date": null,
+  "as_of_date": "2026-07-03",
+  "comparison_basis": "previous_progress_update_baseline",
+  "baseline_context": {
+    "basis": "previous_progress_update_baseline",
+    "slot_key": "previous_progress_update_baseline",
+    "slot_label": "Previous Progress Update Baseline",
+    "selection_status": "missing"
+  },
+  "advisory_posture": "sequence_cues_not_causation",
+  "summary": {
+    "overall_status": "unknown",
+    "headline": "Schedule controls are unavailable for the selected context.",
+    "supporting_points": [
+      "baseline not selected"
+    ],
+    "primary_review_focus": null,
+    "open_review_item_count": null,
+    "high_priority_review_item_count": null
+  },
+  "sections": {},
+  "top_controls": [],
+  "provenance": {
+    "source_services": [
+      "project_schedule_controls_service"
+    ]
+  },
+  "links": {
+    "schedule_hub": "/projects/tropical/schedule",
+    "export": "/api/projects/tropical/schedule/export?format=markdown&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03"
+  }
+}

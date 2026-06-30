@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Link } from 'react-router-dom'
 
+import type { ScheduleControlsComparisonBasis } from '../../lib/api'
 import { SectionCard } from '../common/SectionCard'
+
+const COMPARISON_CHOICES: { id: ScheduleControlsComparisonBasis; label: string }[] = [
+  { id: 'prior_update', label: 'Prior Update' },
+  { id: 'current_contract_baseline', label: 'Current Contract Baseline' },
+  { id: 'previous_progress_update_baseline', label: 'Previous Progress Update Baseline' },
+  { id: 'secondary_progress_update_baseline', label: 'Secondary Progress Update Baseline' },
+]
 
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
@@ -27,9 +35,8 @@ export type ScheduleControlsPanelProps = {
   controls?: Record<string, any>
   loading?: boolean
   error?: unknown
-  comparisonBasis: 'prior_update' | 'baseline'
-  baselineAvailable: boolean
-  onComparisonBasisChange: (basis: 'prior_update' | 'baseline') => void
+  comparisonBasis: ScheduleControlsComparisonBasis
+  onComparisonBasisChange: (basis: ScheduleControlsComparisonBasis) => void
 }
 
 export function ScheduleControlsPanel({
@@ -37,7 +44,6 @@ export function ScheduleControlsPanel({
   loading = false,
   error,
   comparisonBasis,
-  baselineAvailable,
   onComparisonBasisChange,
 }: ScheduleControlsPanelProps) {
   if (loading) {
@@ -61,10 +67,27 @@ export function ScheduleControlsPanel({
   }
 
   if (!controls?.available) {
+    const slotLabel = text(controls?.baseline_context?.slot_label, '')
+    const missingNamed =
+      controls?.reason === 'baseline_not_selected' && slotLabel
+        ? `No ${slotLabel} selected.`
+        : null
     return (
       <SectionCard title="Schedule Controls">
+        <div className="mb-3 flex flex-wrap gap-2">
+          {COMPARISON_CHOICES.map((choice) => (
+            <button
+              key={choice.id}
+              type="button"
+              className={`badge ${comparisonBasis === choice.id ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              onClick={() => onComparisonBasisChange(choice.id)}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
         <p className="text-sm text-[var(--hb-muted)]">
-          {text(controls?.reason?.replace(/_/g, ' '), 'Schedule controls are not available for this project.')}
+          {missingNamed || text(controls?.reason?.replace(/_/g, ' '), 'Schedule controls are not available for this project.')}
         </p>
       </SectionCard>
     )
@@ -78,27 +101,18 @@ export function ScheduleControlsPanel({
   return (
     <SectionCard title="Schedule Controls">
       <div className="space-y-4">
-        {baselineAvailable && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          {COMPARISON_CHOICES.map((choice) => (
             <button
+              key={choice.id}
               type="button"
-              className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-              onClick={() => onComparisonBasisChange('prior_update')}
+              className={`badge ${comparisonBasis === choice.id ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+              onClick={() => onComparisonBasisChange(choice.id)}
             >
-              Since previous update
+              {choice.label}
             </button>
-            <button
-              type="button"
-              className={`badge ${comparisonBasis === 'baseline' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-              onClick={() => onComparisonBasisChange('baseline')}
-            >
-              Since selected baseline
-            </button>
-            {comparisonBasis === 'baseline' && (
-              <span className="text-xs text-[var(--hb-muted)]">Baseline controls are live preview only.</span>
-            )}
-          </div>
-        )}
+          ))}
+        </div>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

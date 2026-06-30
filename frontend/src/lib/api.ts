@@ -262,6 +262,12 @@ export function getProjectScheduleSummary(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule${qs ? `?${qs}` : ''}`,
   );
 }
+export type ScheduleControlsComparisonBasis =
+  | 'prior_update'
+  | 'current_contract_baseline'
+  | 'previous_progress_update_baseline'
+  | 'secondary_progress_update_baseline';
+export type ReviewWorkbenchComparisonBasis = 'prior_update' | 'baseline';
 export type ProjectScheduleControlsResponse = {
   available?: boolean;
   reason?: string | null;
@@ -269,7 +275,8 @@ export type ProjectScheduleControlsResponse = {
   schedule_version_key?: string | null;
   schedule_data_date?: string | null;
   as_of_date?: string | null;
-  comparison_basis?: 'prior_update' | 'baseline';
+  comparison_basis?: ScheduleControlsComparisonBasis | 'baseline';
+  baseline_context?: Record<string, any>;
   advisory_posture?: string;
   summary?: Record<string, any>;
   sections?: Record<string, any>;
@@ -281,7 +288,7 @@ export type ProjectScheduleControlsResponse = {
 };
 export function getProjectScheduleControls(
   projectKey: string,
-  opts?: { asOf?: string | null; comparisonBasis?: 'prior_update' | 'baseline' },
+  opts?: { asOf?: string | null; comparisonBasis?: ScheduleControlsComparisonBasis | 'baseline' },
 ) {
   const params = new URLSearchParams();
   if (opts?.asOf) params.set('as_of', opts.asOf);
@@ -394,6 +401,39 @@ export function putProjectScheduleBaseline(
     method: 'PUT',
     body: JSON.stringify(body),
   });
+}
+
+export type ProjectScheduleBaselinesResponse = {
+  available?: boolean;
+  reason?: string;
+  project_key?: string;
+  as_of_date?: string | null;
+  current_schedule_version_key?: string;
+  current_schedule_data_date?: string | null;
+  slots?: Array<Record<string, any>>;
+  available_versions?: Array<Record<string, any>>;
+  [key: string]: any;
+};
+export function getProjectScheduleBaselines(projectKey: string, opts?: { asOf?: string | null }) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson<ProjectScheduleBaselinesResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/baselines${qs ? `?${qs}` : ''}`,
+  );
+}
+export function updateProjectScheduleBaselines(
+  projectKey: string,
+  payload: { selections: Record<string, { schedule_version_key: string; display_name?: string; notes?: string } | null> },
+  opts?: { asOf?: string | null },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson<ProjectScheduleBaselinesResponse>(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/baselines${qs ? `?${qs}` : ''}`,
+    { method: 'PUT', body: JSON.stringify(payload) },
+  );
 }
 export function getProjectScheduleDriverDetail(
   projectKey: string,
@@ -2705,6 +2745,8 @@ export const api = {
   getProjectScheduleDrivers,
   getProjectScheduleBaseline,
   putProjectScheduleBaseline,
+  getProjectScheduleBaselines,
+  updateProjectScheduleBaselines,
   getProjectScheduleDriverDetail,
   syncProjectScheduleReviewItems,
   getProjectScheduleReviewItems,

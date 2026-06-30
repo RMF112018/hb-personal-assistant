@@ -1207,6 +1207,124 @@ class ProjectScheduleSummaryService:
             enriched["schedule_data_date"] = _date_str(self._data_date(current_choice.version))
         return enriched
 
+    def build_baseline_summary_for_version(
+        self,
+        *,
+        project_key: str,
+        current: dict[str, Any],
+        current_key: str,
+        previous: dict[str, Any] | None,
+        baseline_version_key: str,
+    ) -> dict[str, Any]:
+        """Build baseline comparison summary for an explicit prior schedule version."""
+
+        baseline_projects = self._imports.list_baseline_projects(current_key)
+        original = baseline_projects[0] if baseline_projects else None
+        original_label = None
+        if original:
+            original_label = original.get("baseline_project_name") or original.get("source_project_name")
+
+        baseline_version = self._version_row(project_key, baseline_version_key)
+        if not baseline_version:
+            return {
+                "available": False,
+                "selected_baseline_available": False,
+                "status": "invalid_selection",
+                "reason": "invalid_schedule_version_key",
+                "original_baseline_detected": bool(original),
+                "original_baseline_label": original_label,
+                "comparison": {},
+                "current_update_label": self._friendly_label(current),
+                "previous_update_label": self._friendly_label(previous) if previous else None,
+            }
+
+        comparison: dict[str, Any] = {}
+        try:
+            comparison_result = self._comparison.compare_versions(
+                left_key=current_key, right_key=baseline_version_key
+            )
+            current_finish = _parse_date(
+                self._forecast_finish(current_key, baseline_version_key).get("current_forecast_finish")
+            )
+            baseline_finish = _parse_date(
+                self._forecast_finish(current_key, baseline_version_key).get("previous_forecast_finish")
+            )
+            comparison = {
+                **comparison_result["summary"],
+                "forecast_finish_delta_days": _date_delta_days(baseline_finish, current_finish),
+                "comparison_basis": "named_baseline",
+            }
+        except Exception:
+            comparison = {}
+
+        return {
+            "available": True,
+            "selected_baseline_available": True,
+            "selected_baseline_label": self._friendly_label(baseline_version),
+            "selected_baseline_data_date": _date_str(self._data_date(baseline_version)),
+            "original_baseline_detected": bool(original),
+            "original_baseline_label": original_label,
+            "status": "ready",
+            "readiness": {"ready": True, "blockers": [], "backend_derived": True},
+            "recompute_required": False,
+            "current_update_label": self._friendly_label(current),
+            "previous_update_label": self._friendly_label(previous) if previous else None,
+            "comparison": comparison,
+            "_selected_baseline_schedule_version_key": baseline_version_key,
+        }
+
+    def build_schedule_hub_context_with_named_baseline(
+        self,
+        project_key: str,
+        *,
+        as_of: date | None = None,
+        baseline_version_key: str,
+    ) -> dict[str, Any] | None:
+        """Schedule hub context with driver analysis anchored to a named baseline version."""
+
+        context = self._review_workbench_context(project_key, as_of=as_of)
+        if not context:
+            return None
+
+        as_of_date = context.get("as_of_date") or datetime.now(timezone.utc).date()
+        versions = self._hub_project_versions(project_key)
+        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+        if not current_choice:
+            return None
+        current = current_choice.version
+        current_key = str(current["schedule_version_key"])
+        previous_choice = self._resolve_previous(project_key, current_choice, versions)
+        previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+        comparison_context = self._prior_update_comparison_context(
+            current_choice=current_choice,
+            previous_choice=previous_choice,
+            as_of_date=as_of_date,
+        )
+        milestones = context.get("milestones") or self._milestones(
+            current_key, previous_key, {"completed_milestone_count": 0}
+        )
+        baseline_summary = self.build_baseline_summary_for_version(
+            project_key=project_key,
+            current=current,
+            current_key=current_key,
+            previous=previous_choice.version if previous_choice else None,
+            baseline_version_key=baseline_version_key,
+        )
+        change_driver_analysis = self._drivers.build_hub_analysis(
+            project_key=project_key,
+            current_key=current_key,
+            previous_key=previous_key,
+            baseline_key=baseline_version_key,
+            diff_id=current.get("default_diff_id"),
+            milestones=milestones,
+            comparison_ready=bool(comparison_context.get("available")),
+        )
+        enriched = dict(context)
+        enriched["driver_analysis"] = change_driver_analysis
+        enriched["baseline_summary"] = baseline_summary
+        enriched["schedule_data_date"] = _date_str(self._data_date(current))
+        return enriched
+
     def build_export(
         self,
         project_key: str,

@@ -62,6 +62,14 @@ def validate_review_cue_text(cue: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+_NAMED_BASELINE_LABELS = (
+    "Current Contract Baseline",
+    "Previous Progress Update Baseline",
+    "Secondary Progress Update Baseline",
+)
+
+
 _CONTROLS_FORBIDDEN_TERMS = _FORBIDDEN_TERMS + (
     "entitlement",
     "liquidated damages",
@@ -99,6 +107,28 @@ def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
                 {
                     "code": "forbidden_term",
                     "message": f"Forbidden claim language detected in controls payload: {term}",
+                }
+            )
+    basis = str(payload.get("comparison_basis") or "")
+    baseline_context = payload.get("baseline_context") or {}
+    if basis in {
+        "current_contract_baseline",
+        "previous_progress_update_baseline",
+        "secondary_progress_update_baseline",
+    }:
+        slot_label = str(baseline_context.get("slot_label") or "")
+        if slot_label and slot_label not in combined and slot_label.lower() not in combined:
+            violations.append(
+                {
+                    "code": "missing_named_baseline_label",
+                    "message": f"Named baseline controls should reference the slot label: {slot_label}",
+                }
+            )
+        if re.search(r"\bthe baseline\b", combined, flags=re.I):
+            violations.append(
+                {
+                    "code": "ambiguous_baseline_language",
+                    "message": "Avoid ambiguous 'the baseline' phrasing; use the full named slot label.",
                 }
             )
     return {
