@@ -97,11 +97,14 @@ def test_amount_status_only_when_explicit() -> None:
     # No explicit $ or status in the filename → fields stay None (never invented).
     bare = _analyze("25-123-01 - PCCO 004 - Added Lobby Millwork.pdf")
     assert bare.amount is None and bare.doc_status is None
-    # Explicit "$" amount is extracted, but an UNLABELED body "APPROVED" no longer yields a status
-    # (Phase 8 dropped the bare-keyword scan — status must be labeled or a filename segment).
+    # change_order amounts are strong-label-gated (Phase 10A): a labeled amount extracts, but an
+    # UNLABELED body "APPROVED" still yields no status (no bare-keyword scan).
     rich = _analyze("25-123-01 - PCCO 005 - HVAC.pdf", "pdf",
-                    "This change order is APPROVED for the amount of $12,500.00 total.")
+                    "This change order is APPROVED. Change Order Amount: $12,500.00.")
     assert rich.amount == "$12,500.00" and rich.doc_status is None
+    # An unlabeled stray "$" in a change order is NOT extracted.
+    stray = _analyze("25-123-01 - PCCO 007 - HVAC.pdf", "pdf", "see line item $42.00 each")
+    assert stray.amount is None
     # A labeled status field IS extracted.
     labeled = _analyze("25-123-01 - PCCO 006 - HVAC.pdf", "pdf", "Status: Approved")
     assert labeled.doc_status == "approved"

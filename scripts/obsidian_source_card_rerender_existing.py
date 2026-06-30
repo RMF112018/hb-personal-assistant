@@ -197,6 +197,12 @@ def validate_card(text: str, *, expected_domain: str) -> dict[str, Any]:
     if not rel_ok:
         issues.append("invented_relationship")
 
+    # Exactly one hb-local-summary block (the qwen2.5:14b append target).
+    block_ok = (text.count("hb-local-summary:start") == 1
+                and text.count("hb-local-summary:end") == 1)
+    if not block_ok:
+        issues.append("local_summary_block")
+
     return {
         "frontmatter": has_fm,
         "card_version": card_version_ok,
@@ -206,6 +212,7 @@ def validate_card(text: str, *, expected_domain: str) -> dict[str, Any]:
         "required_sections_nonempty": nonempty_ok,
         "no_raw_preview": no_raw_preview,
         "no_invented_relationship": rel_ok,
+        "local_summary_block": block_ok,
         "passed": not issues,
         "issues": issues,
     }
@@ -213,7 +220,8 @@ def validate_card(text: str, *, expected_domain: str) -> dict[str, Any]:
 
 def _aggregate_validation(per_card: list[dict[str, Any]]) -> dict[str, Any]:
     dims = ["frontmatter", "card_version", "domain", "canonical_sections", "old_sections_absent",
-            "required_sections_nonempty", "no_raw_preview", "no_invented_relationship", "passed"]
+            "required_sections_nonempty", "no_raw_preview", "no_invented_relationship",
+            "local_summary_block", "passed"]
     out: dict[str, Any] = {"total": len(per_card)}
     for d in dims:
         passed = sum(1 for c in per_card if c.get(d))

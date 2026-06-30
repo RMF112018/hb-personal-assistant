@@ -29,11 +29,16 @@ from .tools import ObsidianMcpToolError
 
 # Card schema markers (kept in sync with Templates/Source Cards/source-card-template.md).
 TEMPLATE_VERSION = "source-card-v1"
-CARD_VERSION = "phase8-v1"
+CARD_VERSION = "phase10a-v1"
+# Local-summary append target for the future qwen2.5:14b summarizer (Phase 10A readiness).
+LOCAL_SUMMARY_MODEL = "qwen2.5:14b"
+LOCAL_SUMMARY_BEGIN_PREFIX = "<!-- hb-local-summary:start"
+LOCAL_SUMMARY_END = "<!-- hb-local-summary:end -->"
 # document_type values that are not a confident PM class → flag the card for human review.
 # template_form is ambiguous-by-design: a blank instrument needs a human to confirm blank-vs-executed.
 _AMBIGUOUS_DOC_TYPES = frozenset({
     "general_pdf", "general_document", "spreadsheet", "cost_document", "template_form",
+    "reference_document", "communications_matrix", "coordination_matrix", "equipment_log",
 })
 
 
@@ -357,6 +362,22 @@ _PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
         "cues": ["Confirm the workbook's purpose and verify figures against the source."],
         "followup": ["Confirm purpose; verify any figures before relying on them."],
     },
+    "reference_document": {
+        "why": ["A master/standard reference list (e.g. cost codes) — NOT a project cost instrument; "
+                "do not treat its values as project truth."],
+        "cues": ["Use only as a lookup/reference; do not read project amounts or status from it."],
+        "followup": ["Confirm this is the current reference revision; do not record values as project data."],
+    },
+    "communications_matrix": {
+        "why": ["A communications/contact matrix — a coordination reference, not a PM-control artifact."],
+        "cues": ["Use for contacts/roles only; verify against the current distribution list."],
+        "followup": ["Confirm contacts are current; do not treat as a control document."],
+    },
+    "coordination_matrix": {
+        "why": ["A coordination matrix — a reference, not a PM-control artifact."],
+        "cues": ["Use for coordination scope only; verify against current responsibility assignments."],
+        "followup": ["Confirm assignments are current; do not treat as a control document."],
+    },
 }
 _PM_GUIDANCE_FALLBACK = {
     "why": ["Indexed source retained for reference and search; classification is low-signal."],
@@ -556,11 +577,18 @@ def _source_basis(detail: dict[str, Any], analysis: SourceAnalysis | None,
         out.append(f"- Matched filename tokens: {', '.join(tokens)}")
     if detail.get("file_ext"):
         out.append(f"- Extension: {detail['file_ext']}")
-    if (detail.get("file_ext") or "").lower() in ("xlsx", "xlsm"):
+    if (detail.get("file_ext") or "").lower() in source_analyzers._SPREADSHEET_EXTS:
         out.append("- Spreadsheet basis: metadata + bounded cell sample (no formulas evaluated, no "
                    "macros executed).")
     if doc_type == "template_form":
         out.append("- Template/form detected from filename — treated as a blank instrument, not live data.")
+    if doc_type == "reference_document":
+        out.append("- Master/reference list detected — reference metadata, NOT a project cost "
+                   "instrument; values are not project truth.")
+    if ((doc_type in source_analyzers.DRAWING_DOCUMENT_TYPES or doc_type == "drawing")
+            and not detail.get("text_excerpt")):
+        out.append("- Drawing extraction unsupported — card built from filename/metadata only "
+                   "(no OCR/CAD parsing performed).")
     if analysis is not None:
         extracted = []
         if analysis.doc_status:
@@ -571,6 +599,10 @@ def _source_basis(detail: dict[str, Any], analysis: SourceAnalysis | None,
             extracted.append("date (filename / labeled)")
         if extracted:
             out.append("- Deterministic extraction: " + ", ".join(extracted) + ".")
+        # Amount-suppression note (only when a "$" was present but no strong label gated it).
+        if (doc_type in source_analyzers._LABEL_REQUIRED_AMOUNT_TYPES and not analysis.amount
+                and "$" in str(detail.get("text_excerpt") or "")):
+            out.append("- Amount not extracted: no strong amount label found near the \"$\" value.")
     if value is not None:
         out.append(f"- Disposition: {value.disposition.value}")
     if confidence is not None:
@@ -592,10 +624,24 @@ def _matched_filename_tokens(detail: dict[str, Any], config: ObsidianMcpConfig) 
     return [str(s).strip() for s in signals if str(s).strip().lower() in name][:_ADVISORY_MAX_ITEMS]
 
 
+def _local_summary_marker(status: str, model: str) -> str:
+    """The opening hb-local-summary marker (a future local summarizer locates/replaces this block)."""
+    return f'{LOCAL_SUMMARY_BEGIN_PREFIX} model="{model}" status="{status}" -->'
+
+
 def _advisory_summary(advisory: dict[str, Any] | None) -> list[str]:
-    """The advisory block (clearly labelled) or an honest 'no advisory' line — never fabricated."""
+    """The Advisory Summary body wrapped in the hb-local-summary block.
+
+    Deterministic generation NEVER fabricates advisory text: with no advisory it emits a single
+    ``status="pending"`` block ready for the local ``qwen2.5:14b`` summarizer to replace. When an
+    advisory is present (model path) the same block carries it with ``status="generated"``, clearly
+    labelled as model-generated and separate from the deterministic sections.
+    """
     if not advisory:
-        return ["- No advisory summary (deterministic card; summaries disabled)."]
+        return [_local_summary_marker("pending", LOCAL_SUMMARY_MODEL),
+                "No local advisory summary has been generated yet. This card is ready for local "
+                "summarization.",
+                LOCAL_SUMMARY_END]
     kind = advisory.get("kind")
     if kind in ("drawing", "bid_package"):
         summary = str(advisory.get("plain_english_summary") or "").strip()
@@ -613,14 +659,43 @@ def _advisory_summary(advisory: dict[str, Any] | None) -> list[str]:
         summary = str(advisory.get("summary") or "").strip()
         list_fields = [("Key points", "key_points"), ("Action items", "action_items"),
                        ("Decisions", "decisions")]
-    out = ["_Advisory — model-generated, not authoritative. Verify against the source._", "",
+    model = str(advisory.get("model_name") or LOCAL_SUMMARY_MODEL)
+    out = [_local_summary_marker("generated", model),
+           "_Advisory — model-generated, not authoritative. Verify against the source._", "",
            summary or "_(model returned no summary text)_", ""]
     for label, key in list_fields:
         out += _md_list(label, advisory.get(key) or [])
     out.append(
         f"_Model: {advisory.get('model_provider')}/{advisory.get('model_name')} · prompt "
         f"{advisory.get('prompt_version')} · generated {advisory.get('generated_at')}._")
+    out.append(LOCAL_SUMMARY_END)
     return out
+
+
+def replace_local_summary_block(card_text: str, inner_lines: list[str], *, model: str,
+                                generated_at: str) -> str:
+    """Replace ONLY the interior of the hb-local-summary block (future local-summarizer contract).
+
+    Locates the single ``hb-local-summary:start``/``end`` pair and swaps the lines between them,
+    flipping status to ``generated`` and stamping model/time. Everything else — frontmatter, Key
+    Facts, Source Basis, Follow-Up and the canonical 11-section order — is left byte-for-byte intact.
+    Raises ``ObsidianMcpToolError`` if the block is missing or not unique.
+    """
+    lines = card_text.splitlines()
+    starts = [i for i, ln in enumerate(lines) if ln.startswith(LOCAL_SUMMARY_BEGIN_PREFIX)]
+    ends = [i for i, ln in enumerate(lines) if ln.strip() == LOCAL_SUMMARY_END]
+    if len(starts) != 1 or len(ends) != 1 or ends[0] <= starts[0]:
+        raise ObsidianMcpToolError("local_summary_block_not_found")
+    s, e = starts[0], ends[0]
+    stamped = list(inner_lines) + [
+        f"_Model: {model} · generated {generated_at}._"]
+    new_lines = (lines[:s]
+                 + [_local_summary_marker("generated", model)]
+                 + stamped
+                 + [LOCAL_SUMMARY_END]
+                 + lines[e + 1:])
+    trailing_nl = "\n" if card_text.endswith("\n") else ""
+    return "\n".join(new_lines) + trailing_nl
 
 
 def _sheet_in_name(name: str, sheet: str) -> bool:
@@ -755,7 +830,12 @@ def _render_card(config: ObsidianMcpConfig, detail: dict[str, Any], generated_at
     value = classify_source_value(detail, config) if detail.get("rel_path") else None
     domain = _domain_for(detail)
     confidence = derive_confidence(value) if value is not None else None
-    needs_review = confidence == "low" or (
+    # A drawing with no extracted text is a filename/metadata-only card (CAD/binary): mark needs_review.
+    drawing_unextracted = (
+        analysis is not None
+        and (analysis.is_drawing or analysis.document_type == "drawing")
+        and not detail.get("text_excerpt"))
+    needs_review = confidence == "low" or drawing_unextracted or (
         analysis is not None and analysis.document_type in _AMBIGUOUS_DOC_TYPES)
     review_status = "needs_review" if needs_review else "unreviewed"
     guidance = _pm_guidance(analysis.document_type if analysis is not None else None)

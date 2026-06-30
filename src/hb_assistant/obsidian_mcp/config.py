@@ -39,7 +39,7 @@ DEFAULT_UNSUPPORTED_FILE_TYPES = [
     # internal app file; bak/ini/db/dat are backup/config/binary-data, never source documents.
     "pcp", "bak", "ini", "db", "dat",
 ]
-DEFAULT_METADATA_ONLY_FILE_TYPES = ["xlsx", "xlsm", "csv"]
+DEFAULT_METADATA_ONLY_FILE_TYPES = ["xlsx", "xlsm", "xls", "xlsb", "csv"]
 DEFAULT_HIGH_PRIORITY_PATH_SIGNALS = [
     "pay app", "payment application", "change order", "pcco", "pco", "rfi", "submittal",
     "contract", "subcontract", "daily log", "punch list", "closeout", "schedule",
