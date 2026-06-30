@@ -1,0 +1,9 @@
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/final-merge-readiness-summary.md
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/git-diff-stat-before-final-evidence-commit.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/git-status-before-final-evidence-commit.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/head-before-final-evidence-commit.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/main-reconcile.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/py-compile-final-after-main.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/pytest-focused-final-after-main.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/pytest-selected-final-after-main.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/scripts-test-schedule-final-after-main.txt

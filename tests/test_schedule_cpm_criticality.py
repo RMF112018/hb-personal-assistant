@@ -28,7 +28,7 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import build_graph
 from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
 from hb_assistant.store.migrator import SQLiteMigrator
 from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
-from tests.schedule_project_test_helpers import seed_procore_ep_project
+from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
 
 XER_FIXTURE = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
 
@@ -222,7 +222,9 @@ def _import_minimal(tmp_path: Path):
         filename=XER_FIXTURE.name, data=XER_FIXTURE.read_bytes(), project_key="tropical"
     )
     commit = svc.commit(import_id=preview["import_id"], project_key="tropical", confirm=True)
-    return db, commit["schedule_version_key"]
+    svk = commit["schedule_version_key"]
+    clear_schedule_cpm_runs(db, svk)
+    return db, svk
 
 
 def _full_chain(cpm, svk):

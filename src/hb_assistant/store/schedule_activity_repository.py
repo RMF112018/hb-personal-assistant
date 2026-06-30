@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from typing import Any, Iterable, Iterator
@@ -98,6 +99,17 @@ _ACTIVITY_COLS = (
     "raw_source_fields_json",
     "source_row_hash",
 )
+
+
+def _loads_json(value: Any) -> Any:
+    if value in (None, ""):
+        return {}
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(str(value))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
 
 
 class ScheduleActivityRepository:
@@ -302,6 +314,36 @@ class ScheduleActivityRepository:
                 (schedule_version_key, limit, offset),
             )
             return [dict(r) for r in cur.fetchall()]
+
+    def get_activity_merge_lineage(
+        self, *, schedule_version_key: str, activity_id: str
+    ) -> dict[str, Any] | None:
+        """Return inspectable canonical package merge lineage for one activity."""
+
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT activity_id, source_activity_object_id, raw_source_fields_json
+                FROM procore_ep_schedule_activities
+                WHERE schedule_version_key=? AND activity_id=?
+                ORDER BY updated_at DESC, id DESC
+                LIMIT 1
+                """,
+                (schedule_version_key, activity_id),
+            ).fetchone()
+        if row is None:
+            return None
+        raw = _loads_json(dict(row).get("raw_source_fields_json"))
+        return {
+            "schedule_version_key": schedule_version_key,
+            "activity_id": activity_id,
+            "source_activity_object_id": row["source_activity_object_id"],
+            "merged_from_files": _loads_json(raw.get("merged_from_files_json")),
+            "source_object_ids": _loads_json(raw.get("source_object_ids_json")),
+            "field_lineage": _loads_json(raw.get("field_lineage_json")),
+            "field_conflicts": _loads_json(raw.get("field_conflicts_json")),
+            "raw_merged": _loads_json(raw.get("raw_merged_json")),
+        }
 
     def list_relationships(self, schedule_version_key: str) -> list[dict[str, Any]]:
         with self._conn() as conn:

@@ -1,0 +1,12 @@
+
+/Users/bobbyfetting/Downloads/xer-examples/TWNU18.zip
+TWNU18.xer	1269324
+__MACOSX/._TWNU18.xer	320
+TWNU18.xml	21866890
+__MACOSX/._TWNU18.xml	163
+
+/Users/bobbyfetting/Downloads/xer-examples/TWNU19.zip
+TWNU19.xer	1341667
+__MACOSX/._TWNU19.xer	220
+TWNU19.xml	22214034
+__MACOSX/._TWNU19.xml	163

@@ -1,0 +1,3433 @@
+{
+  "db_path": "/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/schedule-canonical-merge-0vabtb4d/proof.sqlite",
+  "packages": [
+    {
+      "canonical_counts": {
+        "activities": 1378,
+        "activity_codes": 5171,
+        "baselines": [
+          {
+            "activity_count": 1177,
+            "baseline_project_id": "TWNU07-BL-OWN",
+            "relationship_count": 2658
+          },
+          {
+            "activity_count": 1420,
+            "baseline_project_id": "TWNU16-BL-PROG",
+            "relationship_count": 3780
+          }
+        ],
+        "committed_imports": 1,
+        "duplicate_buckets": {
+          "activities": 0,
+          "activity_codes": 0,
+          "relationships": 0,
+          "udfs": 0
+        },
+        "relationships": 3718,
+        "sample_activity_id": "BUYOUT-10",
+        "udfs": 4311
+      },
+      "cpm": {
+        "canonical_relationship_input_count": 3718,
+        "computed_activity_count": 1378,
+        "status": "complete",
+        "triggered": true
+      },
+      "detected_source_files": [
+        {
+          "detected_activities": 1378,
+          "detected_baseline_projects": 0,
+          "detected_relationships": 3718,
+          "filename": "TWNU18.xer",
+          "source_format": "primavera_xer"
+        },
+        {
+          "detected_activities": 3975,
+          "detected_baseline_projects": 2,
+          "detected_relationships": 10156,
+          "filename": "TWNU18.xml",
+          "source_format": "primavera_pmxml"
+        }
+      ],
+      "equivalence_status": "compatible",
+      "first_import_id": "633b43f9ec00",
+      "ignored_files": "macOS metadata omitted from parsed file manifest",
+      "lineage_probe": {
+        "activity_id": "BUYOUT-10",
+        "field_conflicts": [
+          {
+            "conflicting_value": "Task Dependent",
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "Completed",
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "planned_start",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-27T16:00:00",
+            "field": "planned_finish",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2025-01-13T16:00:00",
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2025-01-13T16:00:00",
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "Fixed Duration and Units",
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "1",
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": 0,
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": 0,
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          }
+        ],
+        "field_lineage": [
+          {
+            "field": "activity_id",
+            "selected_value": "BUYOUT-10",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT-10"
+          },
+          {
+            "field": "source_activity_object_id",
+            "selected_value": "101279",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "101279"
+          },
+          {
+            "field": "activity_name",
+            "selected_value": "BUYOUT ELECTRICAL",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT ELECTRICAL"
+          },
+          {
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "TT_Task"
+          },
+          {
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "TK_Complete"
+          },
+          {
+            "field": "wbs_id",
+            "selected_value": "13419",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "13419"
+          },
+          {
+            "field": "calendar_id",
+            "selected_value": "640",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "640"
+          },
+          {
+            "field": "planned_start",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-05-26 08:00"
+          },
+          {
+            "field": "planned_finish",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-05-26 08:00"
+          },
+          {
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2025-01-13 16:00"
+          },
+          {
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2025-01-13 16:00"
+          },
+          {
+            "field": "early_start",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-05-26 08:00"
+          },
+          {
+            "field": "early_finish",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-05-26 08:00"
+          },
+          {
+            "field": "late_start",
+            "selected_value": "2026-03-02 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-03-02 08:00"
+          },
+          {
+            "field": "late_finish",
+            "selected_value": "2026-03-02 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2026-03-02 08:00"
+          },
+          {
+            "field": "remaining_early_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_early_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_start",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "remaining_late_finish",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "target_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "target_finish",
+            "selected_value": "2024-11-27 16:00",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-27 16:00"
+          },
+          {
+            "field": "target_duration",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "constraint_type",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "constraint_date",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "total_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "free_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_total_float_hours",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_total_float_days",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_free_float_hours",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_free_float_days",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "source_driving_path_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "source_longest_path_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": false
+          },
+          {
+            "field": "float_path",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "float_path_order",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "critical_path_number",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "100"
+          },
+          {
+            "field": "duration_original",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "duration_remaining",
+            "selected_value": "0",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "0"
+          },
+          {
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "hour"
+          },
+          {
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": false
+          },
+          {
+            "field": "source_critical_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "float_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "critical_path_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "activity_id",
+            "selected_value": "BUYOUT-10",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT-10"
+          },
+          {
+            "field": "source_activity_object_id",
+            "selected_value": "101279",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "101279"
+          },
+          {
+            "field": "activity_name",
+            "selected_value": "BUYOUT ELECTRICAL",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT ELECTRICAL"
+          },
+          {
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "Task Dependent"
+          },
+          {
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "Completed"
+          },
+          {
+            "field": "planned_start",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "planned_finish",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-27T16:00:00"
+          },
+          {
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2025-01-13T16:00:00"
+          },
+          {
+            "field": "early_start",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "early_finish",
+            "selected_value": "2026-05-26 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "late_start",
+            "selected_value": "2026-03-02 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "late_finish",
+            "selected_value": "2026-03-02 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "2025-01-13T16:00:00"
+          },
+          {
+            "field": "remaining_early_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_early_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_start",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_finish",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "duration_original",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "duration_remaining",
+            "selected_value": "0",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "0"
+          },
+          {
+            "field": "duration_actual",
+            "selected_value": "336",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "336"
+          },
+          {
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "Fixed Duration and Units"
+          },
+          {
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": "1"
+          },
+          {
+            "field": "physical_percent_complete",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "duration_percent_complete",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "wbs_id",
+            "selected_value": "13419",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "13419"
+          },
+          {
+            "field": "wbs_code",
+            "selected_value": "2",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "2"
+          },
+          {
+            "field": "wbs_path",
+            "selected_value": "13409/2",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "13409/2"
+          },
+          {
+            "field": "calendar_id",
+            "selected_value": "640",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "640"
+          },
+          {
+            "field": "constraint_type",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "constraint_date",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "deadline_date",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "total_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "free_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "is_critical",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": 0
+          },
+          {
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": 0
+          },
+          {
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "conflict_kept_existing",
+            "value": 0
+          },
+          {
+            "field": "cost_code",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "cost_loaded_amount",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "cost_loaded_source_type",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "estimated_weight",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "float_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "critical_path_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "101279",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          }
+        ],
+        "merged_from_files": [
+          {
+            "filename": "TWNU18.xer",
+            "parser_name": "schedule_xer_parser",
+            "parser_version": "1.0.0",
+            "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+            "source_format": "primavera_xer"
+          },
+          {
+            "filename": "TWNU18.xml",
+            "parser_name": "schedule_xml_parser",
+            "parser_version": "1.2.0",
+            "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+            "source_format": "primavera_pmxml"
+          }
+        ],
+        "raw_merged": {
+          "field_conflicts": [
+            {
+              "conflicting_value": "Task Dependent",
+              "field": "activity_type",
+              "selected_value": "TT_Task",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "Completed",
+              "field": "activity_status",
+              "selected_value": "TK_Complete",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "planned_start",
+              "selected_value": "2026-05-26 08:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-27T16:00:00",
+              "field": "planned_finish",
+              "selected_value": "2026-05-26 08:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "start_date",
+              "selected_value": "2024-11-11 08:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-01-13T16:00:00",
+              "field": "finish_date",
+              "selected_value": "2025-01-13 16:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "actual_start",
+              "selected_value": "2024-11-11 08:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-01-13T16:00:00",
+              "field": "actual_finish",
+              "selected_value": "2025-01-13 16:00",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "Fixed Duration and Units",
+              "field": "duration_unit",
+              "selected_value": "hour",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "1",
+              "field": "percent_complete",
+              "selected_value": "100",
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_longest_path",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_milestone",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU18.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+                "source_format": "primavera_pmxml"
+              }
+            }
+          ],
+          "merged_from_files": [
+            {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          ],
+          "source_object_ids": [
+            {
+              "filename": "TWNU18.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_activity_object_id": "101279",
+              "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU18.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_activity_object_id": "101279",
+              "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+              "source_format": "primavera_pmxml"
+            }
+          ]
+        },
+        "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+        "source_activity_object_id": "101279",
+        "source_object_ids": [
+          {
+            "filename": "TWNU18.xer",
+            "parser_name": "schedule_xer_parser",
+            "parser_version": "1.0.0",
+            "source_activity_object_id": "101279",
+            "source_file_id": "pf-21cdfba7fa81-1-47505f6a",
+            "source_format": "primavera_xer"
+          },
+          {
+            "filename": "TWNU18.xml",
+            "parser_name": "schedule_xml_parser",
+            "parser_version": "1.2.0",
+            "source_activity_object_id": "101279",
+            "source_file_id": "pf-21cdfba7fa81-2-3c49f4cd",
+            "source_format": "primavera_pmxml"
+          }
+        ]
+      },
+      "package": "TWNU18.zip",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "second_import_id": "5cccc5d0b1bf",
+      "superseded_import_id": "633b43f9ec00"
+    },
+    {
+      "canonical_counts": {
+        "activities": 1507,
+        "activity_codes": 5171,
+        "baselines": [
+          {
+            "activity_count": 1177,
+            "baseline_project_id": "TWNU07-BL-OWN",
+            "relationship_count": 2658
+          },
+          {
+            "activity_count": 1378,
+            "baseline_project_id": "TWNU18-BL-PROG",
+            "relationship_count": 3718
+          }
+        ],
+        "committed_imports": 1,
+        "duplicate_buckets": {
+          "activities": 0,
+          "activity_codes": 0,
+          "relationships": 0,
+          "udfs": 0
+        },
+        "relationships": 3921,
+        "sample_activity_id": "BUYOUT-10",
+        "udfs": 4311
+      },
+      "cpm": {
+        "canonical_relationship_input_count": 3921,
+        "computed_activity_count": 1507,
+        "status": "complete",
+        "triggered": true
+      },
+      "detected_source_files": [
+        {
+          "detected_activities": 1507,
+          "detected_baseline_projects": 0,
+          "detected_relationships": 3921,
+          "filename": "TWNU19.xer",
+          "source_format": "primavera_xer"
+        },
+        {
+          "detected_activities": 4062,
+          "detected_baseline_projects": 2,
+          "detected_relationships": 10297,
+          "filename": "TWNU19.xml",
+          "source_format": "primavera_pmxml"
+        }
+      ],
+      "equivalence_status": "compatible",
+      "first_import_id": "fa7c039076fa",
+      "ignored_files": "macOS metadata omitted from parsed file manifest",
+      "lineage_probe": {
+        "activity_id": "BUYOUT-10",
+        "field_conflicts": [
+          {
+            "conflicting_value": "Task Dependent",
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "Completed",
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "planned_start",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-27T16:00:00",
+            "field": "planned_finish",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2025-01-13T16:00:00",
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2024-11-11T08:00:00",
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "2025-01-13T16:00:00",
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "Fixed Duration and Units",
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": "1",
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": 0,
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          },
+          {
+            "conflicting_value": 0,
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          }
+        ],
+        "field_lineage": [
+          {
+            "field": "activity_id",
+            "selected_value": "BUYOUT-10",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT-10"
+          },
+          {
+            "field": "source_activity_object_id",
+            "selected_value": "106610",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "106610"
+          },
+          {
+            "field": "activity_name",
+            "selected_value": "BUYOUT ELECTRICAL",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT ELECTRICAL"
+          },
+          {
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "TT_Task"
+          },
+          {
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "TK_Complete"
+          },
+          {
+            "field": "wbs_id",
+            "selected_value": "14163",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "14163"
+          },
+          {
+            "field": "calendar_id",
+            "selected_value": "640",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "640"
+          },
+          {
+            "field": "planned_start",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-06-23 08:00"
+          },
+          {
+            "field": "planned_finish",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-06-23 08:00"
+          },
+          {
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2025-01-13 16:00"
+          },
+          {
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2025-01-13 16:00"
+          },
+          {
+            "field": "early_start",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-06-23 08:00"
+          },
+          {
+            "field": "early_finish",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-06-23 08:00"
+          },
+          {
+            "field": "late_start",
+            "selected_value": "2026-03-18 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-03-18 08:00"
+          },
+          {
+            "field": "late_finish",
+            "selected_value": "2026-03-18 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2026-03-18 08:00"
+          },
+          {
+            "field": "remaining_early_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_early_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_start",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "remaining_late_finish",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "target_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-11 08:00"
+          },
+          {
+            "field": "target_finish",
+            "selected_value": "2024-11-27 16:00",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "2024-11-27 16:00"
+          },
+          {
+            "field": "target_duration",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "constraint_type",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "constraint_date",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "total_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "free_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_total_float_hours",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_total_float_days",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_free_float_hours",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "explicit_free_float_days",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "source_driving_path_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "source_longest_path_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": false
+          },
+          {
+            "field": "float_path",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "float_path_order",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "critical_path_number",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": ""
+          },
+          {
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "100"
+          },
+          {
+            "field": "duration_original",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "duration_remaining",
+            "selected_value": "0",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "0"
+          },
+          {
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "hour"
+          },
+          {
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": false
+          },
+          {
+            "field": "source_critical_flag",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": 0
+          },
+          {
+            "field": "float_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "critical_path_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "activity_id",
+            "selected_value": "BUYOUT-10",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT-10"
+          },
+          {
+            "field": "source_activity_object_id",
+            "selected_value": "106610",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "106610"
+          },
+          {
+            "field": "activity_name",
+            "selected_value": "BUYOUT ELECTRICAL",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "BUYOUT ELECTRICAL"
+          },
+          {
+            "field": "activity_type",
+            "selected_value": "TT_Task",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "Task Dependent"
+          },
+          {
+            "field": "activity_status",
+            "selected_value": "TK_Complete",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "Completed"
+          },
+          {
+            "field": "planned_start",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "planned_finish",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-27T16:00:00"
+          },
+          {
+            "field": "start_date",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "finish_date",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2025-01-13T16:00:00"
+          },
+          {
+            "field": "early_start",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "early_finish",
+            "selected_value": "2026-06-23 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "late_start",
+            "selected_value": "2026-03-18 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "late_finish",
+            "selected_value": "2026-03-18 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "ignored_empty",
+            "value": null
+          },
+          {
+            "field": "actual_start",
+            "selected_value": "2024-11-11 08:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2024-11-11T08:00:00"
+          },
+          {
+            "field": "actual_finish",
+            "selected_value": "2025-01-13 16:00",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "2025-01-13T16:00:00"
+          },
+          {
+            "field": "remaining_early_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_early_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_start",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_late_finish",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_start",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "remaining_finish",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "duration_original",
+            "selected_value": "104",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "104"
+          },
+          {
+            "field": "duration_remaining",
+            "selected_value": "0",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "0"
+          },
+          {
+            "field": "duration_actual",
+            "selected_value": "336",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "336"
+          },
+          {
+            "field": "duration_unit",
+            "selected_value": "hour",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "Fixed Duration and Units"
+          },
+          {
+            "field": "percent_complete",
+            "selected_value": "100",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": "1"
+          },
+          {
+            "field": "physical_percent_complete",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "duration_percent_complete",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "wbs_id",
+            "selected_value": "14163",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "14163"
+          },
+          {
+            "field": "wbs_code",
+            "selected_value": "2",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "2"
+          },
+          {
+            "field": "wbs_path",
+            "selected_value": "14153/2",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "14153/2"
+          },
+          {
+            "field": "calendar_id",
+            "selected_value": "640",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "640"
+          },
+          {
+            "field": "constraint_type",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "constraint_date",
+            "selected_value": "",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "deadline_date",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "total_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "free_float",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "is_critical",
+            "selected_value": 0,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": 0
+          },
+          {
+            "field": "is_longest_path",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": 0
+          },
+          {
+            "field": "is_milestone",
+            "selected_value": false,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "conflict_kept_existing",
+            "value": 0
+          },
+          {
+            "field": "cost_code",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "cost_loaded_amount",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "cost_loaded_source_type",
+            "selected_value": null,
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "kept_existing",
+            "value": null
+          },
+          {
+            "field": "estimated_weight",
+            "selected_value": "1",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "filled_empty",
+            "value": "1"
+          },
+          {
+            "field": "float_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          },
+          {
+            "field": "critical_path_source",
+            "selected_value": "missing",
+            "source": {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            },
+            "source_object_id": "106610",
+            "strategy": "confirmed_equal",
+            "value": "missing"
+          }
+        ],
+        "merged_from_files": [
+          {
+            "filename": "TWNU19.xer",
+            "parser_name": "schedule_xer_parser",
+            "parser_version": "1.0.0",
+            "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+            "source_format": "primavera_xer"
+          },
+          {
+            "filename": "TWNU19.xml",
+            "parser_name": "schedule_xml_parser",
+            "parser_version": "1.2.0",
+            "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+            "source_format": "primavera_pmxml"
+          }
+        ],
+        "raw_merged": {
+          "field_conflicts": [
+            {
+              "conflicting_value": "Task Dependent",
+              "field": "activity_type",
+              "selected_value": "TT_Task",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "Completed",
+              "field": "activity_status",
+              "selected_value": "TK_Complete",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "planned_start",
+              "selected_value": "2026-06-23 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-27T16:00:00",
+              "field": "planned_finish",
+              "selected_value": "2026-06-23 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "start_date",
+              "selected_value": "2024-11-11 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-01-13T16:00:00",
+              "field": "finish_date",
+              "selected_value": "2025-01-13 16:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2024-11-11T08:00:00",
+              "field": "actual_start",
+              "selected_value": "2024-11-11 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-01-13T16:00:00",
+              "field": "actual_finish",
+              "selected_value": "2025-01-13 16:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "Fixed Duration and Units",
+              "field": "duration_unit",
+              "selected_value": "hour",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "1",
+              "field": "percent_complete",
+              "selected_value": "100",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_longest_path",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_milestone",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            }
+          ],
+          "merged_from_files": [
+            {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          ],
+          "source_object_ids": [
+            {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_activity_object_id": "106610",
+              "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_activity_object_id": "106610",
+              "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          ]
+        },
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "source_activity_object_id": "106610",
+        "source_object_ids": [
+          {
+            "filename": "TWNU19.xer",
+            "parser_name": "schedule_xer_parser",
+            "parser_version": "1.0.0",
+            "source_activity_object_id": "106610",
+            "source_file_id": "pf-51f8a0e77d2a-1-38cc20da",
+            "source_format": "primavera_xer"
+          },
+          {
+            "filename": "TWNU19.xml",
+            "parser_name": "schedule_xml_parser",
+            "parser_version": "1.2.0",
+            "source_activity_object_id": "106610",
+            "source_file_id": "pf-51f8a0e77d2a-2-edc78b88",
+            "source_format": "primavera_pmxml"
+          }
+        ]
+      },
+      "package": "TWNU19.zip",
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "second_import_id": "ad5eb359fe5e",
+      "superseded_import_id": "fa7c039076fa"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+ M src/hb_assistant/construction/analytics/project_schedule_import_pipeline_service.py
+ M src/hb_assistant/construction/analytics/schedule_cpm_recompute_service.py
+ M src/hb_assistant/construction/analytics/schedule_import_service.py
+ M src/hb_assistant/store/migrator.py
+?? docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/git-status-final-before-commit.txt
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/phase1-commit.txt
+?? src/hb_assistant/store/schedule_cpm_import_observability_repository.py
+?? src/hb_assistant/store/schedule_cpm_import_observability_tables.py
+?? tests/test_migrator_v95_cpm_import_observability.py
+?? tests/test_schedule_cpm_import_observability.py

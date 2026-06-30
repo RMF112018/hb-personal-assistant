@@ -71,7 +71,7 @@ def assemble_schedule_package(package: ParsedSchedulePackage) -> ParsedScheduleP
             },
         )
 
-    merged = _merge_current_bundle(primary, companions)
+    merged = _merge_current_bundle(primary, companions, package=package)
     package.selected_current_entity = primary
     package.primary_current_entity = primary
     package.companion_current_entities = companions
@@ -117,7 +117,7 @@ def _relationship_keys(entity: ParsedScheduleEntity) -> set[tuple[str, str, str,
             (
                 pred,
                 succ,
-                _normal(rel.get("relationship_type") or "FS"),
+                _relationship_type_key(rel.get("relationship_type")),
                 _normal(rel.get("lag_value") or "0"),
                 _normal(rel.get("lag_unit") or ""),
             )
@@ -254,6 +254,8 @@ def _equivalence_fact(
 def _merge_current_bundle(
     primary: ParsedScheduleEntity,
     companions: list[ParsedScheduleEntity],
+    *,
+    package: ParsedSchedulePackage | None = None,
 ) -> ParsedScheduleBundle:
     bundle = primary.to_bundle()
     bundle.schedule_options = dict(bundle.schedule_options or {})
@@ -262,17 +264,271 @@ def _merge_current_bundle(
     bundle.schedule_options["companion_source_formats"] = sorted(
         {e.source_format for e in companions if e.source_format}
     )
-    bundle.code_assignments = _merge_rows(
-        primary.code_assignments,
-        [row for e in companions for row in e.code_assignments],
+    source_meta = _source_metadata(package)
+    bundle.activities = _merge_activity_rows(primary, companions, source_meta=source_meta)
+    bundle.relationships = _merge_relationship_rows(primary, companions, source_meta=source_meta)
+    bundle.code_assignments = _merge_canonical_collection(
+        primary,
+        companions,
+        attr="code_assignments",
         keys=("activity_id", "code_type", "code_value"),
+        source_meta=source_meta,
     )
-    bundle.udf_values = _merge_rows(
-        primary.udf_values,
-        [row for e in companions for row in e.udf_values],
-        keys=("activity_id", "udf_type_name", "udf_value", "source_object_id"),
+    bundle.udf_values = _merge_canonical_collection(
+        primary,
+        companions,
+        attr="udf_values",
+        keys=("activity_id", "udf_type_name", "udf_value"),
+        source_meta=source_meta,
     )
     return bundle
+
+
+def _source_metadata(package: ParsedSchedulePackage | None) -> dict[str, dict[str, Any]]:
+    if package is None:
+        return {}
+    return {
+        str(file.source_file_id): {
+            "source_file_id": file.source_file_id,
+            "filename": file.filename,
+            "source_format": file.source_format,
+            "parser_name": file.parser_name,
+            "parser_version": file.parser_version,
+        }
+        for file in package.files
+    }
+
+
+def _entity_meta(
+    entity: ParsedScheduleEntity,
+    source_meta: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    meta = source_meta.get(str(entity.source_file_id), {})
+    return {
+        "source_file_id": entity.source_file_id,
+        "filename": meta.get("filename"),
+        "source_format": entity.source_format,
+        "parser_name": meta.get("parser_name"),
+        "parser_version": meta.get("parser_version"),
+    }
+
+
+def _has_value(value: Any) -> bool:
+    return value is not None and str(value).strip() != ""
+
+
+def _canonical_activity_id(row: dict[str, Any]) -> str:
+    return _normal(row.get("activity_id"))
+
+
+def _merge_activity_rows(
+    primary: ParsedScheduleEntity,
+    companions: list[ParsedScheduleEntity],
+    *,
+    source_meta: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    source_order = [primary, *companions]
+    for entity in source_order:
+        meta = _entity_meta(entity, source_meta)
+        for row in entity.activities:
+            key = _canonical_activity_id(row)
+            if not key:
+                continue
+            if key not in merged:
+                merged[key] = dict(row)
+                order.append(key)
+            _merge_activity_into(
+                merged[key],
+                row,
+                source_meta=meta,
+            )
+    out = [merged[key] for key in order]
+    for row in out:
+        row["source_row_hash"] = _row_hash({k: row[k] for k in row if k != "source_row_hash"})
+    return out
+
+
+def _merge_activity_into(
+    target: dict[str, Any],
+    incoming: dict[str, Any],
+    *,
+    source_meta: dict[str, Any],
+) -> None:
+    lineage = _json_list(target.get("field_lineage_json"))
+    conflicts = _json_list(target.get("field_conflicts_json"))
+    object_ids = _json_list(target.get("source_object_ids_json"))
+    merged_sources = _json_list(target.get("merged_from_files_json"))
+    source_object_id = incoming.get("source_activity_object_id")
+    if _has_value(source_object_id):
+        entry = {**source_meta, "source_activity_object_id": source_object_id}
+        if entry not in object_ids:
+            object_ids.append(entry)
+    file_entry = {k: source_meta.get(k) for k in ("source_file_id", "filename", "source_format", "parser_name", "parser_version")}
+    if file_entry not in merged_sources:
+        merged_sources.append(file_entry)
+    skip = {
+        "source_row_hash",
+        "field_lineage_json",
+        "field_conflicts_json",
+        "source_object_ids_json",
+        "merged_from_files_json",
+        "raw_merged_json",
+    }
+    for field, value in incoming.items():
+        if field in skip:
+            continue
+        existing = target.get(field)
+        selected = existing
+        strategy = "kept_existing"
+        if not _has_value(existing) and _has_value(value):
+            target[field] = value
+            selected = value
+            strategy = "filled_empty"
+        elif _has_value(existing) and _has_value(value):
+            if str(existing) == str(value):
+                strategy = "confirmed_equal"
+            else:
+                strategy = "conflict_kept_existing"
+                conflicts.append(
+                    {
+                        "field": field,
+                        "selected_value": existing,
+                        "conflicting_value": value,
+                        "source": source_meta,
+                    }
+                )
+        elif _has_value(existing):
+            strategy = "ignored_empty"
+        lineage.append(
+            {
+                "field": field,
+                "source": source_meta,
+                "source_object_id": source_object_id,
+                "value": value,
+                "selected_value": selected,
+                "strategy": strategy,
+            }
+        )
+    target["field_lineage_json"] = json.dumps(lineage, sort_keys=True, default=str)
+    target["field_conflicts_json"] = json.dumps(conflicts, sort_keys=True, default=str)
+    target["source_object_ids_json"] = json.dumps(object_ids, sort_keys=True, default=str)
+    target["merged_from_files_json"] = json.dumps(merged_sources, sort_keys=True, default=str)
+    target["raw_merged_json"] = json.dumps(
+        {
+            "merged_from_files": merged_sources,
+            "source_object_ids": object_ids,
+            "field_conflicts": conflicts,
+        },
+        sort_keys=True,
+        default=str,
+    )
+
+
+def _json_list(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return list(value)
+    if not value:
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _relationship_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        _normal(row.get("predecessor_activity_id")),
+        _normal(row.get("successor_activity_id")),
+        _relationship_type_key(row.get("relationship_type")),
+        _normal(row.get("lag_value") or "0"),
+    )
+
+
+def _relationship_type_key(value: Any) -> str:
+    raw = str(value or "FS").strip().lower()
+    return {
+        "finish to start": "fs",
+        "finish-to-start": "fs",
+        "fs": "fs",
+        "finish to finish": "ff",
+        "finish-to-finish": "ff",
+        "ff": "ff",
+        "start to start": "ss",
+        "start-to-start": "ss",
+        "ss": "ss",
+        "start to finish": "sf",
+        "start-to-finish": "sf",
+        "sf": "sf",
+    }.get(raw, _normal(raw))
+
+
+def _merge_relationship_rows(
+    primary: ParsedScheduleEntity,
+    companions: list[ParsedScheduleEntity],
+    *,
+    source_meta: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    for entity in [primary, *companions]:
+        meta = _entity_meta(entity, source_meta)
+        for row in entity.relationships:
+            key = _relationship_key(row)
+            if not key[0] or not key[1]:
+                continue
+            if key not in by_key:
+                merged = dict(row)
+                merged["merged_from_files_json"] = json.dumps([meta], sort_keys=True, default=str)
+                if _has_value(row.get("source_relationship_object_id")):
+                    merged["source_relationship_object_ids_json"] = json.dumps(
+                        [{**meta, "source_relationship_object_id": row.get("source_relationship_object_id")}],
+                        sort_keys=True,
+                        default=str,
+                    )
+                by_key[key] = merged
+                out.append(merged)
+                continue
+            merged = by_key[key]
+            files = _json_list(merged.get("merged_from_files_json"))
+            if meta not in files:
+                files.append(meta)
+            merged["merged_from_files_json"] = json.dumps(files, sort_keys=True, default=str)
+            if _has_value(row.get("source_relationship_object_id")):
+                ids = _json_list(merged.get("source_relationship_object_ids_json"))
+                entry = {**meta, "source_relationship_object_id": row.get("source_relationship_object_id")}
+                if entry not in ids:
+                    ids.append(entry)
+                merged["source_relationship_object_ids_json"] = json.dumps(ids, sort_keys=True, default=str)
+    for row in out:
+        row["source_row_hash"] = _row_hash({k: row[k] for k in row if k != "source_row_hash"})
+    return out
+
+
+def _merge_canonical_collection(
+    primary: ParsedScheduleEntity,
+    companions: list[ParsedScheduleEntity],
+    *,
+    attr: str,
+    keys: tuple[str, ...],
+    source_meta: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    primary_rows = [dict(r) for r in getattr(primary, attr)]
+    companion_rows = [dict(r) for e in companions for r in getattr(e, attr)]
+    # Real equivalent XER/XML exports can encode the same code/UDF dimensions with
+    # different display labels. If both sources cover the same current activities and
+    # have the same row count, keep one canonical set and persist companion evidence
+    # through package field lineage instead of doubling analytical rows.
+    if (
+        companions
+        and primary_rows
+        and sum(len(getattr(e, attr)) for e in companions) == len(primary_rows)
+        and all(_activity_ids(e) == _activity_ids(primary) for e in companions)
+    ):
+        return primary_rows
+    return _merge_rows(primary_rows, companion_rows, keys=keys)
 
 
 def _merge_rows(
@@ -294,6 +550,10 @@ def _merge_rows(
 
 def _row_key(row: dict[str, Any], keys: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(_normal(row.get(k)) for k in keys)
+
+
+def _row_hash(payload: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def _source_file(package: ParsedSchedulePackage, source_file_id: str | None) -> str | None:

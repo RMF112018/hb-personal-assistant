@@ -14,7 +14,7 @@ from hb_assistant.construction.analytics.api import create_app
 from hb_assistant.construction.analytics.schedule_cpm_service import ScheduleCpmGraphService
 from hb_assistant.store.migrator import SQLiteMigrator
 from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
-from tests.schedule_project_test_helpers import seed_procore_ep_project
+from tests.schedule_project_test_helpers import clear_schedule_cpm_runs, seed_procore_ep_project
 
 XER = Path(__file__).parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
 
@@ -44,7 +44,9 @@ def _client(tmp_path: Path) -> tuple[TestClient, str, str]:
         headers=_op(),
         json={"import_id": import_id, "project_key": "tropical", "confirm": True},
     )
-    return client, commit.json()["schedule_version_key"], str(db)
+    svk = commit.json()["schedule_version_key"]
+    clear_schedule_cpm_runs(db, svk)
+    return client, svk, str(db)
 
 
 def _run_chain(db: str, svk: str) -> None:

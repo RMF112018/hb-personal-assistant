@@ -1041,10 +1041,17 @@ class ScheduleImportService:
             project_key=project_key, bundle=bundle, import_id=import_id
         )
         existing = self._activity_repo.get_version_summary(version_key)
+        idempotent_reimport = bool(
+            package.package_mode == "zip_package"
+            and existing
+            and str(existing.get("import_status") or "") == "committed"
+            and str(existing.get("source_file_sha256") or "") == file_sha
+        )
         if (
             existing
             and str(existing.get("import_status") or "") == "committed"
             and not confirm_supersede
+            and not idempotent_reimport
         ):
             raise ScheduleImportError(
                 "duplicate_schedule_version",
@@ -1074,6 +1081,7 @@ class ScheduleImportService:
             ).encode()),
             "column_roles": column_roles,
             "confirm_supersede": bool(confirm_supersede),
+            "idempotent_reimport": idempotent_reimport,
             "schedule_version_key": version_key,
             "duplicate_exists": duplicate_exists,
             "package": package,
@@ -1176,7 +1184,8 @@ class ScheduleImportService:
         )
         cached_supersede = bool(cached.get("confirm_supersede"))
         if duplicate_exists:
-            if not cached_supersede:
+            idempotent_reimport = bool(cached.get("idempotent_reimport"))
+            if not cached_supersede and not idempotent_reimport:
                 if confirm_supersede:
                     raise ScheduleImportError(
                         "schedule_supersede_state_mismatch",
@@ -1197,7 +1206,7 @@ class ScheduleImportService:
                         "view_path": duplicate_view_path(version_key),
                     },
                 )
-            if not confirm_supersede:
+            if not confirm_supersede and not idempotent_reimport:
                 raise ScheduleImportError(
                     "schedule_supersede_confirmation_required",
                     message="supersede preview requires explicit commit confirmation",
@@ -1423,7 +1432,12 @@ class ScheduleImportService:
             "cpm_recompute_status": "unavailable",
         }
         try:
-            cpm_result = ScheduleCpmRecomputeService(db_path=self._db_path).recompute(version_key)
+            cpm_result = ScheduleCpmRecomputeService(db_path=self._db_path).recompute(
+                version_key,
+                import_id=import_id,
+                package_id=package.package_id if package else None,
+                trigger_source="import_commit",
+            )
         except Exception:
             _logger.exception(
                 "schedule import post-commit CPM recompute failed import_id=%s version_key=%s",
@@ -1474,6 +1488,12 @@ class ScheduleImportService:
             "longest_path_available": cpm_result.get("longest_path_available"),
             "diagnostics_count": cpm_result.get("diagnostics_count"),
             "cpm_failure_reason": cpm_result.get("failure_reason"),
+            "cpm_observability": cpm_result.get("cpm_observability"),
+            "canonical_input_activity_count": cpm_result.get("canonical_input_activity_count"),
+            "canonical_input_relationship_count": cpm_result.get("canonical_input_relationship_count"),
+            "graph_node_count": cpm_result.get("graph_node_count"),
+            "graph_edge_count": cpm_result.get("graph_edge_count"),
+            "cpm_duration_ms": cpm_result.get("duration_ms"),
         }
 
     @staticmethod
@@ -1766,7 +1786,23 @@ class ScheduleImportService:
         )
         self._activity_repo.bulk_upsert_activities(activities, conn=conn)
 
-        rels = [{**base, **r, "raw_json_redacted": json.dumps(r, default=str)} for r in bundle.relationships]
+        rel_cols = {
+            "predecessor_activity_id",
+            "successor_activity_id",
+            "relationship_type",
+            "lag_value",
+            "lag_unit",
+            "source_relationship_object_id",
+            "source_row_hash",
+        }
+        rels = [
+            {
+                **base,
+                **{k: r.get(k) for k in rel_cols},
+                "raw_json_redacted": json.dumps(r, default=str),
+            }
+            for r in bundle.relationships
+        ]
         self._activity_repo.bulk_insert_table("procore_ep_schedule_relationships", rels, conn=conn)
 
         wbs = [{**base, **w} for w in bundle.wbs_nodes]

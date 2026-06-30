@@ -1,0 +1,15 @@
+date_utc=2026-06-30T18:31:45Z
+head_after_main_reconcile=1c5464594cbc6aa1054c9546fec2c31fe0c0ba02
+
+status:
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/main-reconcile.txt
+
+log:
+1c546459 (HEAD -> feature/schedule-canonical-package-merge-20260630T093009Z) merge: reconcile schedule canonical import branch with main
+f4b88678 docs(schedule): close out canonical import evidence
+5d8d1b13 (origin/main, origin/HEAD) Merge pull request #227 from RMF112018/ops/obsidian-phase6-first-indexing-20260630T163150Z
+773852bc feat(obsidian): add bounded first-indexing apply
+a787d709 fix(schedule): audit cpm recompute after canonical imports
+3a84aab2 fix(schedule): merge equivalent schedule package files canonically
+77cd494c Merge pull request #226 from RMF112018/feat/obsidian-phase5-domain-routing-20260630T130110Z
+7fdfa49c (feat/obsidian-phase5-domain-routing-20260630T130110Z) feat(obsidian): route source notes by domain and add first-indexing dry run

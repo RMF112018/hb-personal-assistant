@@ -1,0 +1,16 @@
+date_utc=2026-06-30T17:04:52Z
+branch=feature/schedule-canonical-package-merge-20260630T093009Z
+head=a787d70970b994d2698cff7e6e0c30cde409434d
+
+status:
+?? docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/phase2-commit.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/git-status-final-before-commit.txt
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/phase1-commit.txt
+
+ahead/behind:
+## feature/schedule-canonical-package-merge-20260630T093009Z...origin/main [ahead 2, behind 13]
+?? docs/evidence/project-schedule-hub/cpm-import-observability-20260630T140000Z/phase2-commit.txt
+?? docs/evidence/project-schedule-hub/final-merge-readiness-20260630T170429Z/
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/git-status-final-before-commit.txt
+?? docs/evidence/project-schedule-hub/package-canonical-merge-20260630T093527Z/fresh-agent-audit-20260630T130846Z/phase1-commit.txt

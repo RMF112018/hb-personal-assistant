@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import sqlite3
 import zipfile
 from pathlib import Path
@@ -16,8 +17,17 @@ except RuntimeError as exc:  # pragma: no cover - environment guard
     pytest.skip(str(exc), allow_module_level=True)
 
 from hb_assistant.construction.analytics import create_app
+from hb_assistant.construction.analytics.schedule_file_parser import (
+    ParsedScheduleEntity,
+    ParsedScheduleFile,
+    ParsedSchedulePackage,
+)
+from hb_assistant.construction.analytics.schedule_package_assembly import (
+    assemble_schedule_package,
+)
 from hb_assistant.construction.analytics.schedule_xml_parser import parse_pmxml_package_bytes
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_import_health_tables import (
     V80_PACKAGE_EQUIVALENCE_FACT_ADDITIVE_REPAIR_COLUMNS,
     V80_PACKAGE_EQUIVALENCE_FACT_INSERT_COLUMNS,
@@ -26,6 +36,25 @@ from hb_assistant.store.schedule_import_repository import ScheduleImportReposito
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 XER_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "schedules" / "xer" / "minimal.xer"
+PACKAGE_FIXTURES = (
+    (
+        "TWNU18.zip",
+        1378,
+        3718,
+        5171,
+        4311,
+        (("TWNU07-BL-OWN", 1177, 2658), ("TWNU16-BL-PROG", 1420, 3780)),
+    ),
+    (
+        "TWNU19.zip",
+        1507,
+        3921,
+        5171,
+        4311,
+        (("TWNU07-BL-OWN", 1177, 2658), ("TWNU18-BL-PROG", 1378, 3718)),
+    ),
+)
+PACKAGE_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "project_schedule_import_packages"
 
 
 def _operator() -> dict[str, str]:
@@ -457,6 +486,246 @@ def test_zip_xer_xml_current_companions_import_as_unified_schedule(tmp_path: Pat
         "is_equivalent": 1,
         "activity_overlap_ratio": "1.000000",
         "relationship_overlap_ratio": "1.000000",
+    }
+
+
+def test_canonical_activity_merge_records_inspectable_field_conflict() -> None:
+    package = ParsedSchedulePackage(
+        package_id="pkg-conflict",
+        package_mode="zip_package",
+        files=[
+            ParsedScheduleFile(
+                source_file_id="xer-file",
+                filename="conflict.xer",
+                source_type="xer",
+                source_format="primavera_xer",
+                parser_name="schedule_xer_parser",
+                parser_version="1.0.0",
+            ),
+            ParsedScheduleFile(
+                source_file_id="xml-file",
+                filename="conflict.xml",
+                source_type="xml",
+                source_format="primavera_pmxml",
+                parser_name="schedule_xml_parser",
+                parser_version="1.2.0",
+            ),
+        ],
+        schedule_entities=[
+            ParsedScheduleEntity(
+                role="current",
+                source_format="primavera_xer",
+                source_file_id="xer-file",
+                project_id="DEMO",
+                project_name="Demo",
+                data_date="2026-06-01",
+                activities=[
+                    {
+                        "activity_id": "A1",
+                        "source_activity_object_id": "100",
+                        "activity_name": "Primary Name",
+                    }
+                ],
+            ),
+            ParsedScheduleEntity(
+                role="current",
+                source_format="primavera_pmxml",
+                source_file_id="xml-file",
+                project_id="DEMO",
+                project_name="Demo",
+                data_date="2026-06-01",
+                activities=[
+                    {
+                        "activity_id": "A1",
+                        "source_activity_object_id": "100",
+                        "activity_name": "Conflicting Name",
+                        "activity_status": "Active",
+                    }
+                ],
+            ),
+        ],
+    )
+
+    assembled = assemble_schedule_package(package)
+    activity = assembled.merged_current_bundle.activities[0]
+    conflicts = json.loads(activity["field_conflicts_json"])
+    lineage = json.loads(activity["field_lineage_json"])
+    merged_files = json.loads(activity["merged_from_files_json"])
+
+    assert activity["activity_name"] == "Primary Name"
+    assert activity["activity_status"] == "Active"
+    assert any(c["field"] == "activity_name" for c in conflicts)
+    assert {f["filename"] for f in merged_files} == {"conflict.xer", "conflict.xml"}
+    assert any(row["field"] == "activity_status" and row["strategy"] == "filled_empty" for row in lineage)
+
+
+@pytest.mark.parametrize(
+    (
+        "fixture_name",
+        "activity_count",
+        "relationship_count",
+        "code_count",
+        "udf_count",
+        "baseline_expectations",
+    ),
+    PACKAGE_FIXTURES,
+)
+def test_real_twn_xer_xml_zip_import_is_canonical_and_idempotent(
+    tmp_path: Path,
+    fixture_name: str,
+    activity_count: int,
+    relationship_count: int,
+    code_count: int,
+    udf_count: int,
+    baseline_expectations: tuple[tuple[str, int, int], ...],
+) -> None:
+    db = tmp_path / f"{fixture_name}.db"
+    SQLiteMigrator(db_path=str(db)).apply()
+    seed_procore_ep_project(db, project_key="tropical", display_name="Tropical Wind")
+    client = TestClient(create_app(db_path=str(db)))
+    fixture = PACKAGE_FIXTURE_DIR / fixture_name
+    assert fixture.exists(), fixture
+
+    def _preview_and_commit() -> dict:
+        preview = client.post(
+            "/api/schedules/import-preview",
+            headers=_operator(),
+            files={"file": (fixture.name, fixture.read_bytes(), "application/zip")},
+            data={"project_key": "tropical"},
+        )
+        assert preview.status_code == 200, preview.text
+        body = preview.json()
+        assert body["assembly_mode"] == "unified_companion_package"
+        assert body["activity_count"] == activity_count
+        assert body["relationship_count"] == relationship_count
+        assert body["code_count"] == code_count
+        assert body["udf_count"] == udf_count
+        assert body["equivalence_report"]["status"] == "compatible"
+        assert len(body["baseline_project_candidates"]) == 2
+        commit = client.post(
+            "/api/schedules/import-commit",
+            headers=_operator(),
+            json={"import_id": body["import_id"], "project_key": "tropical", "confirm": True},
+        )
+        assert commit.status_code == 200, commit.text
+        return commit.json()
+
+    first = _preview_and_commit()
+    second = _preview_and_commit()
+    svk = second["schedule_version_key"]
+    assert first["schedule_version_key"] == svk
+    assert second["supersede_performed"] is True
+    assert second["superseded_import_id"] == first["import_id"]
+    assert second["activity_count"] == activity_count
+    assert second["computed_activity_count"] == activity_count
+
+    with sqlite3.connect(db) as conn:
+        conn.row_factory = sqlite3.Row
+        counts = dict(
+            conn.execute(
+                """
+                SELECT
+                  (SELECT COUNT(*) FROM schedule_file_imports
+                   WHERE schedule_version_key=? AND import_status='committed') AS committed_imports,
+                  (SELECT COUNT(*) FROM procore_ep_schedule_activities
+                   WHERE schedule_version_key=?) AS activities,
+                  (SELECT COUNT(*) FROM procore_ep_schedule_relationships
+                   WHERE schedule_version_key=?) AS relationships,
+                  (SELECT COUNT(*) FROM procore_ep_schedule_activity_code_assignments
+                   WHERE schedule_version_key=?) AS codes,
+                  (SELECT COUNT(*) FROM procore_ep_schedule_udf_values
+                   WHERE schedule_version_key=?) AS udfs,
+                  (SELECT COUNT(*) FROM schedule_baseline_projects
+                   WHERE current_schedule_version_key=?) AS baselines
+                """,
+                (svk, svk, svk, svk, svk, svk),
+            ).fetchone()
+        )
+        duplicate_buckets = dict(
+            conn.execute(
+                """
+                SELECT
+                  (SELECT COUNT(*) FROM (
+                    SELECT activity_id FROM procore_ep_schedule_activities
+                    WHERE schedule_version_key=?
+                    GROUP BY schedule_version_key, activity_id HAVING COUNT(*) > 1
+                  )) AS activity_dupes,
+                  (SELECT COUNT(*) FROM (
+                    SELECT predecessor_activity_id, successor_activity_id, relationship_type, lag_value
+                    FROM procore_ep_schedule_relationships
+                    WHERE schedule_version_key=?
+                    GROUP BY schedule_version_key, predecessor_activity_id, successor_activity_id,
+                             relationship_type, lag_value
+                    HAVING COUNT(*) > 1
+                  )) AS relationship_dupes,
+                  (SELECT COUNT(*) FROM (
+                    SELECT activity_id, code_type, code_value
+                    FROM procore_ep_schedule_activity_code_assignments
+                    WHERE schedule_version_key=?
+                    GROUP BY schedule_version_key, activity_id, code_type, code_value
+                    HAVING COUNT(*) > 1
+                  )) AS code_dupes,
+                  (SELECT COUNT(*) FROM (
+                    SELECT activity_id, udf_type_name, udf_value
+                    FROM procore_ep_schedule_udf_values
+                    WHERE schedule_version_key=?
+                    GROUP BY schedule_version_key, activity_id, udf_type_name, udf_value
+                    HAVING COUNT(*) > 1
+                  )) AS udf_dupes
+                """,
+                (svk, svk, svk, svk),
+            ).fetchone()
+        )
+        baseline_rows = [
+            (row["baseline_project_id"], row["activity_count"], row["relationship_count"])
+            for row in conn.execute(
+                """
+                SELECT baseline_project_id, activity_count, relationship_count
+                FROM schedule_baseline_projects
+                WHERE current_schedule_version_key=?
+                ORDER BY baseline_project_id
+                """,
+                (svk,),
+            ).fetchall()
+        ]
+        sample_activity = conn.execute(
+            """
+            SELECT activity_id FROM procore_ep_schedule_activities
+            WHERE schedule_version_key=?
+            ORDER BY activity_id
+            LIMIT 1
+            """,
+            (svk,),
+        ).fetchone()["activity_id"]
+
+    assert counts == {
+        "committed_imports": 1,
+        "activities": activity_count,
+        "relationships": relationship_count,
+        "codes": code_count,
+        "udfs": udf_count,
+        "baselines": 2,
+    }
+    assert duplicate_buckets == {
+        "activity_dupes": 0,
+        "relationship_dupes": 0,
+        "code_dupes": 0,
+        "udf_dupes": 0,
+    }
+    assert baseline_rows == sorted(baseline_expectations)
+
+    lineage = ScheduleActivityRepository(db_path=str(db)).get_activity_merge_lineage(
+        schedule_version_key=svk,
+        activity_id=sample_activity,
+    )
+    assert lineage is not None
+    assert {row["filename"] for row in lineage["merged_from_files"]} == {
+        fixture_name.replace(".zip", ".xer"),
+        fixture_name.replace(".zip", ".xml"),
+    }
+    assert {row["source_format"] for row in lineage["source_object_ids"]} == {
+        "primavera_xer",
+        "primavera_pmxml",
     }
 
 

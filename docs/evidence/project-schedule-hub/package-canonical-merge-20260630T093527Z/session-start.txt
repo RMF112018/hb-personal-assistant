@@ -1,0 +1,4 @@
+branch=feature/schedule-canonical-package-merge-20260630T093009Z
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-canonical-package-merge-20260630T093009Z
+head=e5187c8546c4d53f33ab6d8add52187b9604c617
+date_utc=2026-06-30T09:35:43Z
