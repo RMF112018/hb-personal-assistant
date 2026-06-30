@@ -1,0 +1,11 @@
+$ git status --short --branch
+exit=0
+
+## feature/schedule-as-of-propagation-20260630T191020Z...origin/main [behind 5]
+ M frontend/src/lib/api.ts
+ M frontend/src/pages/ProjectSchedulePage.test.tsx
+ M frontend/src/pages/ProjectSchedulePage.tsx
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/analytics/project_schedule_summary_service.py
+ M tests/test_project_schedule_hub_api.py
+?? docs/evidence/project-schedule-hub/as-of-propagation-20260630T191020Z/

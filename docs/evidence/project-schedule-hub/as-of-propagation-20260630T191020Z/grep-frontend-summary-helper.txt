@@ -1,0 +1,62 @@
+$ rg -n 'getProjectScheduleSummary|getProjectScheduleBaseline|getProjectScheduleMetricTrends|getProjectScheduleDrilldown|downloadProjectScheduleExport|queryKey' frontend/src/lib/api.ts frontend/src/pages/ProjectSchedulePage.tsx frontend/src/pages/ProjectSchedulePage.test.tsx frontend/src/lib/scheduleApiAsOf.test.ts
+exit=0
+
+frontend/src/pages/ProjectSchedulePage.tsx:169:    queryKey: ['project', 'schedule', projectKey, 'drilldown', drilldownType, asOfDate],
+frontend/src/pages/ProjectSchedulePage.tsx:171:      api.getProjectScheduleDrilldown(projectKey, drilldownType, {
+frontend/src/pages/ProjectSchedulePage.tsx:232:    queryKey: ['project', 'schedule', projectKey, 'drivers', activeTab, selectedDriverId, asOfDate],
+frontend/src/pages/ProjectSchedulePage.tsx:428:    queryKey: ['project', 'schedule', projectKey, asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:429:    queryFn: () => api.getProjectScheduleSummary(projectKey, { asOf: requestAsOf }),
+frontend/src/pages/ProjectSchedulePage.tsx:440:    queryKey: ['project', 'schedule', projectKey, 'controls-trends', asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:442:      api.getProjectScheduleMetricTrends(projectKey, {
+frontend/src/pages/ProjectSchedulePage.tsx:449:    queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:450:    queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
+frontend/src/pages/ProjectSchedulePage.tsx:587:                  void api.downloadProjectScheduleExport(projectKey, 'markdown', {
+frontend/src/lib/scheduleApiAsOf.test.ts:4:  getProjectScheduleBaseline,
+frontend/src/lib/scheduleApiAsOf.test.ts:5:  getProjectScheduleDrilldown,
+frontend/src/lib/scheduleApiAsOf.test.ts:6:  getProjectScheduleMetricTrends,
+frontend/src/lib/scheduleApiAsOf.test.ts:8:  getProjectScheduleSummary,
+frontend/src/lib/scheduleApiAsOf.test.ts:29:    await getProjectScheduleSummary('tropical', { asOf: '2026-06-16' });
+frontend/src/lib/scheduleApiAsOf.test.ts:30:    await getProjectScheduleBaseline('tropical', { asOf: '2026-06-16' });
+frontend/src/lib/scheduleApiAsOf.test.ts:31:    await getProjectScheduleSummary('tropical', { asOf: '' });
+frontend/src/lib/scheduleApiAsOf.test.ts:32:    await getProjectScheduleBaseline('tropical', { asOf: null });
+frontend/src/lib/scheduleApiAsOf.test.ts:46:    await getProjectScheduleMetricTrends('tropical', { asOf: '2026-06-16', metrics: ['delay_analysis'] });
+frontend/src/lib/scheduleApiAsOf.test.ts:47:    await getProjectScheduleDrilldown('tropical', 'upstream_cues', { asOf: '2026-06-16', limit: 10 });
+frontend/src/pages/ProjectSchedulePage.test.tsx:10:const getProjectScheduleSummaryMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:11:const getProjectScheduleMetricTrendsMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:12:const getProjectScheduleBaselineMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:13:const getProjectScheduleDrilldownMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:14:const downloadProjectScheduleExportMock = vi.fn()
+frontend/src/pages/ProjectSchedulePage.test.tsx:23:      getProjectScheduleSummary: (...args: unknown[]) => getProjectScheduleSummaryMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:24:      getProjectScheduleMetricTrends: (...args: unknown[]) => getProjectScheduleMetricTrendsMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:25:      getProjectScheduleBaseline: (...args: unknown[]) => getProjectScheduleBaselineMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:26:      getProjectScheduleDrilldown: (...args: unknown[]) => getProjectScheduleDrilldownMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:27:      downloadProjectScheduleExport: (...args: unknown[]) => downloadProjectScheduleExportMock(...args),
+frontend/src/pages/ProjectSchedulePage.test.tsx:364:  getProjectScheduleSummaryMock.mockResolvedValue(response)
+frontend/src/pages/ProjectSchedulePage.test.tsx:365:  getProjectScheduleMetricTrendsMock.mockReturnValue(trends instanceof Promise ? trends : Promise.resolve(trends))
+frontend/src/pages/ProjectSchedulePage.test.tsx:366:  getProjectScheduleBaselineMock.mockResolvedValue({
+frontend/src/pages/ProjectSchedulePage.test.tsx:370:  getProjectScheduleDrilldownMock.mockResolvedValue({ count: 1, items: [] })
+frontend/src/pages/ProjectSchedulePage.test.tsx:371:  downloadProjectScheduleExportMock.mockResolvedValue(undefined)
+frontend/src/pages/ProjectSchedulePage.test.tsx:382:    getProjectScheduleSummaryMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:383:    getProjectScheduleMetricTrendsMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:384:    getProjectScheduleBaselineMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:385:    getProjectScheduleDrilldownMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:386:    downloadProjectScheduleExportMock.mockReset()
+frontend/src/pages/ProjectSchedulePage.test.tsx:421:    expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', {
+frontend/src/pages/ProjectSchedulePage.test.tsx:458:      expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:459:      expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:460:      expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith(
+frontend/src/pages/ProjectSchedulePage.test.tsx:473:      expect(getProjectScheduleDrilldownMock).toHaveBeenCalledWith('tropical', 'remaining_later', {
+frontend/src/pages/ProjectSchedulePage.test.tsx:481:    expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
+frontend/src/pages/ProjectSchedulePage.test.tsx:490:    expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:491:    expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:492:    expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
+frontend/src/lib/api.ts:254:export function getProjectScheduleSummary(
+frontend/src/lib/api.ts:306:export function getProjectScheduleMetricTrends(
+frontend/src/lib/api.ts:332:export function getProjectScheduleDrilldown(
+frontend/src/lib/api.ts:345:export function getProjectScheduleBaseline(
+frontend/src/lib/api.ts:467:export async function downloadProjectScheduleExport(
+frontend/src/lib/api.ts:2670:  getProjectScheduleSummary,
+frontend/src/lib/api.ts:2672:  getProjectScheduleMetricTrends,
+frontend/src/lib/api.ts:2673:  getProjectScheduleDrilldown,
+frontend/src/lib/api.ts:2675:  getProjectScheduleBaseline,
+frontend/src/lib/api.ts:2683:  downloadProjectScheduleExport,

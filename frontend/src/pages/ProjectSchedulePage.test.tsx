@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,6 +9,9 @@ import { ProjectSchedulePage } from './ProjectSchedulePage'
 const getProjectsMock = vi.fn()
 const getProjectScheduleSummaryMock = vi.fn()
 const getProjectScheduleMetricTrendsMock = vi.fn()
+const getProjectScheduleBaselineMock = vi.fn()
+const getProjectScheduleDrilldownMock = vi.fn()
+const downloadProjectScheduleExportMock = vi.fn()
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
@@ -19,6 +22,9 @@ vi.mock('../lib/api', async () => {
       getProjects: (...args: unknown[]) => getProjectsMock(...args),
       getProjectScheduleSummary: (...args: unknown[]) => getProjectScheduleSummaryMock(...args),
       getProjectScheduleMetricTrends: (...args: unknown[]) => getProjectScheduleMetricTrendsMock(...args),
+      getProjectScheduleBaseline: (...args: unknown[]) => getProjectScheduleBaselineMock(...args),
+      getProjectScheduleDrilldown: (...args: unknown[]) => getProjectScheduleDrilldownMock(...args),
+      downloadProjectScheduleExport: (...args: unknown[]) => downloadProjectScheduleExportMock(...args),
     },
   }
 })
@@ -341,18 +347,28 @@ function trendResponse(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function renderPage(response = scheduleResponse(), trends: Promise<unknown> | unknown = trendResponse()) {
+function renderPage(
+  response = scheduleResponse(),
+  trends: Promise<unknown> | unknown = trendResponse(),
+  initialEntry = '/projects/tropical/schedule',
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const router = createMemoryRouter(
     [
       { path: '/projects', element: <div>Projects list</div> },
       { path: '/projects/:projectKey/schedule', element: <ProjectSchedulePage /> },
     ],
-    { initialEntries: ['/projects/tropical/schedule'] },
+    { initialEntries: [initialEntry] },
   )
   getProjectsMock.mockResolvedValue(projectsResponse)
   getProjectScheduleSummaryMock.mockResolvedValue(response)
   getProjectScheduleMetricTrendsMock.mockReturnValue(trends instanceof Promise ? trends : Promise.resolve(trends))
+  getProjectScheduleBaselineMock.mockResolvedValue({
+    available: true,
+    baseline_summary: (response as Record<string, any>).baseline_summary || {},
+  })
+  getProjectScheduleDrilldownMock.mockResolvedValue({ count: 1, items: [] })
+  downloadProjectScheduleExportMock.mockResolvedValue(undefined)
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
@@ -365,6 +381,9 @@ describe('ProjectSchedulePage', () => {
     getProjectsMock.mockReset()
     getProjectScheduleSummaryMock.mockReset()
     getProjectScheduleMetricTrendsMock.mockReset()
+    getProjectScheduleBaselineMock.mockReset()
+    getProjectScheduleDrilldownMock.mockReset()
+    downloadProjectScheduleExportMock.mockReset()
   })
 
   it('renders a PM-facing above-fold schedule story and scoped project tab', async () => {
@@ -385,7 +404,7 @@ describe('ProjectSchedulePage', () => {
     expect(screen.getByText('Review Workbench')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open Workbench' })).toHaveAttribute(
       'href',
-      '/projects/tropical/schedule/workbench?as_of=2026-06-28',
+      '/projects/tropical/schedule/workbench',
     )
     expect(screen.getByText('Where To Look First')).toBeInTheDocument()
     expect(screen.getAllByText('Candidate Drivers').length).toBeGreaterThanOrEqual(1)
@@ -395,12 +414,12 @@ describe('ProjectSchedulePage', () => {
     expect(await screen.findByText('Schedule Controls')).toBeInTheDocument()
   })
 
-  it('requests controls trends with summary as-of context and renders supported panels', async () => {
+  it('requests controls trends without as-of when latest context is selected and renders supported panels', async () => {
     renderPage()
 
     expect(await screen.findByText('Trend Analytics')).toBeInTheDocument()
     expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', {
-      asOf: '2026-06-28',
+      asOf: undefined,
       metrics: expect.arrayContaining([
         'monthly_activity_start_finish_distribution',
         'planned_vs_actual_percent_complete',
@@ -420,12 +439,58 @@ describe('ProjectSchedulePage', () => {
     expect(screen.queryByText(/cost weighted/i)).not.toBeInTheDocument()
   })
 
-  it('falls back to current data date when summary as-of is absent', async () => {
+  it('passes selected as-of to summary, baseline, trends, drilldown, and export calls', async () => {
+    const user = userEvent.setup()
+    renderPage(
+      scheduleResponse({
+        technical_links: {
+          schedule_import_url: '/schedules/imports?project=tropical',
+          computed_cpm_url: '/schedules/cpm?project=tropical&version=tropical%7CS1%7C2026-06-23',
+          schedule_export_url: '/api/projects/tropical/schedule/export',
+        },
+      }),
+      trendResponse(),
+      '/projects/tropical/schedule?as_of=2026-06-16',
+    )
+
+    expect(await screen.findByLabelText('As-of date')).toHaveValue('2026-06-16')
+    await waitFor(() => {
+      expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+      expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+      expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith(
+        'tropical',
+        expect.objectContaining({ asOf: '2026-06-16' }),
+      )
+    })
+
+    expect(screen.getByRole('link', { name: 'Open Workbench' })).toHaveAttribute(
+      'href',
+      '/projects/tropical/schedule/workbench?as_of=2026-06-16',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'View 2' }))
+    await waitFor(() => {
+      expect(getProjectScheduleDrilldownMock).toHaveBeenCalledWith('tropical', 'remaining_later', {
+        limit: 100,
+        offset: 0,
+        asOf: '2026-06-16',
+      })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Export Memo' }))
+    expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
+      asOf: '2026-06-16',
+    })
+  })
+
+  it('omits as-of from page helper calls when latest context is selected', async () => {
     renderPage(scheduleResponse({ as_of_date: undefined }))
 
     await screen.findByText('Schedule Controls')
+    expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+    expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
     expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
-      asOf: '2026-06-23',
+      asOf: undefined,
     }))
   })
 

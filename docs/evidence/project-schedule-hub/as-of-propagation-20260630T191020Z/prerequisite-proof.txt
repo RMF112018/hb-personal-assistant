@@ -1,0 +1,16 @@
+$ git rev-parse --abbrev-ref HEAD && git rev-parse HEAD && git rev-parse origin/main && git merge-base --is-ancestor 9181d65a origin/main; echo merge_9181d65a=$? && git merge-base --is-ancestor 3a84aab2 origin/main; echo canonical_3a84aab2=$? && git merge-base --is-ancestor a787d709 origin/main; echo cpm_a787d709=$? && git log --oneline --decorate -7 origin/main
+exit=0
+
+feature/schedule-as-of-propagation-20260630T191020Z
+4767ccc117a4961f88bcf34ddd26a7bfda46a00f
+112ff008c830fa3c5c2452f113d444512e127d56
+merge_9181d65a=0
+canonical_3a84aab2=0
+cpm_a787d709=0
+112ff008 (origin/main, origin/HEAD, feat/phase-8c-review-workbench, feat/obsidian-phase8-card-tuning-20260630T195121Z) Merge pull request #228 from RMF112018/ops/obsidian-phase6-first-indexing-20260630T163150Z
+7c61539f (origin/ops/obsidian-phase6-first-indexing-20260630T163150Z, ops/obsidian-phase6-first-indexing-20260630T163150Z) ops(obsidian): Phase 6E safety closeout — freeze auto-gen, clear 4 queued events
+9181d65a Merge pull request #229 from RMF112018/feature/schedule-canonical-package-merge-20260630T093009Z
+117a5b9e ops(obsidian): Phase 6D — first real bounded batch (25 Source Notes/Work cards)
+f51dc2bf (origin/feature/schedule-canonical-package-merge-20260630T093009Z, feature/schedule-canonical-package-merge-20260630T093009Z) docs(schedule): record final canonical import merge readiness
+1c546459 merge: reconcile schedule canonical import branch with main
+f4b88678 docs(schedule): close out canonical import evidence

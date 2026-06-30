@@ -999,7 +999,7 @@ class ProjectScheduleSummaryService:
             baseline_key=baseline_key,
         )
         if drilldown_type == "upstream_cues":
-            summary = self.build_summary(project_key)
+            summary = self.build_summary(project_key, as_of=as_of)
             items = summary.get("change_impact", {}).get("upstream_remaining_impact", {}).get("items", [])
             return {
                 "available": True,

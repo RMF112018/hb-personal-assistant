@@ -1,0 +1,328 @@
+$ rg -n 'as_of|asOf|asOfDate|selectedAsOf|as_of_date' src/hb_assistant/construction/analytics frontend/src tests/test_project_schedule_hub_api.py frontend/src/pages/ProjectSchedulePage.test.tsx frontend/src/lib/scheduleApiAsOf.test.ts
+exit=0
+
+frontend/src/lib/scheduleApiAsOf.test.ts:25:  it('emits as_of for summary and baseline only when asOf is non-empty', async () => {
+frontend/src/lib/scheduleApiAsOf.test.ts:29:    await getProjectScheduleSummary('tropical', { asOf: '2026-06-16' });
+frontend/src/lib/scheduleApiAsOf.test.ts:30:    await getProjectScheduleBaseline('tropical', { asOf: '2026-06-16' });
+frontend/src/lib/scheduleApiAsOf.test.ts:31:    await getProjectScheduleSummary('tropical', { asOf: '' });
+frontend/src/lib/scheduleApiAsOf.test.ts:32:    await getProjectScheduleBaseline('tropical', { asOf: null });
+frontend/src/lib/scheduleApiAsOf.test.ts:35:      '/api/projects/tropical/schedule?as_of=2026-06-16',
+frontend/src/lib/scheduleApiAsOf.test.ts:36:      '/api/projects/tropical/schedule/baseline?as_of=2026-06-16',
+frontend/src/lib/scheduleApiAsOf.test.ts:42:  it('uses the same asOf option name for trend, drilldown, and review requests', async () => {
+frontend/src/lib/scheduleApiAsOf.test.ts:46:    await getProjectScheduleMetricTrends('tropical', { asOf: '2026-06-16', metrics: ['delay_analysis'] });
+frontend/src/lib/scheduleApiAsOf.test.ts:47:    await getProjectScheduleDrilldown('tropical', 'upstream_cues', { asOf: '2026-06-16', limit: 10 });
+frontend/src/lib/scheduleApiAsOf.test.ts:48:    await getProjectScheduleReviewItems('tropical', { asOf: '2026-06-16', reviewStatus: 'open' });
+frontend/src/lib/scheduleApiAsOf.test.ts:51:      '/api/projects/tropical/schedule/metrics/trends?as_of=2026-06-16&metrics=delay_analysis',
+frontend/src/lib/scheduleApiAsOf.test.ts:52:      '/api/projects/tropical/schedule/drilldowns?type=upstream_cues&limit=10&as_of=2026-06-16',
+frontend/src/lib/scheduleApiAsOf.test.ts:53:      '/api/projects/tropical/schedule/review-items?review_status=open&as_of=2026-06-16',
+tests/test_project_schedule_hub_api.py:566:        "tropical", as_of=date(2026, 6, 28)
+tests/test_project_schedule_hub_api.py:580:        "tropical", as_of=date(2026, 6, 28)
+tests/test_project_schedule_hub_api.py:1041:        "tropical", as_of=date(2026, 7, 3)
+tests/test_project_schedule_hub_api.py:1138:    body = ProjectScheduleSummaryService(db_path=str(db)).build_summary("tropical", as_of=date(2026, 6, 29))
+tests/test_project_schedule_hub_api.py:1159:    prior_only = service.build_summary("tropical", as_of=date(2026, 6, 28))
+tests/test_project_schedule_hub_api.py:1160:    current = service.build_summary("tropical", as_of=date(2026, 6, 29))
+tests/test_project_schedule_hub_api.py:1168:    assert prior_context["as_of_eligibility_basis"] == "hub_eligible_schedule_data_date_on_or_before_as_of"
+tests/test_project_schedule_hub_api.py:1179:    assert context["as_of_date"] == "2026-06-29"
+tests/test_project_schedule_hub_api.py:1206:        as_of=date(2026, 6, 29),
+tests/test_project_schedule_hub_api.py:1221:        "tropical", as_of=date(2026, 7, 3)
+tests/test_project_schedule_hub_api.py:1251:        "tropical", as_of=date(2026, 7, 3)
+tests/test_project_schedule_hub_api.py:1284:        "tropical", as_of=date(2026, 7, 3)
+tests/test_project_schedule_hub_api.py:1302:        lambda: service.build_summary("tropical", as_of=date(2026, 7, 3)),
+tests/test_project_schedule_hub_api.py:1341:        "tropical", as_of=date(2026, 6, 28)
+tests/test_project_schedule_hub_api.py:1353:        "tropical", as_of=date(2026, 6, 28)
+tests/test_project_schedule_hub_api.py:1372:def test_project_schedule_summary_route_accepts_rejects_and_forwards_as_of(
+tests/test_project_schedule_hub_api.py:1379:    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+tests/test_project_schedule_hub_api.py:1381:        seen.append(as_of)
+tests/test_project_schedule_hub_api.py:1385:            "as_of_date": as_of.isoformat() if as_of else None,
+tests/test_project_schedule_hub_api.py:1393:    response = client.get("/api/projects/tropical/schedule?as_of=2026-06-16", headers=_viewer())
+tests/test_project_schedule_hub_api.py:1395:    assert response.json()["as_of_date"] == "2026-06-16"
+tests/test_project_schedule_hub_api.py:1398:    bad = client.get("/api/projects/tropical/schedule?as_of=not-a-date", headers=_viewer())
+tests/test_project_schedule_hub_api.py:1400:    assert bad.json() == {"detail": "invalid_as_of_date"}
+tests/test_project_schedule_hub_api.py:1403:def test_project_schedule_latest_and_historical_as_of_resolve_expected_versions(tmp_path: Path) -> None:
+tests/test_project_schedule_hub_api.py:1408:    historical = service.build_summary("tropical", as_of=date(2026, 6, 28))
+tests/test_project_schedule_hub_api.py:1409:    latest = service.build_summary("tropical", as_of=date(2026, 6, 30))
+tests/test_project_schedule_hub_api.py:1417:def test_project_schedule_upstream_cues_uses_historical_as_of(
+tests/test_project_schedule_hub_api.py:1425:    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+tests/test_project_schedule_hub_api.py:1426:        seen.append(as_of)
+tests/test_project_schedule_hub_api.py:1427:        return original(self, project_key, as_of=as_of)
+tests/test_project_schedule_hub_api.py:1434:        as_of=date(2026, 6, 28),
+tests/test_project_schedule_hub_api.py:1441:def test_project_schedule_baseline_routes_forward_as_of(
+tests/test_project_schedule_hub_api.py:1449:    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+tests/test_project_schedule_hub_api.py:1451:        seen.append((project_key, as_of))
+tests/test_project_schedule_hub_api.py:1456:            "baseline_summary": {"as_of_marker": as_of.isoformat() if as_of else None},
+tests/test_project_schedule_hub_api.py:1462:    read = client.get("/api/projects/tropical/schedule/baseline?as_of=2026-06-16", headers=_viewer())
+tests/test_project_schedule_hub_api.py:1464:    assert read.json()["baseline_summary"]["as_of_marker"] == "2026-06-16"
+tests/test_project_schedule_hub_api.py:1467:        "/api/projects/tropical/schedule/baseline?as_of=2026-06-16",
+tests/test_project_schedule_hub_api.py:1475:    assert write.json()["baseline_summary"]["as_of_marker"] == "2026-06-16"
+tests/test_project_schedule_hub_api.py:1479:def test_project_schedule_review_trend_and_export_routes_forward_as_of(
+tests/test_project_schedule_hub_api.py:1488:        seen["review"] = kwargs.get("as_of")
+tests/test_project_schedule_hub_api.py:1493:        seen["export"] = kwargs.get("as_of")
+tests/test_project_schedule_hub_api.py:1507:        seen["trends"] = kwargs.get("as_of")
+tests/test_project_schedule_hub_api.py:1515:    review = client.get("/api/projects/tropical/schedule/review-items?as_of=2026-06-16", headers=_viewer())
+tests/test_project_schedule_hub_api.py:1516:    trends = client.get("/api/projects/tropical/schedule/metrics/trends?as_of=2026-06-16", headers=_viewer())
+tests/test_project_schedule_hub_api.py:1517:    export = client.get("/api/projects/tropical/schedule/export?as_of=2026-06-16", headers=_viewer())
+frontend/src/pages/ProjectSchedulePage.test.tsx:53:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:243:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:304:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:422:      asOf: undefined,
+frontend/src/pages/ProjectSchedulePage.test.tsx:453:      '/projects/tropical/schedule?as_of=2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:458:      expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:459:      expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:462:        expect.objectContaining({ asOf: '2026-06-16' }),
+frontend/src/pages/ProjectSchedulePage.test.tsx:468:      '/projects/tropical/schedule/workbench?as_of=2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:476:        asOf: '2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:482:      asOf: '2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:487:    renderPage(scheduleResponse({ as_of_date: undefined }))
+frontend/src/pages/ProjectSchedulePage.test.tsx:490:    expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:491:    expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:493:      asOf: undefined,
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:19:  const asOfDate = searchParams.get('as_of') || undefined
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:23:    queryKey: ['project', 'schedule', 'driver-detail', projectKey, activityId, asOfDate, comparisonBasis],
+frontend/src/pages/ProjectScheduleDriverDetailPage.tsx:26:        asOf: asOfDate,
+src/hb_assistant/construction/analytics/api.py:1195:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1207:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1208:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1210:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1212:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1215:            project_key, as_of=as_of_date
+src/hb_assistant/construction/analytics/api.py:1224:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1235:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1236:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1238:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1240:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1248:                as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1262:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1272:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1273:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1275:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1277:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1285:                as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1299:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1309:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1310:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1312:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1314:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1320:            as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1329:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1349:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1350:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1352:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1354:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1361:            as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1425:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1435:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1436:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1438:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1440:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1443:            as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1480:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1493:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1494:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1496:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1498:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1503:                as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1517:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1530:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1531:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1533:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1535:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1540:            as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1547:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1562:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1563:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1565:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1567:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1574:                as_of=as_of_date,
+src/hb_assistant/construction/analytics/api.py:1591:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1605:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1606:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1608:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1610:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1613:        summary = service.build_summary(project_key, as_of=as_of_date)
+src/hb_assistant/construction/analytics/api.py:1633:        as_of: str | None = None,
+src/hb_assistant/construction/analytics/api.py:1647:        as_of_date: date_type | None = None
+src/hb_assistant/construction/analytics/api.py:1648:        if as_of:
+src/hb_assistant/construction/analytics/api.py:1650:                as_of_date = date_type.fromisoformat(as_of)
+src/hb_assistant/construction/analytics/api.py:1652:                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+src/hb_assistant/construction/analytics/api.py:1678:            project_key, as_of=as_of_date
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:100:    def build_summary(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:103:        as_of_date = as_of or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:117:            return self._empty_summary(project_key, project_name, as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:119:        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:121:            return self._review_required_summary(project_key, project_name, as_of_date, versions)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:134:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:164:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:271:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:372:            "as_of_date": as_of_date.isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:446:        self, project_key: str, versions: list[dict[str, Any]], *, as_of_date: date
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:463:            if (data_date := self._data_date(c.version)) is None or data_date <= as_of_date
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:517:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:535:            "as_of_date": as_of_date.isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:537:            "as_of_eligibility_basis": "hub_eligible_schedule_data_date_on_or_before_as_of",
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:733:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:735:        start = previous_data_date or (as_of_date - timedelta(days=14))
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:736:        end = current_data_date or as_of_date
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:795:                (current_key, (current_data_date or as_of_date).isoformat()),
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:972:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:974:        as_of_date = as_of or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:978:        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:987:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1002:            summary = self.build_summary(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1036:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1048:        context = self._review_workbench_context(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1077:    def sync_review_workbench(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1078:        context = self._review_workbench_context(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1089:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1091:        as_of_date = as_of or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1095:        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1119:    def _review_workbench_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any] | None:
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1120:        as_of_date = as_of or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1124:        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1134:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1181:            "as_of_date": as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1190:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1195:        summary = self.build_summary(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1197:            context = self._review_workbench_context(project_key, as_of=as_of)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1220:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1222:        as_of_date = as_of or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1226:        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1235:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1270:                "as_of_date": comparison_context["as_of_date"],
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:1307:            "as_of_date": comparison_context["as_of_date"],
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2041:    def _empty_summary(self, project_key: str, project_name: str, as_of_date: date) -> dict[str, Any]:
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2058:            "as_of_date": as_of_date.isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2102:        self, project_key: str, project_name: str, as_of_date: date, versions: list[dict[str, Any]]
+src/hb_assistant/construction/analytics/project_schedule_summary_service.py:2104:        out = self._empty_summary(project_key, project_name, as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:64:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:71:        as_of_date = as_of or datetime.now().date()
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:72:        versions = self._eligible_versions(project_key, as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:76:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:85:                "data_quality_notes": ["No hub-eligible schedule versions were available on or before as_of."],
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:115:        as_of: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:122:                trends.append(self.build_trend(project_key, key, as_of=as_of))
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:128:            "as_of_date": (as_of or datetime.now().date()).isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:148:    def _eligible_versions(self, project_key: str, as_of_date: date) -> list[dict[str, Any]]:
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:150:        current_choice = self._summary._resolve_current(project_key, versions, as_of_date=as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:161:            if version_date and version_date > as_of_date:
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:181:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:191:            "as_of_date": as_of_date.isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:624:            as_of_date=self._summary._data_date(current) or datetime.now().date(),
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:641:        as_of_date = self._summary._data_date(current) or datetime.now().date()
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:647:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_trend_aggregation_service.py:648:            data_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:40:        as_of_date: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:44:        as_of = as_of_date or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:54:            as_of_date=as_of,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:88:        as_of_date: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:103:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:120:        as_of_date: date | None = None,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:132:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:145:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:165:        as_of_date: date | None,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:171:        as_of = as_of_date or datetime.now(timezone.utc).date()
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:187:                    as_of_date=as_of,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:359:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:369:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_service.py:383:            as_of_date=as_of_date,
+frontend/src/pages/ProjectScheduleImportPage.test.tsx:133:      as_of_date: '2026-07-03',
+src/hb_assistant/construction/analytics/project_schedule_selected_baseline_service.py:163:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_selected_baseline_service.py:199:                    "period": as_of_date.isoformat(),
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:306:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:321:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:330:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:337:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:384:            if not due or due > as_of_date:
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:420:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:427:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:437:        window_start = as_of_date - timedelta(days=lookback)
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:438:        window_end = as_of_date + timedelta(days=lookahead)
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:497:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:504:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:514:        window_start = as_of_date - timedelta(days=lookback)
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:515:        window_end = as_of_date + timedelta(days=lookahead)
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:574:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:578:        effective_date = data_date or as_of_date
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:660:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:664:        effective_date = data_date or as_of_date
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:746:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:750:        effective_date = data_date or as_of_date
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:844:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:899:                    "period": _date_str(data_date or as_of_date),
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:900:                    "data_date": _date_str(data_date or as_of_date),
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:922:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_udf_normalization_service.py:925:        del as_of_date, data_date
+src/hb_assistant/construction/analytics/project_schedule_memo_service.py:57:        as_of = str(summary.get("as_of_date") or datetime.now(timezone.utc).date().isoformat())
+src/hb_assistant/construction/analytics/project_schedule_memo_service.py:60:        filename = f"schedule-{suffix}-{project_key}-{as_of}.{ext}"
+src/hb_assistant/construction/analytics/project_schedule_memo_service.py:95:            f"As of {summary.get('as_of_date')}",
+src/hb_assistant/construction/analytics/project_schedule_memo_service.py:204:            f"As of {summary.get('as_of_date')}",
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:64:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:78:            as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:89:        preview = self._preview_only_cues(project_key, schedule_version_key, as_of_date)
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:101:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:123:        data_date = as_of_date.isoformat()
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:252:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:289:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:320:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:353:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:385:                as_of_date=as_of_date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:503:        as_of_date: date,
+src/hb_assistant/construction/analytics/project_schedule_review_cue_service.py:521:                    data_date=as_of_date.isoformat(),
+frontend/src/pages/ProjectSchedulePage.tsx:157:  asOfDate,
+frontend/src/pages/ProjectSchedulePage.tsx:162:  asOfDate?: string
+frontend/src/pages/ProjectSchedulePage.tsx:169:    queryKey: ['project', 'schedule', projectKey, 'drilldown', drilldownType, asOfDate],
+frontend/src/pages/ProjectSchedulePage.tsx:174:        asOf: asOfDate,
+frontend/src/pages/ProjectSchedulePage.tsx:212:  asOfDate,
+frontend/src/pages/ProjectSchedulePage.tsx:216:  asOfDate?: string
+frontend/src/pages/ProjectSchedulePage.tsx:232:    queryKey: ['project', 'schedule', projectKey, 'drivers', activeTab, selectedDriverId, asOfDate],
+frontend/src/pages/ProjectSchedulePage.tsx:237:        asOf: asOfDate,
+frontend/src/pages/ProjectSchedulePage.tsx:423:  const rawAsOf = searchParams.get('as_of') || ''
+frontend/src/pages/ProjectSchedulePage.tsx:424:  const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : ''
+frontend/src/pages/ProjectSchedulePage.tsx:425:  const requestAsOf = asOf || undefined
+frontend/src/pages/ProjectSchedulePage.tsx:428:    queryKey: ['project', 'schedule', projectKey, asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:429:    queryFn: () => api.getProjectScheduleSummary(projectKey, { asOf: requestAsOf }),
+frontend/src/pages/ProjectSchedulePage.tsx:434:  const trendAsOf = asOf
+frontend/src/pages/ProjectSchedulePage.tsx:440:    queryKey: ['project', 'schedule', projectKey, 'controls-trends', asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:443:        asOf: trendAsOf || undefined,
+frontend/src/pages/ProjectSchedulePage.tsx:449:    queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
+frontend/src/pages/ProjectSchedulePage.tsx:450:    queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
+frontend/src/pages/ProjectSchedulePage.tsx:523:              As of {text(schedule.as_of_date)}. No schedule update is available for this project.
+frontend/src/pages/ProjectSchedulePage.tsx:547:              As of {text(schedule.as_of_date)} · Current update {text(current.friendly_label)} · Data date {text(current.data_date)}
+frontend/src/pages/ProjectSchedulePage.tsx:557:                value={asOf}
+frontend/src/pages/ProjectSchedulePage.tsx:561:                    next.set('as_of', event.target.value)
+frontend/src/pages/ProjectSchedulePage.tsx:563:                    next.delete('as_of')
+frontend/src/pages/ProjectSchedulePage.tsx:576:                  ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
+frontend/src/pages/ProjectSchedulePage.tsx:588:                    asOf: requestAsOf,
+frontend/src/pages/ProjectSchedulePage.tsx:606:                  to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(focusDriver)}?basis=${focusBasis}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
+frontend/src/pages/ProjectSchedulePage.tsx:614:                  to={`/projects/${projectKey}/schedule/workbench?review=${encodeURIComponent(focusReview)}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
+frontend/src/pages/ProjectSchedulePage.tsx:689:                    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
+frontend/src/pages/ProjectSchedulePage.tsx:725:                asOfDate={requestAsOf}
+frontend/src/pages/ProjectSchedulePage.tsx:820:                    asOfDate={requestAsOf}
+frontend/src/pages/ProjectSchedulePage.test.tsx:53:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:243:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:304:    as_of_date: '2026-06-28',
+frontend/src/pages/ProjectSchedulePage.test.tsx:422:      asOf: undefined,
+frontend/src/pages/ProjectSchedulePage.test.tsx:453:      '/projects/tropical/schedule?as_of=2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:458:      expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:459:      expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: '2026-06-16' })
+frontend/src/pages/ProjectSchedulePage.test.tsx:462:        expect.objectContaining({ asOf: '2026-06-16' }),
+frontend/src/pages/ProjectSchedulePage.test.tsx:468:      '/projects/tropical/schedule/workbench?as_of=2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:476:        asOf: '2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:482:      asOf: '2026-06-16',
+frontend/src/pages/ProjectSchedulePage.test.tsx:487:    renderPage(scheduleResponse({ as_of_date: undefined }))
+frontend/src/pages/ProjectSchedulePage.test.tsx:490:    expect(getProjectScheduleSummaryMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:491:    expect(getProjectScheduleBaselineMock).toHaveBeenCalledWith('tropical', { asOf: undefined })
+frontend/src/pages/ProjectSchedulePage.test.tsx:493:      asOf: undefined,
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:69:function renderPage(path = '/projects/tropical/schedule/workbench?as_of=2026-07-03') {
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:99:  it('syncs review items for operators and passes as_of', async () => {
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:103:      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', { asOf: '2026-07-03' })
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:106:      asOf: '2026-07-03',
+frontend/src/pages/ProjectScheduleWorkbenchPage.test.tsx:123:      asOf: '2026-07-03',
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:88:  const asOfDate = searchParams.get('as_of') || undefined
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:109:      asOfDate,
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:120:        await api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate })
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:123:        asOf: asOfDate,
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:150:      api.downloadProjectScheduleExport(projectKey, format, { asOf: asOfDate }),
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:153:  const scheduleHref = asOfDate
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:154:    ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:208:              {asOfDate ? ` As of ${asOfDate}.` : ''}
+frontend/src/pages/ProjectScheduleWorkbenchPage.tsx:404:                          to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(item.source_activity_id)}?basis=${comparisonBasis}${asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''}`}

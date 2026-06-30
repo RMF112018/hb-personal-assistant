@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient
 
 from hb_assistant.construction.analytics import create_app
 from hb_assistant.construction.analytics.project_schedule_canonical_metrics import (
@@ -1365,3 +1366,161 @@ def test_project_schedule_route_is_registered(tmp_path: Path) -> None:
     app = create_app(db_path=str(db))
     paths = {getattr(route, "path", "") for route in getattr(app, "routes", [])}
     assert "/api/projects/{project_key}/schedule" in paths
+
+
+
+def test_project_schedule_summary_route_accepts_rejects_and_forwards_as_of(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _fresh_db(tmp_path)
+    app = create_app(db_path=str(db))
+    seen: list[date | None] = []
+
+    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+        del self
+        seen.append(as_of)
+        return {
+            "surface": "project_schedule_hub",
+            "project_key": project_key,
+            "as_of_date": as_of.isoformat() if as_of else None,
+            "status": "no_schedule",
+            "current_schedule": {"available": False},
+        }
+
+    monkeypatch.setattr(ProjectScheduleSummaryService, "build_summary", build_summary_spy)
+    client = TestClient(app)
+
+    response = client.get("/api/projects/tropical/schedule?as_of=2026-06-16", headers=_viewer())
+    assert response.status_code == 200
+    assert response.json()["as_of_date"] == "2026-06-16"
+    assert seen == [date(2026, 6, 16)]
+
+    bad = client.get("/api/projects/tropical/schedule?as_of=not-a-date", headers=_viewer())
+    assert bad.status_code == 400
+    assert bad.json() == {"detail": "invalid_as_of_date"}
+
+
+def test_project_schedule_latest_and_historical_as_of_resolve_expected_versions(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    service = ProjectScheduleSummaryService(db_path=str(db))
+
+    historical = service.build_summary("tropical", as_of=date(2026, 6, 28))
+    latest = service.build_summary("tropical", as_of=date(2026, 6, 30))
+
+    assert historical["current_schedule"]["friendly_label"] == "TWNU18"
+    assert historical["technical_evidence"]["schedule_version_key"] == "tropical|S1|2026-06-28"
+    assert latest["current_schedule"]["friendly_label"] == "TWNU19"
+    assert latest["technical_evidence"]["schedule_version_key"] == "tropical|S1|2026-06-29"
+
+
+def test_project_schedule_upstream_cues_uses_historical_as_of(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    original = ProjectScheduleSummaryService.build_summary
+    seen: list[date | None] = []
+
+    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+        seen.append(as_of)
+        return original(self, project_key, as_of=as_of)
+
+    monkeypatch.setattr(ProjectScheduleSummaryService, "build_summary", build_summary_spy)
+    service = ProjectScheduleSummaryService(db_path=str(db))
+    body = service.build_drilldown(
+        "tropical",
+        drilldown_type="upstream_cues",
+        as_of=date(2026, 6, 28),
+    )
+
+    assert body["drilldown_type"] == "upstream_cues"
+    assert seen == [date(2026, 6, 28)]
+
+
+def test_project_schedule_baseline_routes_forward_as_of(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_twnu18_twnu19_canonical_metrics(db)
+    app = create_app(db_path=str(db))
+    seen: list[tuple[str, date | None]] = []
+
+    def build_summary_spy(self: ProjectScheduleSummaryService, project_key: str, *, as_of: date | None = None):
+        del self
+        seen.append((project_key, as_of))
+        return {
+            "project_key": project_key,
+            "current_schedule": {"available": True},
+            "technical_evidence": {"schedule_version_key": "tropical|S1|2026-06-29"},
+            "baseline_summary": {"as_of_marker": as_of.isoformat() if as_of else None},
+        }
+
+    monkeypatch.setattr(ProjectScheduleSummaryService, "build_summary", build_summary_spy)
+    client = TestClient(app)
+
+    read = client.get("/api/projects/tropical/schedule/baseline?as_of=2026-06-16", headers=_viewer())
+    assert read.status_code == 200
+    assert read.json()["baseline_summary"]["as_of_marker"] == "2026-06-16"
+
+    write = client.put(
+        "/api/projects/tropical/schedule/baseline?as_of=2026-06-16",
+        headers={"X-HB-UI-Role": "operator"},
+        json={
+            "current_schedule_version_key": "tropical|S1|2026-06-29",
+            "selected_baseline_schedule_version_key": "tropical|S1|2026-06-28",
+        },
+    )
+    assert write.status_code == 200
+    assert write.json()["baseline_summary"]["as_of_marker"] == "2026-06-16"
+    assert seen == [("tropical", date(2026, 6, 16)), ("tropical", date(2026, 6, 16))]
+
+
+def test_project_schedule_review_trend_and_export_routes_forward_as_of(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _fresh_db(tmp_path)
+    app = create_app(db_path=str(db))
+    seen: dict[str, date | None] = {}
+
+    def review_items_spy(self: ProjectScheduleSummaryService, project_key: str, **kwargs: Any):
+        del self, project_key
+        seen["review"] = kwargs.get("as_of")
+        return {"available": True, "items": []}
+
+    def export_spy(self: ProjectScheduleSummaryService, project_key: str, **kwargs: Any):
+        del self, project_key
+        seen["export"] = kwargs.get("as_of")
+        return {
+            "available": True,
+            "filename": "schedule.md",
+            "body": "schedule memo",
+            "content_type": "text/markdown",
+        }
+
+    from hb_assistant.construction.analytics.project_schedule_trend_aggregation_service import (
+        ProjectScheduleTrendAggregationService,
+    )
+
+    def trends_spy(self: ProjectScheduleTrendAggregationService, project_key: str, **kwargs: Any):
+        del self, project_key
+        seen["trends"] = kwargs.get("as_of")
+        return {"available": True, "metrics": []}
+
+    monkeypatch.setattr(ProjectScheduleSummaryService, "build_review_items", review_items_spy)
+    monkeypatch.setattr(ProjectScheduleSummaryService, "build_export", export_spy)
+    monkeypatch.setattr(ProjectScheduleTrendAggregationService, "build_trends", trends_spy)
+    client = TestClient(app)
+
+    review = client.get("/api/projects/tropical/schedule/review-items?as_of=2026-06-16", headers=_viewer())
+    trends = client.get("/api/projects/tropical/schedule/metrics/trends?as_of=2026-06-16", headers=_viewer())
+    export = client.get("/api/projects/tropical/schedule/export?as_of=2026-06-16", headers=_viewer())
+
+    assert review.status_code == 200
+    assert trends.status_code == 200
+    assert export.status_code == 200
+    assert seen == {
+        "review": date(2026, 6, 16),
+        "trends": date(2026, 6, 16),
+        "export": date(2026, 6, 16),
+    }

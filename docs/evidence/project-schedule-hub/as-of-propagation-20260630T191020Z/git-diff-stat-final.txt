@@ -1,0 +1,16 @@
+$ git diff --stat
+exit=0
+
+ .../git-diff-check.txt                             |   6 +-
+ .../git-diff-stat-final.txt                        |  37 +---
+ .../git-head-final.txt                             |  10 +-
+ .../git-status-final.txt                           |  41 ++--
+ .../grep-as-of.txt                                 | 232 ++++++++++-----------
+ .../grep-build-summary-project-key.txt             |  16 +-
+ .../grep-frontend-summary-helper.txt               |  20 +-
+ .../phase3-summary.md                              |   9 +-
+ .../prerequisite-proof.txt                         |  10 +-
+ .../scripts-test-schedule.txt                      |   2 +-
+ .../vitest-api-target-probe.txt                    |   6 +-
+ .../vitest-project-schedule-page-api.txt           |   8 +-
+ 12 files changed, 181 insertions(+), 216 deletions(-)

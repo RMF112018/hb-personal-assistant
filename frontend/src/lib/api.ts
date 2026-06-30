@@ -251,9 +251,15 @@ export interface ProjectScheduleSummaryResponse {
   technical_evidence?: Record<string, any>;
   [key: string]: any;
 }
-export function getProjectScheduleSummary(projectKey: string) {
+export function getProjectScheduleSummary(
+  projectKey: string,
+  opts?: { asOf?: string | null },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
   return fetchJson<ProjectScheduleSummaryResponse>(
-    `/api/projects/${encodeURIComponent(projectKey)}/schedule`,
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule${qs ? `?${qs}` : ''}`,
   );
 }
 export type ProjectScheduleMetricTrendResponse = {
@@ -336,8 +342,16 @@ export function getProjectScheduleDrilldown(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/drilldowns?${params.toString()}`,
   );
 }
-export function getProjectScheduleBaseline(projectKey: string) {
-  return fetchJson(`/api/projects/${encodeURIComponent(projectKey)}/schedule/baseline`);
+export function getProjectScheduleBaseline(
+  projectKey: string,
+  opts?: { asOf?: string | null },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/baseline${qs ? `?${qs}` : ''}`,
+  );
 }
 export function putProjectScheduleBaseline(
   projectKey: string,
