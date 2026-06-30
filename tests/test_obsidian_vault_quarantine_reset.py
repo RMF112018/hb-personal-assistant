@@ -67,6 +67,36 @@ def test_full_manifest_records_every_file(tmp_path: Path) -> None:
                 "classification", "planned_disposition"} <= set(r)
 
 
+def test_full_manifest_records_symlinks_without_following(tmp_path: Path) -> None:
+    """Symlinks are tagged as symlinks and NEVER followed; external targets are never traversed."""
+    vault = _make_vault(tmp_path)
+    # External target OUTSIDE the vault whose contents must never appear in the manifest.
+    external = tmp_path / "external_target"
+    (external / "secret_dir").mkdir(parents=True)
+    (external / "secret_dir" / "secret.md").write_text("external secret", encoding="utf-8")
+    external_file = tmp_path / "external_file.txt"
+    external_file.write_text("external file", encoding="utf-8")
+    # Symlinks inside the vault pointing outside it.
+    (vault / "link_to_dir").symlink_to(external / "secret_dir")
+    (vault / "link_to_file.md").symlink_to(external_file)
+
+    ev = tmp_path / "ev"
+    result = mod.do_dry_run(vault, ev, "syms", full_manifest=True)
+    records = [json.loads(line) for line in Path(result["full_manifest"]).read_text().splitlines()[1:]]
+    by_rel = {r["rel_path"]: r for r in records}
+
+    assert by_rel["link_to_dir"]["kind"] == "symlink"
+    assert by_rel["link_to_dir"]["classification"] == "symlink"
+    assert by_rel["link_to_file.md"]["kind"] == "symlink"
+    # The external target was neither followed nor traversed.
+    assert not any("secret" in r["rel_path"] for r in records)
+    assert not any(r["rel_path"].startswith("link_to_dir/") for r in records)
+    # Summary manifest also tags the top-level symlinks without following.
+    summary = json.loads(Path(result["summary_manifest"]).read_text())
+    sym_summary = {e["rel_path"]: e for e in summary["entries"] if e["kind"] == "symlink"}
+    assert "link_to_dir" in sym_summary and "link_to_file.md" in sym_summary
+
+
 def test_unsafe_paths_refused(tmp_path: Path) -> None:
     ev = str(tmp_path / "ev")
     for bad in ("/", str(Path.home()), str(Path.home() / "Documents"), ""):

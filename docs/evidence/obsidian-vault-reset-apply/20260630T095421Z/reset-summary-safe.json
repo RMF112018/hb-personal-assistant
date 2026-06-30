@@ -1,0 +1,33 @@
+{
+  "phase": "obsidian-mcp-phase-2-vault-quarantine-reset",
+  "session_id": "20260630T095421Z",
+  "timestamp": "2026-06-30T09:57:45Z",
+  "origin_main_commit": "a50a1040f7773887a18ccb5f090d2eafa035a2f8",
+  "manifest_type": "full_recursive",
+  "manifest_file_count": 17090,
+  "manifest_listed_total_bytes": 2470538290,
+  "manifest_jsonl_bytes": 6136583,
+  "manifest_sha256": "197a72fc259e331c92f32fd4e871a2c5b7b44734948fc2c93a086d44366e3859",
+  "manifest_kind_tallies": { "file": 17086, "symlink": 4 },
+  "manifest_classification_tallies": {
+    "system_artifact": 16662,
+    "markdown": 374,
+    "non_markdown_other": 50,
+    "symlink": 4
+  },
+  "active_vault_path": "/Users/bobbyfetting/Documents/Obsidian Vault",
+  "quarantine_path": "/Users/bobbyfetting/Documents/Obsidian Vault - QUARANTINED - 20260630T095421Z",
+  "reset_receipt_path": "docs/evidence/obsidian-vault-reset-apply/20260630T095421Z/vault-reset-receipt-20260630T095421Z.json",
+  "applied": true,
+  "quarantine_deleted": false,
+  "validation": {
+    "expected_dirs_all_present": true,
+    "expected_dirs_missing_count": 0,
+    "symlinks_recorded_not_followed": true,
+    "external_roots_ok": true,
+    "backend_running": false,
+    "targeted_tests_passed": true,
+    "targeted_tests_count": 107
+  },
+  "notes": "Full recursive manifest (with sensitive Work/Home filenames) and pre-reset inventory are retained in the LOCAL worktree evidence directory only and are intentionally NOT committed. This summary is path-free except for the vault/quarantine directory paths."
+}

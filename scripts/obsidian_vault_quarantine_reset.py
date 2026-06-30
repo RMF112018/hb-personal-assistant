@@ -147,57 +147,71 @@ def _planned_disposition(classification: str) -> str:
     return "move_to_quarantine"
 
 
+def _entry_record(vault: Path, abs_path: Path, *, kind: str) -> dict[str, Any] | None:
+    """Build one manifest record. Always uses ``os.lstat`` (NEVER follows a symlink), so metadata is
+    of the entry itself — never of a (possibly external) symlink target. ``kind`` is one of
+    file/dir/symlink; a symlink is classified as ``symlink`` and is never followed."""
+    try:
+        rel = str(abs_path.relative_to(vault))
+    except ValueError:
+        return None
+    top = rel.replace("\\", "/").split("/", 1)[0]
+    classification = "symlink" if kind == "symlink" else _classify(top, rel, is_dir=(kind == "dir"))
+    size = None
+    mtime = None
+    try:
+        st = os.lstat(abs_path)  # lstat: never follows the link
+        mtime = st.st_mtime_ns
+        if kind != "dir":
+            size = st.st_size
+    except OSError:
+        pass
+    return {
+        "rel_path": rel, "kind": kind,
+        "ext": "" if kind in ("dir", "symlink") else Path(rel).suffix.lower().lstrip("."),
+        "size_bytes": size, "mtime_ns": mtime, "top_folder": top,
+        "classification": classification,
+        "planned_disposition": _planned_disposition(classification),
+    }
+
+
 def _summary_manifest(vault: Path) -> list[dict[str, Any]]:
-    """Fast top-level preview — directories are not size-summed (no deep walk)."""
+    """Fast top-level preview — directories are not size-summed (no deep walk). Symlinks are tagged
+    and never followed (``is_symlink`` checked before ``is_dir``)."""
     rows: list[dict[str, Any]] = []
     for entry in sorted(vault.iterdir(), key=lambda p: p.name):
-        is_dir = entry.is_dir()
-        rel = entry.name
-        classification = _classify(rel, rel, is_dir)
-        size = None
-        mtime = None
-        try:
-            st = entry.stat()
-            mtime = st.st_mtime_ns
-            if not is_dir:
-                size = st.st_size
-        except OSError:
-            pass
-        rows.append({
-            "rel_path": rel, "kind": "dir" if is_dir else "file",
-            "ext": "" if is_dir else Path(rel).suffix.lower().lstrip("."),
-            "size_bytes": size, "mtime_ns": mtime, "top_folder": rel,
-            "classification": classification,
-            "planned_disposition": _planned_disposition(classification),
-        })
+        if entry.is_symlink():
+            kind = "symlink"
+        elif entry.is_dir():
+            kind = "dir"
+        else:
+            kind = "file"
+        rec = _entry_record(vault, entry, kind=kind)
+        if rec is not None:
+            rows.append(rec)
     return rows
 
 
 def _full_manifest_records(vault: Path):
-    """Yield one record per file (recursive). No content hashing (safe over multi-GB trees)."""
-    for dirpath, _dirnames, filenames in os.walk(vault):
+    """Yield one record per entry (recursive). Symlinks are recorded as symlinks and NEVER followed;
+    the walk does not descend into symlinked directories, so it never traverses outside the vault.
+    No content hashing (safe over multi-GB trees)."""
+    for dirpath, dirnames, filenames in os.walk(vault, followlinks=False):
+        # Record symlinked directories as symlink entries, then prune them so the walk never
+        # descends into them (a dir symlink could point outside the vault).
+        symlink_dirs = [d for d in dirnames if os.path.islink(os.path.join(dirpath, d))]
+        for d in symlink_dirs:
+            rec = _entry_record(vault, Path(dirpath) / d, kind="symlink")
+            if rec is not None:
+                yield rec
+        if symlink_dirs:
+            dirnames[:] = [d for d in dirnames if d not in symlink_dirs]
         for fname in filenames:
             abs_path = Path(dirpath) / fname
-            try:
-                rel = str(abs_path.relative_to(vault))
-            except ValueError:
-                continue
-            top = rel.replace("\\", "/").split("/", 1)[0]
-            classification = _classify(top, rel, is_dir=False)
-            size = None
-            mtime = None
-            try:
-                st = abs_path.stat()
-                size = st.st_size
-                mtime = st.st_mtime_ns
-            except OSError:
-                pass
-            yield {
-                "rel_path": rel, "kind": "file", "ext": Path(rel).suffix.lower().lstrip("."),
-                "size_bytes": size, "mtime_ns": mtime, "top_folder": top,
-                "classification": classification,
-                "planned_disposition": _planned_disposition(classification),
-            }
+            kind = "symlink" if os.path.islink(abs_path) else "file"
+            rec = _entry_record(vault, abs_path, kind=kind)
+            if rec is not None:
+                yield rec
 
 
 def _full_manifest_path(evidence_dir: Path, session_id: str) -> Path:
