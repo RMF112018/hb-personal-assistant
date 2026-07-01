@@ -1,0 +1,22 @@
+{
+  "activity_id": null,
+  "as_of": "2026-07-01",
+  "eligible_baseline_keys": [
+    "tropical|1069|2026-05-26 08:00",
+    "tropical|957|2026-01-29 08:00",
+    "tropical|851|2025-11-28 08:00",
+    "tropical|815|2025-08-07 08:00"
+  ],
+  "project_key": "tropical",
+  "selections": {
+    "current_contract_baseline": {
+      "schedule_version_key": "tropical|815|2025-08-07 08:00"
+    },
+    "previous_progress_update_baseline": {
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00"
+    },
+    "secondary_progress_update_baseline": {
+      "schedule_version_key": "tropical|851|2025-11-28 08:00"
+    }
+  }
+}

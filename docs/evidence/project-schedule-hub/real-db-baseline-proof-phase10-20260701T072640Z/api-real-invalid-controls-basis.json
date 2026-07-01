@@ -1,0 +1,6 @@
+{
+  "body": {
+    "detail": "invalid_comparison_basis"
+  },
+  "status": 400
+}

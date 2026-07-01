@@ -1,0 +1,139 @@
+{
+  "as_of_date": "2026-07-01",
+  "available": true,
+  "available_versions": [
+    {
+      "display_name": "TWNU19.zip",
+      "eligible_baseline": false,
+      "import_id": "beeb6dea0360",
+      "ineligibility_reason": "cannot_select_current_schedule_version",
+      "is_current_as_of": true,
+      "package_id": null,
+      "schedule_data_date": "2026-06-23",
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "source_label": "TWNU19.zip"
+    },
+    {
+      "display_name": "TWNU19.xml",
+      "eligible_baseline": false,
+      "import_id": "d99fec1afb5a",
+      "ineligibility_reason": "not_hub_eligible",
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-06-23",
+      "schedule_version_key": "tropical|TWNU19|2026-06-23T08:00:00",
+      "source_label": "TWNU19.xml"
+    },
+    {
+      "display_name": "TWNU19.xer",
+      "eligible_baseline": false,
+      "import_id": "a2778cdf208b",
+      "ineligibility_reason": "not_hub_eligible",
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-06-23",
+      "schedule_version_key": "tropical|24836|2026-06-23 08:00",
+      "source_label": "TWNU19.xer"
+    },
+    {
+      "display_name": "TWNU18.zip",
+      "eligible_baseline": true,
+      "import_id": "9a20e3de7c74",
+      "ineligibility_reason": null,
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-05-26",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "source_label": "TWNU18.zip"
+    },
+    {
+      "display_name": "TWNU18.xml",
+      "eligible_baseline": false,
+      "import_id": "7898325a1aca",
+      "ineligibility_reason": "not_hub_eligible",
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-05-26",
+      "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+      "source_label": "TWNU18.xml"
+    },
+    {
+      "display_name": "TWNU16.zip",
+      "eligible_baseline": true,
+      "import_id": "1aba677fcf98",
+      "ineligibility_reason": null,
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-01-29",
+      "schedule_version_key": "tropical|957|2026-01-29 08:00",
+      "source_label": "TWNU16.zip"
+    },
+    {
+      "display_name": "TWNU16.xml",
+      "eligible_baseline": false,
+      "import_id": "508129b6843b",
+      "ineligibility_reason": "not_hub_eligible",
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2026-01-29",
+      "schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00",
+      "source_label": "TWNU16.xml"
+    },
+    {
+      "display_name": "TWNU14.zip",
+      "eligible_baseline": true,
+      "import_id": "0f4bc830b623",
+      "ineligibility_reason": null,
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2025-11-28",
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "source_label": "TWNU14.zip"
+    },
+    {
+      "display_name": "TWNU07.zip",
+      "eligible_baseline": true,
+      "import_id": "55b57c7ea49f",
+      "ineligibility_reason": null,
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2025-08-07",
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "source_label": "TWNU07.zip"
+    },
+    {
+      "display_name": "TWNU07.xml",
+      "eligible_baseline": false,
+      "import_id": "b5b87f9190ce",
+      "ineligibility_reason": "not_hub_eligible",
+      "is_current_as_of": false,
+      "package_id": null,
+      "schedule_data_date": "2025-08-07",
+      "schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00",
+      "source_label": "TWNU07.xml"
+    }
+  ],
+  "current_schedule_data_date": "2026-06-23",
+  "current_schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "project_key": "tropical",
+  "slots": [
+    {
+      "selection": null,
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline",
+      "status": "missing"
+    },
+    {
+      "selection": null,
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline",
+      "status": "missing"
+    },
+    {
+      "selection": null,
+      "slot_key": "secondary_progress_update_baseline",
+      "slot_label": "Secondary Progress Update Baseline",
+      "status": "missing"
+    }
+  ]
+}

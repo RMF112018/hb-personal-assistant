@@ -1,0 +1,44 @@
+=== py_compile ===
+py_compile OK
+=== focused backend pytest ===
+........................................................................ [ 86%]
+...........                                                              [100%]
+=============================== warnings summary ===============================
+../../../hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=== frontend typecheck ===
+
+> frontend@0.0.0 typecheck
+> tsc -b
+
+=== frontend tests ===
+
+> frontend@0.0.0 test
+> vitest run ProjectSchedulePage ProjectScheduleWorkbenchPage ProjectScheduleDriverDetailPage scheduleApiAsOf scheduleBaselineLabels
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/schedule-real-db-baseline-proof-phase10-20260701T072640Z/frontend
+
+ ✓ src/lib/scheduleBaselineLabels.test.ts  (4 tests) 2ms
+ ✓ src/lib/scheduleApiAsOf.test.ts  (6 tests) 5ms
+stderr | src/pages/ProjectScheduleDriverDetailPage.test.tsx > ProjectScheduleDriverDetailPage > loads named basis from basis query param and shows humanized labels
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleDriverDetailPage.test.tsx  (3 tests) 83ms
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (5 tests) 264ms
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders a PM-facing above-fold schedule story and scoped project tab
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectSchedulePage.test.tsx  (17 tests) 734ms
+
+ Test Files  5 passed (5)
+      Tests  35 passed (35)
+   Start at  03:40:12
+   Duration  1.89s (transform 300ms, setup 312ms, collect 890ms, tests 1.09s, environment 1.74s, prepare 777ms)
+

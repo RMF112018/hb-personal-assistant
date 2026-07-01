@@ -1,0 +1,358 @@
+{
+  "body": {
+    "advisory_posture": "sequence_cues_not_causation",
+    "as_of_date": "2026-07-01",
+    "available": true,
+    "baseline_context": {
+      "baseline_display_name": "TWNU18.zip",
+      "baseline_schedule_data_date": "2026-05-26",
+      "baseline_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "basis": "previous_progress_update_baseline",
+      "notes": null,
+      "selected_at": "2026-07-01T07:32:42.270421+00:00",
+      "selected_by": "operator",
+      "selection_status": "selected",
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline"
+    },
+    "comparison_basis": "previous_progress_update_baseline",
+    "controls_language_qa": {
+      "advisory_posture": "sequence_cues_not_causation",
+      "passed": true,
+      "violations": []
+    },
+    "links": {
+      "export": "/api/projects/tropical/schedule/export?format=markdown&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+      "review_workbench": "/projects/tropical/schedule/workbench?comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+      "schedule_hub": "/projects/tropical/schedule"
+    },
+    "project_key": "tropical",
+    "provenance": {
+      "canonical_input_activity_count": null,
+      "canonical_input_relationship_count": null,
+      "comparison_label": "Compared against Previous Progress Update Baseline",
+      "cpm_run_id": null,
+      "import_id": null,
+      "package_id": null,
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "source_metric_keys": [
+        "change_driver_analysis",
+        "milestones",
+        "should_have_finished_status"
+      ],
+      "source_services": [
+        "project_schedule_summary_service",
+        "project_schedule_review_service",
+        "schedule_cpm_import_observability_repository"
+      ]
+    },
+    "reason": null,
+    "schedule_data_date": "2026-06-23",
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "sections": {
+      "cpm_observability": {
+        "available": false,
+        "headline": "No CPM observability record found for this schedule version.",
+        "status_summary": "not_found"
+      },
+      "critical_path": {
+        "available": true,
+        "critical_remaining_count": 613,
+        "headline": "Critical-path and near-critical remaining work indicators",
+        "near_critical_remaining_count": 0
+      },
+      "execution": {
+        "available": true,
+        "headline": "Execution reliability cues are surfaced via review signals when metric data is ready.",
+        "note": "See top controls for should-have-finished and window accuracy cues."
+      },
+      "float": {
+        "available": true,
+        "headline": "Remaining float pressure indicators",
+        "near_critical_count": 0,
+        "negative_float_count": 711,
+        "zero_float_count": 0
+      },
+      "movement": {
+        "available": true,
+        "comparison_basis": "previous_progress_update_baseline",
+        "finish_moved_earlier_count": 76,
+        "finish_moved_later_count": 461,
+        "headline": "Schedule movement since comparison context",
+        "worsened_float_count": 378
+      },
+      "quality": {
+        "available": true,
+        "headline": "Schedule quality findings appear as review cues when evaluations are available."
+      },
+      "review_workbench": {
+        "available": true,
+        "comparison_basis": "previous_progress_update_baseline",
+        "headline": "Review workbench preview counts for the selected comparison basis.",
+        "open_review_item_count": 130,
+        "read_only_baseline_preview": true,
+        "watching_count": 1
+      }
+    },
+    "summary": {
+      "headline": "Schedule controls recommend PM review of priority sequence and float signals.",
+      "high_priority_review_item_count": 8,
+      "open_review_item_count": 130,
+      "overall_status": "review",
+      "primary_review_focus": "Candidate change driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "supporting_points": [
+        "Compared against Previous Progress Update Baseline",
+        "461 remaining activities moved later in the comparison window.",
+        "711 remaining activities show negative float.",
+        "130 open review workbench cues in the selected basis."
+      ]
+    },
+    "top_controls": [
+      {
+        "activity_id": "FAB/DEL-10",
+        "activity_name": "FAB/DEL EXTERIOR LIGHT FIXTURES",
+        "as_of": "2026-07-01",
+        "category": "critical_path",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "driver:FAB/DEL-10",
+        "data_quality_notes": [],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FAB/DEL-10?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-10&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+        "review_item_id": "psri-108fca1c737247fb83d1d2342ed4cf75",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "change_driver_analysis",
+        "source_signal_type": "driver",
+        "summary": "Compared against Previous Progress Update Baseline. Candidate driver sequence cue for PM review.",
+        "title": "Candidate change driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "FAB/DEL-210",
+        "activity_name": "FAB/DEL WINDOW TREATMENT",
+        "as_of": "2026-07-01",
+        "category": "critical_path",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "driver:FAB/DEL-210",
+        "data_quality_notes": [],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FAB/DEL-210?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-210&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+        "review_item_id": "psri-542c9d5326d1418f860f64b5a5fd80b9",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "change_driver_analysis",
+        "source_signal_type": "driver",
+        "summary": "Compared against Previous Progress Update Baseline. Candidate driver sequence cue for PM review.",
+        "title": "Candidate change driver: FAB/DEL WINDOW TREATMENT",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "FAB/DEL-240",
+        "activity_name": "OWNER FAB/DEL IDENTIFICATION SIGNS",
+        "as_of": "2026-07-01",
+        "category": "critical_path",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "driver:FAB/DEL-240",
+        "data_quality_notes": [],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FAB/DEL-240?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-240&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+        "review_item_id": "psri-40e1eb80b2de4c69b5b599e801571511",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "change_driver_analysis",
+        "source_signal_type": "driver",
+        "summary": "Compared against Previous Progress Update Baseline. Candidate driver sequence cue for PM review.",
+        "title": "Candidate change driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "FILTER-OUT-20",
+        "activity_name": "ENVELOPE COMPLETION",
+        "as_of": "2026-07-01",
+        "category": "movement",
+        "caveats": [
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "milestone:FILTER-OUT-20",
+        "data_quality_notes": [],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FILTER-OUT-20?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-20&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Confirm milestone forecast movement against the current schedule update context.",
+        "review_item_id": "psri-541df91a2c1144bc9d5f9a15142353c1",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "milestones",
+        "source_signal_type": "milestone_moved_later",
+        "summary": "Compared against Previous Progress Update Baseline. Milestone forecast moved 26 days later since prior update.",
+        "title": "Milestone moved later: ENVELOPE COMPLETION",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "FM-PERMPOWER",
+        "activity_name": "PERM POWER",
+        "as_of": "2026-07-01",
+        "category": "movement",
+        "caveats": [
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "milestone:FM-PERMPOWER",
+        "data_quality_notes": [],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FM-PERMPOWER?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Confirm milestone forecast movement against the current schedule update context.",
+        "review_item_id": "psri-71fca9e3f6da4dd1b12f64776a4749ba",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "milestones",
+        "source_signal_type": "milestone_moved_later",
+        "summary": "Compared against Previous Progress Update Baseline. Milestone forecast moved 22 days later since prior update.",
+        "title": "Milestone moved later: PERM POWER",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "P2-01-RI-150",
+        "activity_name": "CEILING COVER-UP INSPECTION",
+        "as_of": "2026-07-01",
+        "category": "execution",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "metric:should_have_finished:delayed:P2-01-RI-150",
+        "data_quality_notes": [
+          "Classification is a PM review cue only; it does not infer responsibility or causation."
+        ],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/P2-01-RI-150?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP2-01-RI-150&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+        "review_item_id": "psri-1d70d04ac10d4ce79a57489c5bfa3759",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "should_have_finished_status",
+        "source_signal_type": "delayed_activity",
+        "summary": "Compared against Previous Progress Update Baseline. Activity due by data date is delayed and needs PM review.",
+        "title": "Should have finished: CEILING COVER-UP INSPECTION",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "FM-CNSTELEVS",
+        "activity_name": "ELEVATORS FOR CONSTRUCTION USE",
+        "as_of": "2026-07-01",
+        "category": "execution",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "metric:should_have_finished:delayed:FM-CNSTELEVS",
+        "data_quality_notes": [
+          "Classification is a PM review cue only; it does not infer responsibility or causation."
+        ],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/FM-CNSTELEVS?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AFM-CNSTELEVS&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+        "review_item_id": null,
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "should_have_finished_status",
+        "source_signal_type": "delayed_activity",
+        "summary": "Compared against Previous Progress Update Baseline. Activity due by data date is delayed and needs PM review.",
+        "title": "Should have finished: ELEVATORS FOR CONSTRUCTION USE",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      },
+      {
+        "activity_id": "P1A-POWER-70",
+        "activity_name": "FAB/DEL FPL METERS",
+        "as_of": "2026-07-01",
+        "category": "execution",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+          "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+        ],
+        "comparison_basis": "previous_progress_update_baseline",
+        "confidence": "high",
+        "control_id": "metric:should_have_finished:delayed:P1A-POWER-70",
+        "data_quality_notes": [
+          "Classification is a PM review cue only; it does not infer responsibility or causation."
+        ],
+        "links": {
+          "driver_detail": "/projects/tropical/schedule/drivers/P1A-POWER-70?basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=previous_progress_update_baseline&as_of=2026-07-01",
+          "schedule_hub": "/projects/tropical/schedule"
+        },
+        "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+        "review_item_id": "psri-f23c43f55c9941539fc62476b9760cbd",
+        "schedule_data_date": "2026-06-23",
+        "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+        "severity": "review",
+        "source_metric_key": "should_have_finished_status",
+        "source_signal_type": "delayed_activity",
+        "summary": "Compared against Previous Progress Update Baseline. Activity due by data date is delayed and needs PM review.",
+        "title": "Should have finished: FAB/DEL FPL METERS",
+        "wbs_code": null,
+        "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review."
+      }
+    ]
+  },
+  "status": 200
+}
