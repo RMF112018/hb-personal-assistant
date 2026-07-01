@@ -31,6 +31,26 @@ from tests.schedule_project_test_helpers import seed_procore_ep_project
 
 RAW_VERSION_PATTERN = re.compile(r"[A-Za-z0-9_-]+\|[A-Za-z0-9_-]+\|\d{4}-\d{2}-\d{2}")
 
+# Phase 13 provenance keys are intentional in PM comparison context.
+_ALLOWED_PM_PROVENANCE_KEYS = frozenset(
+    {
+        "comparison_schedule_version_key",
+        "current_schedule_version_key",
+        "baseline_schedule_version_key",
+        "selected_baseline_schedule_version_key",
+        "previous_version_key",
+    }
+)
+_FORBIDDEN_PM_FIELD_KEYS = frozenset(
+    {
+        "schedule_version_key",
+        "schedule_identity_key",
+        "computed_cpm_health",
+        "identity_safe",
+        "source_export_proxy",
+    }
+)
+
 
 def _viewer() -> dict[str, str]:
     return {"X-HB-UI-Role": "viewer"}
@@ -521,17 +541,36 @@ def _assert_default_pm_fields_have_no_raw_identifiers(body: dict[str, Any]) -> N
         for key, value in body.items()
         if key not in {"technical_links", "technical_evidence"}
     }
-    payload = json.dumps(default, sort_keys=True)
-    forbidden = (
-        "schedule_version_key",
-        "schedule_identity_key",
-        "computed_cpm_health",
-        "identity_safe",
-        "source_export_proxy",
-    )
-    for token in forbidden:
-        assert token not in payload
-    assert RAW_VERSION_PATTERN.search(payload) is None
+
+    def _walk(obj: Any, *, path: tuple[str, ...] = (), parent_key: str | None = None) -> None:
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                current_path = (*path, key)
+                if key in _FORBIDDEN_PM_FIELD_KEYS:
+                    raise AssertionError(
+                        f"forbidden PM field key at {'.'.join(current_path)}: {key}"
+                    )
+                if key in _ALLOWED_PM_PROVENANCE_KEYS:
+                    if isinstance(value, (dict, list)):
+                        _walk(value, path=current_path, parent_key=key)
+                    continue
+                if isinstance(value, (dict, list)):
+                    _walk(value, path=current_path, parent_key=key)
+                elif isinstance(value, str) and RAW_VERSION_PATTERN.search(value):
+                    raise AssertionError(
+                        f"raw schedule version token in PM field at {'.'.join(current_path)}"
+                    )
+            return
+        if isinstance(obj, list):
+            for index, item in enumerate(obj):
+                _walk(item, path=(*path, str(index)), parent_key=parent_key)
+            return
+        if parent_key not in _ALLOWED_PM_PROVENANCE_KEYS and isinstance(obj, str):
+            if RAW_VERSION_PATTERN.search(obj):
+                label = ".".join(path) if path else "<root>"
+                raise AssertionError(f"raw schedule version token in PM field at {label}")
+
+    _walk(default)
 
 
 def _assert_default_lists_are_capped(body: dict[str, Any]) -> None:
