@@ -21,6 +21,7 @@ from .config import ExternalSourceRoot, ObsidianMcpConfig
 from .source_index_repository import SourceIndexRepository
 from .source_skip_codes import (
     DEFERRED_PATH,
+    EMAIL_ARCHIVE_SELF_INDEX_GUARD,
     EXCLUDED_PATH,
     SOURCE_NOTES_SELF_INDEX_GUARD,
     UNSUPPORTED_FILE_TYPE,
@@ -88,6 +89,24 @@ def is_source_notes_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
     return rel == folder or rel.startswith(folder + "/")
 
 
+# Top-level vault root for Phase-10E full-email archive notes (see Amendment #4). Kept as a module
+# constant (not a config field) so it needs no config-schema version bump — the location is fixed.
+EMAIL_ARCHIVE_FOLDER = "Email Archive"
+
+
+def is_email_archive_path(rel_path: str) -> bool:
+    """True if a vault-relative path is a Phase-10E full-email archive note.
+
+    Archive notes carry full bodies/addresses/message-ids and must NEVER be self-indexed into the
+    note FTS (nor treated as a source card). Unlike ``is_source_notes_path`` they live in a SEPARATE
+    top-level root (``Email Archive/Work/...``), so protection is keyed on the archive-root prefix,
+    normalized + case-insensitive.
+    """
+    rel = str(rel_path).replace("\\", "/").strip("/").lower()
+    folder = EMAIL_ARCHIVE_FOLDER.lower()
+    return rel == folder or rel.startswith(folder + "/")
+
+
 def match_path_to_project(rel_path: str) -> tuple[str | None, str | None, str]:
     """Deterministic HB project-number extraction from a path. Returns (key, number, confidence).
 
@@ -120,6 +139,16 @@ def _extract(path: Path, ext: str, max_chars: int) -> dict[str, Any]:
         except OSError as exc:  # unreadable
             return {"text_excerpt": "", "char_count": 0, "extraction_status": "failed",
                     "failure_code": type(exc).__name__}
+    if ext == "eml":
+        # First-class email (Phase 10E): deterministic MIME body as the indexed excerpt. The full
+        # headers/attachments live in the archive note; only the body text is indexed here.
+        from .source_email_archive import parse_email_file
+        em = parse_email_file(path)
+        status = "ok" if em.parse_status == "complete" else (
+            "failed" if em.parse_status == "failed" else "partial")
+        return {"text_excerpt": em.canonical_body_markdown[:max_chars],
+                "char_count": len(em.canonical_body_markdown[:max_chars]),
+                "extraction_status": status}
     try:
         if ext == "pdf":
             from hb_assistant.files.parsers.pdf import PDFParser
@@ -264,10 +293,11 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         if not abs_path.is_file():
             continue
         rel_path = str(abs_path.relative_to(vault_root))
-        # Never re-index our own generated source cards (Source Notes/...) as vault notes — that
-        # would feed the watcher its own writes and create recursive source work.
+        # Never re-index our own generated source cards (Source Notes/...) or full-email archive
+        # notes (Email Archive/...) as vault notes — that would feed the watcher its own writes and,
+        # for archives, leak full email bodies/addresses into the note FTS.
         if (should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config)
-                or is_source_notes_path(rel_path, config)
+                or is_source_notes_path(rel_path, config) or is_email_archive_path(rel_path)
                 or pathsafe.symlink_escapes(abs_path, vault_root)):
             continue
         report.scanned += 1
@@ -523,6 +553,13 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 # named "Source Notes" is NOT caught here and is indexed normally below.
                 repo.complete_event(event["event_id"], "skipped",
                                     error_code=SOURCE_NOTES_SELF_INDEX_GUARD)
+            elif (event["source_root_key"] == _VAULT_ROOT_KEY and event["rel_path"]
+                    and is_email_archive_path(event["rel_path"])):
+                # Self-index guard (drain backstop): a Phase-10E full-email archive note on the VAULT
+                # root must never re-enter source processing (it holds full bodies/addresses). Scoped
+                # to the vault root + the Email Archive/ prefix, mirroring the Source Notes guard above.
+                repo.complete_event(event["event_id"], "skipped",
+                                    error_code=EMAIL_ARCHIVE_SELF_INDEX_GUARD)
             elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
                 # Excluded dependency/build path: skip cleanly (not an error, not indexed, no card).
                 repo.complete_event(event["event_id"], "skipped", error_code=EXCLUDED_PATH)

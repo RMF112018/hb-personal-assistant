@@ -50,7 +50,7 @@ _DOCTYPE_CONTENT = {
     "reference_document": "reference", "template_form": "template-form", "spreadsheet": "spreadsheet",
     "communications_matrix": "spreadsheet", "coordination_matrix": "spreadsheet",
     "staffing_report": "spreadsheet", "general_pdf": "correspondence",
-    "general_document": "correspondence",
+    "general_document": "correspondence", "email": "correspondence",
 }
 _DISP_TAG = {"auto_card_high": "auto-card-high", "metadata_only": "metadata-only"}
 _REL_TAG = {
@@ -100,6 +100,15 @@ class NoteFact:
     # Canonical Procore identity parsed from the card's hb-project-identity block (Phase 10D).
     canonical_project_key: str | None = None
     procore_project_id: str | None = None
+    # Graph-safe email facts parsed from the card's hb-email block (Phase 10E). All deterministic
+    # metadata — never body text. Participant/attachment refs are hashes, domains are plain.
+    thread_topic: str | None = None
+    subject_norm: str | None = None
+    from_domain: str | None = None
+    email_domains: frozenset[str] = frozenset()
+    participant_hashes: frozenset[str] = frozenset()
+    attachment_hashes: frozenset[str] = frozenset()
+    project_alias: str | None = None
 
 
 def _norm(s: str | None) -> str:
@@ -200,6 +209,15 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
     # Canonical Procore identity from the managed hb-project-identity block, if present.
     from .source_project_identity import parse_identity_marker
     ident = parse_identity_marker(card_text) or {}
+    # Graph-safe email facts from the managed hb-email block (Phase 10E), if present.
+    from .source_email_archive import parse_email_marker
+
+    def _split(val: str | None) -> frozenset[str]:
+        return frozenset(x for x in (val or "").split(",") if x)
+    em = parse_email_marker(card_text) or {}
+    email_domains = _split(em.get("recipient_domains"))
+    if em.get("from_domain"):
+        email_domains = email_domains | {str(em["from_domain"]).lower()}
     return NoteFact(
         note_id=source_id, note_rel=note_rel, basename=basename, display=_display_name(basename),
         project=_norm(detail.get("project_number") or detail.get("project_key")) or None,
@@ -208,7 +226,14 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
         disposition=disp, review_needed=review, title_tokens=_title_tokens(basename),
         existing_tags=tuple(tags if ok else []), summary_text=summary,
         canonical_project_key=_norm(ident.get("project_key")) or None,
-        procore_project_id=_norm(ident.get("procore_project_id")) or None)
+        procore_project_id=_norm(ident.get("procore_project_id")) or None,
+        thread_topic=_norm(em.get("thread_topic")) or None,
+        subject_norm=_norm(em.get("subject_norm")) or None,
+        from_domain=(str(em.get("from_domain")).lower() or None) if em.get("from_domain") else None,
+        email_domains=email_domains,
+        participant_hashes=_split(em.get("participant_hashes")),
+        attachment_hashes=_split(em.get("attachment_hashes")),
+        project_alias=_norm(em.get("project_alias")) or None)
 
 
 def _section_body(text: str, heading: str) -> list[str]:
@@ -234,7 +259,8 @@ class Candidate:
 
 
 # Signals that are informative for reporting but NOT strong enough alone to make a candidate.
-_WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type"})
+# same_email_domain is weak: a shared big-GC/owner domain must not link two unrelated emails.
+_WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type", "same_email_domain"})
 
 
 def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
@@ -261,6 +287,20 @@ def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
     if (a.doc_date and b.doc_date and a.doc_date == b.doc_date
             and a.project and a.project == b.project):
         s.append("same_date_same_project")
+    # Email metadata signals (Phase 10E) — deterministic, never body-derived. Strong: thread topic,
+    # normalized subject, a shared participant, a shared attachment, a subject-detected project alias.
+    if a.thread_topic and b.thread_topic and a.thread_topic == b.thread_topic:
+        s.append("same_thread_topic")
+    if a.subject_norm and b.subject_norm and a.subject_norm == b.subject_norm:
+        s.append("same_subject_normalized")
+    if a.participant_hashes & b.participant_hashes:
+        s.append("same_participant")
+    if a.attachment_hashes & b.attachment_hashes:
+        s.append("same_attachment_ref")
+    if a.project_alias and b.project_alias and a.project_alias == b.project_alias:
+        s.append("same_project_alias")
+    if a.email_domains & b.email_domains:
+        s.append("same_email_domain")  # weak / reporting only
     return s
 
 
