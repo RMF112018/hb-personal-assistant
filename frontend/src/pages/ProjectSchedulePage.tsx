@@ -700,7 +700,7 @@ export function ProjectSchedulePage() {
                     asOf: requestAsOf,
                   })}
                 >
-                  Open driver {focusDriver}
+                  Open focused driver detail
                 </Link>
               )}
               {focusReview && (

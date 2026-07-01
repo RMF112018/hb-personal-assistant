@@ -51,6 +51,32 @@ export function normalizeBaselineContext(ctx: Record<string, unknown> | null | u
   }
 }
 
+export function formatBaselineSelectionSummary(opts: {
+  displayName?: string | null
+  dataDate?: string | null
+}): string {
+  const name = opts.displayName?.trim() || null
+  const date = opts.dataDate?.trim() || null
+  if (date && name) return `${date} · ${name}`
+  if (name) return name
+  if (date) return `Data date ${date}`
+  return '—'
+}
+
+export function formatNamedComparisonContextLine(opts: {
+  slotLabel?: string | null
+  displayName?: string | null
+  dataDate?: string | null
+  asOf?: string | null
+}): string {
+  const slot = opts.slotLabel?.trim() || 'Comparison anchor'
+  const anchor = formatBaselineSelectionSummary({ displayName: opts.displayName, dataDate: opts.dataDate })
+  const parts = [`Comparing against ${slot}`]
+  if (anchor !== '—') parts.push(anchor)
+  if (opts.asOf) parts.push(`As of ${opts.asOf}`)
+  return parts.join(' · ')
+}
+
 export function workbenchHref(
   projectKey: string,
   opts?: { asOf?: string; comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline' },

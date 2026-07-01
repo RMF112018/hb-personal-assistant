@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   driverDetailHref,
+  formatBaselineSelectionSummary,
+  formatNamedComparisonContextLine,
   isAllowedControlsComparisonBasis,
   labelForComparisonBasis,
   normalizeBaselineContext,
@@ -68,5 +70,25 @@ describe('scheduleBaselineLabels', () => {
       '/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-10&comparison_basis=current_contract_baseline&as_of=2026-07-03',
     )
     expect(href).not.toMatch(/\/schedule\/drivers\/FAB/)
+  })
+
+  it('formats baseline selection summary with date before display name', () => {
+    expect(
+      formatBaselineSelectionSummary({
+        displayName: 'TWNU07.zip',
+        dataDate: '2025-08-07',
+      }),
+    ).toBe('2025-08-07 · TWNU07.zip')
+  })
+
+  it('formats named comparison context without raw version keys', () => {
+    expect(
+      formatNamedComparisonContextLine({
+        slotLabel: 'Current Contract Baseline',
+        displayName: 'TWNU07.zip',
+        dataDate: '2025-08-07',
+        asOf: '2026-07-01',
+      }),
+    ).toBe('Comparing against Current Contract Baseline · 2025-08-07 · TWNU07.zip · As of 2026-07-01')
   })
 })

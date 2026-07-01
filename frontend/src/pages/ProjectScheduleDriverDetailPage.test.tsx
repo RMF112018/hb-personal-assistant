@@ -82,8 +82,8 @@ describe('ProjectScheduleDriverDetailPage', () => {
         comparisonBasis: 'current_contract_baseline',
       })
     })
-    expect(await screen.findByText(/Current Contract Baseline/)).toBeInTheDocument()
-    expect(screen.getByText(/Contract baseline issued 2026-06-01/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Concrete pour' })).toBeInTheDocument()
+    expect(screen.getByText(/Comparing against Current Contract Baseline/)).toBeInTheDocument()
     expect(screen.queryByText(/current_contract_baseline/)).not.toBeInTheDocument()
   })
 
@@ -108,7 +108,7 @@ describe('ProjectScheduleDriverDetailPage', () => {
     renderPage(
       '/projects/tropical/schedule/driver-detail?activity_id=DRV-A&basis=prior_update&comparison_basis=current_contract_baseline',
     )
-    await screen.findByText(/comparison_basis and basis conflict/)
+    await screen.findByText(/two different comparison modes were requested/)
     expect(getProjectScheduleDriverDetailMock).not.toHaveBeenCalled()
   })
 

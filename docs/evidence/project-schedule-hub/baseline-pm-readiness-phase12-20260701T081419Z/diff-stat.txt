@@ -1,0 +1,11 @@
+ .../project-schedule/ScheduleBaselineSelector.tsx  | 17 ++++++--
+ .../project-schedule/ScheduleControlsPanel.tsx     | 51 +++++++++++++++++++---
+ frontend/src/lib/scheduleBaselineLabels.test.ts    | 22 ++++++++++
+ frontend/src/lib/scheduleBaselineLabels.ts         | 26 +++++++++++
+ .../pages/ProjectScheduleDriverDetailPage.test.tsx |  6 +--
+ .../src/pages/ProjectScheduleDriverDetailPage.tsx  | 47 ++++++++++++++++----
+ frontend/src/pages/ProjectSchedulePage.test.tsx    | 31 +++++++++++++
+ frontend/src/pages/ProjectSchedulePage.tsx         |  2 +-
+ .../pages/ProjectScheduleWorkbenchPage.test.tsx    |  7 ++-
+ .../src/pages/ProjectScheduleWorkbenchPage.tsx     | 40 ++++++++++++++++-
+ 10 files changed, 224 insertions(+), 25 deletions(-)

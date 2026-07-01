@@ -9,6 +9,7 @@ import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceSh
 import { api } from '../lib/api'
 import type { ReviewWorkbenchComparisonBasis } from '../lib/api'
 import {
+  formatNamedComparisonContextLine,
   labelForComparisonBasis,
   normalizeBaselineContext,
   workbenchHref as buildWorkbenchHref,
@@ -71,8 +72,8 @@ export function ProjectScheduleDriverDetailPage() {
   if (!basisResolution.ok) {
     const message =
       basisResolution.reason === 'conflicting_comparison_params'
-        ? 'Driver detail cannot load because comparison_basis and basis conflict.'
-        : 'Driver detail cannot load because comparison_basis is invalid.'
+        ? 'Driver detail cannot load because two different comparison modes were requested.'
+        : 'Driver detail cannot load because the requested comparison mode is not supported.'
     return (
       <ProjectWorkspaceShell>
         <ErrorState userMessage={message} />
@@ -131,6 +132,13 @@ export function ProjectScheduleDriverDetailPage() {
   const activity = detail.activity || {}
   const baselineCtx = normalizeBaselineContext(detail.baseline_context)
   const basisLabel = baselineCtx.slotLabel || labelForComparisonBasis(String(detail.comparison_basis || ''))
+  const activityTitle = text(activity.activity_name, 'Unnamed activity')
+  const comparisonContextLine = formatNamedComparisonContextLine({
+    slotLabel: basisLabel,
+    displayName: baselineCtx.displayName,
+    dataDate: baselineCtx.dataDate,
+    asOf: asOfDate || null,
+  })
   const downstream = Array.isArray(detail.downstream_impacts) ? detail.downstream_impacts : []
   const upstream = Array.isArray(detail.upstream_path) ? detail.upstream_path : []
   const logic = Array.isArray(detail.logic_changes) ? detail.logic_changes : []
@@ -140,12 +148,9 @@ export function ProjectScheduleDriverDetailPage() {
       <section className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="section-title mb-0">Driver Detail</h3>
-            <p className="mt-1 text-sm text-[var(--hb-muted)]">
-              {text(activity.activity_name) || 'Unnamed activity'} · {basisLabel}
-              {baselineCtx.displayName ? ` · ${baselineCtx.displayName}` : ''}
-              {asOfDate ? ` · As of ${asOfDate}` : ''}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">Driver detail</p>
+            <h3 className="section-title mb-0 mt-1">{activityTitle}</h3>
+            <p className="mt-1 text-sm text-[var(--hb-muted)]">{comparisonContextLine}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link className="badge" to={workbenchLink}>
@@ -211,14 +216,38 @@ export function ProjectScheduleDriverDetailPage() {
             <ul className="mt-2 space-y-1 text-sm">
               {logic.map((row: any, index: number) => (
                 <li key={`${row.change_type}-${index}`}>
-                  {text(row.change_type)} {text(row.predecessor_activity_id)} → {text(row.successor_activity_id)}
+                  {text(row.change_type, 'Relationship change')}
+                  {row.predecessor_activity_name || row.successor_activity_name
+                    ? `: ${text(row.predecessor_activity_name, 'Unnamed activity')} → ${text(row.successor_activity_name, 'Unnamed activity')}`
+                    : null}
                 </li>
               ))}
             </ul>
+            <details className="mt-3 text-xs text-[var(--hb-muted)]">
+              <summary className="cursor-pointer">Technical relationship IDs</summary>
+              <ul className="mt-2 space-y-1">
+                {logic.map((row: any, index: number) => (
+                  <li key={`tech-${row.change_type}-${index}`}>
+                    {text(row.change_type)} {text(row.predecessor_activity_id)} → {text(row.successor_activity_id)}
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         )}
 
         <p className="text-xs text-[var(--hb-muted)]">{text(detail.sequence_cue)}</p>
+
+        <p className="text-xs text-[var(--hb-muted)]">
+          Schedule movement and sequence cues are advisory review signals. They do not determine causation,
+          entitlement, or responsibility.
+        </p>
+
+        <details className="text-xs text-[var(--hb-muted)]">
+          <summary className="cursor-pointer">Technical activity reference</summary>
+          <p className="mt-2">Activity ID: {text(activity.activity_id || activityId)}</p>
+          {baselineCtx.versionKey ? <p>Schedule version key: {baselineCtx.versionKey}</p> : null}
+        </details>
       </section>
     </ProjectWorkspaceShell>
   )

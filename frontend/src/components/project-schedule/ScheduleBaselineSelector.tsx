@@ -2,6 +2,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { api, getLocalUiRole } from '../../lib/api'
+import { formatBaselineSelectionSummary } from '../../lib/scheduleBaselineLabels'
 import { SectionCard } from '../common/SectionCard'
 
 function text(value: unknown, fallback = '—') {
@@ -62,7 +63,8 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
   return (
     <SectionCard title="Baseline Anchors">
       <p className="mb-3 text-xs text-[var(--hb-muted)]">
-        Assign prior schedule versions to named comparison anchors for Schedule Controls.
+        Assign a prior schedule update to each of the three named comparison anchors. Schedule Controls and the
+        Workbench use these anchors when you select a named baseline comparison.
       </p>
       <div className="space-y-3">
         {slots.map((slot: any) => {
@@ -75,15 +77,22 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
             <div key={slotKey} className="rounded border border-[var(--hb-border)] p-3">
               <div className="text-sm font-medium">{label}</div>
               {status === 'missing' && (
-                <p className="mt-1 text-sm text-[var(--hb-muted)]">No {label} selected.</p>
+                <p className="mt-1 text-sm text-[var(--hb-muted)]">
+                  Select a prior schedule update for this anchor.
+                </p>
               )}
               {status === 'selected' && selection && (
                 <p className="mt-1 text-sm text-[var(--hb-muted)]">
-                  {text(selection.display_name)} · data date {text(selection.schedule_data_date)}
+                  {formatBaselineSelectionSummary({
+                    displayName: selection.display_name,
+                    dataDate: selection.schedule_data_date,
+                  })}
                 </p>
               )}
               {status === 'invalid' && (
-                <p className="mt-1 text-sm text-amber-400">Selected baseline is invalid for the current as-of context.</p>
+                <p className="mt-1 text-sm text-amber-400">
+                  Selected schedule update is invalid for the current as-of context. Choose another update below.
+                </p>
               )}
               {canEdit ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
