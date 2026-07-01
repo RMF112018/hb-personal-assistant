@@ -105,3 +105,47 @@ def test_build_analytics_trust_ledger_surfaces_ignored_companion_files() -> None
         ],
     )
     assert any("report.html" in reason for reason in ledger["trust_reasons"])
+
+
+def test_identity_gate_blocked_overrides_ready_cpm_and_quality() -> None:
+    assert (
+        resolve_analytics_trust_status(
+            phase="hub",
+            cpm_status="complete",
+            quality_status="complete",
+            identity_status="complete",
+            identity_membership_status="accepted",
+            identity_gate="blocked",
+        )
+        == "blocked"
+    )
+
+
+def test_identity_gate_degraded_caps_ready_even_when_other_gates_pass() -> None:
+    assert (
+        resolve_analytics_trust_status(
+            phase="hub",
+            cpm_status="complete",
+            quality_status="complete",
+            identity_status="complete",
+            identity_membership_status="accepted",
+            identity_gate="degraded",
+        )
+        == "degraded"
+    )
+
+
+def test_preview_source_project_mismatch_blocks_analytics() -> None:
+    assert (
+        resolve_analytics_trust_status(
+            phase="preview",
+            parse_status="complete",
+            trust_warnings=[
+                {
+                    "code": "source_project_mismatch",
+                    "message": "Source project ID in the file does not match the linked project record.",
+                }
+            ],
+        )
+        == "blocked"
+    )

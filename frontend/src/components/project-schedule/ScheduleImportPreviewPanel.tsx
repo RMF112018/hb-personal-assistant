@@ -25,6 +25,12 @@ export function ScheduleImportPreviewPanel({ preview, previewIsSupersede }: Prop
   const equivalence = preview.equivalence_report || {}
   const warningCount = countPreviewWarnings(preview)
   const trustWarnings = preview.trust_preview?.warnings || []
+  const identityTrust = (preview.analytics_trust as Record<string, unknown> | undefined)?.identity_trust as
+    | Record<string, unknown>
+    | undefined
+  const identityMessage = String(
+    identityTrust?.pm_message || (preview.analytics_trust as Record<string, unknown> | undefined)?.pm_message || '',
+  )
 
   return (
     <div className="space-y-3 text-sm" data-testid="schedule-import-preview-panel">
@@ -119,6 +125,13 @@ export function ScheduleImportPreviewPanel({ preview, previewIsSupersede }: Prop
           {preview.relationship_count ?? '—'}
         </p>
       </div>
+
+      {identityMessage ? (
+        <div className="rounded border border-amber-700/40 bg-amber-950/20 p-3 text-sm">
+          <p className="font-medium">Identity trust</p>
+          <p className="mt-1 text-[var(--hb-muted)]">{identityMessage}</p>
+        </div>
+      ) : null}
 
       {warningCount > 0 ? (
         <div className="rounded border border-amber-700/40 bg-amber-950/20 p-3 space-y-1">
