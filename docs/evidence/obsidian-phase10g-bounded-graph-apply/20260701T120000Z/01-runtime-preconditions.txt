@@ -1,0 +1,34 @@
+Phase 10G — Runtime Preconditions (read-only snapshot, before any live run)
+==========================================================================
+Config: ~/Library/Application Support/HB Personal Assistant/analytics/obsidian_mcp_config.json
+  enabled = True
+  vault_root = /Users/bobbyfetting/Documents/Obsidian Vault   (matches --vault-path)
+  external_source_watch_enabled       = False
+  source_card_auto_generate_enabled   = False
+  source_summary_auto_generate_enabled= False
+  source_note_auto_refresh_enabled    = False   (all frozen flags false — OK)
+  summarization_model = qwen2.5:14b
+
+DB: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+  schema_version = 97
+  journal_mode   = wal
+  queue queued/processing = 0 / 0   (empty — OK)
+  generated_notes by status: generated=128, not_generated=67
+  Source Notes/Work/ generated cards = 128
+
+Ollama (localhost:11434): qwen2.5:14b present (also mistral-nemo:12b, gpt-oss:20b, llama3.1:8b, nomic-embed-text)
+
+Tropical corpus (rough vault substring scan of Source Notes/Work/*.md — real filter is via parsed
+  hb-project-identity block + DB detail, computed authoritatively by the applier dry-run):
+  ~103 candidate Tropical cards (~91 project, 9 email, 3 attachment). Exceeds default --max-notes 25;
+  real run needs --max-notes 125.
+  Existing gc-graph-links blocks in vault: 0 (Phase 10C pilot was a no-op; nothing to orphan).
+
+BLOCKERS to a live run (all must be resolved before selection/vet dry-run or apply):
+  1. Backend on 127.0.0.1:8000 is LISTENING (PID 62374). It is owned by a DIFFERENT active worktree
+     (cwd fix/schedule-named-baseline-comparison-accuracy-...), Homebrew Python 3.14, not this session.
+     - It is a hard-stop precondition for --apply.
+     - It ALSO blocks read-only dry-runs: the applier's _ro opens the DB with mode=ro, which fails on a
+       hot WAL while the backend holds it open ("unable to open database file"). So NO live script run
+       (even dry-run) is possible until this backend is stopped and the WAL is checkpointed.
+  => Stopping it is disruptive to a concurrent worktree; deferred pending operator confirmation.

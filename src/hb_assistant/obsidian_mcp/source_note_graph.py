@@ -19,10 +19,18 @@ RELATIONSHIP_TYPES = frozenset({
     "same_project", "same_company", "same_person", "same_decision", "same_meeting", "same_schedule",
     "same_cost_topic", "same_contract_topic", "same_rfi_or_submittal_topic",
     "same_drawing_or_scope_area", "same_reference_family", "supersedes_or_revises",
-    "supports_or_explains", "potential_duplicate", "weak_context_only", "reject",
+    "supports_or_explains", "potential_duplicate", "same_source_duplicate", "same_email_duplicate",
+    "weak_context_only", "reject",
 })
-# Types we will actually write reciprocal links for.
-_NON_APPLY = frozenset({"reject", "weak_context_only", "potential_duplicate"})
+# Review-only relationship types: recognized for reporting/vetting but NEVER written as durable
+# reciprocal links in Phase 10G. `same_project` is context/secondary evidence only (a project link is
+# not a durable relationship — Phase 10G amendment). The duplicate types describe same-source /
+# same-email pairs surfaced for human review, never durably linked by default.
+REVIEW_ONLY_TYPES = frozenset({"potential_duplicate", "same_source_duplicate", "same_email_duplicate",
+                               "same_project"})
+# Types we will actually write reciprocal links for. same_project + duplicate types are excluded, so
+# validate_vet rejects them for durable apply (no link, and same_project gets no tag either).
+_NON_APPLY = frozenset({"reject", "weak_context_only"}) | REVIEW_ONLY_TYPES
 APPLY_TYPES = RELATIONSHIP_TYPES - _NON_APPLY
 
 # --- Controlled tag taxonomy --------------------------------------------------------------------
@@ -35,9 +43,10 @@ DISPOSITION_TAGS = frozenset(
 RELATED_TAGS = frozenset(
     f"related/{t}" for t in
     ("project", "company", "person", "schedule", "cost", "contract", "scope", "meeting", "rfi",
-     "submittal", "drawing", "reference"))
+     "submittal", "drawing", "reference", "email", "attachment"))
 REVIEW_TAGS = frozenset(
-    f"review/{t}" for t in ("needs-human-check", "weak-relationship", "qwen-vetted", "metadata-only"))
+    f"review/{t}" for t in ("needs-human-check", "weak-relationship", "qwen-vetted", "metadata-only",
+                            "project-context"))
 APPROVED_QWEN_TAGS = RELATED_TAGS | REVIEW_TAGS  # the only tags Qwen may pick
 
 _DOCTYPE_CONTENT = {
@@ -63,8 +72,8 @@ _STRICTER_TYPES = frozenset({"template_form", "reference_document", "metadata_on
                              "spreadsheet", "communications_matrix", "coordination_matrix"})
 
 LOCAL_MODEL = "qwen2.5:14b"
-REL_BLOCK_BEGIN = "<!-- hb-related-notes:start -->"
-REL_BLOCK_END = "<!-- hb-related-notes:end -->"
+REL_BLOCK_BEGIN = "<!-- gc-graph-links:start -->"
+REL_BLOCK_END = "<!-- gc-graph-links:end -->"
 _RELATED_SECTIONS = ("## Related Project", "## Related People / Companies", "## Related Decisions",
                      "## Related Meetings")
 _SECTION_FOR_REL = {
@@ -113,6 +122,11 @@ class NoteFact:
     parent_email_hash: str | None = None
     attachment_sha256s: frozenset[str] = frozenset()
     attachment_extension: str | None = None
+    # Duplicate-detection facts (Phase 10G correction): per-source content hash (from DB detail) and
+    # the email message-id hash (from the hb-email block). Equal values => same-source / same-email
+    # duplicates, which are review-only and veto durable candidate eligibility.
+    source_sha256: str | None = None
+    message_id_hash: str | None = None
 
 
 def _norm(s: str | None) -> str:
@@ -243,7 +257,9 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
         project_alias=_norm(em.get("project_alias")) or None,
         parent_email_hash=_norm(ea.get("parent_email_hash")) or None,
         attachment_sha256s=_split(ea.get("attachment_sha256")),
-        attachment_extension=_norm(ea.get("attachment_extension")) or None)
+        attachment_extension=_norm(ea.get("attachment_extension")) or None,
+        source_sha256=_norm(detail.get("content_sha256")) or None,
+        message_id_hash=_norm(em.get("message_id_hash")) or None)
 
 
 def _section_body(text: str, heading: str) -> list[str]:
@@ -272,6 +288,19 @@ class Candidate:
 # same_email_domain is weak: a shared big-GC/owner domain must not link two unrelated emails.
 _WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type", "same_email_domain",
                            "same_attachment_extension"})
+
+# Phase 10G bounded eligibility (mode="primary_secondary"): a durable link requires ONE strong PRIMARY
+# signal (real relationship evidence) AND at least one further strong signal (PRIMARY or SECONDARY).
+# Project signals are SECONDARY/context only — never sufficient alone (a single-project bounded set makes
+# "same project" universal and uninformative). same_attachment_sha256 is neither: it is DUPLICATE
+# evidence (same file), routed to review-only, never a durable-link basis on its own (Phase 10G amendment).
+PRIMARY_STRONG = frozenset({"same_parent_email", "same_document_number", "same_thread_topic",
+                            "same_subject_normalized"})
+SECONDARY_STRONG = frozenset({"same_participant", "same_vendor", "same_project_alias",
+                              "same_date_same_project", "same_procore_id", "same_project_key",
+                              "same_project_number", "same_attachment_ref"})
+DUPLICATE_SIGNALS = frozenset({"same_attachment_sha256", "same_source_sha256",
+                               "same_message_id_hash"})
 
 
 def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
@@ -321,17 +350,44 @@ def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
     if a.attachment_extension and b.attachment_extension and \
             a.attachment_extension == b.attachment_extension:
         s.append("same_attachment_extension")  # weak / reporting only
+    # Duplicate / same-source evidence (Phase 10G correction) — DUPLICATE signals: equal source content
+    # hash (same file bytes) or equal email message-id hash (same email). Review-only; these VETO
+    # durable candidate eligibility even when the pair also shares thread/subject/participant/project.
+    if a.source_sha256 and b.source_sha256 and a.source_sha256 == b.source_sha256:
+        s.append("same_source_sha256")
+    if a.message_id_hash and b.message_id_hash and a.message_id_hash == b.message_id_hash:
+        s.append("same_message_id_hash")
     return s
 
 
-def is_candidate(a: NoteFact, b: NoteFact) -> tuple[bool, list[str]]:
-    """Eligible for vetting iff enough STRONG signals (stricter for generic/template/reference)."""
+def is_candidate(a: NoteFact, b: NoteFact, *, mode: str = "default") -> tuple[bool, list[str]]:
+    """Eligible for vetting.
+
+    mode="default" (Phase 10C): enough STRONG signals (stricter for generic/template/reference).
+    mode="primary_secondary" (Phase 10G bounded apply): require ONE strong PRIMARY signal AND at least
+    one further strong signal (PRIMARY or SECONDARY). Weak and DUPLICATE (same-sha) signals never count,
+    so project-only / duplicate-only / weak-only pairs are excluded from durable candidates.
+    """
     if a.note_id == b.note_id:
         return False, []
     signals = _pair_signals(a, b)
+    if mode == "primary_secondary":
+        # Duplicate / same-source evidence VETOES durable eligibility — a same-file or same-email pair
+        # is review-only even when it also shares thread/subject/participant/project primaries (this is
+        # exactly the hole that durably linked two duplicate email cards in the first 10G apply).
+        if is_duplicate_pair(signals):
+            return False, signals
+        primary = [x for x in signals if x in PRIMARY_STRONG]
+        strong = [x for x in signals if x in PRIMARY_STRONG or x in SECONDARY_STRONG]
+        return (len(primary) >= 1 and len(strong) >= 2, signals)
     strong = [x for x in signals if x not in _WEAK_SIGNALS]
     need = 2 if (a.document_type in _STRICTER_TYPES or b.document_type in _STRICTER_TYPES) else 1
     return (len(strong) >= need, signals)
+
+
+def is_duplicate_pair(signals: list[str] | tuple[str, ...]) -> bool:
+    """True when the pair shares attachment content sha256 — same-file/duplicate evidence (review-only)."""
+    return any(s in DUPLICATE_SIGNALS for s in signals)
 
 
 def candidate_basis_counts(candidates: list["Candidate"]) -> dict[str, int]:
@@ -345,8 +401,11 @@ def candidate_basis_counts(candidates: list["Candidate"]) -> dict[str, int]:
 
 
 def build_candidates(facts: list[NoteFact], *, max_per_note: int = 10,
-                     max_relationships: int = 50) -> list[Candidate]:
-    """All eligible unordered pairs, stable-sorted by strength then note ids; bounded."""
+                     max_relationships: int = 50, mode: str = "default") -> list[Candidate]:
+    """All eligible unordered pairs, stable-sorted by strength then note ids; bounded.
+
+    ``mode`` is passed to ``is_candidate`` (Phase 10G uses "primary_secondary").
+    """
     cands: list[Candidate] = []
     seen: set[tuple[str, str]] = set()
     ordered = sorted(facts, key=lambda f: f.note_rel)
@@ -355,11 +414,11 @@ def build_candidates(facts: list[NoteFact], *, max_per_note: int = 10,
             key = tuple(sorted((a.note_id, b.note_id)))
             if key in seen:
                 continue
-            ok, signals = is_candidate(a, b)
+            ok, signals = is_candidate(a, b, mode=mode)
             if not ok:
                 continue
             seen.add(key)
-            strong = len([x for x in signals if x != "shared_title_phrase"])
+            strong = len([x for x in signals if x not in _WEAK_SIGNALS])
             cands.append(Candidate(a=a, b=b, strong=strong, signals=tuple(signals)))
     cands.sort(key=lambda c: (-c.strong, c.a.note_rel, c.b.note_rel))
     # per-note cap
@@ -379,24 +438,40 @@ def build_candidates(facts: list[NoteFact], *, max_per_note: int = 10,
 # --- Qwen vetting (advisory; JSON, schema-bound) ------------------------------------------------
 VETTING_SYSTEM_PROMPT = (
     "You are vetting whether two existing Obsidian notes should be linked.\n"
-    "Use ONLY the provided note summaries and deterministic commonality evidence.\n"
+    "Use ONLY the provided structured facts and deterministic commonality evidence. No note bodies,\n"
+    "summaries, titles, paths, addresses, message ids, or file names are provided — do not ask for them.\n"
     "Do not invent facts, dates, companies, projects, statuses, or costs.\n"
-    "If the relationship is weak, generic, path-only, or uncertain, reject it.\n"
+    "If the relationship is weak, generic, project-only, duplicate-only, or uncertain, reject it.\n"
+    "For same-file / same-content (duplicate) evidence choose potential_duplicate.\n"
     "Choose only from the allowed relationship_type enum. Choose only from allowed_tags.\n"
     "Return VALID JSON only with keys: approved (bool), relationship_type (enum), confidence (0..1),\n"
     "reason (<=200 chars), tags_for_source (list), tags_for_target (list).\n"
 )
 
 
+def _vetting_fact_line(f: NoteFact) -> str:
+    """Bounded, fact-only descriptor for the vetting prompt — never bodies/titles/paths/names."""
+    kind = ("attachment" if f.attachment_extension
+            else "email" if (f.thread_topic or f.subject_norm) else "document")
+    return "; ".join([
+        f"kind={kind}",
+        f"document_type={f.document_type}",
+        f"document_number={f.document_number or 'none'}",
+        f"vendor={f.vendor or 'none'}",
+        f"has_project_identity={'yes' if f.procore_project_id else 'no'}",
+    ])
+
+
 def build_vetting_prompt(a: NoteFact, b: NoteFact, signals: list[str]) -> str:
     parts = [
-        "NOTE A SUMMARY:", a.summary_text or "(none)", "",
-        "NOTE B SUMMARY:", b.summary_text or "(none)", "",
+        "Decide only from the structured facts + deterministic evidence below. No note bodies are provided.",
+        "NOTE A FACTS: " + _vetting_fact_line(a),
+        "NOTE B FACTS: " + _vetting_fact_line(b),
         "DETERMINISTIC COMMONALITY EVIDENCE: " + (", ".join(signals) or "none"),
-        f"A document_type={a.document_type}; B document_type={b.document_type}",
         "allowed relationship_type: " + ", ".join(sorted(RELATIONSHIP_TYPES)),
         "allowed_tags: " + ", ".join(sorted(APPROVED_QWEN_TAGS)),
-        "Reject if the evidence is weak or you are uncertain. Return JSON only.",
+        "Reject if the evidence is weak, project-only, duplicate-only, or you are uncertain. "
+        "For same-file/duplicate evidence choose potential_duplicate. Return JSON only.",
     ]
     return "\n".join(parts)
 
@@ -486,7 +561,7 @@ def apply_tags(text: str, new_tags: list[str], *, allow_normalize: bool = False)
 
 
 def upsert_related_block(text: str, link_lines: list[str], *, section: str) -> tuple[str | None, str]:
-    """Insert/replace the single managed hb-related-notes block under ``section``.
+    """Insert/replace the single managed gc-graph-links block under ``section``.
 
     Preserves everything outside the block; stable-sorted unique links. Returns (new_text|None, reason).
     """
@@ -512,4 +587,97 @@ def upsert_related_block(text: str, link_lines: list[str], *, section: str) -> t
         insert_at -= 1
     new = lines[:insert_at] + ["", *block] + lines[insert_at:]
     return "\n".join(new) + trailing, "inserted"
+
+
+def _related_block_bounds(lines: list[str]) -> tuple[int, int] | None | str:
+    """Return (begin_idx, end_idx) for the single managed block, None if absent, "ambiguous" if not
+    exactly one well-formed pair."""
+    bs = [i for i, ln in enumerate(lines) if ln.strip() == REL_BLOCK_BEGIN]
+    be = [i for i, ln in enumerate(lines) if ln.strip() == REL_BLOCK_END]
+    if not bs and not be:
+        return None
+    if len(bs) != 1 or len(be) != 1 or be[0] <= bs[0]:
+        return "ambiguous"
+    return bs[0], be[0]
+
+
+def related_block_entries(text: str) -> list[str] | None:
+    """Non-empty link lines inside the managed gc-graph-links block ([] if block empty, None if absent
+    or ambiguous)."""
+    lines = text.splitlines()
+    bounds = _related_block_bounds(lines)
+    if not isinstance(bounds, tuple):
+        return None
+    bs, be = bounds
+    return [ln for ln in lines[bs + 1:be] if ln.strip()]
+
+
+def remove_related_block(text: str) -> tuple[str | None, str]:
+    """Delete the single managed gc-graph-links block plus one adjacent blank line above it.
+
+    Returns (new_text|None, reason): 'removed' | 'absent' | 'ambiguous_existing_block'.
+    """
+    lines = text.splitlines()
+    bounds = _related_block_bounds(lines)
+    if bounds is None:
+        return text, "absent"
+    if bounds == "ambiguous":
+        return None, "ambiguous_existing_block"
+    bs, be = bounds
+    trailing = "\n" if text.endswith("\n") else ""
+    start = bs - 1 if (bs > 0 and not lines[bs - 1].strip()) else bs
+    new = lines[:start] + lines[be + 1:]
+    return ("\n".join(new) + trailing if new else trailing), "removed"
+
+
+def remove_related_link(text: str, *, target_rel: str) -> tuple[str | None, str]:
+    """Remove only the link line(s) in the managed block whose wiki target is ``target_rel``.
+
+    Entry-level (Phase 10G amendment): a valid, non-offending link is never deleted. If removing the
+    entry empties the block, the whole block is removed. Returns (new_text|None, reason):
+    'removed' | 'emptied_removed' | 'target_not_found' | 'absent' | 'ambiguous_existing_block'.
+    """
+    stem = target_rel[:-3] if target_rel.endswith(".md") else target_rel
+    needle = f"[[{stem}|"
+    lines = text.splitlines()
+    bounds = _related_block_bounds(lines)
+    if bounds is None:
+        return text, "absent"
+    if bounds == "ambiguous":
+        return None, "ambiguous_existing_block"
+    bs, be = bounds
+    inner = lines[bs + 1:be]
+    keep = [ln for ln in inner if needle not in ln]
+    if len(keep) == len(inner):
+        return text, "target_not_found"
+    if not [ln for ln in keep if ln.strip()]:
+        new_text, reason = remove_related_block(text)
+        return new_text, ("emptied_removed" if reason == "removed" else reason)
+    trailing = "\n" if text.endswith("\n") else ""
+    new = lines[:bs + 1] + keep + lines[be:]
+    return "\n".join(new) + trailing, "removed"
+
+
+def remove_frontmatter_tags(text: str, tags: list[str]) -> tuple[str | None, str]:
+    """Remove specific block-style frontmatter tag lines (exact tag match), preserving all others.
+
+    Returns (new_text|None, reason): 'removed' | 'no_matching_tags' | 'frontmatter_not_block_style'.
+    Caller decides WHICH tags to drop (e.g. only graph tags no longer justified by remaining links).
+    """
+    drop = {(sanitize_tag(t) or t) for t in tags}
+    ok, _existing, first, last = parse_frontmatter_tags(text)
+    if not ok:
+        return None, "frontmatter_not_block_style"
+    lines = text.splitlines(keepends=True)
+    out, removed = [], 0
+    for i, ln in enumerate(lines):
+        if first <= i <= last:
+            m = re.match(r"^\s*-\s+(.+?)\s*$", ln)
+            if m and m.group(1).strip() in drop:
+                removed += 1
+                continue
+        out.append(ln)
+    if removed == 0:
+        return text, "no_matching_tags"
+    return "".join(out), "removed"
 

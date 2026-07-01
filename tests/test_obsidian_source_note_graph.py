@@ -226,7 +226,7 @@ def _env(tmp_path, monkeypatch, *, frozen_true=False):
     return {"db": db, "cfgp": str(cfgp), "vault": vault, "root": root, "repo": repo, "tmp": tmp_path}
 
 
-def _args(env, *, apply=False, vet=False, confirm=True, **over):
+def _args(env, *, apply=False, vet=False, confirm=True, approved_count=1, **over):
     a = ["--db-path", env["db"], "--config-path", env["cfgp"], "--vault-path", str(env["vault"]),
          "--model", "qwen2.5:14b", "--max-notes", "25", "--max-candidates-per-note", "10",
          "--max-relationships", "50", "--evidence-dir", str(env["tmp"] / "ev"),
@@ -235,6 +235,9 @@ def _args(env, *, apply=False, vet=False, confirm=True, **over):
         a.append("--vet")
     if apply:
         a.append("--apply")
+        # post-vet checkpoint (Phase 10G): must equal the vetted approved count (1 in these fixtures).
+        if approved_count is not None:
+            a += ["--confirm-apply-approved-count", str(approved_count)]
         if confirm:
             a += ["--confirm-db-path", env["db"], "--confirm-vault-path", str(env["vault"]),
                   "--confirm-model", "qwen2.5:14b"]

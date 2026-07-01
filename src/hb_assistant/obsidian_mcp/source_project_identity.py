@@ -165,3 +165,117 @@ def enrich_card_with_project_identity(card_text: str, identity: ProjectIdentity,
         insert_at -= 1
     new = lines[:insert_at] + ["", *block] + lines[insert_at:]
     return "\n".join(new) + trailing, "inserted"
+
+
+# --- Identity reconciliation (Phase 10G correction; block-authoritative) -------------------------
+# The managed hb-project-identity block is authoritative when it resolves — the DB/source detail may
+# still carry a stale project_key (e.g. the project NUMBER in the key slot). These helpers correct the
+# CARD (frontmatter + visible "## Related Project" text) to agree with the block; they never touch the
+# block itself (so it stays byte-identical) and never mutate the DB.
+_FM_KEY_RE = {
+    "project_key": re.compile(r'(?m)^(project_key:\s*).*$'),
+    "project_number": re.compile(r'(?m)^(project_number:\s*).*$'),
+}
+_NO_PROJECT_LINE_RE = re.compile(
+    r"(?i)(no project record linked yet|no project number detected|none linked yet)")
+
+
+def _frontmatter_bounds(text: str) -> tuple[int, int] | None:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), -1)
+    return (0, end) if end != -1 else None
+
+
+def _resolved_name_from_block(card_text: str) -> str | None:
+    for ln in card_text.splitlines():
+        if ln.startswith("- Resolved project:"):
+            parts = [p.strip() for p in ln.split("·")]
+            if len(parts) >= 3 and parts[-1]:
+                return parts[-1]
+    return None
+
+
+def reconcile_frontmatter_identity(card_text: str, *, project_number: str,
+                                   project_key: str) -> str:
+    """Overwrite frontmatter project_key/project_number scalars and ensure ONE ``project/<number>`` tag.
+
+    Preserves key order, quoting style, and everything else byte-for-byte. Only edits within the
+    frontmatter fence.
+    """
+    b = _frontmatter_bounds(card_text)
+    if b is None:
+        return card_text
+    _fm_start, fm_end = b
+    lines = card_text.splitlines(keepends=True)
+    fence = card_text.splitlines()  # for index math without keepends ambiguity
+    for key, val in (("project_key", project_key), ("project_number", project_number)):
+        rx = _FM_KEY_RE[key]
+        replaced = False
+        for i in range(1, fm_end):
+            if rx.match(fence[i]):
+                nl = "\n" if lines[i].endswith("\n") else ""
+                lines[i] = f'{key}: "{val}"{nl}'
+                replaced = True
+                break
+        if not replaced:  # insert just before the closing fence
+            ins = fm_end
+            nl = "\n" if lines[ins].endswith("\n") or ins == len(lines) - 1 else ""
+            lines.insert(ins, f'{key}: "{val}"\n')
+            fm_end += 1
+            fence = "".join(lines).splitlines()
+    text = "".join(lines)
+    # ensure exactly one project/<number> tag in the block-style tags list
+    tag = f"project/{project_number}"
+    from .source_note_graph import parse_frontmatter_tags
+    ok, tags, _first, last = parse_frontmatter_tags(text)
+    if ok and tag not in tags:
+        tlines = text.splitlines(keepends=True)
+        indent = re.match(r"^(\s*)-", tlines[last]).group(1)
+        nl = "" if tlines[last].endswith("\n") else "\n"
+        tlines[last] = tlines[last] + nl + f"{indent}- {tag}\n".rstrip("\n") + (
+            "\n" if tlines[last].endswith("\n") else "")
+        text = "".join(tlines)
+    return text
+
+
+def reconcile_related_project_text(card_text: str, *, project_number: str, project_key: str,
+                                   project_name: str | None = None) -> str:
+    """Replace the "no project record linked yet" placeholder bullet under ``## Related Project`` with a
+    resolved, non-inherited bullet. Leaves managed blocks + everything else untouched."""
+    lines = card_text.splitlines()
+    sec = next((i for i, ln in enumerate(lines) if ln == "## Related Project"), -1)
+    if sec == -1:
+        return card_text
+    end = next((i for i in range(sec + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    name = project_name or _resolved_name_from_block(card_text) or project_key.title()
+    resolved = f"- Project: {project_number} — {name} · {project_key}"
+    changed = False
+    for i in range(sec + 1, end):
+        if lines[i].startswith("<!--"):  # never touch managed blocks
+            break
+        if _NO_PROJECT_LINE_RE.search(lines[i]):
+            lines[i] = resolved
+            changed = True
+    if not changed:
+        return card_text
+    trailing = "\n" if card_text.endswith("\n") else ""
+    return "\n".join(lines) + trailing
+
+
+def reconcile_card_identity(card_text: str) -> tuple[str | None, str]:
+    """Reconcile a card's frontmatter + visible Related Project text to its (authoritative) resolved
+    hb-project-identity block. No-op when already consistent; block-required.
+
+    Returns (new_text|None, reason): 'reconciled' | 'already_consistent' |
+    'no_resolving_identity_block'.
+    """
+    ident = parse_identity_marker(card_text)
+    if not ident or not ident.get("project_key") or not ident.get("project_number"):
+        return None, "no_resolving_identity_block"
+    out = reconcile_frontmatter_identity(
+        card_text, project_number=ident["project_number"], project_key=ident["project_key"])
+    out = reconcile_related_project_text(
+        out, project_number=ident["project_number"], project_key=ident["project_key"])
+    return (out, "reconciled") if out != card_text else (card_text, "already_consistent")
