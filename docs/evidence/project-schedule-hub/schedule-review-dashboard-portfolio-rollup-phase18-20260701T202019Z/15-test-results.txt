@@ -1,0 +1,49 @@
+=== Backend Phase 18 ===
+.............                                                            [100%]
+=============================== warnings summary ===============================
+../../../hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=== Frontend Phase 18 ===
+file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/vendor/cac.cdAtVkJZ.js:403
+          throw new CACError(`Unknown option \`${name.length > 1 ? `--${name}` : `-${name}`}\``);
+                ^
+
+CACError: Unknown option `-q`
+    at Command.checkUnknownOptions (file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/vendor/cac.cdAtVkJZ.js:403:17)
+    at CAC.runMatchedCommand (file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/vendor/cac.cdAtVkJZ.js:603:13)
+    at CAC.parse (file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/vendor/cac.cdAtVkJZ.js:544:12)
+    at file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/cli.js:9:13
+    at ModuleJob.run (node:internal/modules/esm/module_job:271:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:578:26)
+    at async main (file:///Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend/node_modules/vitest/dist/cli-wrapper.js:45:5)
+
+Node.js v22.14.0
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z/frontend
+
+ ✓ src/pages/ProjectScheduleReviewDashboardPage.test.tsx  (6 tests) 148ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:43:43
+   Duration  865ms (transform 77ms, setup 56ms, collect 155ms, tests 148ms, environment 341ms, prepare 62ms)
+
+=== Backend Phase 18 (post live smoke) ===
+.............                                                            [100%]
+=== Frontend Phase 18 (post live smoke) ===
+ ✓ src/pages/ProjectScheduleReviewDashboardPage.test.tsx  (6 tests)
+
+=== Live smoke capture ===
+capture_phase18_live_smoke.py exit 0
+DB: ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+portfolio_summary.project_count: 6 (DOM matched before screenshot 25)
+redaction QA: passed=True (24-live-redaction-proof.txt)
+mutation violations: []
+
+=== Pre-existing named-baseline failures on main @ 19d37316 (verified 2026-07-01) ===
+FAILED tests/test_project_schedule_named_baseline_comparison_accuracy.py::test_prior_update_disposition_does_not_join_named_workbench
+FAILED tests/test_project_schedule_multi_baseline_controls.py::test_controls_named_includes_workbench_links
+

@@ -19,6 +19,7 @@ import { ProjectExposuresPlaceholderPage } from '../pages/ProjectExposuresPlaceh
 import { ProjectMeetingsPage } from '../pages/ProjectMeetingsPage'
 import { ProjectFieldOperationsPage } from '../pages/ProjectFieldOperationsPage'
 import { ProjectCostTimePage } from '../pages/ProjectCostTimePage'
+import { ProjectScheduleReviewDashboardPage } from '../pages/ProjectScheduleReviewDashboardPage'
 import { ProjectSchedulePage } from '../pages/ProjectSchedulePage'
 import { ProjectScheduleImportPage } from '../pages/ProjectScheduleImportPage'
 import { ProjectScheduleWorkbenchPage } from '../pages/ProjectScheduleWorkbenchPage'
@@ -133,6 +134,11 @@ const router = createBrowserRouter([
       {
         path: 'projects/all/cost-time',
         element: <ProjectCostTimePage />,
+      },
+      {
+        path: 'projects/all/schedule/review',
+        element: <ProjectScheduleReviewDashboardPage />,
+        handle: { title: 'Schedule Review Dashboard' },
       },
       {
         path: 'projects/:projectKey',

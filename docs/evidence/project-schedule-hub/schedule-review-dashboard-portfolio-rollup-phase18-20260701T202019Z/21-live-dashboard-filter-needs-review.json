@@ -1,0 +1,79 @@
+{
+  "portfolio_summary": {
+    "project_count": 1,
+    "projects_with_schedule": 1,
+    "projects_without_schedule": 0,
+    "ready_count": 0,
+    "degraded_count": 0,
+    "blocked_count": 0,
+    "needs_review_count": 1,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 0
+  },
+  "projects": [
+    {
+      "project_key": "tropical",
+      "project_label": "tropical \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u00b7 #23-435-01 \u00b7 Procore 2525840",
+      "schedule_label": "TWNU19",
+      "schedule_data_date": "2026-06-23",
+      "schedule_age_days": 8,
+      "schedule_staleness_status": "current",
+      "analytics_trust_status": "degraded",
+      "identity_trust_status": "trusted",
+      "cpm_trust_status": "ready",
+      "quality_trust_status": "degraded",
+      "review_status": {
+        "persisted_item_count": 153,
+        "preview_cue_count": 3,
+        "needs_review": 153,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "needs_review",
+      "operator_action_required": false,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "review_items_need_disposition",
+        "label": "Review items need disposition",
+        "pm_description": "Open the review workbench and record operator dispositions for persisted items.",
+        "primary_link": "/projects/tropical/schedule/workbench",
+        "priority": 50
+      },
+      "links": {
+        "hub": "/projects/tropical/schedule",
+        "controls": "/projects/tropical/schedule?panel=controls",
+        "workbench": "/projects/tropical/schedule/workbench",
+        "import": "/projects/tropical/schedule/import",
+        "identity_review": "/schedules/identity-review?project=tropical"
+      }
+    }
+  ],
+  "filters": {
+    "available_statuses": [
+      "ready",
+      "degraded",
+      "blocked",
+      "missing",
+      "stale",
+      "needs_review",
+      "operator_action_required"
+    ],
+    "available_actions": [
+      "identity_review_required",
+      "analytics_trust_blocked",
+      "schedule_import_needed",
+      "schedule_update_stale",
+      "review_items_need_disposition",
+      "preview_cues_available",
+      "quality_review_required",
+      "ready_for_pm_review"
+    ]
+  },
+  "meta": {
+    "as_of": "2026-07-01",
+    "staleness_threshold_days": 30,
+    "project_loop": "per_project_thin_trust_slice"
+  }
+}

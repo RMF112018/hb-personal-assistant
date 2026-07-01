@@ -1,0 +1,23 @@
+passed=True
+
+== JSON redaction leaks ==
+{
+  "18-live-dashboard-api.json": [],
+  "19-live-dashboard-filter-missing.json": [],
+  "20-live-dashboard-filter-stale.json": [],
+  "21-live-dashboard-filter-needs-review.json": [],
+  "22-live-dashboard-filter-operator-action.json": []
+}
+
+== Export redaction leaks ==
+[]
+
+== Export language QA ==
+{
+  "passed": true,
+  "violations": [],
+  "surface": "portfolio_export",
+  "advisory_posture": "sequence_cues_not_causation"
+}
+
+export_forbidden_language_detected=False

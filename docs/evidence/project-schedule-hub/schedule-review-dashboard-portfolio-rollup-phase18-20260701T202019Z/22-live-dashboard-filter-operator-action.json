@@ -1,0 +1,117 @@
+{
+  "portfolio_summary": {
+    "project_count": 2,
+    "projects_with_schedule": 0,
+    "projects_without_schedule": 2,
+    "ready_count": 0,
+    "degraded_count": 0,
+    "blocked_count": 0,
+    "needs_review_count": 0,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 2
+  },
+  "projects": [
+    {
+      "project_key": "caretta",
+      "project_label": "caretta \u2014 22-140-01 - CARETTA \u00b7 #22-140-01 \u00b7 Procore 2145250",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "operator_action_required",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/caretta/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/caretta/schedule",
+        "controls": "/projects/caretta/schedule?panel=controls",
+        "workbench": "/projects/caretta/schedule/workbench",
+        "import": "/projects/caretta/schedule/import",
+        "identity_review": "/schedules/identity-review?project=caretta"
+      }
+    },
+    {
+      "project_key": "pga-modern-garage",
+      "project_label": "pga-modern-garage \u2014 22-112-01 - PGA THE MODERN \u00b7 #22-112-01 \u00b7 Procore 2091445",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "operator_action_required",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/pga-modern-garage/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/pga-modern-garage/schedule",
+        "controls": "/projects/pga-modern-garage/schedule?panel=controls",
+        "workbench": "/projects/pga-modern-garage/schedule/workbench",
+        "import": "/projects/pga-modern-garage/schedule/import",
+        "identity_review": "/schedules/identity-review?project=pga-modern-garage"
+      }
+    }
+  ],
+  "filters": {
+    "available_statuses": [
+      "ready",
+      "degraded",
+      "blocked",
+      "missing",
+      "stale",
+      "needs_review",
+      "operator_action_required"
+    ],
+    "available_actions": [
+      "identity_review_required",
+      "analytics_trust_blocked",
+      "schedule_import_needed",
+      "schedule_update_stale",
+      "review_items_need_disposition",
+      "preview_cues_available",
+      "quality_review_required",
+      "ready_for_pm_review"
+    ]
+  },
+  "meta": {
+    "as_of": "2026-07-01",
+    "staleness_threshold_days": 30,
+    "project_loop": "per_project_thin_trust_slice"
+  }
+}

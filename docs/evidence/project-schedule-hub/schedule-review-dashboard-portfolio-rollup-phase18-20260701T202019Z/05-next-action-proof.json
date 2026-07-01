@@ -1,0 +1,122 @@
+{
+  "missing": [
+    {
+      "project_key": "palm",
+      "project_label": "palm \u2014 Palm Shores \u00b7 Procore 9002",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "missing",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/palm/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/palm/schedule",
+        "controls": "/projects/palm/schedule?panel=controls",
+        "workbench": "/projects/palm/schedule/workbench",
+        "import": "/projects/palm/schedule/import",
+        "identity_review": "/schedules/identity-review?project=palm"
+      }
+    }
+  ],
+  "stale": [
+    {
+      "project_key": "reef",
+      "project_label": "reef \u2014 Reef Tower \u00b7 Procore 9003",
+      "schedule_label": "imp-reef-stale",
+      "schedule_data_date": "2026-01-01",
+      "schedule_age_days": 181,
+      "schedule_staleness_status": "stale",
+      "analytics_trust_status": "degraded",
+      "identity_trust_status": "trusted",
+      "cpm_trust_status": "degraded",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "stale",
+      "operator_action_required": false,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_update_stale",
+        "label": "Schedule update stale",
+        "pm_description": "The latest imported schedule data date is older than the freshness threshold.",
+        "primary_link": "/projects/reef/schedule",
+        "priority": 40
+      },
+      "links": {
+        "hub": "/projects/reef/schedule",
+        "controls": "/projects/reef/schedule?panel=controls",
+        "workbench": "/projects/reef/schedule/workbench",
+        "import": "/projects/reef/schedule/import",
+        "identity_review": "/schedules/identity-review?project=reef"
+      }
+    }
+  ],
+  "needs_review": [
+    {
+      "project_key": "tropical",
+      "project_label": "tropical \u2014 Tropical Wind \u00b7 Procore 9001",
+      "schedule_label": "imp-current",
+      "schedule_data_date": "2026-07-01",
+      "schedule_age_days": 0,
+      "schedule_staleness_status": "current",
+      "analytics_trust_status": "degraded",
+      "identity_trust_status": "trusted",
+      "cpm_trust_status": "degraded",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 1,
+        "preview_cue_count": 0,
+        "needs_review": 1,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "needs_review",
+      "operator_action_required": false,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "review_items_need_disposition",
+        "label": "Review items need disposition",
+        "pm_description": "Open the review workbench and record operator dispositions for persisted items.",
+        "primary_link": "/projects/tropical/schedule/workbench",
+        "priority": 50
+      },
+      "links": {
+        "hub": "/projects/tropical/schedule",
+        "controls": "/projects/tropical/schedule?panel=controls",
+        "workbench": "/projects/tropical/schedule/workbench",
+        "import": "/projects/tropical/schedule/import",
+        "identity_review": "/schedules/identity-review?project=tropical"
+      }
+    }
+  ]
+}

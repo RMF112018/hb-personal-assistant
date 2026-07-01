@@ -1421,6 +1421,77 @@ class ProjectScheduleSummaryService:
             comparison_basis=resolved.preview_basis,
         )
 
+    def build_portfolio_trust_slice(
+        self, project_key: str, *, as_of: date | None = None
+    ) -> dict[str, Any]:
+        """Thin schedule + trust slice for portfolio dashboard.
+
+        Resolves current schedule version and analytics trust without drivers,
+        narratives, workbench intelligence, or ``build_summary()``.
+        """
+        from .project_schedule_quality_controls_service import ProjectScheduleQualityControlsService
+
+        as_of_date = as_of or datetime.now(timezone.utc).date()
+        project_display_name = self._project_display_name(project_key)
+        base = {
+            "project_key": project_key,
+            "project_label": project_display_name or project_key,
+            "has_schedule": False,
+            "schedule_resolved": False,
+            "as_of_date": as_of_date,
+        }
+        versions = self._hub_project_versions(project_key)
+        if not versions:
+            return base
+        base["has_schedule"] = True
+        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+        if not current_choice:
+            return base
+        current = current_choice.version
+        current_key = str(current["schedule_version_key"])
+        accepted_identity_key = _identity_key(current_choice.identity_match)
+        schedule_trust = self._trust.build_trust_envelope(
+            project_key=project_key,
+            current_choice=current_choice,
+            versions=versions,
+            accepted_identity_key=accepted_identity_key,
+        )
+        identity_review = {
+            "status": schedule_trust.get("status"),
+            "review_reasons": schedule_trust.get("review_reasons", []),
+            "identity_review_url": f"/schedules/identity-review?project={project_key}",
+        }
+        analytics_trust = self._hub_analytics_trust(
+            project_key=project_key,
+            project_name=str(project_display_name or project_key),
+            schedule_version_key=current_key,
+            current=current,
+            current_choice=current_choice,
+            schedule_trust=schedule_trust,
+            identity_review=identity_review,
+        )
+        cpm_obs = self._cpm_observability_repo.get_latest_for_schedule_version(current_key)
+        quality_controls = ProjectScheduleQualityControlsService(db_path=self._db_path).build_quality_controls(
+            current_key,
+            analytics_trust=analytics_trust,
+            identity_trust=analytics_trust.get("identity_trust") or {},
+            cpm_observability=cpm_obs,
+        )
+        identity_trust = analytics_trust.get("identity_trust") or {}
+        return {
+            **base,
+            "schedule_resolved": True,
+            "schedule_version_key": current_key,
+            "schedule_label": self._friendly_label(current),
+            "schedule_data_date": _date_str(self._data_date(current)),
+            "analytics_trust": analytics_trust,
+            "analytics_trust_status": analytics_trust.get("analytics_trust_status"),
+            "identity_trust_status": identity_trust.get("identity_trust_status"),
+            "identity_gate": identity_trust.get("identity_gate"),
+            "cpm_trust_status": analytics_trust.get("cpm_trust_status"),
+            "quality_trust_status": quality_controls.get("quality_trust_status"),
+        }
+
     def review_trust_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, str | None]:
         context = self.build_schedule_hub_context(project_key, as_of=as_of)
         if not context:

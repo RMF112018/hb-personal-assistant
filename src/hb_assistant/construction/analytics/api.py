@@ -1159,6 +1159,79 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return AnalyticsService(db_path=db_path).build_all_projects_overview()
 
+    @app.get("/api/projects/schedule-review-dashboard")
+    def schedule_review_dashboard(
+        status: str | None = None,
+        project_key: str | None = None,
+        include_technical: int = 0,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_portfolio_review_service import (
+            ProjectSchedulePortfolioReviewService,
+            _STATUS_FILTERS,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        if status and status not in _STATUS_FILTERS:
+            raise HTTPException(status_code=400, detail="invalid_status_filter")
+        technical = bool(include_technical)
+        if technical:
+            require_operator_role(role)
+        else:
+            del role
+        return ProjectSchedulePortfolioReviewService(db_path=_schedule_db_path()).build_dashboard(
+            status=status,
+            project_key=project_key,
+            include_technical=technical,
+            as_of=as_of_date,
+        )
+
+    @app.get("/api/projects/schedule-review-dashboard/export")
+    def schedule_review_dashboard_export(
+        format: str = "markdown",
+        status: str | None = None,
+        project_key: str | None = None,
+        role: dict[str, str] = role_dep,
+    ):
+        del role
+        from fastapi import HTTPException, Response
+
+        from hb_assistant.construction.analytics.project_schedule_portfolio_review_service import (
+            ProjectSchedulePortfolioReviewService,
+            _STATUS_FILTERS,
+        )
+
+        if status and status not in _STATUS_FILTERS:
+            raise HTTPException(status_code=400, detail="invalid_status_filter")
+        svc = ProjectSchedulePortfolioReviewService(db_path=_schedule_db_path())
+        export_format = str(format or "markdown").lower()
+        if export_format == "markdown":
+            body = svc.build_export_markdown(status=status, project_key=project_key)
+            content_type = "text/markdown; charset=utf-8"
+            filename = "portfolio-schedule-review.md"
+        elif export_format == "csv":
+            body = svc.build_export_csv(status=status, project_key=project_key)
+            content_type = "text/csv; charset=utf-8"
+            filename = "portfolio-schedule-review.csv"
+        elif export_format == "json":
+            body = svc.build_export_json(status=status, project_key=project_key)
+            content_type = "application/json; charset=utf-8"
+            filename = "portfolio-schedule-review.json"
+        else:
+            raise HTTPException(status_code=400, detail="unsupported_export_format")
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+        return Response(content=body, media_type=content_type, headers=headers)
+
     @app.get("/api/projects/{project_key}/overview")
     def project_overview(project_key: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
         del role
