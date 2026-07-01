@@ -379,6 +379,17 @@ class ProjectScheduleSummaryService:
                 "operator_action_required": identity_trust.get("operator_action_required"),
             }
         )
+        from .project_schedule_review_rollup_service import build_review_status_rollup
+
+        review_rollup = build_review_status_rollup(
+            items=list(review_workbench.get("persisted_items") or []),
+            preview_items=list(review_workbench.get("preview_cues") or review_workbench.get("preview") or []),
+            analytics_trust_status=analytics_trust.get("analytics_trust_status"),
+            identity_gate=identity_trust.get("identity_gate"),
+        )
+        review_workbench = dict(review_workbench)
+        review_workbench["review_status"] = review_rollup
+        review_workbench["summary"] = review_rollup
         readiness = self._readiness(
             versions=versions,
             current_choice=current_choice,
@@ -1316,6 +1327,17 @@ class ProjectScheduleSummaryService:
         )
         sliced = items[offset : offset + max(1, min(limit, 200))]
         workbench_meta = {k: v for k, v in workbench.items() if k != "items"}
+        trust = self.review_trust_context(project_key, as_of=as_of)
+        from .project_schedule_review_rollup_service import build_review_status_rollup
+
+        review_rollup = build_review_status_rollup(
+            items=[item for item in items if item.get("review_item_id")],
+            preview_items=[item for item in items if not item.get("review_item_id")],
+            analytics_trust_status=trust.get("analytics_trust_status"),
+            identity_gate=trust.get("identity_gate"),
+        )
+        workbench_meta["review_status"] = review_rollup
+        workbench_meta["summary"] = review_rollup
         if resolved.source_model == "named_slot":
             workbench_meta["baseline_context"] = baseline_context
         return {
@@ -1398,6 +1420,87 @@ class ProjectScheduleSummaryService:
             baseline_summary=context.get("baseline_summary"),
             comparison_basis=resolved.preview_basis,
         )
+
+    def review_trust_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, str | None]:
+        context = self.build_schedule_hub_context(project_key, as_of=as_of)
+        if not context:
+            return {"identity_gate": None, "analytics_trust_status": None}
+        analytics_trust = context.get("analytics_trust") or {}
+        identity_trust = analytics_trust.get("identity_trust") or {}
+        return {
+            "identity_gate": identity_trust.get("identity_gate"),
+            "analytics_trust_status": analytics_trust.get("analytics_trust_status"),
+        }
+
+    def promote_review_cues(
+        self,
+        project_key: str,
+        *,
+        stable_item_keys: list[str],
+        as_of: date | None = None,
+        comparison_basis: str = "prior_update",
+        reviewed_by_operator: str | None = None,
+    ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
+        trust = self.review_trust_context(project_key, as_of=as_of)
+        if resolved.source_model == "named_slot":
+            context, baseline_context = self.build_resolved_hub_context(
+                project_key,
+                resolved=resolved,
+                as_of=as_of,
+            )
+            if not context:
+                return {"available": False, "reason": "no_schedule"}
+            scope = self._named_baseline_review.scope_from_context(
+                project_key=context["project_key"],
+                current_schedule_version_key=context["schedule_version_key"],
+                comparison_basis=resolved.comparison_basis,
+                baseline_context=baseline_context or {},
+                as_of_date=context.get("as_of_date"),
+                schedule_data_date=context.get("schedule_data_date"),
+            )
+            result = self._named_baseline_review.promote_preview_cues(
+                scope=scope,
+                stable_item_keys=stable_item_keys,
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                as_of_date=context.get("as_of_date"),
+                baseline_summary=context.get("baseline_summary"),
+                comparison_basis=resolved.comparison_basis,
+                reviewed_by_operator=reviewed_by_operator,
+                identity_gate=trust.get("identity_gate"),
+                analytics_trust_status=trust.get("analytics_trust_status"),
+            )
+            result["comparison_basis"] = resolved.comparison_basis
+            return result
+        context = self._review_workbench_context(project_key, as_of=as_of)
+        if not context:
+            return {"available": False, "reason": "no_schedule"}
+        result = self._review.promote_preview_cues(
+            project_key=context["project_key"],
+            schedule_version_key=context["schedule_version_key"],
+            stable_item_keys=stable_item_keys,
+            driver_analysis=context.get("driver_analysis"),
+            milestones=context.get("milestones"),
+            remaining_health=context.get("remaining_health"),
+            cpm_summary=context.get("cpm_summary"),
+            change_impact=context.get("change_impact"),
+            remaining_activities=context.get("remaining_activities"),
+            as_of_date=context.get("as_of_date"),
+            baseline_summary=context.get("baseline_summary"),
+            comparison_basis=resolved.preview_basis,
+            reviewed_by_operator=reviewed_by_operator,
+            identity_gate=trust.get("identity_gate"),
+            analytics_trust_status=trust.get("analytics_trust_status"),
+        )
+        result["comparison_basis"] = resolved.comparison_basis
+        return result
 
     def build_driver_detail(
         self,
@@ -1511,14 +1614,20 @@ class ProjectScheduleSummaryService:
         from hb_assistant.store.project_schedule_named_baseline_review_repository import (
             NamedBaselineReviewIdentity,
         )
+        from .project_schedule_review_disposition import (
+            DISPOSITION_NEEDS_REVIEW,
+            normalize_disposition,
+            pm_disposition_view,
+        )
 
         stable_key = f"driver:{activity_id}"
         source_metric_key = "change_driver_analysis"
         source_signal_type = "driver"
+        default_status = DISPOSITION_NEEDS_REVIEW
         default = {
-            "review_status": "open",
+            "review_status": default_status,
+            "disposition_label": pm_disposition_view(default_status)["label"],
             "review_item_id": None,
-            "disposition_schedule_version_key": comparison_schedule_version_key,
             "disposition_basis": comparison_basis,
             "disposition_source": "preview",
             "review_scope": None,
@@ -1537,10 +1646,11 @@ class ProjectScheduleSummaryService:
             )
             if not row:
                 return {**default, "disposition_source": "preview", "review_scope": "prior_update"}
+            status = normalize_disposition(str(row.get("review_status") or default_status)) or default_status
             return {
-                "review_status": str(row.get("review_status") or "open"),
+                "review_status": status,
+                "disposition_label": pm_disposition_view(status)["label"],
                 "review_item_id": row.get("review_item_id"),
-                "disposition_schedule_version_key": current_schedule_version_key,
                 "disposition_basis": "prior_update",
                 "disposition_source": "prior_update_review",
                 "review_scope": "prior_update",
@@ -1564,12 +1674,12 @@ class ProjectScheduleSummaryService:
                 **default,
                 "disposition_source": "preview",
                 "review_scope": "named_baseline",
-                "disposition_schedule_version_key": baseline_key,
             }
+        status = normalize_disposition(str(row.get("review_status") or default_status)) or default_status
         return {
-            "review_status": str(row.get("review_status") or "open"),
+            "review_status": status,
+            "disposition_label": pm_disposition_view(status)["label"],
             "review_item_id": row.get("review_item_id"),
-            "disposition_schedule_version_key": str(row.get("baseline_schedule_version_key") or baseline_key),
             "disposition_basis": str(row.get("comparison_basis") or comparison_basis),
             "disposition_source": "named_baseline_review",
             "review_scope": "named_baseline",

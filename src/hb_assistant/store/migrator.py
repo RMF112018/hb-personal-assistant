@@ -6944,6 +6944,11 @@ class SQLiteMigrator:
 
         return V97_STATEMENTS
 
+    @staticmethod
+    def _v98_statements() -> list[str]:
+        from hb_assistant.store.project_schedule_review_disposition_tables import V98_STATEMENTS
+
+        return V98_STATEMENTS
 
     # v79 Detailed schedule version diff facts.
     @staticmethod
@@ -8620,6 +8625,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (97, 'v97_project_schedule_named_baseline_review_items', ?)",
+                    (now,),
+                )
+
+            # v98 Phase 17 review disposition expansion (rebuild + data migration).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 98")
+            if cur.fetchone() is None:
+                for stmt in self._v98_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (98, 'v98_project_schedule_review_dispositions', ?)",
                     (now,),
                 )
 

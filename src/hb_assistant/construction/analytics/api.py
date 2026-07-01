@@ -1579,26 +1579,91 @@ def create_app(*, db_path: str | None = None) -> Any:
         request: dict[str, Any],
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
-        del project_key
         require_operator_role(role)
         from fastapi import HTTPException
 
         from hb_assistant.construction.analytics.project_schedule_review_service import (
             ProjectScheduleReviewService,
         )
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
 
+        trust = ProjectScheduleSummaryService(db_path=_schedule_db_path()).review_trust_context(project_key)
         try:
             return ProjectScheduleReviewService(db_path=_schedule_db_path()).update_item(
                 review_item_id=review_item_id,
+                project_key=project_key,
                 review_status=request.get("review_status"),
+                disposition=request.get("disposition"),
                 pm_notes=request.get("pm_notes"),
+                disposition_reason=request.get("disposition_reason"),
+                reviewed_by_operator=role.get("role"),
+                identity_gate=trust.get("identity_gate"),
+                analytics_trust_status=trust.get("analytics_trust_status"),
+            )
+        except ValueError as exc:
+            code = str(exc)
+            if code == "review_item_not_found":
+                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
+            if code == "review_item_project_mismatch":
+                raise HTTPException(status_code=403, detail="review_item_project_mismatch") from exc
+            if code in {
+                "invalid_review_status",
+                "disposition_reason_required",
+                "operator_disposition_not_allowed",
+                "blocked_disposition_cannot_be_cleared",
+                "trust_blocked_disposition_change",
+            }:
+                raise HTTPException(status_code=400, detail=code) from exc
+            raise
+
+    @app.post("/api/projects/{project_key}/schedule/review-items/promote")
+    def project_schedule_review_items_promote(
+        project_key: str,
+        request: dict[str, Any],
+        as_of: str | None = None,
+        comparison_basis: str = "prior_update",
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        require_operator_role(role)
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.project_schedule_comparison_basis_resolver import (
+            resolve_workbench_comparison_basis,
+        )
+        from hb_assistant.construction.analytics.project_schedule_summary_service import (
+            ProjectScheduleSummaryService,
+        )
+
+        stable_item_keys = request.get("stable_item_keys") or []
+        if not isinstance(stable_item_keys, list) or not stable_item_keys:
+            raise HTTPException(status_code=400, detail="stable_item_keys_required")
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        try:
+            resolve_workbench_comparison_basis(comparison_basis)
+        except ValueError as exc:
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
+            raise
+        try:
+            return ProjectScheduleSummaryService(db_path=_schedule_db_path()).promote_review_cues(
+                project_key,
+                stable_item_keys=[str(key) for key in stable_item_keys],
+                as_of=as_of_date,
+                comparison_basis=comparison_basis,
                 reviewed_by_operator=role.get("role"),
             )
         except ValueError as exc:
-            if str(exc) == "review_item_not_found":
-                raise HTTPException(status_code=404, detail="review_item_not_found") from exc
-            if str(exc) == "invalid_review_status":
-                raise HTTPException(status_code=400, detail="invalid_review_status") from exc
+            if str(exc) in {"baseline_not_selected", "baseline_invalid"}:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             raise
 
     @app.get("/api/projects/{project_key}/schedule/metrics/{metric_key}/trend")

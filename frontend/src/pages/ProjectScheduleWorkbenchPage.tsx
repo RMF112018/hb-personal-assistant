@@ -33,7 +33,23 @@ function isNamedWorkbenchBasis(basis: ReviewWorkbenchComparisonBasis): boolean {
   return NAMED_WORKBENCH_BASIS.has(basis)
 }
 
-const STATUSES = ['open', 'watching', 'reviewed', 'dismissed'] as const
+const STATUSES = [
+  'needs_review',
+  'accepted_for_follow_up',
+  'dismissed_not_material',
+  'resolved',
+  'superseded',
+  'duplicate',
+] as const
+const REASON_REQUIRED = new Set(['dismissed_not_material', 'superseded', 'duplicate', 'resolved'])
+const OPERATOR_DISPOSITIONS = [
+  { value: 'needs_review', label: 'Needs review' },
+  { value: 'accepted_for_follow_up', label: 'Accepted for PM follow-up' },
+  { value: 'dismissed_not_material', label: 'Dismissed as not material' },
+  { value: 'superseded', label: 'Superseded' },
+  { value: 'duplicate', label: 'Duplicate' },
+  { value: 'resolved', label: 'Resolved' },
+] as const
 const SEVERITIES = ['critical', 'high', 'medium', 'low'] as const
 const CONFIDENCES = [
   'production_backed',
@@ -45,6 +61,11 @@ const CONFIDENCES = [
 
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
+  return String(value)
+}
+
+function num(value: unknown) {
+  if (value === null || value === undefined || value === '') return '0'
   return String(value)
 }
 
@@ -126,6 +147,8 @@ export function ProjectScheduleWorkbenchPage() {
   const [sourceMetricFilter, setSourceMetricFilter] = useState('')
   const [confidenceFilter, setConfidenceFilter] = useState('')
   const [phaseFilter, setPhaseFilter] = useState('')
+  const [selectedPreview, setSelectedPreview] = useState<Record<string, boolean>>({})
+  const [reasonDraft, setReasonDraft] = useState<Record<string, string>>({})
 
   const namedPreview = isNamedWorkbenchBasis(comparisonBasis)
 
@@ -185,11 +208,8 @@ export function ProjectScheduleWorkbenchPage() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: reviewItemsQueryKey,
-    queryFn: async () => {
-      if (canSyncWorkbench) {
-        await api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate, comparisonBasis })
-      }
-      return api.getProjectScheduleReviewItems(projectKey, {
+    queryFn: () =>
+      api.getProjectScheduleReviewItems(projectKey, {
         asOf: asOfDate,
         comparisonBasis,
         reviewStatus: statusFilter || undefined,
@@ -197,16 +217,40 @@ export function ProjectScheduleWorkbenchPage() {
         sourceMetric: sourceMetricFilter || undefined,
         confidence: confidenceFilter || undefined,
         phase: phaseFilter || undefined,
-      })
-    },
+      }),
     enabled: Boolean(projectKey),
   })
 
+  const syncMutation = useMutation({
+    mutationFn: () => api.syncProjectScheduleReviewItems(projectKey, { asOf: asOfDate, comparisonBasis }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [...reviewItemsQueryKey] })
+    },
+  })
+
+  const promoteMutation = useMutation({
+    mutationFn: (stableItemKeys: string[]) =>
+      api.promoteProjectScheduleReviewItems(projectKey, { stable_item_keys: stableItemKeys }, {
+        asOf: asOfDate,
+        comparisonBasis,
+      }),
+    onSuccess: () => {
+      setSelectedPreview({})
+      void queryClient.invalidateQueries({ queryKey: [...reviewItemsQueryKey] })
+    },
+  })
+
   const updateMutation = useMutation({
-    mutationFn: (args: { reviewItemId: string; reviewStatus: string; pmNotes?: string }) =>
+    mutationFn: (args: {
+      reviewItemId: string
+      reviewStatus: string
+      pmNotes?: string
+      dispositionReason?: string
+    }) =>
       api.patchProjectScheduleReviewItem(projectKey, args.reviewItemId, {
-        review_status: args.reviewStatus,
+        disposition: args.reviewStatus,
         pm_notes: args.pmNotes,
+        disposition_reason: args.dispositionReason,
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [...reviewItemsQueryKey] })
@@ -230,6 +274,12 @@ export function ProjectScheduleWorkbenchPage() {
   const envelope = (data || {}) as Record<string, any>
   const workbench = (envelope.workbench || {}) as Record<string, any>
   const items = Array.isArray(envelope.items) ? envelope.items : []
+  const reviewStatus = (workbench.review_status || workbench.summary || {}) as Record<string, any>
+  const previewItems = items.filter((item: any) => !item.review_item_id)
+  const persistedItems = items.filter((item: any) => item.review_item_id)
+  const selectedPreviewKeys = Object.entries(selectedPreview)
+    .filter(([, selected]) => selected)
+    .map(([key]) => key)
   const readOnlyNamedPreview =
     Boolean(workbench.read_only_baseline_preview) || (namedPreview && !namedSlotReady)
   const namedComparisonLine = namedPreview
@@ -257,6 +307,67 @@ export function ProjectScheduleWorkbenchPage() {
       setExpandedId(String(target.review_item_id || target.stable_item_key))
     }
   }, [focusReview, items])
+
+  function renderReviewCard(item: any, isPreview: boolean) {
+    const itemId = String(item.review_item_id || item.stable_item_key)
+    const expanded = expandedId === itemId
+    const notesValue = notesDraft[itemId] ?? text(item.pm_notes, '')
+    const reasonValue = reasonDraft[itemId] ?? text(item.disposition_reason, '')
+    const stableKey = String(item.stable_item_key || itemId)
+
+    return (
+      <ReviewCueCard
+        key={itemId}
+        item={item}
+        projectKey={projectKey}
+        comparisonBasis={comparisonBasis}
+        asOfDate={asOfDate}
+        canSync={canSyncWorkbench}
+        isPreview={isPreview}
+        selectable={isPreview && canSyncWorkbench}
+        selected={Boolean(selectedPreview[stableKey])}
+        onSelectChange={(selected) =>
+          setSelectedPreview((current) => ({ ...current, [stableKey]: selected }))
+        }
+        expanded={expanded}
+        notesValue={notesValue}
+        reasonValue={reasonValue}
+        operatorDispositions={OPERATOR_DISPOSITIONS}
+        reasonRequiredDispositions={REASON_REQUIRED}
+        focusRef={focusRef}
+        focusReview={focusReview}
+        updatePending={updateMutation.isPending}
+        onToggleExpanded={() => setExpandedId(expanded ? null : itemId)}
+        onNotesChange={(value) => setNotesDraft((current) => ({ ...current, [itemId]: value }))}
+        onReasonChange={(value) => setReasonDraft((current) => ({ ...current, [itemId]: value }))}
+        onSaveNotes={() => {
+          void updateMutation.mutateAsync({
+            reviewItemId: String(item.review_item_id),
+            reviewStatus: text(item.review_status, 'needs_review'),
+            pmNotes: notesValue,
+            dispositionReason: reasonValue || undefined,
+          })
+        }}
+        onStatusChange={(reviewStatus) => {
+          void updateMutation.mutateAsync({
+            reviewItemId: String(item.review_item_id),
+            reviewStatus,
+            pmNotes: notesValue || undefined,
+            dispositionReason: reasonValue || undefined,
+          })
+        }}
+        eventsSlot={
+          item.review_item_id ? (
+            <ReviewItemEvents
+              projectKey={projectKey}
+              reviewItemId={String(item.review_item_id)}
+              expanded={expanded}
+            />
+          ) : null
+        }
+      />
+    )
+  }
 
   if (isLoading) {
     return (
@@ -322,8 +433,47 @@ export function ProjectScheduleWorkbenchPage() {
             >
               Export Memo (HTML)
             </button>
+            {canSyncWorkbench ? (
+              <>
+                <button
+                  className="badge"
+                  type="button"
+                  disabled={syncMutation.isPending}
+                  onClick={() => {
+                    void syncMutation.mutateAsync()
+                  }}
+                >
+                  Sync all materializable cues
+                </button>
+                <button
+                  className="badge"
+                  type="button"
+                  disabled={promoteMutation.isPending || selectedPreviewKeys.length === 0}
+                  onClick={() => {
+                    void promoteMutation.mutateAsync(selectedPreviewKeys)
+                  }}
+                >
+                  Promote selected preview cues
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
+
+        {reviewStatus.pm_summary ? (
+          <div className="rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm" role="status">
+            <div className="font-medium">Review status</div>
+            <p className="mt-1 text-[var(--hb-muted)]">{text(reviewStatus.pm_summary)}</p>
+            <p className="mt-2 text-xs text-[var(--hb-muted)]">
+              {num(reviewStatus.preview_cue_count)} preview · {num(reviewStatus.persisted_item_count)} persisted ·{' '}
+              {num(reviewStatus.needs_review)} needs review · {num(reviewStatus.accepted_for_follow_up)} accepted ·{' '}
+              {num(reviewStatus.blocked)} blocked
+            </p>
+            {reviewStatus.recommended_next_action ? (
+              <p className="mt-1 text-xs">{text(reviewStatus.recommended_next_action)}</p>
+            ) : null}
+          </div>
+        ) : null}
 
         {readOnlyNamedPreview && (
           <div
@@ -475,53 +625,22 @@ export function ProjectScheduleWorkbenchPage() {
         ) : null}
 
         {items.length > 0 && (
-          <div className="space-y-3">
-            {items.map((item: any) => {
-              const itemId = String(item.review_item_id || item.stable_item_key)
-              const expanded = expandedId === itemId
-              const notesValue = notesDraft[itemId] ?? text(item.pm_notes, '')
-
-              return (
-                <ReviewCueCard
-                  key={itemId}
-                  item={item}
-                  projectKey={projectKey}
-                  comparisonBasis={comparisonBasis}
-                  asOfDate={asOfDate}
-                  canSync={canSyncWorkbench}
-                  expanded={expanded}
-                  notesValue={notesValue}
-                  focusRef={focusRef}
-                  focusReview={focusReview}
-                  updatePending={updateMutation.isPending}
-                  onToggleExpanded={() => setExpandedId(expanded ? null : itemId)}
-                  onNotesChange={(value) => setNotesDraft((current) => ({ ...current, [itemId]: value }))}
-                  onSaveNotes={() => {
-                    void updateMutation.mutateAsync({
-                      reviewItemId: String(item.review_item_id),
-                      reviewStatus: text(item.review_status, 'open'),
-                      pmNotes: notesValue,
-                    })
-                  }}
-                  onStatusChange={(reviewStatus) => {
-                    void updateMutation.mutateAsync({
-                      reviewItemId: String(item.review_item_id),
-                      reviewStatus,
-                      pmNotes: notesValue || undefined,
-                    })
-                  }}
-                  eventsSlot={
-                    item.review_item_id ? (
-                      <ReviewItemEvents
-                        projectKey={projectKey}
-                        reviewItemId={String(item.review_item_id)}
-                        expanded={expanded}
-                      />
-                    ) : null
-                  }
-                />
-              )
-            })}
+          <div className="space-y-6">
+            {previewItems.length > 0 ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold">Preview cues</h4>
+                {previewItems.map((item: any) => renderReviewCard(item, true))}
+              </div>
+            ) : null}
+            {persistedItems.length > 0 ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold">Persisted review items</h4>
+                {persistedItems.map((item: any) => renderReviewCard(item, false))}
+              </div>
+            ) : null}
+            {!previewItems.length && !persistedItems.length
+              ? items.map((item: any) => renderReviewCard(item, !item.review_item_id))
+              : null}
           </div>
         )}
 

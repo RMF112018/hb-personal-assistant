@@ -161,7 +161,7 @@ class ProjectScheduleControlsService:
             if change_impact.get("available")
             else {}
         )
-        wb_summary = workbench.get("summary") or {}
+        wb_summary = workbench.get("review_status") or workbench.get("summary") or {}
         comparison_label = comparison_label_for_basis(basis)
 
         analytics_trust = context.get("analytics_trust") or self._controls_analytics_trust(
@@ -466,9 +466,11 @@ class ProjectScheduleControlsService:
             "cpm_observability": self._cpm_observability_section(cpm_obs_row),
             "review_workbench": {
                 "available": True,
-                "open_review_item_count": int(wb_summary.get("open_count") or 0),
+                "open_review_item_count": int(wb_summary.get("needs_review") or wb_summary.get("open_count") or 0),
                 "watching_count": int(wb_summary.get("watching_count") or 0),
-                "headline": "Review workbench preview counts for the selected comparison basis.",
+                "review_status": wb_summary,
+                "headline": str(wb_summary.get("pm_summary") or "Review workbench status for the selected comparison basis."),
+                "recommended_next_action": wb_summary.get("recommended_next_action"),
                 "comparison_basis": comparison_basis,
                 "read_only_baseline_preview": comparison_basis == "baseline" or is_named_baseline_basis(comparison_basis),
             },
@@ -625,8 +627,10 @@ class ProjectScheduleControlsService:
                     "_priority": 75,
                 }
             )
+        from .project_schedule_review_disposition import DISPOSITION_NEEDS_REVIEW, is_open_disposition
+
         for item in items:
-            if str(item.get("review_status") or "open") not in {"open", "watching"}:
+            if not is_open_disposition(str(item.get("review_status") or DISPOSITION_NEEDS_REVIEW)):
                 continue
             item_type = str(item.get("item_type") or "schedule_review")
             taxonomy = taxonomy_for_item_type(item_type)

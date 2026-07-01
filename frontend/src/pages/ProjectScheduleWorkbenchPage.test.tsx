@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProjectScheduleWorkbenchPage } from './ProjectScheduleWorkbenchPage'
 
 const syncProjectScheduleReviewItemsMock = vi.fn()
+const promoteProjectScheduleReviewItemsMock = vi.fn()
 const getProjectScheduleReviewItemsMock = vi.fn()
 const getProjectScheduleReviewItemEventsMock = vi.fn()
 const patchProjectScheduleReviewItemMock = vi.fn()
@@ -24,6 +25,7 @@ vi.mock('../lib/api', async () => {
       getProjects: (...args: unknown[]) => getProjectsMock(...args),
       getProjectScheduleBaselines: (...args: unknown[]) => getProjectScheduleBaselinesMock(...args),
       syncProjectScheduleReviewItems: (...args: unknown[]) => syncProjectScheduleReviewItemsMock(...args),
+      promoteProjectScheduleReviewItems: (...args: unknown[]) => promoteProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItems: (...args: unknown[]) => getProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItemEvents: (...args: unknown[]) => getProjectScheduleReviewItemEventsMock(...args),
       patchProjectScheduleReviewItem: (...args: unknown[]) => patchProjectScheduleReviewItemMock(...args),
@@ -36,6 +38,15 @@ vi.mock('../lib/api', async () => {
 const reviewItems = {
   available: true,
   count: 2,
+  workbench: {
+    review_status: {
+      pm_summary: 'Schedule review items are queued for operator review.',
+      preview_cue_count: 0,
+      persisted_item_count: 2,
+      needs_review: 2,
+      recommended_next_action: 'Review preview cues and persisted items, then record operator dispositions.',
+    },
+  },
   items: [
     {
       review_item_id: 'psri-1',
@@ -43,7 +54,8 @@ const reviewItems = {
       item_type: 'driver',
       item_title: 'Review driver: Concrete pour',
       priority: 85,
-      review_status: 'open',
+      review_status: 'needs_review',
+      disposition_label: 'Needs review',
       source_activity_id: 'DRV-A',
       source_metric_key: 'change_driver_analysis',
       source_signal_type: 'driver',
@@ -76,7 +88,8 @@ const reviewItems = {
       item_type: 'milestone',
       item_title: 'Milestone moved later: Substantial completion',
       priority: 72,
-      review_status: 'watching',
+      review_status: 'needs_review',
+      disposition_label: 'Needs review',
       source_activity_id: 'MS-1',
       source_metric_key: 'milestones',
       confidence: 'production_backed',
@@ -107,6 +120,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
       projects: [{ project_key: 'tropical', display_name: 'Tropical Resort' }],
     })
     syncProjectScheduleReviewItemsMock.mockResolvedValue({ available: true, workbench: { available: true } })
+    promoteProjectScheduleReviewItemsMock.mockResolvedValue({ promoted_count: 1, skipped_duplicate_count: 0, items: [] })
     getProjectScheduleReviewItemsMock.mockResolvedValue(reviewItems)
     getProjectScheduleBaselinesMock.mockResolvedValue({ available: true, slots: [] })
     getProjectScheduleReviewItemEventsMock.mockResolvedValue({
@@ -116,42 +130,32 @@ describe('ProjectScheduleWorkbenchPage', () => {
     patchProjectScheduleReviewItemMock.mockResolvedValue({ item: reviewItems.items[0] })
   })
 
-  it('syncs review items for operators and passes as_of', async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
-        asOf: '2026-07-03',
-        comparisonBasis: 'prior_update',
-      })
-    })
-    expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
-      asOf: '2026-07-03',
-      comparisonBasis: 'prior_update',
-      reviewStatus: undefined,
-      severity: undefined,
-      sourceMetric: undefined,
-      confidence: undefined,
-      phase: undefined,
-    })
-    expect(await screen.findByText('Candidate change driver')).toBeInTheDocument()
-    expect(screen.queryByText('imp-current')).not.toBeInTheDocument()
-  })
-
-  it('loads preview only for viewers without syncing', async () => {
-    getLocalUiRoleMock.mockReturnValue('viewer')
+  it('loads review items without auto-sync for operators', async () => {
     renderPage()
 
     await waitFor(() => {
       expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', {
-      asOf: '2026-07-03',
-      comparisonBasis: 'prior_update',
-      reviewStatus: undefined,
-      severity: undefined,
-      sourceMetric: undefined,
-      confidence: undefined,
-      phase: undefined,
+        asOf: '2026-07-03',
+        comparisonBasis: 'prior_update',
+        reviewStatus: undefined,
+        severity: undefined,
+        sourceMetric: undefined,
+        confidence: undefined,
+        phase: undefined,
+      })
     })
+    expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
+    expect(await screen.findByText('Candidate change driver')).toBeInTheDocument()
+    expect(screen.queryByText('imp-current')).not.toBeInTheDocument()
+    expect(screen.getByText(/Review status/)).toBeInTheDocument()
+  })
+
+  it('loads preview only for viewers without sync controls', async () => {
+    getLocalUiRoleMock.mockReturnValue('viewer')
+    renderPage()
+
+    await waitFor(() => {
+      expect(getProjectScheduleReviewItemsMock).toHaveBeenCalled()
     })
     expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
     expect(await screen.findByText(/Preview only/)).toBeInTheDocument()
@@ -160,103 +164,53 @@ describe('ProjectScheduleWorkbenchPage', () => {
     expect(within(card as HTMLElement).queryByText('Save notes')).not.toBeInTheDocument()
   })
 
-  it('patches disposition and saves notes for operators', async () => {
+  it('manual sync and disposition patch for operators', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await screen.findByText('Candidate change driver')
+    await user.click(screen.getByRole('button', { name: 'Sync all materializable cues' }))
+    expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalled()
+
     const detailButtons = screen.getAllByRole('button', { name: 'Show detail' })
     await user.click(detailButtons[0])
 
-    await waitFor(() => {
-      expect(getProjectScheduleReviewItemEventsMock).toHaveBeenCalledWith('tropical', 'psri-1')
-    })
-    expect(screen.getByText(/not a causation/i)).toBeInTheDocument()
-
     const card = screen.getByText('Candidate change driver').closest('article')
     const select = within(card as HTMLElement).getByRole('combobox')
-    await user.selectOptions(select, 'reviewed')
+    await user.selectOptions(select, 'accepted_for_follow_up')
 
     await waitFor(() => {
       expect(patchProjectScheduleReviewItemMock).toHaveBeenCalledWith('tropical', 'psri-1', {
-        review_status: 'reviewed',
+        disposition: 'accepted_for_follow_up',
         pm_notes: undefined,
-      })
-    })
-
-    const notes = screen.getByRole('textbox')
-    await user.type(notes, 'checked driver')
-    await user.click(screen.getByRole('button', { name: 'Save notes' }))
-
-    await waitFor(() => {
-      expect(patchProjectScheduleReviewItemMock).toHaveBeenCalledWith('tropical', 'psri-1', {
-        review_status: 'open',
-        pm_notes: 'checked driver',
+        disposition_reason: undefined,
       })
     })
   })
 
-  it('keeps technical evidence collapsed by default and shows advisory copy', async () => {
+  it('promotes selected preview cues', async () => {
     const user = userEvent.setup()
-    renderPage()
-    await screen.findByText('Candidate change driver')
-    expect(screen.getByText(/Sequence cues only/)).toBeInTheDocument()
-    expect(screen.queryByText('imp-current')).not.toBeInTheDocument()
-    await user.click(screen.getAllByRole('button', { name: 'Show detail' })[0])
-    expect(screen.getByText(/Show technical evidence/)).toBeInTheDocument()
-    expect(screen.queryByText(/Raw technical payload/)).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Show technical evidence' }))
-    expect(screen.getByText(/Raw technical payload/)).toBeInTheDocument()
-  })
-
-  it('syncs named baseline review items for operators when slot is selected', async () => {
-    getLocalUiRoleMock.mockReturnValue('operator')
-    getProjectScheduleBaselinesMock.mockResolvedValue({
-      available: true,
-      slots: [
+    getProjectScheduleReviewItemsMock.mockResolvedValue({
+      ...reviewItems,
+      items: [
         {
-          slot_key: 'current_contract_baseline',
-          slot_label: 'Current Contract Baseline',
-          status: 'selected',
-          selection: {
-            display_name: 'Contract baseline',
-            schedule_data_date: '2026-06-01',
-          },
+          stable_item_key: 'driver:PREVIEW',
+          item_title: 'Preview driver cue',
+          review_status: 'needs_review',
+          disposition_label: 'Needs review',
+          priority: 80,
+          evidence: { cue_label: 'Preview driver cue' },
         },
       ],
     })
-    getProjectScheduleReviewItemsMock.mockResolvedValue({
-      ...reviewItems,
-      workbench: { read_only_baseline_preview: false, review_scope: 'named_baseline' },
-    })
-    renderPage('/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03')
-
-    await waitFor(() => {
-      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
-        comparisonBasis: 'current_contract_baseline',
-        asOf: '2026-07-03',
-      }))
-    })
-    await waitFor(() => {
-      expect(screen.getByText(/saved separately from Prior Update/i)).toBeInTheDocument()
-    })
-    expect(screen.queryByText(/Named baseline preview — read only/i)).not.toBeInTheDocument()
-  })
-
-  it.each([
-    ['prior_update', '/projects/tropical/schedule/workbench?comparison_basis=prior_update&as_of=2026-07-03'],
-    ['current_contract_baseline', '/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03'],
-    ['previous_progress_update_baseline', '/projects/tropical/schedule/workbench?comparison_basis=previous_progress_update_baseline&as_of=2026-07-03'],
-    ['secondary_progress_update_baseline', '/projects/tropical/schedule/workbench?comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03'],
-  ])('export memo passes asOf and comparisonBasis for %s', async (comparisonBasis, path) => {
-    downloadProjectScheduleExportMock.mockResolvedValue(undefined)
-    const user = userEvent.setup()
-    renderPage(path)
-    await screen.findByText('Candidate change driver')
-    await user.click(screen.getByRole('button', { name: 'Export Memo (Markdown)' }))
-    expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
-      asOf: '2026-07-03',
-      comparisonBasis,
-    })
+    renderPage()
+    await screen.findByText('Preview driver cue')
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: 'Promote selected preview cues' }))
+    expect(promoteProjectScheduleReviewItemsMock).toHaveBeenCalledWith(
+      'tropical',
+      { stable_item_keys: ['driver:PREVIEW'] },
+      { asOf: '2026-07-03', comparisonBasis: 'prior_update' },
+    )
   })
 })

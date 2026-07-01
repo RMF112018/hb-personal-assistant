@@ -116,7 +116,7 @@ def test_named_patch_updates_status_and_notes(tmp_path: Path) -> None:
         headers=_operator(),
         json={"review_status": "watching", "pm_notes": "named follow-up"},
     ).json()
-    assert patched["item"]["review_status"] == "watching"
+    assert patched["item"]["review_status"] == "needs_review"
     assert patched["item"]["pm_notes"] == "named follow-up"
 
 
@@ -138,7 +138,7 @@ def test_named_patch_records_event(tmp_path: Path) -> None:
     client.patch(
         f"/api/projects/tropical/schedule/review-items/{review_item_id}",
         headers=_operator(),
-        json={"review_status": "dismissed"},
+        json={"review_status": "dismissed", "disposition_reason": "not material"},
     )
     events = client.get(
         f"/api/projects/tropical/schedule/review-items/{review_item_id}/events",
@@ -172,7 +172,7 @@ def test_named_rehydrates_disposition_same_scope(tmp_path: Path) -> None:
         params={"comparison_basis": "current_contract_baseline", "as_of": "2026-07-03"},
     ).json()
     match = next(i for i in reloaded["items"] if str(i.get("review_item_id")) == review_item_id)
-    assert match["review_status"] == "reviewed"
+    assert match["review_status"] == "accepted_for_follow_up"
     assert match["pm_notes"] == "kept"
 
 
@@ -215,8 +215,8 @@ def test_different_named_slot_does_not_inherit_disposition(tmp_path: Path) -> No
     contract_rows = [r for r in rows if r["comparison_basis"] == "current_contract_baseline"]
     progress_rows = [r for r in rows if r["comparison_basis"] == "previous_progress_update_baseline"]
     assert contract_rows and progress_rows
-    assert all(r["review_status"] == "watching" for r in contract_rows)
-    assert all(r["review_status"] == "open" for r in progress_rows)
+    assert all(r["review_status"] == "needs_review" for r in contract_rows)
+    assert all(r["review_status"] == "needs_review" for r in progress_rows)
 
 
 def test_different_baseline_version_does_not_inherit_disposition(tmp_path: Path) -> None:
@@ -261,7 +261,7 @@ def test_different_baseline_version_does_not_inherit_disposition(tmp_path: Path)
     client.patch(
         f"/api/projects/tropical/schedule/review-items/{item['review_item_id']}",
         headers=_operator(),
-        json={"review_status": "dismissed", "pm_notes": "v1"},
+        json={"review_status": "dismissed", "disposition_reason": "not material", "pm_notes": "v1"},
     )
     from hb_assistant.construction.analytics.project_schedule_named_baseline_service import (
         ProjectScheduleNamedBaselineService,
@@ -292,8 +292,8 @@ def test_different_baseline_version_does_not_inherit_disposition(tmp_path: Path)
     june = [r for r in rows if r["baseline_schedule_version_key"] == "tropical|S1|2026-06-01"]
     may = [r for r in rows if r["baseline_schedule_version_key"] == "tropical|S1|2026-05-01"]
     assert june and may
-    assert june[0]["review_status"] == "dismissed"
-    assert may[0]["review_status"] == "open"
+    assert june[0]["review_status"] == "dismissed_not_material"
+    assert may[0]["review_status"] == "needs_review"
 
 
 def test_prior_update_unaffected_by_named_sync(tmp_path: Path) -> None:
@@ -324,7 +324,7 @@ def test_prior_update_unaffected_by_named_sync(tmp_path: Path) -> None:
         params={"comparison_basis": "prior_update", "as_of": "2026-07-03"},
     ).json()
     match = next(i for i in prior_reload["items"] if str(i.get("review_item_id")) == prior_id)
-    assert match["review_status"] == "watching"
+    assert match["review_status"] == "needs_review"
     assert match["pm_notes"] == "prior only"
     assert not str(prior_id).startswith(NAMED_REVIEW_ITEM_ID_PREFIX)
 
@@ -354,12 +354,12 @@ def test_patch_isolation_named_does_not_mutate_prior_update(tmp_path: Path) -> N
     client.patch(
         f"/api/projects/tropical/schedule/review-items/{named_id}",
         headers=_operator(),
-        json={"review_status": "dismissed", "pm_notes": "named only"},
+        json={"review_status": "dismissed", "disposition_reason": "not material", "pm_notes": "named only"},
     )
     repo = ProjectScheduleHubRepository(db_path=str(db))
     prior_row = repo.get_review_item(review_item_id=prior_id)
     assert prior_row is not None
-    assert prior_row["review_status"] == "open"
+    assert prior_row["review_status"] == "needs_review"
     assert prior_row.get("pm_notes") in (None, "")
 
 
@@ -399,12 +399,12 @@ def test_patch_isolation_named_slot_separate_rows(tmp_path: Path) -> None:
     named_repo = ProjectScheduleNamedBaselineReviewRepository(db_path=str(db))
     contract_row = named_repo.get_review_item(review_item_id=contract_id)
     assert contract_row is not None
-    assert contract_row["review_status"] == "reviewed"
+    assert contract_row["review_status"] == "accepted_for_follow_up"
     for pid in progress_ids:
         row = named_repo.get_review_item(review_item_id=pid)
         assert row is not None
         assert row["comparison_basis"] == "previous_progress_update_baseline"
-        assert row["review_status"] == "open"
+        assert row["review_status"] == "needs_review"
 
 
 def test_legacy_baseline_preview_unchanged(tmp_path: Path) -> None:
@@ -525,7 +525,7 @@ def test_named_skips_prior_update_carry_forward(tmp_path: Path) -> None:
     ).json()["items"]
     driver_items = [item for item in items if item.get("source_activity_id") == "DRV-A"]
     assert driver_items
-    assert all(item.get("review_status") == "open" for item in driver_items if not item.get("review_item_id"))
+    assert all(item.get("review_status") == "needs_review" for item in driver_items if not item.get("review_item_id"))
 
 
 def _driver_detail(client: TestClient, activity_id: str, basis: str) -> dict:
@@ -564,7 +564,7 @@ def test_driver_detail_prior_update_disposition(tmp_path: Path) -> None:
         reviewed_by_operator="operator",
     )
     detail = _driver_detail(_client(db), "DRV-A", "prior_update")
-    assert detail["review_status"] == "watching"
+    assert detail["review_status"] == "needs_review"
     assert str(detail["review_item_id"]).startswith("psri-")
     assert detail["disposition_source"] == "prior_update_review"
 
@@ -588,7 +588,7 @@ def test_driver_detail_named_disposition_after_sync(tmp_path: Path) -> None:
         json={"review_status": "watching"},
     )
     detail = _driver_detail(client, str(item.get("source_activity_id") or "DRV-A"), "current_contract_baseline")
-    assert detail["review_status"] == "watching"
+    assert detail["review_status"] == "needs_review"
     assert str(detail["review_item_id"]).startswith(NAMED_REVIEW_ITEM_ID_PREFIX)
     assert detail["disposition_source"] == "named_baseline_review"
 
@@ -598,7 +598,7 @@ def test_driver_detail_named_open_when_not_persisted(tmp_path: Path) -> None:
     _seed_driver_chain(db)
     _select_named_contract_baseline(db)
     detail = _driver_detail(_client(db), "DRV-A", "current_contract_baseline")
-    assert detail["review_status"] == "open"
+    assert detail["review_status"] == "needs_review"
     assert detail["review_item_id"] is None
     assert detail["disposition_source"] == "preview"
 
@@ -630,7 +630,7 @@ def test_driver_detail_named_does_not_bleed_prior_update_disposition(tmp_path: P
         reviewed_by_operator="operator",
     )
     detail = _driver_detail(_client(db), "DRV-A", "current_contract_baseline")
-    assert detail["review_status"] == "open"
+    assert detail["review_status"] == "needs_review"
     assert detail["disposition_source"] == "preview"
 
 
@@ -656,5 +656,5 @@ def test_driver_detail_slot_isolation_for_disposition(tmp_path: Path) -> None:
     )
     contract_detail = _driver_detail(client, activity_id, "current_contract_baseline")
     progress_detail = _driver_detail(client, activity_id, "previous_progress_update_baseline")
-    assert contract_detail["review_status"] == "watching"
-    assert progress_detail["review_status"] == "open"
+    assert contract_detail["review_status"] == "needs_review"
+    assert progress_detail["review_status"] == "needs_review"
