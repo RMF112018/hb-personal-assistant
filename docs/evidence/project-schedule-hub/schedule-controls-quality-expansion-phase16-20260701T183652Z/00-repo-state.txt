@@ -1,0 +1,11 @@
+branch=feature/schedule-controls-quality-expansion-phase16-20260701T183645Z
+head=a15998c80a0e39b0fcfe7ead887abdce8fa4ac93
+base_phase15=a15998c8
+phase15_pr=https://github.com/RMF112018/hb-personal-assistant/pull/255
+?? docs/evidence/project-schedule-hub/schedule-controls-quality-expansion-phase16-20260701T183652Z/
+
+a15998c8 Add schedule identity trust gating UX (Phase 15).
+258e043b Merge pull request #253 from RMF112018/feature/schedule-import-observability-cpm-trust-phase14-20260701T163525Z
+6085e2e0 Add schedule import observability and CPM trust layer (Phase 14).
+d86d59de Merge pull request #252 from RMF112018/fix/obsidian-phase10h-tropical-identity-reconcile-20260701T155135Z
+96c785b3 fix(obsidian): reconcile tropical source card identity

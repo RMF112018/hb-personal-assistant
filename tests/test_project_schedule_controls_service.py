@@ -63,8 +63,8 @@ def test_controls_respects_as_of_historical_context(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
     _seed_driver_chain(db)
     svc = ProjectScheduleControlsService(db_path=str(db))
-    latest = svc.build_controls("tropical", as_of=date(2026, 7, 3))
-    historical = svc.build_controls("tropical", as_of=date(2026, 6, 15))
+    latest = svc.build_controls("tropical", as_of=date(2026, 7, 3), include_technical=True)
+    historical = svc.build_controls("tropical", as_of=date(2026, 6, 15), include_technical=True)
     assert latest["available"] is True
     assert historical["available"] is True
     assert latest["schedule_version_key"] != historical["schedule_version_key"]
@@ -169,7 +169,7 @@ def test_controls_api_route_forwards_as_of_and_basis(tmp_path: Path, monkeypatch
     calls: list[dict[str, object]] = []
     original = ProjectScheduleControlsService.build_controls
 
-    def _spy(self, project_key: str, *, as_of=None, comparison_basis="prior_update"):
+    def _spy(self, project_key: str, *, as_of=None, comparison_basis="prior_update", include_technical=False):
         calls.append({"project_key": project_key, "as_of": as_of, "comparison_basis": comparison_basis})
         return original(self, project_key, as_of=as_of, comparison_basis=comparison_basis)
 
