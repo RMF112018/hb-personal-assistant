@@ -14,11 +14,13 @@ from .connection import open_connection
 from .project_schedule_hub_repository import (
     EVENT_CREATED,
     EVENT_NOTES_CHANGED,
+    EVENT_PROMOTED,
     EVENT_STATUS_CHANGED,
     EVENT_SYNCED,
     REVIEW_OPEN,
     REVIEW_STATUSES,
 )
+from hb_assistant.construction.analytics.project_schedule_review_disposition import normalize_disposition
 
 NAMED_REVIEW_ITEM_ID_PREFIX = "psnbri-"
 
@@ -146,6 +148,9 @@ class ProjectScheduleNamedBaselineReviewRepository:
         *,
         scope: NamedBaselineReviewScope,
         candidate: dict[str, Any],
+        emit_sync_event: bool = True,
+        initial_review_status: str | None = None,
+        promotion_event: bool = False,
     ) -> dict[str, Any]:
         evidence = dict(candidate.get("evidence") or {})
         identity = self._identity_from_candidate(scope, candidate)
@@ -203,15 +208,17 @@ class ProjectScheduleNamedBaselineReviewRepository:
                         review_item_id,
                     ),
                 )
-                self._append_event(
-                    conn,
-                    review_item_id=review_item_id,
-                    project_key=scope.project_key,
-                    current_schedule_version_key=scope.current_schedule_version_key,
-                    event_type=EVENT_SYNCED,
-                )
+                if emit_sync_event:
+                    self._append_event(
+                        conn,
+                        review_item_id=review_item_id,
+                        project_key=scope.project_key,
+                        current_schedule_version_key=scope.current_schedule_version_key,
+                        event_type=EVENT_SYNCED,
+                    )
             else:
                 review_item_id = f"{NAMED_REVIEW_ITEM_ID_PREFIX}{uuid.uuid4().hex}"
+                review_status = normalize_disposition(initial_review_status) or REVIEW_OPEN
                 conn.execute(
                     """
                     INSERT INTO project_schedule_named_baseline_review_items (
@@ -243,7 +250,7 @@ class ProjectScheduleNamedBaselineReviewRepository:
                         str(candidate.get("item_type") or "cue"),
                         str(candidate.get("item_title") or ""),
                         int(candidate.get("priority") or 50),
-                        REVIEW_OPEN,
+                        review_status,
                         evidence_json,
                         now,
                         now,
@@ -255,8 +262,8 @@ class ProjectScheduleNamedBaselineReviewRepository:
                     review_item_id=review_item_id,
                     project_key=scope.project_key,
                     current_schedule_version_key=scope.current_schedule_version_key,
-                    event_type=EVENT_CREATED,
-                    new_status=REVIEW_OPEN,
+                    event_type=EVENT_PROMOTED if promotion_event else EVENT_CREATED,
+                    new_status=review_status,
                 )
         row = self.get_review_item(review_item_id=review_item_id)
         return row or {}
@@ -268,9 +275,12 @@ class ProjectScheduleNamedBaselineReviewRepository:
         review_status: str | None = None,
         pm_notes: str | None = None,
         reviewed_by_operator: str | None = None,
+        disposition_reason: str | None = None,
     ) -> dict[str, Any] | None:
-        if review_status is not None and review_status not in REVIEW_STATUSES:
-            raise ValueError("invalid_review_status")
+        try:
+            normalized_status = normalize_disposition(review_status) if review_status is not None else None
+        except ValueError as exc:
+            raise ValueError("invalid_review_status") from exc
         now = datetime.now(timezone.utc).isoformat()
         with open_connection(self._db_path) as conn:
             row = conn.execute(
@@ -286,14 +296,16 @@ class ProjectScheduleNamedBaselineReviewRepository:
                 UPDATE project_schedule_named_baseline_review_items
                 SET review_status=COALESCE(?, review_status),
                     pm_notes=COALESCE(?, pm_notes),
+                    disposition_reason=COALESCE(?, disposition_reason),
                     reviewed_by_operator=COALESCE(?, reviewed_by_operator),
                     reviewed_at=CASE WHEN ? IS NOT NULL THEN ? ELSE reviewed_at END,
                     updated_at=?
                 WHERE review_item_id=?
                 """,
                 (
-                    review_status,
+                    normalized_status,
                     pm_notes,
+                    disposition_reason,
                     reviewed_by_operator,
                     reviewed_by_operator,
                     now,
@@ -305,7 +317,7 @@ class ProjectScheduleNamedBaselineReviewRepository:
                 "SELECT * FROM project_schedule_named_baseline_review_items WHERE review_item_id=?",
                 (review_item_id,),
             ).fetchone()
-            if review_status is not None and review_status != prior_status:
+            if normalized_status is not None and normalized_status != prior_status:
                 self._append_event(
                     conn,
                     review_item_id=review_item_id,
@@ -313,7 +325,8 @@ class ProjectScheduleNamedBaselineReviewRepository:
                     current_schedule_version_key=str(row["current_schedule_version_key"]),
                     event_type=EVENT_STATUS_CHANGED,
                     prior_status=prior_status,
-                    new_status=review_status,
+                    new_status=normalized_status,
+                    disposition_reason=disposition_reason,
                     operator_id=reviewed_by_operator,
                 )
             if pm_notes is not None and pm_notes != prior_notes:
@@ -381,6 +394,7 @@ class ProjectScheduleNamedBaselineReviewRepository:
         new_status: str | None = None,
         prior_notes: str | None = None,
         new_notes: str | None = None,
+        disposition_reason: str | None = None,
         operator_id: str | None = None,
     ) -> None:
         now = datetime.now(timezone.utc).isoformat()
@@ -389,8 +403,8 @@ class ProjectScheduleNamedBaselineReviewRepository:
             INSERT INTO project_schedule_named_baseline_review_item_events (
               event_id, review_item_id, project_key, current_schedule_version_key,
               event_type, prior_status, new_status, prior_notes, new_notes,
-              operator_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              disposition_reason, operator_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 f"psnbre-{uuid.uuid4().hex}",
@@ -402,6 +416,7 @@ class ProjectScheduleNamedBaselineReviewRepository:
                 new_status,
                 prior_notes,
                 new_notes,
+                disposition_reason,
                 operator_id,
                 now,
             ),

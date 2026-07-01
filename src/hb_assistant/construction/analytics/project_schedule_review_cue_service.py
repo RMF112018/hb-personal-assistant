@@ -506,7 +506,16 @@ class ProjectScheduleReviewCueService:
     ) -> list[dict[str, Any]]:
         filtered = cues
         if review_status:
-            filtered = [c for c in filtered if c.get("review_status") == review_status]
+            from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+                normalize_disposition,
+            )
+
+            target = normalize_disposition(review_status)
+            filtered = [
+                c
+                for c in filtered
+                if normalize_disposition(str(c.get("review_status") or "")) == target
+            ]
         for key, value in (
             ("severity", severity),
             ("source_metric_key", source_metric),

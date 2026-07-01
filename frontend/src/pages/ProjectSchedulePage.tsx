@@ -767,7 +767,9 @@ export function ProjectSchedulePage() {
               <div>
                 <h4 className="text-sm font-semibold">Review Workbench</h4>
                 <p className="mt-1 text-xs text-[var(--hb-muted)]">
-                  {num(reviewWorkbench.summary?.open_count)} open · {num(reviewWorkbench.summary?.watching_count)} watching
+                  {num(reviewWorkbench.review_status?.needs_review ?? reviewWorkbench.summary?.needs_review ?? reviewWorkbench.summary?.open_count)} needs review ·{' '}
+                  {num(reviewWorkbench.review_status?.preview_cue_count ?? 0)} preview ·{' '}
+                  {num(reviewWorkbench.review_status?.persisted_item_count ?? reviewWorkbench.summary?.total_count)} persisted
                 </p>
               </div>
               <Link

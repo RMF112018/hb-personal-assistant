@@ -14,6 +14,21 @@ from hb_assistant.store.project_schedule_hub_repository import (
     REVIEW_WATCHING,
     ProjectScheduleHubRepository,
 )
+from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+    DISPOSITION_NEEDS_REVIEW,
+    OPERATOR_SELECTABLE_DISPOSITIONS,
+    enrich_item_disposition_pm_fields,
+    is_open_disposition,
+    is_terminal_disposition,
+    normalize_disposition,
+    system_disposition_for_trust,
+    validate_disposition_change,
+)
+from hb_assistant.construction.analytics.project_schedule_review_rollup_service import (
+    build_review_status_rollup,
+    prioritize_preview_items,
+    split_preview_and_persisted,
+)
 
 _PREVIEW_LIMIT = 12
 _QUEUE_LIMIT = 100
@@ -74,6 +89,96 @@ class ProjectScheduleReviewService:
             synced += 1
         return {"synced_count": synced, "candidate_count": len(candidates)}
 
+    def promote_preview_cues(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        stable_item_keys: list[str],
+        driver_analysis: dict[str, Any] | None = None,
+        milestones: dict[str, Any] | None = None,
+        remaining_health: dict[str, Any] | None = None,
+        cpm_summary: dict[str, Any] | None = None,
+        change_impact: dict[str, Any] | None = None,
+        remaining_activities: list[dict[str, Any]] | None = None,
+        as_of_date: date | None = None,
+        baseline_summary: dict[str, Any] | None = None,
+        comparison_basis: str = "prior_update",
+        reviewed_by_operator: str | None = None,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
+    ) -> dict[str, Any]:
+        as_of = as_of_date or datetime.now(timezone.utc).date()
+        candidates = self._collect_candidates(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            driver_analysis=driver_analysis,
+            milestones=milestones,
+            remaining_health=remaining_health,
+            cpm_summary=cpm_summary,
+            change_impact=change_impact,
+            remaining_activities=remaining_activities,
+            as_of_date=as_of,
+            baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
+            materializable_only=False,
+        )
+        by_key = {str(c["stable_item_key"]): c for c in candidates}
+        identity_blocked = identity_gate == "blocked"
+        analytics_blocked = analytics_trust_status == "blocked"
+        initial_status = system_disposition_for_trust(
+            identity_gate_blocked=identity_blocked,
+            analytics_gate_blocked=analytics_blocked,
+        ) or DISPOSITION_NEEDS_REVIEW
+
+        promoted: list[dict[str, Any]] = []
+        skipped_duplicate: list[str] = []
+        missing: list[str] = []
+        for raw_key in stable_item_keys:
+            stable_key = str(raw_key)
+            candidate = by_key.get(stable_key)
+            if not candidate:
+                missing.append(stable_key)
+                continue
+            existing = self._repo.get_review_item_for_version_scope(
+                project_key=project_key,
+                schedule_version_key=schedule_version_key,
+                stable_item_key=stable_key,
+                source_activity_id=candidate.get("source_activity_id"),
+            )
+            if existing:
+                skipped_duplicate.append(stable_key)
+                promoted.append(existing)
+                continue
+            if not (candidate.get("evidence") or {}).get("materializable", candidate.get("materializable", True)):
+                missing.append(stable_key)
+                continue
+            row = self._repo.upsert_review_item(
+                project_key=project_key,
+                schedule_version_key=schedule_version_key,
+                stable_item_key=stable_key,
+                item_type=str(candidate["item_type"]),
+                item_title=str(candidate["item_title"]),
+                priority=int(candidate.get("priority") or 50),
+                evidence=candidate.get("evidence"),
+                source_activity_id=candidate.get("source_activity_id"),
+                emit_sync_event=False,
+                promotion_event=True,
+                initial_review_status=initial_status,
+            )
+            promoted.append(row)
+        return {
+            "promoted_count": len(promoted) - len(skipped_duplicate),
+            "skipped_duplicate_count": len(skipped_duplicate),
+            "missing_count": len(missing),
+            "skipped_duplicate_keys": skipped_duplicate,
+            "missing_keys": missing,
+            "items": [
+                self._public_item(self._enrich_persisted_item(row))
+                for row in promoted
+            ],
+        }
+
     def build_preview(
         self,
         *,
@@ -91,6 +196,8 @@ class ProjectScheduleReviewService:
         include_activity_metric_cues: bool = True,
         response_comparison_basis: str | None = None,
         carry_forward_disposition: bool = True,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
         """Read-only workbench preview — merges live candidates with persisted disposition."""
         return self._build_workbench(
@@ -109,6 +216,8 @@ class ProjectScheduleReviewService:
             synced=False,
             carry_forward_disposition=carry_forward_disposition,
             response_comparison_basis=response_comparison_basis,
+            identity_gate=identity_gate,
+            analytics_trust_status=analytics_trust_status,
         )
 
     def sync_and_list(
@@ -179,6 +288,8 @@ class ProjectScheduleReviewService:
         use_persisted: bool = False,
         carry_forward_disposition: bool = True,
         response_comparison_basis: str | None = None,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
         as_of = as_of_date or datetime.now(timezone.utc).date()
         bases: dict[str, Any] = {}
@@ -253,6 +364,8 @@ class ProjectScheduleReviewService:
                 items=items,
                 synced=synced and basis_key == "prior_update",
                 comparison_basis=basis_key,
+                identity_gate=identity_gate,
+                analytics_trust_status=analytics_trust_status,
             )
         active = bases.get(comparison_basis) or bases.get("prior_update") or {"available": False}
         envelope = dict(active)
@@ -393,14 +506,20 @@ class ProjectScheduleReviewService:
         self,
         *,
         review_item_id: str,
+        project_key: str | None = None,
         review_status: str | None = None,
+        disposition: str | None = None,
         pm_notes: str | None = None,
+        disposition_reason: str | None = None,
         reviewed_by_operator: str | None = None,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
         from hb_assistant.store.project_schedule_named_baseline_review_repository import (
             ProjectScheduleNamedBaselineReviewRepository,
         )
 
+        requested_status = disposition or review_status
         if ProjectScheduleNamedBaselineReviewRepository.is_named_review_item_id(review_item_id):
             from .project_schedule_named_baseline_review_service import (
                 ProjectScheduleNamedBaselineReviewService,
@@ -408,14 +527,34 @@ class ProjectScheduleReviewService:
 
             return ProjectScheduleNamedBaselineReviewService(db_path=self._db_path).update_item(
                 review_item_id=review_item_id,
-                review_status=review_status,
+                project_key=project_key,
+                review_status=requested_status,
                 pm_notes=pm_notes,
+                disposition_reason=disposition_reason,
                 reviewed_by_operator=reviewed_by_operator,
+                identity_gate=identity_gate,
+                analytics_trust_status=analytics_trust_status,
+            )
+        row = self._repo.get_review_item(review_item_id=review_item_id)
+        if not row:
+            raise ValueError("review_item_not_found")
+        if project_key and str(row.get("project_key")) != project_key:
+            raise ValueError("review_item_project_mismatch")
+        if requested_status is not None:
+            validate_disposition_change(
+                prior_disposition=str(row.get("review_status")),
+                new_disposition=requested_status,
+                disposition_reason=disposition_reason,
+                operator_selectable_only=True,
+                trust_blocked=analytics_trust_status == "blocked" or identity_gate == "blocked",
+                identity_gate_blocked=identity_gate == "blocked",
+                analytics_gate_blocked=analytics_trust_status == "blocked",
             )
         updated = self._repo.update_review_item(
             review_item_id=review_item_id,
-            review_status=review_status,
+            review_status=requested_status,
             pm_notes=pm_notes,
+            disposition_reason=disposition_reason,
             reviewed_by_operator=reviewed_by_operator,
         )
         if not updated:
@@ -567,10 +706,7 @@ class ProjectScheduleReviewService:
         carried = EVENT_CARRIED_FORWARD in event_types
         enriched["lineage"] = "carried_forward" if carried else "existing"
         enriched["new_since_last_review"] = EVENT_CREATED in event_types and not carried
-        enriched["still_open_from_prior"] = carried and str(row.get("review_status")) in {
-            REVIEW_OPEN,
-            REVIEW_WATCHING,
-        }
+        enriched["still_open_from_prior"] = carried and is_open_disposition(str(row.get("review_status")))
         return self._apply_stale_signal(
             enriched,
             stable_item_key=str(row.get("stable_item_key") or ""),
@@ -586,7 +722,9 @@ class ProjectScheduleReviewService:
     ) -> dict[str, Any]:
         if not live_keys or not stable_item_key or stable_item_key in live_keys:
             return row
-        if str(row.get("review_status")) in {REVIEW_REVIEWED, REVIEW_DISMISSED}:
+        if str(row.get("review_status")) in {REVIEW_REVIEWED, REVIEW_DISMISSED} or is_terminal_disposition(
+            str(row.get("review_status"))
+        ):
             return row
         evidence = dict(row.get("evidence") or row.get("evidence_json") or {})
         evidence["stale_signal"] = True
@@ -621,7 +759,7 @@ class ProjectScheduleReviewService:
             }
         carried = str(prior.get("schedule_version_key")) != schedule_version_key
         status = str(prior.get("review_status") or REVIEW_OPEN)
-        still_open = status in {REVIEW_OPEN, REVIEW_WATCHING}
+        still_open = is_open_disposition(status)
         return {
             "lineage": "carried_forward" if carried else "existing",
             "new_since_last_review": False,
@@ -675,7 +813,21 @@ class ProjectScheduleReviewService:
                 value = evidence.get(key)
                 if value not in (None, "", []):
                     item[key] = value
-        return item
+        return enrich_item_disposition_pm_fields(item)
+
+    @staticmethod
+    def operator_selectable_dispositions() -> list[dict[str, str]]:
+        from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+            DISPOSITION_PM_LABELS,
+        )
+
+        return [
+            {
+                "disposition": key,
+                "label": DISPOSITION_PM_LABELS[key]["label"],
+            }
+            for key in sorted(OPERATOR_SELECTABLE_DISPOSITIONS)
+        ]
 
     @staticmethod
     def _workbench_envelope(
@@ -684,29 +836,29 @@ class ProjectScheduleReviewService:
         items: list[dict[str, Any]],
         synced: bool,
         comparison_basis: str = "prior_update",
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
-        open_items = [i for i in items if i.get("review_status") == REVIEW_OPEN]
-        watching_items = [i for i in items if i.get("review_status") == REVIEW_WATCHING]
-        reviewed_items = [i for i in items if i.get("review_status") == REVIEW_REVIEWED]
-        dismissed_items = [i for i in items if i.get("review_status") == REVIEW_DISMISSED]
-        prioritized = sorted(
-            [i for i in items if i.get("review_status") in {REVIEW_OPEN, REVIEW_WATCHING}],
-            key=lambda row: (-int(row.get("priority") or 0), str(row.get("item_title") or "")),
+        preview_items, persisted_items = split_preview_and_persisted(items)
+        review_status = build_review_status_rollup(
+            items=persisted_items,
+            preview_items=preview_items,
+            analytics_trust_status=analytics_trust_status,
+            identity_gate=identity_gate,
         )
+        prioritized_preview = prioritize_preview_items(preview_items)
         return {
             "available": True,
             "comparison_basis": comparison_basis,
             "persisted": synced,
-            "summary": {
-                "total_count": len(items),
-                "open_count": len(open_items),
-                "watching_count": len(watching_items),
-                "reviewed_count": len(reviewed_items),
-                "dismissed_count": len(dismissed_items),
-            },
+            "summary": review_status,
+            "review_status": review_status,
+            "preview_cues": prioritized_preview,
+            "persisted_items": persisted_items,
             "preview_limit": _PREVIEW_LIMIT,
-            "preview": prioritized[:_PREVIEW_LIMIT],
+            "preview": prioritized_preview,
             "items": items,
+            "operator_dispositions": ProjectScheduleReviewService.operator_selectable_dispositions(),
             "workbench_url": f"/projects/{project_key}/schedule/workbench",
             "export_url": f"/api/projects/{project_key}/schedule/export?format=markdown",
         }

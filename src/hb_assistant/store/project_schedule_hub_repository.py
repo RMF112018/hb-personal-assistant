@@ -11,21 +11,31 @@ from typing import Any, Iterator
 
 from .connection import open_connection, transaction
 
+from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+    CANONICAL_DISPOSITIONS,
+    DISPOSITION_ACCEPTED_FOR_FOLLOW_UP,
+    DISPOSITION_DISMISSED_NOT_MATERIAL,
+    DISPOSITION_NEEDS_REVIEW,
+    normalize_disposition,
+)
+
 MEMBERSHIP_ACCEPTED = "accepted"
 MEMBERSHIP_EXCLUDED = "excluded"
 MEMBERSHIP_PENDING = "pending_review"
 
-REVIEW_OPEN = "open"
-REVIEW_REVIEWED = "reviewed"
-REVIEW_DISMISSED = "dismissed"
-REVIEW_WATCHING = "watching"
-REVIEW_STATUSES = frozenset({REVIEW_OPEN, REVIEW_REVIEWED, REVIEW_DISMISSED, REVIEW_WATCHING})
+# Canonical disposition constants (legacy names retained for import compatibility).
+REVIEW_OPEN = DISPOSITION_NEEDS_REVIEW
+REVIEW_REVIEWED = DISPOSITION_ACCEPTED_FOR_FOLLOW_UP
+REVIEW_DISMISSED = DISPOSITION_DISMISSED_NOT_MATERIAL
+REVIEW_WATCHING = DISPOSITION_NEEDS_REVIEW
+REVIEW_STATUSES = CANONICAL_DISPOSITIONS
 
 EVENT_CREATED = "created"
 EVENT_SYNCED = "synced"
 EVENT_STATUS_CHANGED = "status_changed"
 EVENT_NOTES_CHANGED = "notes_changed"
 EVENT_CARRIED_FORWARD = "carried_forward"
+EVENT_PROMOTED = "promoted"
 
 
 class ProjectScheduleHubRepository:
@@ -356,6 +366,9 @@ class ProjectScheduleHubRepository:
         evidence: dict[str, Any] | None = None,
         source_activity_id: str | None = None,
         inherit_status_from_project: bool = True,
+        emit_sync_event: bool = True,
+        initial_review_status: str | None = None,
+        promotion_event: bool = False,
     ) -> dict[str, Any]:
         now = datetime.now(timezone.utc).isoformat()
         with self._conn() as conn:
@@ -386,24 +399,25 @@ class ProjectScheduleHubRepository:
                     ),
                 )
                 review_item_id = str(existing["review_item_id"])
-                conn.execute(
-                    """
-                    INSERT INTO project_schedule_review_item_events (
-                      event_id, review_item_id, project_key, schedule_version_key,
-                      event_type, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        f"psre-{uuid.uuid4().hex}",
-                        review_item_id,
-                        project_key,
-                        schedule_version_key,
-                        EVENT_SYNCED,
-                        now,
-                    ),
-                )
+                if emit_sync_event:
+                    conn.execute(
+                        """
+                        INSERT INTO project_schedule_review_item_events (
+                          event_id, review_item_id, project_key, schedule_version_key,
+                          event_type, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            f"psre-{uuid.uuid4().hex}",
+                            review_item_id,
+                            project_key,
+                            schedule_version_key,
+                            EVENT_SYNCED,
+                            now,
+                        ),
+                    )
             else:
-                review_status = REVIEW_OPEN
+                review_status = normalize_disposition(initial_review_status) or REVIEW_OPEN
                 pm_notes = None
                 reviewed_by_operator = None
                 reviewed_at = None
@@ -421,7 +435,7 @@ class ProjectScheduleHubRepository:
                         (project_key, stable_item_key),
                     ).fetchone()
                     if prior:
-                        review_status = str(prior["review_status"])
+                        review_status = normalize_disposition(str(prior["review_status"])) or REVIEW_OPEN
                         pm_notes = prior["pm_notes"]
                         reviewed_by_operator = prior["reviewed_by_operator"]
                         reviewed_at = prior["reviewed_at"]
@@ -465,7 +479,7 @@ class ProjectScheduleHubRepository:
                         review_item_id,
                         project_key,
                         schedule_version_key,
-                        EVENT_CREATED,
+                        EVENT_PROMOTED if promotion_event else EVENT_CREATED,
                         review_status,
                         pm_notes,
                         reviewed_by_operator,
@@ -502,9 +516,12 @@ class ProjectScheduleHubRepository:
         review_status: str | None = None,
         pm_notes: str | None = None,
         reviewed_by_operator: str | None = None,
+        disposition_reason: str | None = None,
     ) -> dict[str, Any] | None:
-        if review_status is not None and review_status not in REVIEW_STATUSES:
-            raise ValueError("invalid_review_status")
+        try:
+            normalized_status = normalize_disposition(review_status) if review_status is not None else None
+        except ValueError as exc:
+            raise ValueError("invalid_review_status") from exc
         now = datetime.now(timezone.utc).isoformat()
         with open_connection(self._db_path) as conn:
             row = conn.execute(
@@ -520,14 +537,16 @@ class ProjectScheduleHubRepository:
                 UPDATE project_schedule_review_items
                 SET review_status=COALESCE(?, review_status),
                     pm_notes=COALESCE(?, pm_notes),
+                    disposition_reason=COALESCE(?, disposition_reason),
                     reviewed_by_operator=COALESCE(?, reviewed_by_operator),
                     reviewed_at=CASE WHEN ? IS NOT NULL THEN ? ELSE reviewed_at END,
                     updated_at=?
                 WHERE review_item_id=?
                 """,
                 (
-                    review_status,
+                    normalized_status,
                     pm_notes,
+                    disposition_reason,
                     reviewed_by_operator,
                     reviewed_by_operator,
                     now,
@@ -540,13 +559,13 @@ class ProjectScheduleHubRepository:
                 (review_item_id,),
             ).fetchone()
             now_event = datetime.now(timezone.utc).isoformat()
-            if review_status is not None and str(updated["review_status"]) != prior_status:
+            if normalized_status is not None and str(updated["review_status"]) != prior_status:
                 conn.execute(
                     """
                     INSERT INTO project_schedule_review_item_events (
                       event_id, review_item_id, project_key, schedule_version_key,
-                      event_type, prior_status, new_status, operator_id, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      event_type, prior_status, new_status, disposition_reason, operator_id, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         f"psre-{uuid.uuid4().hex}",
@@ -556,6 +575,7 @@ class ProjectScheduleHubRepository:
                         EVENT_STATUS_CHANGED,
                         prior_status,
                         str(updated["review_status"]),
+                        disposition_reason,
                         reviewed_by_operator,
                         now_event,
                     ),

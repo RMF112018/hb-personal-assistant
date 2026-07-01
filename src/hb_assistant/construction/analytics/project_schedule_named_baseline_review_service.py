@@ -142,19 +142,123 @@ class ProjectScheduleNamedBaselineReviewService:
         self,
         *,
         review_item_id: str,
+        project_key: str | None = None,
         review_status: str | None = None,
+        disposition: str | None = None,
         pm_notes: str | None = None,
+        disposition_reason: str | None = None,
         reviewed_by_operator: str | None = None,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
+        from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+            validate_disposition_change,
+        )
+
+        row = self._repo.get_review_item(review_item_id=review_item_id)
+        if not row:
+            raise ValueError("review_item_not_found")
+        if project_key and str(row.get("project_key")) != project_key:
+            raise ValueError("review_item_project_mismatch")
+        requested_status = disposition or review_status
+        if requested_status is not None:
+            validate_disposition_change(
+                prior_disposition=str(row.get("review_status")),
+                new_disposition=requested_status,
+                disposition_reason=disposition_reason,
+                operator_selectable_only=True,
+                trust_blocked=analytics_trust_status == "blocked" or identity_gate == "blocked",
+                identity_gate_blocked=identity_gate == "blocked",
+                analytics_gate_blocked=analytics_trust_status == "blocked",
+            )
         updated = self._repo.update_review_item(
             review_item_id=review_item_id,
-            review_status=review_status,
+            review_status=requested_status,
             pm_notes=pm_notes,
+            disposition_reason=disposition_reason,
             reviewed_by_operator=reviewed_by_operator,
         )
         if not updated:
             raise ValueError("review_item_not_found")
         return {"item": self._public_item(updated)}
+
+    def promote_preview_cues(
+        self,
+        *,
+        scope: NamedBaselineReviewScope,
+        stable_item_keys: list[str],
+        driver_analysis: dict[str, Any] | None = None,
+        milestones: dict[str, Any] | None = None,
+        remaining_health: dict[str, Any] | None = None,
+        cpm_summary: dict[str, Any] | None = None,
+        change_impact: dict[str, Any] | None = None,
+        remaining_activities: list[dict[str, Any]] | None = None,
+        as_of_date: date | None = None,
+        baseline_summary: dict[str, Any] | None = None,
+        comparison_basis: str = "prior_update",
+        reviewed_by_operator: str | None = None,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
+    ) -> dict[str, Any]:
+        from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+            DISPOSITION_NEEDS_REVIEW,
+            system_disposition_for_trust,
+        )
+
+        as_of = as_of_date or datetime.now(timezone.utc).date()
+        candidates = self._collect_candidates(
+            project_key=scope.project_key,
+            schedule_version_key=scope.current_schedule_version_key,
+            driver_analysis=driver_analysis,
+            milestones=milestones,
+            remaining_health=remaining_health,
+            cpm_summary=cpm_summary,
+            change_impact=change_impact,
+            remaining_activities=remaining_activities,
+            as_of_date=as_of,
+            baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
+            materializable_only=False,
+        )
+        by_key = {str(c["stable_item_key"]): c for c in candidates}
+        identity_blocked = identity_gate == "blocked"
+        analytics_blocked = analytics_trust_status == "blocked"
+        initial_status = system_disposition_for_trust(
+            identity_gate_blocked=identity_blocked,
+            analytics_gate_blocked=analytics_blocked,
+        ) or DISPOSITION_NEEDS_REVIEW
+
+        promoted: list[dict[str, Any]] = []
+        skipped_duplicate: list[str] = []
+        missing: list[str] = []
+        for raw_key in stable_item_keys:
+            stable_key = str(raw_key)
+            candidate = by_key.get(stable_key)
+            if not candidate:
+                missing.append(stable_key)
+                continue
+            identity = ProjectScheduleNamedBaselineReviewRepository._identity_from_candidate(scope, candidate)
+            existing = self._repo.get_by_identity(identity=identity)
+            if existing:
+                skipped_duplicate.append(stable_key)
+                promoted.append(existing)
+                continue
+            row = self._repo.upsert_from_candidate(
+                scope=scope,
+                candidate=candidate,
+                emit_sync_event=False,
+                initial_review_status=initial_status,
+                promotion_event=True,
+            )
+            promoted.append(row)
+        return {
+            "promoted_count": len(promoted) - len(skipped_duplicate),
+            "skipped_duplicate_count": len(skipped_duplicate),
+            "missing_count": len(missing),
+            "skipped_duplicate_keys": skipped_duplicate,
+            "missing_keys": missing,
+            "items": [self._public_item(row) for row in promoted],
+        }
 
     def list_item_events(self, *, review_item_id: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
         row = self._repo.get_review_item(review_item_id=review_item_id)
@@ -238,6 +342,7 @@ class ProjectScheduleNamedBaselineReviewService:
             stale["stale_signal"] = True
             items.append(self._public_item(stale))
         envelope = self._workbench_envelope(
+            project_key=scope.project_key,
             items=items,
             synced=synced,
             comparison_basis=comparison_basis,
@@ -335,32 +440,24 @@ class ProjectScheduleNamedBaselineReviewService:
     @staticmethod
     def _workbench_envelope(
         *,
+        project_key: str,
         items: list[dict[str, Any]],
         synced: bool,
         comparison_basis: str,
+        identity_gate: str | None = None,
+        analytics_trust_status: str | None = None,
     ) -> dict[str, Any]:
-        open_items = [i for i in items if i.get("review_status") == REVIEW_OPEN]
-        watching_items = [i for i in items if i.get("review_status") == REVIEW_WATCHING]
-        reviewed_items = [i for i in items if i.get("review_status") == REVIEW_REVIEWED]
-        dismissed_items = [i for i in items if i.get("review_status") == REVIEW_DISMISSED]
-        prioritized = sorted(
-            [i for i in items if i.get("review_status") in {REVIEW_OPEN, REVIEW_WATCHING}],
-            key=lambda row: (-int(row.get("priority") or 0), str(row.get("item_title") or "")),
+        envelope = ProjectScheduleReviewService._workbench_envelope(
+            project_key=project_key,
+            items=items,
+            synced=synced or any(i.get("review_item_id") for i in items),
+            comparison_basis=comparison_basis,
+            identity_gate=identity_gate,
+            analytics_trust_status=analytics_trust_status,
         )
-        return {
-            "available": True,
-            "comparison_basis": comparison_basis,
-            "persisted": synced or any(i.get("review_item_id") for i in items),
-            "summary": {
-                "total_count": len(items),
-                "open_count": len(open_items),
-                "watching_count": len(watching_items),
-                "reviewed_count": len(reviewed_items),
-                "dismissed_count": len(dismissed_items),
-            },
-            "prioritized": prioritized[:12],
-            "items": items,
-        }
+        envelope["prioritized"] = envelope.get("preview") or []
+        envelope["review_scope"] = "named_baseline"
+        return envelope
 
     @staticmethod
     def identity_from_row(row: dict[str, Any]) -> NamedBaselineReviewIdentity:

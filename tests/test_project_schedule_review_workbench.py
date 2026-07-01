@@ -202,7 +202,7 @@ def test_review_item_audit_events_and_lineage(tmp_path: Path) -> None:
 
     review.update_item(
         review_item_id=str(driver_item["review_item_id"]),
-        review_status=REVIEW_WATCHING,
+        review_status="accepted_for_follow_up",
         reviewed_by_operator="operator",
     )
     events = repo.list_review_item_events(review_item_id=str(driver_item["review_item_id"]))
@@ -219,7 +219,7 @@ def test_review_item_audit_events_and_lineage(tmp_path: Path) -> None:
         remaining_activities=[],
     )
     carried = next(i for i in second["items"] if i["stable_item_key"] == "driver:DRV-A")
-    assert carried["review_status"] == REVIEW_WATCHING
+    assert carried["review_status"] == "accepted_for_follow_up"
     events = repo.list_review_item_events(review_item_id=str(carried["review_item_id"]))
     assert any(event["event_type"] == EVENT_SYNCED for event in events)
     assert EVENT_CARRIED_FORWARD not in {event["event_type"] for event in events}
@@ -324,7 +324,7 @@ def test_review_items_api_and_export(tmp_path: Path, monkeypatch: pytest.MonkeyP
         json={"review_status": "reviewed", "pm_notes": "checked"},
     )
     assert patch.status_code == 200
-    assert patch.json()["item"]["review_status"] == "reviewed"
+    assert patch.json()["item"]["review_status"] == "accepted_for_follow_up"
 
     events = client.get(
         f"/api/projects/tropical/schedule/review-items/{first_item['review_item_id']}/events",

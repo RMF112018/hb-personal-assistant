@@ -197,6 +197,41 @@ class ProjectScheduleMemoService:
         return lines
 
     @staticmethod
+    def _review_status_section_lines(
+        workbench: dict[str, Any],
+        *,
+        analytics_trust: dict[str, Any] | None = None,
+    ) -> list[str]:
+        rollup = workbench.get("review_status") or workbench.get("summary") or {}
+        if not rollup:
+            return []
+        trust = analytics_trust or {}
+        lines = [
+            "## Schedule Review Status",
+            "",
+            f"- Persisted review items: {rollup.get('persisted_item_count') or rollup.get('total_items') or 0}",
+            f"- Preview cues: {rollup.get('preview_cue_count') or 0}",
+            f"- Needs review: {rollup.get('needs_review') or rollup.get('open_count') or 0}",
+            f"- Accepted for PM follow-up: {rollup.get('accepted_for_follow_up') or 0}",
+            f"- Dismissed as not material: {rollup.get('dismissed_not_material') or rollup.get('dismissed_count') or 0}",
+            f"- Resolved: {rollup.get('resolved') or 0}",
+            f"- Blocked by trust/identity: {rollup.get('blocked') or 0}",
+            "",
+        ]
+        if trust.get("analytics_trust_status") in {"degraded", "blocked"} or trust.get("identity_gate") in {
+            "degraded",
+            "blocked",
+        }:
+            lines.append(
+                "- Note: Identity or analytics trust is degraded/blocked; complete trust review before relying on review dispositions."
+            )
+            lines.append("")
+        recommended = rollup.get("recommended_next_action")
+        if recommended:
+            lines.extend(["### Recommended Review Actions", "", f"- {recommended}", ""])
+        return lines
+
+    @staticmethod
     def _comparison_context_section_lines(ctx: dict[str, Any]) -> list[str]:
         return [
             "## Comparison Context",
@@ -344,6 +379,8 @@ class ProjectScheduleMemoService:
         quality_controls = summary.get("quality_controls") or {}
         if quality_controls:
             lines.extend(self._quality_controls_section_lines(quality_controls, analytics_trust=analytics_trust))
+        if workbench:
+            lines.extend(self._review_status_section_lines(workbench, analytics_trust=analytics_trust))
         if variant == "executive":
             lines.extend(
                 [
@@ -490,10 +527,12 @@ class ProjectScheduleMemoService:
 
     @staticmethod
     def _suggested_agenda_lines(items: list[dict[str, Any]]) -> list[str]:
+        from .project_schedule_review_disposition import is_open_disposition
+
         open_items = [
             item
             for item in items
-            if str(item.get("review_status")) in {"open", "watching"}
+            if is_open_disposition(str(item.get("review_status")))
         ]
         open_items.sort(key=lambda row: (-int(row.get("priority") or 0), str(row.get("item_title") or "")))
         if not open_items:

@@ -72,10 +72,18 @@ type ReviewCueCardProps = {
   comparisonBasis: ReviewWorkbenchComparisonBasis | 'baseline'
   asOfDate?: string
   canSync: boolean
+  isPreview?: boolean
+  selectable?: boolean
+  selected?: boolean
+  onSelectChange?: (selected: boolean) => void
   expanded: boolean
   notesValue: string
+  reasonValue?: string
+  operatorDispositions?: ReadonlyArray<{ value: string; label: string }>
+  reasonRequiredDispositions?: ReadonlySet<string>
   onToggleExpanded: () => void
   onNotesChange: (value: string) => void
+  onReasonChange?: (value: string) => void
   onSaveNotes: () => void
   onStatusChange: (status: string) => void
   updatePending: boolean
@@ -90,10 +98,18 @@ export function ReviewCueCard({
   comparisonBasis,
   asOfDate,
   canSync,
+  isPreview = false,
+  selectable = false,
+  selected = false,
+  onSelectChange,
   expanded,
   notesValue,
+  reasonValue = '',
+  operatorDispositions = [],
+  reasonRequiredDispositions,
   onToggleExpanded,
   onNotesChange,
+  onReasonChange,
   onSaveNotes,
   onStatusChange,
   updatePending,
@@ -126,7 +142,18 @@ export function ReviewCueCard({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="badge capitalize">{text(item.review_status)}</span>
+            {selectable ? (
+              <label className="badge flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={(event) => onSelectChange?.(event.target.checked)}
+                />
+                Select
+              </label>
+            ) : null}
+            <span className="badge">{text(item.disposition_label || item.review_status)}</span>
+            {isPreview ? <span className="badge">Preview cue</span> : item.review_item_id ? <span className="badge">Persisted</span> : null}
             <span className="badge">P{text(item.priority)}</span>
             {item.severity ? <span className="badge capitalize">{text(item.severity)}</span> : null}
             {item.confidence ? (
@@ -160,18 +187,20 @@ export function ReviewCueCard({
           {canSync && item.review_item_id ? (
             <select
               className="rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"
-              value={text(item.review_status, 'open')}
+              value={text(item.review_status, 'needs_review')}
               disabled={updatePending}
               onChange={(event) => onStatusChange(event.target.value)}
             >
-              {['open', 'watching', 'reviewed', 'dismissed'].map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
+              {(operatorDispositions.length ? operatorDispositions : [{ value: 'needs_review', label: 'Needs review' }]).map(
+                (option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ),
+              )}
             </select>
           ) : (
-            <span className="badge capitalize">{text(item.review_status)}</span>
+            <span className="badge">{text(item.disposition_label || item.review_status)}</span>
           )}
         </div>
       </div>
@@ -236,17 +265,31 @@ export function ReviewCueCard({
           <ReviewCueTechnicalDetails item={item} />
 
           {canSync && item.review_item_id ? (
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">PM notes</label>
-              <textarea
-                className="mt-1 w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-2 text-sm"
-                rows={3}
-                value={notesValue}
-                onChange={(event) => onNotesChange(event.target.value)}
-              />
-              <button className="badge mt-2" type="button" disabled={updatePending} onClick={onSaveNotes}>
-                Save notes
-              </button>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">
+                  Disposition reason
+                </label>
+                <textarea
+                  className="mt-1 w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-2 text-sm"
+                  rows={2}
+                  value={reasonValue}
+                  onChange={(event) => onReasonChange?.(event.target.value)}
+                  placeholder="Required for dismiss, supersede, duplicate, or resolved."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">PM notes</label>
+                <textarea
+                  className="mt-1 w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-2 text-sm"
+                  rows={3}
+                  value={notesValue}
+                  onChange={(event) => onNotesChange(event.target.value)}
+                />
+                <button className="badge mt-2" type="button" disabled={updatePending} onClick={onSaveNotes}>
+                  Save notes
+                </button>
+              </div>
             </div>
           ) : item.pm_notes ? (
             <p className="text-sm text-[var(--hb-muted)]">Notes: {text(item.pm_notes)}</p>

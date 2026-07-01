@@ -211,7 +211,7 @@ def test_review_items_named_skips_disposition_carry_forward(tmp_path: Path) -> N
     driver_items = [item for item in items if item.get("source_activity_id") == "DRV-A"]
     assert driver_items
     assert all(item.get("review_item_id") is None for item in driver_items)
-    assert all(item.get("review_status") == "open" for item in driver_items)
+    assert all(item.get("review_status") == "needs_review" for item in driver_items)
 
 
 def test_post_named_baseline_sync_supported(tmp_path: Path) -> None:

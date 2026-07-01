@@ -534,12 +534,34 @@ export function getProjectScheduleReviewItemEvents(
 export function patchProjectScheduleReviewItem(
   projectKey: string,
   reviewItemId: string,
-  body: { review_status?: string; pm_notes?: string | null },
+  body: {
+    review_status?: string;
+    disposition?: string;
+    pm_notes?: string | null;
+    disposition_reason?: string | null;
+  },
 ) {
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items/${encodeURIComponent(reviewItemId)}`,
     {
       method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+  );
+}
+export function promoteProjectScheduleReviewItems(
+  projectKey: string,
+  body: { stable_item_keys: string[] },
+  opts?: { asOf?: string; comparisonBasis?: string },
+) {
+  const params = new URLSearchParams();
+  if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
+  const qs = params.toString();
+  return fetchJson(
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/review-items/promote${qs ? `?${qs}` : ''}`,
+    {
+      method: 'POST',
       body: JSON.stringify(body),
     },
   );
@@ -2765,6 +2787,7 @@ export const api = {
   getProjectScheduleReviewItemDetail,
   getProjectScheduleReviewItemEvents,
   patchProjectScheduleReviewItem,
+  promoteProjectScheduleReviewItems,
   downloadProjectScheduleExport,
   getMyItems,
   getAdmin,
