@@ -1,11 +1,11 @@
- .../project-schedule/ScheduleBaselineSelector.tsx  | 17 ++++++--
- .../project-schedule/ScheduleControlsPanel.tsx     | 51 +++++++++++++++++++---
- frontend/src/lib/scheduleBaselineLabels.test.ts    | 22 ++++++++++
- frontend/src/lib/scheduleBaselineLabels.ts         | 26 +++++++++++
- .../pages/ProjectScheduleDriverDetailPage.test.tsx |  6 +--
- .../src/pages/ProjectScheduleDriverDetailPage.tsx  | 47 ++++++++++++++++----
- frontend/src/pages/ProjectSchedulePage.test.tsx    | 31 +++++++++++++
- frontend/src/pages/ProjectSchedulePage.tsx         |  2 +-
- .../pages/ProjectScheduleWorkbenchPage.test.tsx    |  7 ++-
- .../src/pages/ProjectScheduleWorkbenchPage.tsx     | 40 ++++++++++++++++-
- 10 files changed, 224 insertions(+), 25 deletions(-)
+ .../browser-signoff.md                             |  47 +++--
+ .../capture_pm_walkthrough.py                      | 235 +++++++++++++++++----
+ .../diff-stat.txt                                  |  11 -
+ .../implementation-summary.md                      |  25 +--
+ .../screenshots/post-fix/01-schedule-hub.png       | Bin 187006 -> 0 bytes
+ .../post-fix/02-controls-named-baseline.png        | Bin 187006 -> 176472 bytes
+ .../post-fix/04-driver-detail-slash-activity.png   | Bin 157889 -> 157968 bytes
+ .../screenshots/post-fix/05-back-to-workbench.png  | Bin 64926 -> 162116 bytes
+ .../post-fix/06-missing-baseline-controls.png      | Bin 64926 -> 140884 bytes
+ .../validation-output.txt                          |   5 +
+ 10 files changed, 238 insertions(+), 85 deletions(-)

@@ -6,24 +6,21 @@
 
 ## Verdict
 
-Named-baseline PM workflow polish complete without changing comparison semantics or Phase 11 driver routing.
+Named-baseline PM workflow polish complete. Evidence package includes **loaded-state browser proof** (Playwright gates).
 
-## Frontend changes (findings F1–F7, F9)
+## Frontend changes (unchanged from c5c3df0d)
 
-- Shared helpers: `formatBaselineSelectionSummary`, `formatNamedComparisonContextLine` (3 surfaces)
-- `ScheduleBaselineSelector` — helper text, actionable missing/invalid copy, date-first selection label
-- `ScheduleControlsPanel` — comparison context line, humanized unavailable reasons
-- `ProjectScheduleWorkbenchPage` — read-only banner, named context line, slot labels
-- `ProjectScheduleDriverDetailPage` — activity name title, humanized errors, advisory footer, technical details
-- `ProjectSchedulePage` — focus driver link label (no raw ID)
+- Shared helpers: `formatBaselineSelectionSummary`, `formatNamedComparisonContextLine`
+- Baseline selector, controls panel, workbench banner, driver detail title hierarchy, focus link label
 
-## Not changed
+## Evidence supplement (this commit)
 
-- Hub section order (F8 deferred — not P0/P1)
-- Backend, schema, driver query routes
+- Re-captured `screenshots/post-fix/` with explicit loaded-state waits
+- `screenshot-proof.json`, `screenshot-wait-gates.md`
+- Missing-baseline shot via mocked controls API (no DB mutation)
 
 ## Proof
 
-- 86 backend regression tests pass
-- 43 frontend targeted tests pass (includes FAB/DEL-10 query-param regression)
-- Live browser post-fix screenshots
+- 86 backend + 43 frontend tests (unchanged; see `validation-output.txt`)
+- Playwright manifest: all 6 shots `loaded: true`
+- Phase 11 slash ID regression in `scheduleBaselineLabels.test.ts`
