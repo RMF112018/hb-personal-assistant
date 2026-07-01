@@ -19,6 +19,11 @@ from hb_assistant.construction.analytics.project_schedule_controls_service impor
 from hb_assistant.construction.analytics.project_schedule_named_baseline_service import (
     ProjectScheduleNamedBaselineService,
 )
+from hb_assistant.construction.analytics.project_schedule_review_disposition import (
+    DISPOSITION_ACCEPTED_FOR_FOLLOW_UP,
+    DISPOSITION_NEEDS_REVIEW,
+    is_open_disposition,
+)
 from hb_assistant.construction.analytics.project_schedule_summary_service import (
     ProjectScheduleSummaryService,
 )
@@ -301,16 +306,21 @@ def test_prior_update_disposition_does_not_join_named_workbench(differential_db:
     open_prior = [
         item
         for item in prior.json()["workbench"]["items"]
-        if item.get("review_status") == "open" and item.get("item_type") == "milestone"
+        if is_open_disposition(str(item.get("review_status") or ""))
+        and item.get("item_type") == "milestone"
     ]
     assert open_prior
     target = open_prior[0]
     patch = client.patch(
         f"/api/projects/tropical/schedule/review-items/{target['review_item_id']}",
         headers=_operator(),
-        json={"review_status": "reviewed", "review_note": "prior update disposition"},
+        json={
+            "review_status": DISPOSITION_ACCEPTED_FOR_FOLLOW_UP,
+            "review_note": "prior update disposition",
+        },
     )
     assert patch.status_code == 200
+    assert patch.json()["item"]["review_status"] == DISPOSITION_ACCEPTED_FOR_FOLLOW_UP
 
     named = client.post(
         "/api/projects/tropical/schedule/review-items",
@@ -321,5 +331,6 @@ def test_prior_update_disposition_does_not_join_named_workbench(differential_db:
     named_milestone = next(
         item for item in named.json()["workbench"]["items"] if item["item_type"] == "milestone"
     )
-    assert named_milestone["review_status"] == "open"
+    assert is_open_disposition(str(named_milestone.get("review_status") or ""))
+    assert named_milestone["review_status"] == DISPOSITION_NEEDS_REVIEW
     assert named_milestone["comparison_basis"] == "current_contract_baseline"

@@ -64,6 +64,17 @@ class ProjectScheduleControlsService:
         self._quality_repo = ScheduleQualityRepository(db_path=db_path)
         self._quality_controls = ProjectScheduleQualityControlsService(db_path=db_path)
         self._named_baselines = ProjectScheduleNamedBaselineService(db_path=db_path)
+        self._named_review: Any = None
+
+    @property
+    def _named_baseline_review(self) -> Any:
+        if self._named_review is None:
+            from .project_schedule_named_baseline_review_service import (
+                ProjectScheduleNamedBaselineReviewService,
+            )
+
+            self._named_review = ProjectScheduleNamedBaselineReviewService(db_path=self._db_path)
+        return self._named_review
 
     def build_controls(
         self,
@@ -137,20 +148,43 @@ class ProjectScheduleControlsService:
         schedule_data_date = str(context.get("schedule_data_date") or "")
         schedule_version_key = str(context.get("schedule_version_key") or "")
 
-        workbench = self._review.build_preview(
-            project_key=project_key,
-            schedule_version_key=schedule_version_key,
-            driver_analysis=context.get("driver_analysis"),
-            milestones=context.get("milestones"),
-            remaining_health=context.get("remaining_health"),
-            cpm_summary=context.get("cpm_summary"),
-            change_impact=context.get("change_impact"),
-            remaining_activities=context.get("remaining_activities"),
-            comparison_basis=basis,
-            as_of_date=as_of_date,
-            baseline_summary=baseline_summary,
-            include_activity_metric_cues=True,
-        )
+        if is_named_baseline_basis(basis):
+            scope = self._named_baseline_review.scope_from_context(
+                project_key=project_key,
+                current_schedule_version_key=schedule_version_key,
+                comparison_basis=basis,
+                baseline_context=baseline_context or {},
+                as_of_date=as_of_date,
+                schedule_data_date=schedule_data_date or None,
+            )
+            workbench = self._named_baseline_review.build_preview(
+                scope=scope,
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                as_of_date=as_of_date,
+                baseline_summary=baseline_summary,
+                comparison_basis=basis,
+            )
+        else:
+            workbench = self._review.build_preview(
+                project_key=project_key,
+                schedule_version_key=schedule_version_key,
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                comparison_basis=preview_basis,
+                as_of_date=as_of_date,
+                baseline_summary=baseline_summary,
+                include_activity_metric_cues=True,
+                response_comparison_basis=basis,
+            )
 
         cpm_obs_row = self._cpm_obs.get_latest_for_schedule_version(schedule_version_key)
         remaining_health = context.get("remaining_health") or {}
