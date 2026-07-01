@@ -119,6 +119,7 @@ def run(args: argparse.Namespace, *,
     result: dict[str, Any] = {
         "mode": "apply" if args.apply else "dry-run", "model": args.model,
         "notes_selected": len(facts), "candidate_pairs": len(candidates),
+        "candidate_basis_counts": ng.candidate_basis_counts(candidates),
         "vetted_pairs": 0, "approved_pairs": 0, "relationships_applied": 0, "notes_modified": 0,
         "reciprocal_links_applied": 0, "tags_added": 0, "created": 0, "deleted": 0,
         "queue_delta": 0, "db_mutations": 0, "db_before": fp_before, "ollama_called": False,

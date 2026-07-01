@@ -97,6 +97,9 @@ class NoteFact:
     title_tokens: frozenset[str]
     existing_tags: tuple[str, ...]
     summary_text: str
+    # Canonical Procore identity parsed from the card's hb-project-identity block (Phase 10D).
+    canonical_project_key: str | None = None
+    procore_project_id: str | None = None
 
 
 def _norm(s: str | None) -> str:
@@ -194,13 +197,18 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
     review = _frontmatter_value(card_text, "review_status") == "needs_review"
     summary = "\n".join(_section_body(card_text, "## Source Summary")
                         + _section_body(card_text, "## Key Facts"))[:1500]
+    # Canonical Procore identity from the managed hb-project-identity block, if present.
+    from .source_project_identity import parse_identity_marker
+    ident = parse_identity_marker(card_text) or {}
     return NoteFact(
         note_id=source_id, note_rel=note_rel, basename=basename, display=_display_name(basename),
         project=_norm(detail.get("project_number") or detail.get("project_key")) or None,
         vendor=_norm(a.vendor) or None, document_type=a.document_type,
         document_number=_norm(a.document_number) or None, doc_date=_norm(a.doc_date) or None,
         disposition=disp, review_needed=review, title_tokens=_title_tokens(basename),
-        existing_tags=tuple(tags if ok else []), summary_text=summary)
+        existing_tags=tuple(tags if ok else []), summary_text=summary,
+        canonical_project_key=_norm(ident.get("project_key")) or None,
+        procore_project_id=_norm(ident.get("procore_project_id")) or None)
 
 
 def _section_body(text: str, heading: str) -> list[str]:
@@ -225,16 +233,28 @@ class Candidate:
     signals: tuple[str, ...]
 
 
+# Signals that are informative for reporting but NOT strong enough alone to make a candidate.
+_WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type"})
+
+
 def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
-    """STRONG deterministic commonality signals only (content-based, never path/folder)."""
+    """Deterministic commonality signals (content-based, never path/folder). Distinct project bases."""
     s = []
     if a.project and b.project and a.project == b.project:
-        s.append("same_project")
+        s.append("same_project_number")  # folder-derived NN-NNN-NN on the DB source row
+    if a.canonical_project_key and b.canonical_project_key and \
+            a.canonical_project_key == b.canonical_project_key:
+        s.append("same_project_key")  # canonical Procore key from the identity block
+    if a.procore_project_id and b.procore_project_id and a.procore_project_id == b.procore_project_id:
+        s.append("same_procore_id")
     if a.vendor and b.vendor and a.vendor == b.vendor:
         s.append("same_vendor")
     if (a.document_number and b.document_number and a.document_number == b.document_number
             and a.document_type == b.document_type):
         s.append("same_document_number")
+    if a.document_type == b.document_type and a.document_type not in (
+            "general_pdf", "general_document"):
+        s.append("same_document_type")  # weak / reporting only
     shared = a.title_tokens & b.title_tokens
     if len(shared) >= 2:
         s.append("shared_title_phrase")
@@ -249,10 +269,19 @@ def is_candidate(a: NoteFact, b: NoteFact) -> tuple[bool, list[str]]:
     if a.note_id == b.note_id:
         return False, []
     signals = _pair_signals(a, b)
-    # shared_title_phrase alone is medium, not strong → needs another strong signal.
-    strong = [x for x in signals if x != "shared_title_phrase"]
+    strong = [x for x in signals if x not in _WEAK_SIGNALS]
     need = 2 if (a.document_type in _STRICTER_TYPES or b.document_type in _STRICTER_TYPES) else 1
     return (len(strong) >= need, signals)
+
+
+def candidate_basis_counts(candidates: list["Candidate"]) -> dict[str, int]:
+    """Count how many candidate pairs carry each deterministic signal (basis)."""
+    from collections import Counter
+    counts: Counter[str] = Counter()
+    for c in candidates:
+        for sig in c.signals:
+            counts[sig] += 1
+    return dict(sorted(counts.items()))
 
 
 def build_candidates(facts: list[NoteFact], *, max_per_note: int = 10,
