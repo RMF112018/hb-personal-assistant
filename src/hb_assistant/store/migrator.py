@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 96
+LATEST_SCHEMA_VERSION = 97
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6938,6 +6938,12 @@ class SQLiteMigrator:
 
         return V96_STATEMENTS
 
+    @staticmethod
+    def _v97_statements() -> list[str]:
+        from hb_assistant.store.project_schedule_named_baseline_review_tables import V97_STATEMENTS
+
+        return V97_STATEMENTS
+
 
     # v79 Detailed schedule version diff facts.
     @staticmethod
@@ -8604,6 +8610,16 @@ class SQLiteMigrator:
             if cur.fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (96, 'v96_project_schedule_named_baseline_slots', ?)",
+                    (now,),
+                )
+
+            # v97 Project Schedule Hub named baseline review items (additive).
+            for stmt in self._v97_statements():
+                conn.execute(stmt)
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 97")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (97, 'v97_project_schedule_named_baseline_review_items', ?)",
                     (now,),
                 )
 

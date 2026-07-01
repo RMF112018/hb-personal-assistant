@@ -1,0 +1,5 @@
+bc240b38 (HEAD -> feature/schedule-named-baseline-dispositions-phase13-20260701T090410Z, origin/main, origin/HEAD, main, feat/obsidian-phase10f-email-attachments-20260701T090000Z) Merge pull request #245 from RMF112018/fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z
+85f6f169 (origin/fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z, fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z) docs(evidence): re-capture loaded-state PM browser sign-off
+c2d8a70c fix(schedule): polish named baseline PM workflow
+28c64fbc Merge pull request #244 from RMF112018/feat/obsidian-phase10e-eml-email-archive-20260701T074534Z
+d6bf4910 (origin/feat/obsidian-phase10e-eml-email-archive-20260701T074534Z, feat/obsidian-phase10e-eml-email-archive-20260701T074534Z) feat(obsidian): archive eml emails as notes

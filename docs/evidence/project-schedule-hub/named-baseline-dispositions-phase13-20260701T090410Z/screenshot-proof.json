@@ -1,0 +1,7 @@
+{
+  "shots": [
+    {"file": "01-named-workbench-loaded.png", "loaded": true, "proof": "named baseline review banner"},
+    {"file": "02-prior-update-unaffected.png", "loaded": true, "proof": "prior_update workbench"},
+    {"file": "03-progress-slot-separate.png", "loaded": true, "proof": "previous progress slot workbench"}
+  ]
+}

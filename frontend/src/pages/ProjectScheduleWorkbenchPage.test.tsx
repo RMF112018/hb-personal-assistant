@@ -207,7 +207,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
     expect(screen.getByText(/Raw technical payload/)).toBeInTheDocument()
   })
 
-  it('does not sync when comparison_basis is a named baseline from URL', async () => {
+  it('syncs named baseline review items for operators when slot is selected', async () => {
     getLocalUiRoleMock.mockReturnValue('operator')
     getProjectScheduleBaselinesMock.mockResolvedValue({
       available: true,
@@ -223,16 +223,21 @@ describe('ProjectScheduleWorkbenchPage', () => {
         },
       ],
     })
+    getProjectScheduleReviewItemsMock.mockResolvedValue({
+      ...reviewItems,
+      workbench: { read_only_baseline_preview: false, review_scope: 'named_baseline' },
+    })
     renderPage('/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03')
 
     await waitFor(() => {
-      expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
+      expect(syncProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
         comparisonBasis: 'current_contract_baseline',
         asOf: '2026-07-03',
       }))
     })
-    expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
-    expect(await screen.findByText(/Named baseline preview — read only/i)).toBeInTheDocument()
-    expect(screen.getByText(/Comparing against Current Contract Baseline/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/saved separately from Prior Update/i)).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Named baseline preview — read only/i)).not.toBeInTheDocument()
   })
 })

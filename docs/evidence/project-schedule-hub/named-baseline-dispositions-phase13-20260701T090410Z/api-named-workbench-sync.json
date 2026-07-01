@@ -1,0 +1,28 @@
+{
+  "available": true,
+  "comparison_basis": "current_contract_baseline",
+  "reason": null,
+  "count": 132,
+  "workbench": {
+    "review_scope": "named_baseline",
+    "synced": true,
+    "comparison_basis": "current_contract_baseline",
+    "read_only_baseline_preview": false,
+    "sync": {
+      "synced_count": 132,
+      "candidate_count": 132
+    }
+  },
+  "sample_items": [
+    {
+      "review_item_id_prefix": "psnbri-2401f",
+      "review_status": "open",
+      "stable_item_key": "driver:FAB/DEL-10"
+    },
+    {
+      "review_item_id_prefix": "psnbri-e3512",
+      "review_status": "open",
+      "stable_item_key": "driver:FAB/DEL-260"
+    }
+  ]
+}

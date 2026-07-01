@@ -1,0 +1,21 @@
+{
+  "available": true,
+  "comparison_basis": "prior_update",
+  "reason": null,
+  "count": 132,
+  "workbench": {
+    "comparison_basis": "prior_update"
+  },
+  "sample_items": [
+    {
+      "review_item_id_prefix": "psri-108fca1",
+      "review_status": "watching",
+      "stable_item_key": "driver:FAB/DEL-10"
+    },
+    {
+      "review_item_id_prefix": "psri-542c9d5",
+      "review_status": "open",
+      "stable_item_key": "driver:FAB/DEL-210"
+    }
+  ]
+}
