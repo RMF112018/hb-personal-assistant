@@ -1,0 +1,10 @@
+# Phase 10F evidence — never commit sensitive apply artifacts.
+# local-sensitive/ holds DB backups, per-file detail rows, and card backups (real filenames).
+# *.log may embed absolute home paths from third-party libs (pypdf/openpyxl warnings).
+**/local-sensitive/
+*.sqlite
+*.log
+# The rerun-qwen-* and correction-* run dirs contain only local-sensitive artifacts + stderr logs;
+# their count-only safe summaries are promoted into 20260701T090000Z/05-* and 06-*.
+rerun-qwen-*/
+correction-*/

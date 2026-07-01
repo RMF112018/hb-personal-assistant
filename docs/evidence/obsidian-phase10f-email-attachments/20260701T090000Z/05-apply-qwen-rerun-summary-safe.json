@@ -1,0 +1,43 @@
+{
+  "already_indexed": 0,
+  "attachment_binaries_deleted": 2,
+  "attachment_binaries_written": 1,
+  "attachment_cards_generated": 0,
+  "attachment_cards_updated": 2,
+  "attachments_discovered": 2,
+  "attachments_extractable": 2,
+  "cloud_evicted": 45,
+  "duplicates": 0,
+  "emails_selected": 10,
+  "emails_skipped_no_parent_card": 7,
+  "emails_with_attachments": 1,
+  "eml_found": 99,
+  "eml_parse_failed": 0,
+  "generated_after": {
+    "generated": 128,
+    "not_generated": 67
+  },
+  "generated_before": {
+    "generated": 128,
+    "not_generated": 67
+  },
+  "generated_note_delta": 0,
+  "inline_parts": 6,
+  "metadata_only_attachments": 0,
+  "mode": "apply",
+  "ollama_calls": 2,
+  "parent_email_cards_updated": 1,
+  "procore_project_id": "2525840",
+  "project_key": "tropical",
+  "project_number": "23-435-01",
+  "queue_after": 0,
+  "queue_delta": 0,
+  "qwen_summaries_written": 2,
+  "reciprocal_links_added": 2,
+  "skipped_empty": 0,
+  "skipped_oversize": 0,
+  "skipped_unavailable": 0,
+  "skipped_unsafe": 0,
+  "summary_model": "qwen2.5:14b",
+  "vault_markdown_delta": 0
+}

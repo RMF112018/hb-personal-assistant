@@ -1,0 +1,3 @@
+# Sensitive apply artifacts (attachment binaries via DB backup, per-file detail rows, card
+# backups) — never committed. Only count-only safe evidence in this dir is tracked.
+local-sensitive/

@@ -1,0 +1,15 @@
+{
+  "attachment_cards": 2,
+  "attachment_cards_with_parent_email_hash": 2,
+  "attachment_pair_basis_counts": {
+    "same_parent_email": 1,
+    "same_procore_id": 1,
+    "same_project_key": 1,
+    "shared_title_phrase": 1
+  },
+  "attachment_pair_candidates": 1,
+  "db_mutations": 0,
+  "distinct_attachment_sha256": 2,
+  "distinct_parent_email_hashes": 1,
+  "ollama_called": false
+}
