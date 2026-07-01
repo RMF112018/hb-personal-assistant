@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""Phase 10G correction: remove offending graph entries + reconcile Tropical email-card identity.
+"""Phase 10G/10H correction: reconcile Tropical source-card identity + inventory duplicates.
 
-Two bounded, deterministic, idempotent corrections over the Tropical Work source-card set:
+Bounded, deterministic, idempotent operations over the Tropical Work source-card set:
 
-* ``--remove-duplicate-links`` — remove ONLY the offending gc-graph-links entries (relationship type in
-  REVIEW_ONLY_TYPES, i.e. same_project / duplicate types, or a same-source/same-email DUPLICATE pair)
-  from BOTH sides (reciprocal-or-neither). A valid link is never deleted; the block is removed only when
-  it becomes empty. Graph tags (related/* + review/qwen-vetted) are stripped only when NO valid graph
-  link remains on the card.
-* ``--reconcile-identity`` — for Tropical Work ``document_type="email"`` cards whose frontmatter or
-  visible Related Project text disagrees with an already-resolving hb-project-identity block, correct the
-  card to agree (the block is authoritative; the DB may still carry a stale project key). Never touches
-  the block, other managed blocks, non-email cards, other projects, or the DB.
+* ``--remove-duplicate-links`` (10G) — remove ONLY the offending gc-graph-links entries (relationship
+  type in REVIEW_ONLY_TYPES, or a same-source/same-email DUPLICATE pair) from BOTH sides
+  (reciprocal-or-neither). A valid link is never deleted; the block is removed only when it becomes
+  empty. Graph tags stripped only when NO valid graph link remains.
+* ``--reconcile-identity`` (10G) — reconcile Tropical EMAIL source cards (defined by the hb-email block)
+  to their authoritative hb-project-identity block.
+* ``--reconcile-all-tropical-identity`` (10H) — reconcile ALL Tropical Work source cards whose
+  frontmatter or visible ``## Related Project`` text disagrees with an authoritative single
+  hb-project-identity block resolving EXACTLY 23-435-01 / tropical / 2525840. Scope is the identity
+  block (NOT the drift-prone analyzer document_type). Only frontmatter project fields + one
+  ``project/23-435-01`` tag + the visible Related Project line may change; every managed block
+  (hb-local-summary / hb-project-identity / hb-email / hb-email-attachment(s) / gc-graph-links /
+  unknown) is byte-preserved; graph links/tags are never added, removed, or reordered.
+* ``--duplicate-review-inventory`` (10H) — count-only inventory of duplicate-review pairs/clusters over
+  the bounded set. Creates/changes nothing.
 
 No source-file read, no scan, no queue/DB/runtime-JSON mutation, no card create/delete, no cloud model.
 Backend on :8000 must be down for --apply. Dry-run default.
@@ -45,6 +51,16 @@ from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexReposit
 GraphError = ag.GraphError
 _GRAPH_TAGS = sorted(ng.RELATED_TAGS | {"review/qwen-vetted"})
 _TROPICAL = {"project_number": "23-435-01", "project_key": "tropical", "procore_project_id": "2525840"}
+
+
+def _resolves_tropical(ident: dict[str, Any] | None) -> bool:
+    return bool(ident and ident.get("project_number") == _TROPICAL["project_number"]
+                and ident.get("project_key") == _TROPICAL["project_key"]
+                and ident.get("procore_project_id") == _TROPICAL["procore_project_id"])
+
+
+def _identity_block_count(text: str) -> int:
+    return text.count(pid.IDENTITY_BEGIN_PREFIX)
 
 
 def _link_target_rel(line: str) -> str | None:
@@ -162,6 +178,117 @@ def _plan_identity(facts: dict[str, ng.NoteFact], text_by_id: dict[str, str],
             "email_cards_reconciled": reconciled, "email_cards_skipped": skipped}
 
 
+def _plan_all_tropical_identity(facts: dict[str, ng.NoteFact], text_by_id: dict[str, str],
+                               plan: dict[str, str]) -> dict[str, Any]:
+    """Reconcile ALL Tropical Work source cards to their authoritative identity block (Phase 10H).
+
+    Scope is the hb-project-identity block (NOT analyzer document_type): eligible iff exactly one block
+    resolving EXACTLY Tropical AND frontmatter/visible text disagrees. Reuses the 10G block-authoritative
+    reconcile helper, so the visible line + frontmatter format match the already-reconciled cards.
+    """
+    scanned = with_block = disagreeing = corrected = 0
+    fm_dis = vt_dis = email_dis = nonemail_dis = 0
+    email_corr = nonemail_corr = tags_added = 0
+    skip_no_id = skip_ambiguous = skip_other = 0
+    for nid in facts:
+        base = plan.get(nid, text_by_id[nid])
+        scanned += 1
+        nblocks = _identity_block_count(base)
+        if nblocks == 0:
+            skip_no_id += 1
+            continue
+        ident = pid.parse_identity_marker(base)
+        if nblocks > 1 or not ident or not ident.get("project_key") or not ident.get("project_number"):
+            skip_ambiguous += 1  # duplicate / malformed / unparseable identity block
+            continue
+        if not _resolves_tropical(ident):
+            skip_other += 1  # resolves a different project (or missing procore)
+            continue
+        with_block += 1
+        num, key = ident["project_number"], ident["project_key"]
+        fm_changed = pid.reconcile_frontmatter_identity(base, project_number=num, project_key=key) != base
+        vt_changed = pid.reconcile_related_project_text(base, project_number=num, project_key=key) != base
+        if not (fm_changed or vt_changed):
+            continue  # already_consistent — byte-identical, never re-touched
+        is_email = parse_email_marker(base) is not None
+        fm_dis += int(fm_changed)
+        vt_dis += int(vt_changed)
+        disagreeing += 1
+        email_dis += int(is_email)
+        nonemail_dis += int(not is_email)
+        _ok, tags_before, _f, _l = ng.parse_frontmatter_tags(base)
+        nt, r = pid.reconcile_card_identity(base)
+        if r != "reconciled" or nt is None:
+            skip_ambiguous += 1  # defensive: unexpected non-reconcile despite detected disagreement
+            continue
+        _ok2, tags_after, _f2, _l2 = ng.parse_frontmatter_tags(nt)
+        if "project/23-435-01" in tags_after and "project/23-435-01" not in tags_before:
+            tags_added += 1
+        corrected += 1
+        email_corr += int(is_email)
+        nonemail_corr += int(not is_email)
+        plan[nid] = nt
+    return {"cards_scanned": scanned, "tropical_identity_cards": with_block,
+            "cards_disagreeing": disagreeing, "frontmatter_disagreements": fm_dis,
+            "related_project_text_disagreements": vt_dis,
+            "email_cards_disagreeing": email_dis, "non_email_cards_disagreeing": nonemail_dis,
+            "cards_corrected": corrected, "email_cards_corrected": email_corr,
+            "non_email_cards_corrected": nonemail_corr, "project_tags_added": tags_added,
+            "cards_skipped_no_identity": skip_no_id,
+            "cards_skipped_ambiguous_identity": skip_ambiguous,
+            "cards_skipped_other_project": skip_other}
+
+
+def _duplicate_inventory(facts: dict[str, ng.NoteFact],
+                         detail_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Count-only duplicate-review inventory over the bounded set. Creates/changes nothing.
+
+    A pair sharing multiple duplicate signals counts ONCE in duplicate_review_pairs while contributing
+    to each applicable per-signal count. Clusters are connected components over duplicate edges.
+    """
+    fl = list(facts.values())
+    pairs: dict[frozenset[str], set[str]] = {}
+    for i, a in enumerate(fl):
+        for b in fl[i + 1:]:
+            sigs = {s for s in ng._pair_signals(a, b) if s in ng.DUPLICATE_SIGNALS}
+            if sigs:
+                pairs[frozenset((a.note_id, b.note_id))] = sigs
+    per = {"same_source_sha256": 0, "same_message_id_hash": 0, "same_attachment_sha256": 0}
+    for sigs in pairs.values():
+        for s in sigs:
+            if s in per:
+                per[s] += 1
+    # union-find over duplicate edges
+    parent = {nid: nid for nid in facts}
+
+    def find(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for key in pairs:
+        a, b = tuple(key)
+        parent[find(a)] = find(b)
+    nodes_in_pairs: set[str] = set()
+    for key in pairs:
+        nodes_in_pairs |= set(key)
+    clusters: dict[str, list[str]] = {}
+    for n in nodes_in_pairs:
+        clusters.setdefault(find(n), []).append(n)
+    sizes = [len(v) for v in clusters.values()]
+    detail_rows.append({
+        "duplicate_pairs": [{"pair": sorted(x[:12] for x in k), "signals": sorted(v)}
+                            for k, v in pairs.items()],
+        "clusters": [sorted(x[:12] for x in v) for v in clusters.values()]})
+    return {"duplicate_review_pairs": len(pairs),
+            "same_source_sha256_pairs": per["same_source_sha256"],
+            "same_email_message_id_pairs": per["same_message_id_hash"],
+            "same_attachment_sha_pairs": per["same_attachment_sha256"],
+            "duplicate_clusters": len(clusters),
+            "largest_cluster_size": max(sizes) if sizes else 0}
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
     vault_root = Path(args.vault_path).resolve()
     config = dryrun._load_config(args.config_path)
@@ -178,15 +305,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     result: dict[str, Any] = {"mode": "apply" if args.apply else "dry-run",
                               "notes_selected": len(facts),
                               "db_before": fp_before, "db_mutations": 0, "queue_delta": 0,
-                              "created": 0, "deleted": 0}
+                              "created": 0, "deleted": 0, "new_cards": 0,
+                              "links_added": 0, "links_removed": 0, "tags_added": 0,
+                              "runtime_json_mutated": False, "ollama_calls": 0}
 
     plan: dict[str, str] = {}
     if args.remove_duplicate_links:
         rplan, rstats = _plan_removals(facts, text_by_id, detail_rows)
         plan.update(rplan)
         result.update(rstats)
+        result["links_removed"] = rstats["offending_pairs"] * 2
     if args.reconcile_identity:
         result.update(_plan_identity(facts, text_by_id, plan))
+    if args.reconcile_all_tropical_identity:
+        stats = _plan_all_tropical_identity(facts, text_by_id, plan)
+        result.update(stats)
+        result["tags_added"] = stats["project_tags_added"]
+    if args.duplicate_review_inventory:
+        result.update(_duplicate_inventory(facts, detail_rows))
     result["notes_modified"] = len(plan)
 
     if args.apply:
@@ -210,6 +346,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 target = vault_root / facts[nid].note_rel
                 if not target.is_file():
                     raise GraphError("target vanished")
+                # apply-time ambiguity guard: any card we write that carries an identity block MUST
+                # still have exactly one block resolving EXACTLY Tropical — else hard-stop + rollback.
+                if pid.IDENTITY_BEGIN_PREFIX in content and (
+                        content.count(pid.IDENTITY_BEGIN_PREFIX) != 1
+                        or not _resolves_tropical(pid.parse_identity_marker(content))):
+                    raise GraphError("identity ambiguity or non-Tropical resolve at write time")
                 bpath = backup_root / facts[nid].note_rel
                 bpath.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(target, bpath)
@@ -270,6 +412,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--evidence-dir", default=None)
     p.add_argument("--remove-duplicate-links", action="store_true")
     p.add_argument("--reconcile-identity", action="store_true")
+    p.add_argument("--reconcile-all-tropical-identity", action="store_true")
+    p.add_argument("--duplicate-review-inventory", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--apply", action="store_true")
     p.add_argument("--require-empty-queue", action="store_true", default=True)
@@ -282,9 +426,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.apply and not args.backup_dir:
         print(json.dumps({"refused": True, "reason": "--apply requires --backup-dir"}), file=sys.stderr)
         return 3
-    if not (args.remove_duplicate_links or args.reconcile_identity):
-        print(json.dumps({"refused": True, "reason": "choose --remove-duplicate-links and/or "
-                          "--reconcile-identity"}), file=sys.stderr)
+    if not (args.remove_duplicate_links or args.reconcile_identity
+            or args.reconcile_all_tropical_identity or args.duplicate_review_inventory):
+        print(json.dumps({"refused": True, "reason": "choose at least one mode: "
+                          "--remove-duplicate-links / --reconcile-identity / "
+                          "--reconcile-all-tropical-identity / --duplicate-review-inventory"}),
+              file=sys.stderr)
         return 3
     try:
         out = run(args)

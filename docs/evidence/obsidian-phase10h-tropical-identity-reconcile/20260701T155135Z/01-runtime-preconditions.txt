@@ -1,0 +1,37 @@
+Phase 10H — Runtime Preconditions (verified before --apply; count/flag only)
+============================================================================
+
+Config:        ~/Library/Application Support/HB Personal Assistant/analytics/obsidian_mcp_config.json
+  vault_root = ~/Documents/Obsidian Vault  (matches --vault-path)
+DB (live):     ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+  db meta_sha12 before = 31dce7a78878
+  generated cards = 128 ; not_generated = 67 ; summary rows = 7
+
+Frozen flags (all must be False):
+  external_source_watch_enabled        = False
+  source_card_auto_generate_enabled    = False
+  source_summary_auto_generate_enabled = False
+  source_note_auto_refresh_enabled     = False
+
+Queue: queued = 0 ; processing = 0
+
+Backend :8000:
+  Before apply: UP, owned by a DIFFERENT worktree
+    (verify/schedule-named-baseline-phase13d-mainline-20260701T153222Z).
+  Action (user-approved "Stop it, apply, restart"): sent SIGTERM, port freed in ~2s,
+    WAL checkpointed (TRUNCATE -> 0,0,0; no -wal/-shm remaining). Ran applier UNSANDBOXED
+    with backend down (the applier's read path needs -shm write + a checkpointed WAL).
+  After apply: backend restarted faithfully from the same worktree cwd + env
+    (HB_ASSISTANT_DB_PATH, HB_FORECAST_RUN_OUTPUT_DB_WRITE_ENABLED=1, PYTHONPATH, .venv);
+    confirmed listening on :8000 and serving (HTTP 401 = auth required = healthy).
+
+Baselines (from --dry-run, count-only):
+  Tropical Work cards selected            = 103
+  cards with a single Tropical id block   = 103
+  cards disagreeing (fm or visible text)  = 93   (all non-email)
+    frontmatter disagreements             = 93
+    related-project-text disagreements    = 91
+  email cards disagreeing                 = 0    (the 10G-reconciled 10 stay already_consistent)
+  skips (no id / ambiguous / other proj)  = 0 / 0 / 0
+  duplicate-review pairs                   = 28   (28 same-source, 1 same-email, 0 same-attachment)
+  duplicate clusters / largest            = 4 / 7
