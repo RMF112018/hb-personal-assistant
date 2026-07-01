@@ -97,6 +97,7 @@ class ProjectScheduleControlsService:
                 project_key,
                 as_of=as_of,
                 baseline_version_key=str(named_resolution.get("schedule_version_key") or ""),
+                comparison_basis=basis,
             )
             preview_basis = "baseline"
             include_workbench_links = status == "selected"
@@ -136,7 +137,7 @@ class ProjectScheduleControlsService:
             cpm_summary=context.get("cpm_summary"),
             change_impact=context.get("change_impact"),
             remaining_activities=context.get("remaining_activities"),
-            comparison_basis=preview_basis,
+            comparison_basis=basis,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
             include_activity_metric_cues=True,

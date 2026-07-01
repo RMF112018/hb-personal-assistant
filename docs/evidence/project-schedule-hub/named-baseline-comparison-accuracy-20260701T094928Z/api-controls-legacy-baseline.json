@@ -1,0 +1,39 @@
+{
+  "body": {
+    "advisory_posture": "sequence_cues_not_causation",
+    "as_of_date": "2026-07-03",
+    "available": false,
+    "baseline_context": {
+      "basis": "baseline",
+      "selection_status": "not_applicable"
+    },
+    "comparison_basis": "baseline",
+    "links": {
+      "export": "/api/projects/tropical/schedule/export?format=markdown&comparison_basis=baseline&as_of=2026-07-03",
+      "review_workbench": "/projects/tropical/schedule/workbench?comparison_basis=baseline&as_of=2026-07-03",
+      "schedule_hub": "/projects/tropical/schedule"
+    },
+    "project_key": "tropical",
+    "provenance": {
+      "source_services": [
+        "project_schedule_controls_service"
+      ]
+    },
+    "reason": "baseline_unavailable",
+    "schedule_data_date": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "sections": {},
+    "summary": {
+      "headline": "Schedule controls are unavailable for the selected context.",
+      "high_priority_review_item_count": null,
+      "open_review_item_count": null,
+      "overall_status": "unknown",
+      "primary_review_focus": null,
+      "supporting_points": [
+        "baseline unavailable"
+      ]
+    },
+    "top_controls": []
+  },
+  "status": 200
+}

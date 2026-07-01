@@ -1,0 +1,11 @@
+{
+  "disposition_count": 1,
+  "samples": [
+    {
+      "comparison_basis": "current_contract_baseline",
+      "cue_summary": "Candidate driver sequence cue for PM review.",
+      "review_item_id": "psnbri-2401f3c1b28b4f9196bb679c881b9198",
+      "review_status": "watching"
+    }
+  ]
+}

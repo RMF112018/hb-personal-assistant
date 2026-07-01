@@ -1,0 +1,7 @@
+PWD: /Users/bobbyfetting/hb-personal-assistant-worktrees/fix/schedule-named-baseline-comparison-accuracy-20260701T094928Z
+
+?? docs/evidence/project-schedule-hub/named-baseline-comparison-accuracy-20260701T094928Z/13b-repo-state.txt
+
+943670e9 docs(evidence): add Tropical read-only proof for named baseline comparison accuracy
+
+fix/schedule-named-baseline-comparison-accuracy-20260701T094928Z

@@ -1259,6 +1259,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         limit: int = 100,
         offset: int = 0,
         as_of: str | None = None,
+        comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
@@ -1283,10 +1284,13 @@ def create_app(*, db_path: str | None = None) -> Any:
                 limit=limit,
                 offset=offset,
                 as_of=as_of_date,
+                comparison_basis=comparison_basis,
             )
         except ValueError as exc:
             if str(exc) == "unsupported_drilldown_type":
                 raise HTTPException(status_code=400, detail="unsupported_drilldown_type") from exc
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
             raise
 
     @app.get("/api/projects/{project_key}/schedule/drivers")
@@ -1297,10 +1301,12 @@ def create_app(*, db_path: str | None = None) -> Any:
         offset: int = 0,
         driver_activity_id: str | None = None,
         as_of: str | None = None,
+        comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
         del role
         from datetime import date as date_type
+        from fastapi import HTTPException
 
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
@@ -1320,12 +1326,15 @@ def create_app(*, db_path: str | None = None) -> Any:
                 offset=offset,
                 driver_activity_id=driver_activity_id,
                 as_of=as_of_date,
+                comparison_basis=comparison_basis,
             )
         except ValueError as exc:
             if str(exc) == "driver_activity_id_required":
                 raise HTTPException(status_code=400, detail="driver_activity_id_required") from exc
             if str(exc) == "unsupported_driver_drilldown_type":
                 raise HTTPException(status_code=400, detail="unsupported_driver_drilldown_type") from exc
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
             raise
 
     def _project_schedule_driver_detail_response(
@@ -1665,6 +1674,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         variant: str = "standard",
         scope: str = "full",
         include_persisted_review: bool = False,
+        comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ):
         del role
@@ -1692,10 +1702,13 @@ def create_app(*, db_path: str | None = None) -> Any:
                 variant=export_variant,
                 scope=export_scope,
                 include_persisted_review=include_persisted_review,
+                comparison_basis=comparison_basis,
             )
         except ValueError as exc:
             if str(exc) == "unsupported_export_format":
                 raise HTTPException(status_code=400, detail="unsupported_export_format") from exc
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
             raise
         if not payload.get("available"):
             raise HTTPException(status_code=422, detail=payload.get("reason") or "export_unavailable")

@@ -1,0 +1,25 @@
+===== prior_update =====
+{
+  "status": 400,
+  "detail": "{\"detail\":\"unsupported_driver_drilldown_type\"}"
+}
+===== baseline =====
+{
+  "status": 400,
+  "detail": "{\"detail\":\"unsupported_driver_drilldown_type\"}"
+}
+===== current_contract_baseline =====
+{
+  "status": 400,
+  "detail": "{\"detail\":\"unsupported_driver_drilldown_type\"}"
+}
+===== previous_progress_update_baseline =====
+{
+  "status": 400,
+  "detail": "{\"detail\":\"unsupported_driver_drilldown_type\"}"
+}
+===== secondary_progress_update_baseline =====
+{
+  "status": 400,
+  "detail": "{\"detail\":\"unsupported_driver_drilldown_type\"}"
+}

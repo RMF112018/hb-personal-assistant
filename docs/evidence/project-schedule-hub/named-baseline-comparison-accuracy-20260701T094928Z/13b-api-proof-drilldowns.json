@@ -1,0 +1,103 @@
+===== prior_update =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "prior_update",
+  "baseline_context": null,
+  "comparison_schedule_version_key": null,
+  "source_model": null,
+  "keys": [
+    "available",
+    "drilldown_type",
+    "count",
+    "limit",
+    "offset",
+    "items",
+    "comparison_basis",
+    "comparison_context",
+    "finish_movement_basis"
+  ]
+}
+===== baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "prior_update",
+  "baseline_context": null,
+  "comparison_schedule_version_key": null,
+  "source_model": null,
+  "keys": [
+    "available",
+    "drilldown_type",
+    "count",
+    "limit",
+    "offset",
+    "items",
+    "comparison_basis",
+    "comparison_context",
+    "finish_movement_basis"
+  ]
+}
+===== current_contract_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "current_contract_baseline",
+  "baseline_context": null,
+  "comparison_schedule_version_key": "tropical|815|2025-08-07 08:00",
+  "source_model": null,
+  "keys": [
+    "available",
+    "drilldown_type",
+    "count",
+    "limit",
+    "offset",
+    "items",
+    "comparison_basis",
+    "finish_movement_basis",
+    "comparison_context",
+    "comparison_schedule_version_key"
+  ]
+}
+===== previous_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "previous_progress_update_baseline",
+  "baseline_context": null,
+  "comparison_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+  "source_model": null,
+  "keys": [
+    "available",
+    "drilldown_type",
+    "count",
+    "limit",
+    "offset",
+    "items",
+    "comparison_basis",
+    "finish_movement_basis",
+    "comparison_context",
+    "comparison_schedule_version_key"
+  ]
+}
+===== secondary_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "secondary_progress_update_baseline",
+  "baseline_context": null,
+  "comparison_schedule_version_key": "tropical|851|2025-11-28 08:00",
+  "source_model": null,
+  "keys": [
+    "available",
+    "drilldown_type",
+    "count",
+    "limit",
+    "offset",
+    "items",
+    "comparison_basis",
+    "finish_movement_basis",
+    "comparison_context",
+    "comparison_schedule_version_key"
+  ]
+}

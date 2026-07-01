@@ -1,0 +1,75 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectSchedulePage ProjectScheduleWorkbenchPage ProjectScheduleDriverDetailPage
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/fix/schedule-named-baseline-comparison-accuracy-20260701T094928Z/frontend
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleDriverDetailPage.test.tsx > ProjectScheduleDriverDetailPage > loads named basis from comparison_basis query param and shows humanized labels
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleDriverDetailPage.test.tsx  (6 tests) 171ms
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (5 tests) 370ms
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders baseline anchor helper text and comparison context in controls
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ❯ src/pages/ProjectSchedulePage.test.tsx  (19 tests | 1 failed) 1417ms
+   ❯ src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > passes selected as-of to summary, baseline, trends, drilldown, and export calls
+     → expected "spy" to be called with arguments: [ 'tropical', 'markdown', …(1) ]
+
+Received: 
+
+  1st spy call:
+
+  Array [
+    "tropical",
+    "markdown",
+    Object {
+      "asOf": "2026-06-16",
++     "comparisonBasis": "prior_update",
+    },
+  ]
+
+
+Number of calls: 1
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > passes selected as-of to summary, baseline, trends, drilldown, and export calls
+AssertionError: expected "spy" to be called with arguments: [ 'tropical', 'markdown', …(1) ]
+
+Received: 
+
+  1st spy call:
+
+  Array [
+    "tropical",
+    "markdown",
+    Object {
+      "asOf": "2026-06-16",
++     "comparisonBasis": "prior_update",
+    },
+  ]
+
+
+Number of calls: 1
+
+ ❯ src/pages/ProjectSchedulePage.test.tsx:578:47
+    576| 
+    577|     await user.click(screen.getByRole('button', { name: 'Export Memo' …
+    578|     expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tr…
+       |                                               ^
+    579|       asOf: '2026-06-16',
+    580|     })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 29 passed (30)
+   Start at  06:48:49
+   Duration  3.09s (transform 436ms, setup 225ms, collect 1.24s, tests 1.96s, environment 1.35s, prepare 739ms)
+

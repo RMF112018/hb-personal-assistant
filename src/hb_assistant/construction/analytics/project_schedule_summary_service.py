@@ -549,6 +549,39 @@ class ProjectScheduleSummaryService:
             "tie_breakers": ["schedule_data_date_desc", "imported_at_desc"],
         }
 
+    def _named_slot_comparison_context(
+        self,
+        *,
+        project_key: str,
+        current_choice: _VersionChoice,
+        baseline_version_key: str,
+        comparison_basis: str,
+        as_of_date: date,
+    ) -> dict[str, Any]:
+        current_key = str(current_choice.version["schedule_version_key"])
+        identity_key = _identity_key(current_choice.identity_match)
+        baseline_version = self._version_row(project_key, baseline_version_key)
+        unavailable_reason = None
+        if not baseline_version:
+            unavailable_reason = "baseline_invalid"
+        elif _requires_identity_review(current_choice.identity_match):
+            unavailable_reason = "identity_review_required"
+        return {
+            "available": baseline_version is not None and unavailable_reason is None,
+            "current_version_key": current_key,
+            "comparison_schedule_version_key": baseline_version_key,
+            "previous_version_key": None,
+            "diff_id": current_choice.version.get("default_diff_id"),
+            "comparison_basis": comparison_basis,
+            "source_model": "named_slot",
+            "finish_movement_basis": "resolved_finish_date",
+            "schedule_identity_key": identity_key,
+            "as_of_date": as_of_date.isoformat(),
+            "unavailable_reason": unavailable_reason,
+            "as_of_eligibility_basis": "hub_eligible_schedule_data_date_on_or_before_as_of",
+            "tie_breakers": ["named_slot_selection"],
+        }
+
     # ------------------------------------------------------------------ bounded hub reads
 
     def _timed(
@@ -981,37 +1014,79 @@ class ProjectScheduleSummaryService:
         limit: int = 100,
         offset: int = 0,
         as_of: date | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
         as_of_date = as_of or datetime.now(timezone.utc).date()
-        versions = self._hub_project_versions(project_key)
-        if not versions:
-            return {"available": False, "reason": "no_schedule"}
-        current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
-        if not current_choice:
-            return {"available": False, "reason": "review_required"}
-        current_key = str(current_choice.version["schedule_version_key"])
-        previous_choice = self._resolve_previous(project_key, current_choice, versions)
-        previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
-        comparison_context = self._prior_update_comparison_context(
-            current_choice=current_choice,
-            previous_choice=previous_choice,
-            as_of_date=as_of_date,
-        )
-        baseline = self._hub_repo.get_active_baseline_selection(
-            project_key=project_key,
-            current_schedule_version_key=current_key,
-        )
-        baseline_key = str(baseline["selected_baseline_schedule_version_key"]) if baseline else None
-        comparison_key = self._drilldowns.resolve_comparison_key(
-            project_key=project_key,
-            drilldown_type=drilldown_type,
-            current_key=current_key,
-            previous_key=previous_key,
-            baseline_key=baseline_key,
-        )
+        hub_context: dict[str, Any] | None = None
+        comparison_context: dict[str, Any]
+        current_key: str
+        comparison_key: str | None
+        baseline_key: str | None = None
+
+        if resolved.source_model == "named_slot":
+            try:
+                hub_context, _ = self.build_resolved_hub_context(
+                    project_key,
+                    resolved=resolved,
+                    as_of=as_of,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                if reason in {"baseline_not_selected", "baseline_invalid"}:
+                    return {
+                        "available": False,
+                        "reason": reason,
+                        "comparison_basis": resolved.comparison_basis,
+                    }
+                raise
+            if not hub_context:
+                return {"available": False, "reason": "no_schedule", "comparison_basis": resolved.comparison_basis}
+            provenance = hub_context.get("comparison_provenance") or {}
+            comparison_context = hub_context.get("comparison_context") or {}
+            current_key = str(hub_context.get("schedule_version_key") or "")
+            comparison_key = str(provenance.get("comparison_schedule_version_key") or "") or None
+            baseline_key = comparison_key
+        else:
+            versions = self._hub_project_versions(project_key)
+            if not versions:
+                return {"available": False, "reason": "no_schedule"}
+            current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
+            if not current_choice:
+                return {"available": False, "reason": "review_required"}
+            current_key = str(current_choice.version["schedule_version_key"])
+            previous_choice = self._resolve_previous(project_key, current_choice, versions)
+            previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
+            comparison_context = self._prior_update_comparison_context(
+                current_choice=current_choice,
+                previous_choice=previous_choice,
+                as_of_date=as_of_date,
+            )
+            baseline = self._hub_repo.get_active_baseline_selection(
+                project_key=project_key,
+                current_schedule_version_key=current_key,
+            )
+            baseline_key = str(baseline["selected_baseline_schedule_version_key"]) if baseline else None
+            comparison_key = self._drilldowns.resolve_comparison_key(
+                project_key=project_key,
+                drilldown_type=drilldown_type,
+                current_key=current_key,
+                previous_key=previous_key,
+                baseline_key=baseline_key,
+            )
+
         if drilldown_type == "upstream_cues":
-            summary = self.build_summary(project_key, as_of=as_of)
-            items = summary.get("change_impact", {}).get("upstream_remaining_impact", {}).get("items", [])
+            if hub_context:
+                items = (
+                    hub_context.get("change_impact", {})
+                    .get("upstream_remaining_impact", {})
+                    .get("items", [])
+                )
+            else:
+                summary = self.build_summary(project_key, as_of=as_of)
+                items = summary.get("change_impact", {}).get("upstream_remaining_impact", {}).get("items", [])
             return {
                 "available": True,
                 "drilldown_type": drilldown_type,
@@ -1019,6 +1094,15 @@ class ProjectScheduleSummaryService:
                 "limit": limit,
                 "offset": offset,
                 "items": items[offset : offset + limit],
+                "comparison_basis": resolved.comparison_basis,
+                "comparison_context": comparison_context,
+                "finish_movement_basis": comparison_context.get("finish_movement_basis"),
+            }
+        if not comparison_key:
+            return {
+                "available": False,
+                "reason": comparison_context.get("unavailable_reason") or "comparison_unavailable",
+                "comparison_basis": resolved.comparison_basis,
                 "comparison_context": comparison_context,
             }
         out = self._drilldowns.list_drilldown(
@@ -1029,12 +1113,16 @@ class ProjectScheduleSummaryService:
             limit=limit,
             offset=offset,
         )
-        if drilldown_type.startswith("baseline_"):
-            out["comparison_basis"] = "baseline"
+        if drilldown_type.startswith("baseline_") or resolved.source_model == "named_slot":
+            out["comparison_basis"] = resolved.comparison_basis
         else:
             out["comparison_basis"] = comparison_context["comparison_basis"]
             out["comparison_context"] = comparison_context
-        out["finish_movement_basis"] = comparison_context["finish_movement_basis"]
+        out["finish_movement_basis"] = comparison_context.get("finish_movement_basis")
+        if resolved.source_model == "named_slot":
+            out["comparison_context"] = comparison_context
+            provenance = (hub_context or {}).get("comparison_provenance") or {}
+            out["comparison_schedule_version_key"] = provenance.get("comparison_schedule_version_key")
         return out
 
     def build_review_items(
@@ -1463,51 +1551,87 @@ class ProjectScheduleSummaryService:
         *,
         as_of: date | None = None,
         baseline_version_key: str,
+        comparison_basis: str,
     ) -> dict[str, Any] | None:
-        """Schedule hub context with driver analysis anchored to a named baseline version."""
+        """Schedule hub context with comparisons anchored to a named baseline version."""
 
-        context = self._review_workbench_context(project_key, as_of=as_of)
-        if not context:
-            return None
-
-        as_of_date = context.get("as_of_date") or datetime.now(timezone.utc).date()
+        as_of_date = as_of or datetime.now(timezone.utc).date()
         versions = self._hub_project_versions(project_key)
+        if not versions:
+            return None
         current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
         if not current_choice:
             return None
         current = current_choice.version
         current_key = str(current["schedule_version_key"])
         previous_choice = self._resolve_previous(project_key, current_choice, versions)
-        previous_key = str(previous_choice.version["schedule_version_key"]) if previous_choice else None
-        comparison_context = self._prior_update_comparison_context(
+        previous = previous_choice.version if previous_choice else None
+        baseline_version = self._version_row(project_key, baseline_version_key)
+        comparison_context = self._named_slot_comparison_context(
+            project_key=project_key,
             current_choice=current_choice,
-            previous_choice=previous_choice,
+            baseline_version_key=baseline_version_key,
+            comparison_basis=comparison_basis,
             as_of_date=as_of_date,
         )
-        milestones = context.get("milestones") or self._milestones(
-            current_key, previous_key, {"completed_milestone_count": 0}
-        )
+        milestones = self._milestones(current_key, baseline_version_key, {"completed_milestone_count": 0})
         baseline_summary = self.build_baseline_summary_for_version(
             project_key=project_key,
             current=current,
             current_key=current_key,
-            previous=previous_choice.version if previous_choice else None,
+            previous=previous,
             baseline_version_key=baseline_version_key,
+        )
+        comparison_ready = bool(comparison_context.get("available"))
+        change_impact = self._change_impact(
+            project_key=project_key,
+            current=current,
+            previous=baseline_version,
+            current_key=current_key,
+            previous_key=baseline_version_key,
+            comparison_context=comparison_context,
+            comparison_key=baseline_version_key,
+        )
+        remaining = self._remaining_activity_rows(current_key, limit=_REMAINING_SAMPLE_CAP)
+        activity_summary = self._activity_summary(current_key)
+        cpm_summary = self._computed_cpm(current_key)
+        remaining_health = self._remaining_health(
+            remaining=remaining,
+            activity_summary=activity_summary,
+            change_impact=change_impact,
+            cpm_summary=cpm_summary,
+            current_choice=current_choice,
+            previous=baseline_version,
         )
         change_driver_analysis = self._drivers.build_hub_analysis(
             project_key=project_key,
             current_key=current_key,
-            previous_key=previous_key,
+            previous_key=None,
             baseline_key=baseline_version_key,
             diff_id=current.get("default_diff_id"),
             milestones=milestones,
-            comparison_ready=bool(comparison_context.get("available")),
+            comparison_ready=comparison_ready,
         )
-        enriched = dict(context)
-        enriched["driver_analysis"] = change_driver_analysis
-        enriched["baseline_summary"] = baseline_summary
-        enriched["schedule_data_date"] = _date_str(self._data_date(current))
-        return enriched
+        return {
+            "project_key": project_key,
+            "schedule_version_key": current_key,
+            "driver_analysis": change_driver_analysis,
+            "milestones": milestones,
+            "remaining_health": remaining_health,
+            "cpm_summary": cpm_summary,
+            "change_impact": change_impact,
+            "remaining_activities": remaining,
+            "as_of_date": as_of_date,
+            "baseline_summary": baseline_summary,
+            "schedule_data_date": _date_str(self._data_date(current)),
+            "comparison_provenance": {
+                "comparison_basis": comparison_basis,
+                "source_model": "named_slot",
+                "comparison_schedule_version_key": baseline_version_key,
+                "current_schedule_version_key": current_key,
+            },
+            "comparison_context": comparison_context,
+        }
 
     def build_resolved_hub_context(
         self,
@@ -1536,6 +1660,7 @@ class ProjectScheduleSummaryService:
                 project_key,
                 as_of=as_of,
                 baseline_version_key=str(resolution.get("schedule_version_key") or ""),
+                comparison_basis=resolved.comparison_basis,
             )
             return context, baseline_context
 
@@ -1579,8 +1704,37 @@ class ProjectScheduleSummaryService:
         variant: str = "standard",
         scope: str = "full",
         include_persisted_review: bool = False,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
         summary = self.build_summary(project_key, as_of=as_of)
+        if resolved.source_model == "named_slot":
+            try:
+                hub_context, baseline_context = self.build_resolved_hub_context(
+                    project_key,
+                    resolved=resolved,
+                    as_of=as_of,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                if reason in {"baseline_not_selected", "baseline_invalid"}:
+                    return {
+                        "available": False,
+                        "reason": reason,
+                        "comparison_basis": resolved.comparison_basis,
+                    }
+                raise
+            if hub_context:
+                summary["comparison_basis"] = resolved.comparison_basis
+                summary["comparison_provenance"] = hub_context.get("comparison_provenance")
+                summary["change_impact"] = hub_context.get("change_impact") or summary.get("change_impact")
+                summary["milestones"] = hub_context.get("milestones") or summary.get("milestones")
+                summary["driver_analysis"] = hub_context.get("driver_analysis") or summary.get("driver_analysis")
+                summary["baseline_summary"] = hub_context.get("baseline_summary") or summary.get("baseline_summary")
+        else:
+            summary["comparison_basis"] = resolved.comparison_basis
         if include_persisted_review or variant == "executive" or scope == "review_items":
             context = self._review_workbench_context(project_key, as_of=as_of)
             if context:
@@ -1606,8 +1760,53 @@ class ProjectScheduleSummaryService:
         offset: int = 0,
         driver_activity_id: str | None = None,
         as_of: date | None = None,
+        comparison_basis: str = "prior_update",
     ) -> dict[str, Any]:
+        from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
+
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
         as_of_date = as_of or datetime.now(timezone.utc).date()
+        if resolved.source_model == "named_slot":
+            try:
+                hub_context, _ = self.build_resolved_hub_context(
+                    project_key,
+                    resolved=resolved,
+                    as_of=as_of,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                if reason in {"baseline_not_selected", "baseline_invalid"}:
+                    return {
+                        "available": False,
+                        "reason": reason,
+                        "comparison_basis": resolved.comparison_basis,
+                    }
+                raise
+            if not hub_context:
+                return {"available": False, "reason": "no_schedule", "comparison_basis": resolved.comparison_basis}
+            provenance = hub_context.get("comparison_provenance") or {}
+            comparison_context = hub_context.get("comparison_context") or {}
+            current_key = str(hub_context.get("schedule_version_key") or "")
+            comparison_key = str(provenance.get("comparison_schedule_version_key") or "")
+            milestones = hub_context.get("milestones") or {}
+            comparison_ready = bool(comparison_context.get("available"))
+            out = self._drivers.list_drilldown(
+                project_key=project_key,
+                drilldown_type=drilldown_type,
+                current_key=current_key,
+                previous_key=comparison_key,
+                diff_id=comparison_context.get("diff_id"),
+                milestones=milestones,
+                driver_activity_id=driver_activity_id,
+                limit=limit,
+                offset=offset,
+                comparison_ready=comparison_ready,
+            )
+            out["comparison_basis"] = resolved.comparison_basis
+            out["comparison_context"] = comparison_context
+            out["comparison_schedule_version_key"] = comparison_key
+            return out
+
         versions = self._hub_project_versions(project_key)
         if not versions:
             return {"available": False, "reason": "no_schedule"}
@@ -1637,6 +1836,7 @@ class ProjectScheduleSummaryService:
             comparison_ready=comparison_ready,
         )
         out["comparison_context"] = comparison_context
+        out["comparison_basis"] = resolved.comparison_basis
         return out
 
     def _change_impact(
@@ -1648,18 +1848,27 @@ class ProjectScheduleSummaryService:
         current_key: str,
         previous_key: str | None,
         comparison_context: dict[str, Any],
+        comparison_key: str | None = None,
     ) -> dict[str, Any]:
-        if not previous or not previous_key:
+        effective_key = comparison_key or previous_key
+        effective_previous = previous
+        if not effective_previous or not effective_key:
+            reason = (
+                "baseline_invalid"
+                if comparison_context.get("source_model") == "named_slot"
+                else "no_prior_update"
+            )
             return {
                 "available": False,
-                "reason": "no_prior_update",
+                "reason": comparison_context.get("unavailable_reason") or reason,
                 "comparison_basis": comparison_context["comparison_basis"],
                 "finish_movement_basis": comparison_context["finish_movement_basis"],
                 "as_of_date": comparison_context["as_of_date"],
+                "comparison_schedule_version_key": comparison_context.get("comparison_schedule_version_key"),
                 "direct_remaining_changes": {"items": [], "summary": {}},
                 "upstream_remaining_impact": {"items": [], "summary": {}},
             }
-        direct_comparison = self._direct_remaining_comparison(current_key, previous_key)
+        direct_comparison = self._direct_remaining_comparison(current_key, effective_key)
         diff_id = current.get("default_diff_id")
         detail_rows = (
             self._mapping.list_diff_detail_facts(
@@ -1673,7 +1882,7 @@ class ProjectScheduleSummaryService:
         )
         changed_ids = {str(r.get("activity_id")) for r in detail_rows if r.get("activity_id")}
         current_by_id = self._activity_rows_by_ids(current_key, changed_ids)
-        previous_by_id = self._activity_rows_by_ids(previous_key, changed_ids)
+        previous_by_id = self._activity_rows_by_ids(effective_key, changed_ids)
         upstream_candidates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
         for aid in sorted(changed_ids):
             current_activity = current_by_id.get(aid)
@@ -1693,6 +1902,8 @@ class ProjectScheduleSummaryService:
             "comparison_basis": comparison_context["comparison_basis"],
             "finish_movement_basis": comparison_context["finish_movement_basis"],
             "as_of_date": comparison_context["as_of_date"],
+            "comparison_schedule_version_key": comparison_context.get("comparison_schedule_version_key")
+            or effective_key,
             "direct_remaining_changes": {
                 **direct_comparison,
                 "default_limit": _DIRECT_REMAINING_CHANGE_CAP,
