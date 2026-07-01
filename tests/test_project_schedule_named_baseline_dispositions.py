@@ -526,3 +526,135 @@ def test_named_skips_prior_update_carry_forward(tmp_path: Path) -> None:
     driver_items = [item for item in items if item.get("source_activity_id") == "DRV-A"]
     assert driver_items
     assert all(item.get("review_status") == "open" for item in driver_items if not item.get("review_item_id"))
+
+
+def _driver_detail(client: TestClient, activity_id: str, basis: str) -> dict:
+    response = client.get(
+        "/api/projects/tropical/schedule/drivers/detail",
+        params={"activity_id": activity_id, "comparison_basis": basis, "as_of": "2026-07-03"},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_driver_detail_prior_update_disposition(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    repo = ProjectScheduleHubRepository(db_path=str(db))
+    repo.upsert_review_item(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        stable_item_key="driver:DRV-A",
+        item_type="driver",
+        item_title="Persisted driver",
+        priority=90,
+        evidence={"cue_summary": "persisted"},
+        source_activity_id="DRV-A",
+    )
+    row = repo.get_review_item_for_version_scope(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        stable_item_key="driver:DRV-A",
+        source_activity_id="DRV-A",
+    )
+    repo.update_review_item(
+        review_item_id=str(row["review_item_id"]),
+        review_status="watching",
+        pm_notes="prior",
+        reviewed_by_operator="operator",
+    )
+    detail = _driver_detail(_client(db), "DRV-A", "prior_update")
+    assert detail["review_status"] == "watching"
+    assert str(detail["review_item_id"]).startswith("psri-")
+    assert detail["disposition_source"] == "prior_update_review"
+
+
+def test_driver_detail_named_disposition_after_sync(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _select_named_contract_baseline(db)
+    client = _client(db)
+    synced = client.post(
+        "/api/projects/tropical/schedule/review-items",
+        headers=_operator(),
+        params={"comparison_basis": "current_contract_baseline", "as_of": "2026-07-03"},
+    ).json()
+    item = next(
+        i for i in synced["workbench"]["items"] if str(i.get("review_item_id", "")).startswith(NAMED_REVIEW_ITEM_ID_PREFIX)
+    )
+    client.patch(
+        f"/api/projects/tropical/schedule/review-items/{item['review_item_id']}",
+        headers=_operator(),
+        json={"review_status": "watching"},
+    )
+    detail = _driver_detail(client, str(item.get("source_activity_id") or "DRV-A"), "current_contract_baseline")
+    assert detail["review_status"] == "watching"
+    assert str(detail["review_item_id"]).startswith(NAMED_REVIEW_ITEM_ID_PREFIX)
+    assert detail["disposition_source"] == "named_baseline_review"
+
+
+def test_driver_detail_named_open_when_not_persisted(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _select_named_contract_baseline(db)
+    detail = _driver_detail(_client(db), "DRV-A", "current_contract_baseline")
+    assert detail["review_status"] == "open"
+    assert detail["review_item_id"] is None
+    assert detail["disposition_source"] == "preview"
+
+
+def test_driver_detail_named_does_not_bleed_prior_update_disposition(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _select_named_contract_baseline(db)
+    repo = ProjectScheduleHubRepository(db_path=str(db))
+    repo.upsert_review_item(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        stable_item_key="driver:DRV-A",
+        item_type="driver",
+        item_title="Persisted driver",
+        priority=90,
+        evidence={},
+        source_activity_id="DRV-A",
+    )
+    row = repo.get_review_item_for_version_scope(
+        project_key="tropical",
+        schedule_version_key="tropical|S1|2026-07-01",
+        stable_item_key="driver:DRV-A",
+        source_activity_id="DRV-A",
+    )
+    repo.update_review_item(
+        review_item_id=str(row["review_item_id"]),
+        review_status="reviewed",
+        reviewed_by_operator="operator",
+    )
+    detail = _driver_detail(_client(db), "DRV-A", "current_contract_baseline")
+    assert detail["review_status"] == "open"
+    assert detail["disposition_source"] == "preview"
+
+
+def test_driver_detail_slot_isolation_for_disposition(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _select_named_contract_baseline(db)
+    _select_named_progress_baseline(db)
+    client = _client(db)
+    contract_sync = client.post(
+        "/api/projects/tropical/schedule/review-items",
+        headers=_operator(),
+        params={"comparison_basis": "current_contract_baseline", "as_of": "2026-07-03"},
+    ).json()
+    contract_item = next(
+        i for i in contract_sync["workbench"]["items"] if str(i.get("review_item_id", "")).startswith(NAMED_REVIEW_ITEM_ID_PREFIX)
+    )
+    activity_id = str(contract_item.get("source_activity_id") or "DRV-A")
+    client.patch(
+        f"/api/projects/tropical/schedule/review-items/{contract_item['review_item_id']}",
+        headers=_operator(),
+        json={"review_status": "watching"},
+    )
+    contract_detail = _driver_detail(client, activity_id, "current_contract_baseline")
+    progress_detail = _driver_detail(client, activity_id, "previous_progress_update_baseline")
+    assert contract_detail["review_status"] == "watching"
+    assert progress_detail["review_status"] == "open"

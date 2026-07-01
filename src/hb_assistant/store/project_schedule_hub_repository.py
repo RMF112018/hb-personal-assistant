@@ -257,6 +257,29 @@ class ProjectScheduleHubRepository:
             ).fetchone()
             return self._review_item_row(dict(row)) if row else None
 
+    def get_review_item_for_version_scope(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        stable_item_key: str,
+        source_activity_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        with self._conn() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM project_schedule_review_items
+                WHERE project_key=?
+                  AND schedule_version_key=?
+                  AND stable_item_key=?
+                  AND COALESCE(source_activity_id, '') = COALESCE(?, '')
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                (project_key, schedule_version_key, stable_item_key, source_activity_id),
+            ).fetchone()
+            return self._review_item_row(dict(row)) if row else None
+
     def append_review_item_event(
         self,
         *,

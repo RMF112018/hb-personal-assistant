@@ -46,6 +46,21 @@ function text(value: unknown, fallback = '—') {
   return String(value)
 }
 
+function dispositionSourceLabel(source: unknown) {
+  switch (String(source || '')) {
+    case 'named_baseline_review':
+      return 'Named baseline review'
+    case 'prior_update_review':
+      return 'Prior update review'
+    case 'preview':
+      return 'Open preview (not yet persisted)'
+    case 'unavailable_or_preview':
+      return 'Disposition unavailable for this comparison mode'
+    default:
+      return 'Review queue'
+  }
+}
+
 export function ProjectScheduleDriverDetailPage() {
   const { projectKey = '', activityId: pathActivityId = '' } = useParams()
   const [searchParams] = useSearchParams()
@@ -142,6 +157,8 @@ export function ProjectScheduleDriverDetailPage() {
   const downstream = Array.isArray(detail.downstream_impacts) ? detail.downstream_impacts : []
   const upstream = Array.isArray(detail.upstream_path) ? detail.upstream_path : []
   const logic = Array.isArray(detail.logic_changes) ? detail.logic_changes : []
+  const reviewStatus = text(detail.review_status, 'open')
+  const dispositionSource = dispositionSourceLabel(detail.disposition_source)
 
   return (
     <ProjectWorkspaceShell>
@@ -159,6 +176,14 @@ export function ProjectScheduleDriverDetailPage() {
             <Link className="badge" to={scheduleHref}>
               Schedule Hub
             </Link>
+          </div>
+        </div>
+
+        <div className="card">
+          <h4 className="text-sm font-semibold">Review Disposition</h4>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span className="badge capitalize">{reviewStatus}</span>
+            <span className="text-[var(--hb-muted)]">{dispositionSource}</span>
           </div>
         </div>
 
@@ -247,6 +272,9 @@ export function ProjectScheduleDriverDetailPage() {
           <summary className="cursor-pointer">Technical activity reference</summary>
           <p className="mt-2">Activity ID: {text(activity.activity_id || activityId)}</p>
           {baselineCtx.versionKey ? <p>Schedule version key: {baselineCtx.versionKey}</p> : null}
+          {detail.review_item_id ? (
+            <p>Internal review item reference: {text(detail.review_item_id)}</p>
+          ) : null}
         </details>
       </section>
     </ProjectWorkspaceShell>

@@ -577,6 +577,7 @@ describe('ProjectSchedulePage', () => {
     await user.click(screen.getByRole('button', { name: 'Export Memo' }))
     expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
       asOf: '2026-06-16',
+      comparisonBasis: 'prior_update',
     })
   })
 

@@ -23,6 +23,24 @@ th { background: #f4f4f4; }
 """
 
 
+def _export_comparison_context_complete(ctx: dict[str, Any] | None) -> bool:
+    if not ctx:
+        return False
+    required = (
+        "project_key",
+        "as_of",
+        "comparison_basis",
+        "comparison_label",
+        "source_model",
+        "slot_key",
+        "slot_label",
+        "current_schedule_version_key",
+        "comparison_schedule_version_key",
+        "baseline_schedule_version_key",
+    )
+    return all(ctx.get(key) not in (None, "") for key in required)
+
+
 class ProjectScheduleMemoService:
     def build_export(
         self,
@@ -37,22 +55,44 @@ class ProjectScheduleMemoService:
             raise ValueError("unsupported_export_format")
         export_variant = variant if variant in {"standard", "executive"} else "standard"
         export_scope = scope if scope in {"full", "review_items"} else "full"
+        export_ctx = summary.get("export_comparison_context")
         qa = validate_summary(summary)
+        export_warnings: list[str] = []
+        export_mode = "narrative"
         if not qa.get("passed"):
-            return {
-                "available": False,
-                "reason": "narrative_qa_failed",
-                "narrative_qa": qa,
-                "advisory_posture": qa.get("advisory_posture"),
-            }
+            if _export_comparison_context_complete(export_ctx):
+                export_warnings.append(
+                    "Narrative QA unavailable; deterministic export generated."
+                )
+                export_mode = "deterministic_fallback"
+            else:
+                return {
+                    "available": False,
+                    "reason": "narrative_qa_failed",
+                    "narrative_qa": qa,
+                    "advisory_posture": qa.get("advisory_posture"),
+                    "comparison_basis": summary.get("comparison_basis"),
+                }
         if fmt == "markdown":
-            body = self._markdown(summary, qa=qa, variant=export_variant, scope=export_scope)
+            if export_mode == "deterministic_fallback":
+                body = self._deterministic_named_fallback_markdown(
+                    summary, qa=qa, variant=export_variant, scope=export_scope, warnings=export_warnings
+                )
+            else:
+                body = self._markdown(summary, qa=qa, variant=export_variant, scope=export_scope)
         else:
-            body = (
-                self._executive_html(summary, qa=qa, scope=export_scope)
-                if export_variant == "executive"
-                else self._html(summary, qa=qa, variant=export_variant, scope=export_scope)
-            )
+            if export_mode == "deterministic_fallback":
+                body = self._html_from_markdown(
+                    self._deterministic_named_fallback_markdown(
+                        summary, qa=qa, variant=export_variant, scope=export_scope, warnings=export_warnings
+                    )
+                )
+            else:
+                body = (
+                    self._executive_html(summary, qa=qa, scope=export_scope)
+                    if export_variant == "executive"
+                    else self._html(summary, qa=qa, variant=export_variant, scope=export_scope)
+                )
         project_key = str(summary.get("project_key") or "project")
         as_of = str(summary.get("as_of_date") or datetime.now(timezone.utc).date().isoformat())
         suffix = "executive" if export_variant == "executive" and fmt == "html" else "memo"
@@ -69,7 +109,123 @@ class ProjectScheduleMemoService:
             "body": body,
             "advisory_posture": qa.get("advisory_posture"),
             "narrative_qa": qa,
+            "export_mode": export_mode,
+            "export_warnings": export_warnings,
+            "comparison_basis": summary.get("comparison_basis"),
+            "export_comparison_context": export_ctx,
         }
+
+    @staticmethod
+    def _comparison_context_section_lines(ctx: dict[str, Any]) -> list[str]:
+        return [
+            "## Comparison Context",
+            "",
+            f"- Comparison Basis: {ctx.get('comparison_label') or ctx.get('comparison_basis')}",
+            f"- Source Model: {ctx.get('source_model')}",
+            f"- Slot: {ctx.get('slot_label')} ({ctx.get('slot_key')})",
+            f"- Current Schedule Version: {ctx.get('current_schedule_version_key')}",
+            f"- Comparison Schedule Version: {ctx.get('comparison_schedule_version_key')}",
+            f"- Baseline Schedule Version: {ctx.get('baseline_schedule_version_key')}",
+            f"- Current Data Date: {ctx.get('current_data_date') or '—'}",
+            f"- Comparison Data Date: {ctx.get('comparison_data_date') or '—'}",
+            "",
+        ]
+
+    def _deterministic_named_fallback_markdown(
+        self,
+        summary: dict[str, Any],
+        *,
+        qa: dict[str, Any] | None,
+        variant: str,
+        scope: str,
+        warnings: list[str],
+    ) -> str:
+        ctx = summary.get("export_comparison_context") or {}
+        change_impact = summary.get("change_impact") or {}
+        movement = change_impact.get("direct_remaining_changes", {}).get("summary", {})
+        later = int(movement.get("finish_moved_later_count") or 0)
+        earlier = int(movement.get("finish_moved_earlier_count") or 0)
+        worsened = int(movement.get("worsened_float_count") or 0)
+        lines = [
+            f"# Schedule Review Memo — {summary.get('project_display_name') or summary.get('project_key')}",
+            "",
+            f"As of {summary.get('as_of_date')}",
+            "",
+        ]
+        lines.extend(self._comparison_context_section_lines(ctx))
+        for warning in warnings:
+            lines.extend([f"> **Warning:** {warning}", ""])
+        lines.extend(
+            [
+                "## Deterministic Movement Summary",
+                f"- Remaining activities moved later: {later}",
+                f"- Remaining activities moved earlier: {earlier}",
+                f"- Activities with worsened float: {worsened}",
+                "",
+            ]
+        )
+        driver_hub = summary.get("change_driver_analysis") or {}
+        prior = driver_hub.get("baseline") or driver_hub.get("prior_update") or driver_hub
+        if prior.get("available"):
+            top = (prior.get("top_drivers") or [None])[0] or {}
+            lines.extend(
+                [
+                    "## Top Candidate Driver",
+                    f"- Activity: {top.get('activity_name') or top.get('activity_id') or '—'}",
+                    f"- Downstream moved later: {top.get('downstream_moved_later_count') or 0}",
+                    "",
+                ]
+            )
+        moved = [
+            m
+            for m in (summary.get("milestones") or {}).get("items") or []
+            if int(m.get("movement_days") or 0) != 0
+        ]
+        if moved:
+            lines.extend(["## Milestone Impacts", ""])
+            for item in moved[:12]:
+                lines.append(
+                    f"- {item.get('activity_name') or item.get('activity_id')}: {item.get('movement_days')} days"
+                )
+            lines.append("")
+        review_items = self._review_items_for_export(summary, summary.get("review_workbench") or {})
+        if review_items:
+            lines.extend(self._review_items_section_lines(review_items, heading="## Review Workbench"))
+        lines.append(
+            "_Sequence cues only — not causation findings. This memo does not determine delay responsibility, entitlement, or compensability._"
+        )
+        return "\n".join(lines)
+
+    def _html_from_markdown(self, md: str) -> str:
+        paragraphs = []
+        for block in md.split("\n\n"):
+            block = block.strip()
+            if not block:
+                continue
+            if block.startswith("# "):
+                paragraphs.append(f"<h1>{html.escape(block[2:])}</h1>")
+            elif block.startswith("## "):
+                paragraphs.append(f"<h2>{html.escape(block[3:])}</h2>")
+            elif block.startswith("### "):
+                paragraphs.append(f"<h3>{html.escape(block[4:])}</h3>")
+            elif block.startswith("- "):
+                items = "".join(
+                    f"<li>{html.escape(line[2:])}</li>" for line in block.splitlines() if line.startswith("- ")
+                )
+                paragraphs.append(f"<ul>{items}</ul>")
+            elif block.startswith("> "):
+                paragraphs.append(f"<p><em>{html.escape(block[2:])}</em></p>")
+            elif block.startswith("_") and block.endswith("_"):
+                paragraphs.append(f"<p class='disclaimer'><em>{html.escape(block.strip('_'))}</em></p>")
+            else:
+                paragraphs.append(f"<p>{html.escape(block).replace(chr(10), '<br/>')}</p>")
+        return (
+            "<!DOCTYPE html><html><head><meta charset='utf-8'/>"
+            "<title>Schedule Review Memo</title>"
+            f"<style>{_PRINT_CSS}</style></head><body>"
+            + "".join(paragraphs)
+            + "</body></html>"
+        )
 
     def _markdown(
         self,
@@ -85,7 +241,10 @@ class ProjectScheduleMemoService:
         command = summary.get("command_summary") or {}
         workbench = summary.get("review_workbench") or {}
         driver_hub = summary.get("change_driver_analysis") or {}
-        prior = driver_hub.get("prior_update") or driver_hub
+        if _export_comparison_context_complete(summary.get("export_comparison_context")):
+            prior = driver_hub.get("baseline") or driver_hub
+        else:
+            prior = driver_hub.get("prior_update") or driver_hub
         milestones = summary.get("milestones") or {}
         remaining_health = summary.get("remaining_health") or {}
         cpm = summary.get("computed_cpm") or {}
@@ -95,6 +254,9 @@ class ProjectScheduleMemoService:
             f"As of {summary.get('as_of_date')}",
             "",
         ]
+        export_ctx = summary.get("export_comparison_context")
+        if _export_comparison_context_complete(export_ctx):
+            lines.extend(self._comparison_context_section_lines(export_ctx))
         if variant == "executive":
             lines.extend(
                 [

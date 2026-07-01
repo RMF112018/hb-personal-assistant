@@ -1,0 +1,25 @@
+
+> frontend@0.0.0 test
+> vitest run --run src/pages/ProjectScheduleWorkbenchPage.test.tsx src/pages/ProjectScheduleDriverDetailPage.test.tsx src/pages/ProjectSchedulePage.test.tsx
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/fix/schedule-named-baseline-production-readiness-phase13c-20260701T140807Z/frontend
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleDriverDetailPage.test.tsx > ProjectScheduleDriverDetailPage > loads named basis from comparison_basis query param and shows humanized labels
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleDriverDetailPage.test.tsx  (7 tests) 117ms
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders baseline anchor helper text and comparison context in controls
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (9 tests) 355ms
+ ✓ src/pages/ProjectSchedulePage.test.tsx  (19 tests) 805ms
+
+ Test Files  3 passed (3)
+      Tests  35 passed (35)
+   Start at  10:38:47
+   Duration  1.90s (transform 308ms, setup 155ms, collect 849ms, tests 1.28s, environment 903ms, prepare 468ms)
+

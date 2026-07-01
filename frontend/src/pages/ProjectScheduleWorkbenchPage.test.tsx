@@ -12,6 +12,7 @@ const getProjectScheduleReviewItemEventsMock = vi.fn()
 const patchProjectScheduleReviewItemMock = vi.fn()
 const getProjectsMock = vi.fn()
 const getProjectScheduleBaselinesMock = vi.fn()
+const downloadProjectScheduleExportMock = vi.fn()
 const getLocalUiRoleMock = vi.fn(() => 'operator' as 'operator' | 'viewer' | 'admin')
 
 vi.mock('../lib/api', async () => {
@@ -26,6 +27,7 @@ vi.mock('../lib/api', async () => {
       getProjectScheduleReviewItems: (...args: unknown[]) => getProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItemEvents: (...args: unknown[]) => getProjectScheduleReviewItemEventsMock(...args),
       patchProjectScheduleReviewItem: (...args: unknown[]) => patchProjectScheduleReviewItemMock(...args),
+      downloadProjectScheduleExport: (...args: unknown[]) => downloadProjectScheduleExportMock(...args),
     },
     getLocalUiRole: () => getLocalUiRoleMock(),
   }
@@ -239,5 +241,22 @@ describe('ProjectScheduleWorkbenchPage', () => {
       expect(screen.getByText(/saved separately from Prior Update/i)).toBeInTheDocument()
     })
     expect(screen.queryByText(/Named baseline preview — read only/i)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['prior_update', '/projects/tropical/schedule/workbench?comparison_basis=prior_update&as_of=2026-07-03'],
+    ['current_contract_baseline', '/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03'],
+    ['previous_progress_update_baseline', '/projects/tropical/schedule/workbench?comparison_basis=previous_progress_update_baseline&as_of=2026-07-03'],
+    ['secondary_progress_update_baseline', '/projects/tropical/schedule/workbench?comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03'],
+  ])('export memo passes asOf and comparisonBasis for %s', async (comparisonBasis, path) => {
+    downloadProjectScheduleExportMock.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    renderPage(path)
+    await screen.findByText('Candidate change driver')
+    await user.click(screen.getByRole('button', { name: 'Export Memo (Markdown)' }))
+    expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
+      asOf: '2026-07-03',
+      comparisonBasis,
+    })
   })
 })
