@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from hb_assistant.construction.analytics.project_schedule_identity_trust_service import (
+    IdentityGate,
+    build_identity_trust_from_committed,
+    build_identity_trust_from_hub,
+    build_identity_trust_from_preview,
+)
 from hb_assistant.construction.analytics.schedule_cpm_trust import (
     map_cpm_trust_status,
     public_cpm_trust_fields,
@@ -57,12 +63,16 @@ def resolve_analytics_trust_status(
     cpm_status: str = "not_started",
     identity_status: str = "not_started",
     identity_membership_status: str | None = None,
+    identity_gate: IdentityGate | None = None,
     trust_warnings: list[dict[str, Any]] | None = None,
     capability_limitations: list[str] | None = None,
     supersede_blocked: bool = False,
 ) -> AnalyticsTrustStatus:
     warnings = trust_warnings or []
     limitations = capability_limitations or []
+
+    if identity_gate == "blocked":
+        return "blocked"
 
     if parse_status == "failed":
         return "blocked"
@@ -79,12 +89,17 @@ def resolve_analytics_trust_status(
 
     blocking_warning_codes = {
         "duplicate_schedule_version",
+        "source_project_mismatch",
     }
-    if phase == "preview" and any(str(w.get("code") or "") in blocking_warning_codes for w in warnings):
-        if supersede_blocked:
-            return "blocked"
+    if phase == "preview":
+        for warning in warnings:
+            code = str(warning.get("code") or "")
+            if code == "source_project_mismatch":
+                return "blocked"
+            if code in blocking_warning_codes and supersede_blocked:
+                return "blocked"
 
-    degraded = False
+    degraded = identity_gate == "degraded"
     if warnings:
         degraded = True
     if limitations:
@@ -130,6 +145,7 @@ def build_trust_reasons(
     identity_status: str = "not_started",
     ignored_companion_files: list[dict[str, str]] | None = None,
     capability_limitations: list[str] | None = None,
+    identity_trust: dict[str, Any] | None = None,
     cpm_failure_code: str | None = None,
     cpm_failed_step: str | None = None,
 ) -> list[str]:
@@ -143,6 +159,9 @@ def build_trust_reasons(
         detail = str(row.get("reason") or row.get("message") or "ignored during package assembly")
         reasons.append(f"{label}: {detail}")
     for item in capability_limitations or []:
+        if item and item not in reasons:
+            reasons.append(item)
+    for item in (identity_trust or {}).get("safe_reasons") or []:
         if item and item not in reasons:
             reasons.append(item)
 
@@ -183,6 +202,8 @@ def build_analytics_trust_ledger(
     cpm_status: str = "not_started",
     identity_status: str = "not_started",
     identity_membership_status: str | None = None,
+    identity_gate: IdentityGate | None = None,
+    identity_trust: dict[str, Any] | None = None,
     trust_warnings: list[dict[str, Any]] | None = None,
     source_formats_detected: list[str] | None = None,
     source_formats_used: list[str] | None = None,
@@ -211,6 +232,7 @@ def build_analytics_trust_ledger(
         cpm_status=cpm_status,
         identity_status=identity_status,
         identity_membership_status=identity_membership_status,
+        identity_gate=(identity_trust or {}).get("identity_gate") or identity_gate,
         trust_warnings=trust_warnings,
         capability_limitations=limitations,
         supersede_blocked=supersede_blocked,
@@ -229,6 +251,7 @@ def build_analytics_trust_ledger(
         identity_status=identity_status,
         ignored_companion_files=ignored_companion_files,
         capability_limitations=limitations,
+        identity_trust=identity_trust,
         cpm_failure_code=str(cpm_observability.get("failure_code") or "") or None if cpm_observability else None,
         cpm_failed_step=str(cpm_observability.get("failed_step") or "") or None if cpm_observability else None,
     )
@@ -247,6 +270,7 @@ def build_analytics_trust_ledger(
         "cpm_status": cpm_status,
         "cpm_trust": cpm_trust,
         "capability_limitations": limitations,
+        "identity_trust": identity_trust,
     }
 
 
@@ -334,6 +358,11 @@ def ledger_from_import_preview(
             if file_row.get("source_format")
         }
     )
+    identity_trust = build_identity_trust_from_preview(
+        preview=preview,
+        trust_preview=trust,
+        project_display_name=preview.get("project_display_name"),
+    )
     ledger = build_analytics_trust_ledger(
         phase="preview",
         trust_warnings=warnings,
@@ -346,11 +375,16 @@ def ledger_from_import_preview(
         canonical_relationship_count=preview.get("relationship_count"),
         baseline_project_count=len(preview.get("baseline_project_candidates") or []),
         supersede_blocked=supersede_blocked,
+        identity_trust=identity_trust,
     )
     return pm_analytics_trust_payload(ledger)
 
 
-def ledger_from_pipeline_status(pipeline: dict[str, Any]) -> dict[str, Any]:
+def ledger_from_pipeline_status(
+    pipeline: dict[str, Any],
+    *,
+    identity_trust: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     cpm = pipeline.get("cpm") or {}
     observability = {
         "status": cpm.get("cpm_recompute_status"),
@@ -375,6 +409,7 @@ def ledger_from_pipeline_status(pipeline: dict[str, Any]) -> dict[str, Any]:
         identity_membership_status=pipeline.get("identity_membership_status"),
         cpm_observability=observability,
         cpm_trigger_source=cpm.get("trigger_source"),
+        identity_trust=identity_trust,
     )
     return pm_analytics_trust_payload(ledger)
 
@@ -386,6 +421,7 @@ def ledger_for_hub_version(
     identity_status: str,
     identity_membership_status: str | None,
     cpm_observability: dict[str, Any] | None,
+    identity_trust: dict[str, Any] | None = None,
     canonical_activity_count: int | None = None,
     canonical_relationship_count: int | None = None,
     source_format: str | None = None,
@@ -403,6 +439,7 @@ def ledger_for_hub_version(
         canonical_relationship_count=canonical_relationship_count,
         source_formats_detected=formats,
         source_formats_used=formats,
+        identity_trust=identity_trust,
     )
     return pm_analytics_trust_payload(ledger)
 
@@ -422,4 +459,7 @@ def pm_analytics_trust_payload(ledger: dict[str, Any]) -> dict[str, Any]:
     out["graph_node_count"] = cpm_trust.get("graph_node_count")
     out["graph_edge_count"] = cpm_trust.get("graph_edge_count")
     out["duration_ms"] = cpm_trust.get("duration_ms")
+    identity = out.get("identity_trust") or {}
+    out["identity_trust_status"] = identity.get("identity_trust_status")
+    out["identity_gate"] = identity.get("identity_gate")
     return out

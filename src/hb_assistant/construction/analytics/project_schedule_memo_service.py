@@ -124,6 +124,12 @@ class ProjectScheduleMemoService:
             "## Analytics Trust",
             "",
             f"- Status: {trust.get('analytics_trust_status') or 'unknown'}",
+            f"- Identity: {trust.get('identity_trust_status') or (trust.get('identity_trust') or {}).get('identity_trust_status') or 'unknown'}",
+            f"- Identity gate: {trust.get('identity_gate') or (trust.get('identity_trust') or {}).get('identity_gate') or 'unknown'}",
+            f"- CPM: {trust.get('cpm_trust_status') or (trust.get('cpm_trust') or {}).get('cpm_trust_status') or 'unknown'}",
+            "",
+            "Schedule analytics depend on trusted schedule identity for this project.",
+            "",
         ]
         reasons = trust.get("trust_reasons") or []
         if reasons:

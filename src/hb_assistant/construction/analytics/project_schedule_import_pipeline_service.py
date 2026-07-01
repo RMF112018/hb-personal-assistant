@@ -9,6 +9,9 @@ from hb_assistant.construction.analytics.project_schedule_analytics_trust_servic
     ledger_from_pipeline_status,
     normalize_quality_status,
 )
+from hb_assistant.construction.analytics.project_schedule_identity_trust_service import (
+    build_identity_trust_from_committed,
+)
 from hb_assistant.construction.analytics.schedule_cpm_read_service import ScheduleCpmReadService
 from hb_assistant.construction.analytics.schedule_cpm_trust import public_cpm_trust_fields
 from hb_assistant.construction.analytics.schedule_cpm_recompute_service import (
@@ -29,6 +32,7 @@ from hb_assistant.store.schedule_cpm_import_observability_repository import (
     ScheduleCpmImportObservabilityRepository,
 )
 from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+from hb_assistant.store.schedule_identity_repository import ScheduleIdentityRepository
 from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
 _PIPELINE_STAGES: tuple[tuple[str, str], ...] = (
@@ -57,6 +61,7 @@ class ProjectScheduleImportPipelineService:
         self._cpm_recompute = ScheduleCpmRecomputeService(db_path=db_path)
         self._cpm_read = ScheduleCpmReadService(db_path=db_path)
         self._cpm_observability = ScheduleCpmImportObservabilityRepository(db_path=db_path)
+        self._identity_repo = ScheduleIdentityRepository(db_path=db_path)
 
     def preview_bytes(
         self,
@@ -78,8 +83,9 @@ class ProjectScheduleImportPipelineService:
         trust_preview = self._build_trust_preview(project_key=project_key, preview=preview)
         out = dict(preview)
         out["pipeline_scope"] = "project_schedule_import"
-        out["trust_preview"] = trust_preview
+        out["trust_preview"] = self._pm_trust_preview(trust_preview)
         out["analytics_trust"] = ledger_from_import_preview(preview, trust_preview=trust_preview)
+        out["identity_trust"] = out["analytics_trust"].get("identity_trust")
         out["parse_stage_status"] = "complete"
         return out
 
@@ -218,6 +224,22 @@ class ProjectScheduleImportPipelineService:
         if committed and cpm_status == "failed":
             overall = "partial"
 
+        identity_match = (
+            self._identity_repo.get_match_for_version(version_key) if version_key else None
+        )
+        identity_trust = build_identity_trust_from_committed(
+            project_key=project_key,
+            project_display_name=None,
+            schedule_label=str(row.get("source_filename_redacted") or row.get("display_label") or ""),
+            identity_match=identity_match,
+            membership=membership,
+        )
+        pipeline_context = {
+            "cpm": self._cpm_public_fields(cpm_summary, observability=cpm_observability),
+            "quality_evaluation_status": quality_status,
+            "identity_membership_status": (membership or {}).get("membership_status"),
+        }
+
         return {
             "import_id": import_id,
             "project_key": project_key,
@@ -225,21 +247,25 @@ class ProjectScheduleImportPipelineService:
             "import_status": import_status,
             "overall_status": overall,
             "stages": stage_list,
-            "cpm": self._cpm_public_fields(cpm_summary, observability=cpm_observability),
+            "cpm": pipeline_context["cpm"],
             "quality_evaluation_status": quality_status,
             "identity_membership_status": (membership or {}).get("membership_status"),
+            "identity_trust": identity_trust,
             "hub_ready": hub_ready,
             "limitations": [
                 "Status is derived from persisted facts; this endpoint does not recompute CPM or quality.",
             ],
-            "analytics_trust": ledger_from_pipeline_status(
-                {
-                    "cpm": self._cpm_public_fields(cpm_summary, observability=cpm_observability),
-                    "quality_evaluation_status": quality_status,
-                    "identity_membership_status": (membership or {}).get("membership_status"),
-                }
-            ),
+            "analytics_trust": ledger_from_pipeline_status(pipeline_context, identity_trust=identity_trust),
         }
+
+    @staticmethod
+    def _pm_trust_preview(trust_preview: dict[str, Any]) -> dict[str, Any]:
+        out = {
+            "posture": trust_preview.get("posture"),
+            "warnings": trust_preview.get("warnings") or [],
+            "limitations": trust_preview.get("limitations") or [],
+        }
+        return out
 
     def _build_trust_preview(self, *, project_key: str, preview: dict[str, Any]) -> dict[str, Any]:
         import_id = str(preview.get("import_id") or "")

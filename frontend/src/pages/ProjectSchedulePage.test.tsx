@@ -685,10 +685,24 @@ describe('ProjectSchedulePage', () => {
         status: 'review_required',
         review_reasons: ['low_activity_overlap'],
         identity_review_url: '/schedules/identity-review?project=tropical',
+        operator_action_required: true,
+        identity_trust_status: 'review_required',
+        identity_gate: 'degraded',
+      },
+      analytics_trust: {
+        analytics_trust_status: 'degraded',
+        identity_gate: 'degraded',
+        identity_trust: {
+          identity_trust_status: 'review_required',
+          identity_gate: 'degraded',
+          pm_message: 'Schedule identity review is required before relying on comparison analytics.',
+          operator_action_required: true,
+          safe_reasons: ['Activity overlap with the accepted schedule is weak.'],
+        },
       },
     }))
 
-    expect(await screen.findByText('Schedule Trust')).toBeInTheDocument()
+    expect(await screen.findByText('Schedule Identity Trust')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open Identity Review' })).toHaveAttribute(
       'href',
       '/schedules/identity-review?project=tropical',

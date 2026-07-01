@@ -1,0 +1,18 @@
+branch=feature/schedule-identity-review-trust-gating-phase15-20260701T165632Z
+head=258e043bbf9fad6ad0aa7739251f969616da4464
+status:
+?? docs/evidence/project-schedule-hub/schedule-identity-review-trust-gating-phase15-20260701T165633Z/
+
+recent commits:
+258e043b Merge pull request #253 from RMF112018/feature/schedule-import-observability-cpm-trust-phase14-20260701T163525Z
+6085e2e0 Add schedule import observability and CPM trust layer (Phase 14).
+d86d59de Merge pull request #252 from RMF112018/fix/obsidian-phase10h-tropical-identity-reconcile-20260701T155135Z
+96c785b3 fix(obsidian): reconcile tropical source card identity
+2d41bdd5 fix(tests): Phase 13D PM-field provenance allowlist + mainline closeout evidence (#251)
+476aa7a1 Merge pull request #250 from RMF112018/feat/obsidian-phase10g-bounded-graph-apply-20260701T110855Z
+5ca0f44d feat(obsidian): apply bounded note graph links
+c983b1f4 fix(schedule): complete named baseline export and driver disposition (#249)
+ac6b9441 fix(schedule): align named baseline comparisons with selected slot (#248)
+881c56a8 Merge pull request #247 from RMF112018/feat/obsidian-phase10f-email-attachments-20260701T090000Z
+e06bf6ed feat(obsidian): extract email attachments as source cards
+fae13113 Merge pull request #246 from RMF112018/feature/schedule-named-baseline-dispositions-phase13-20260701T090410Z

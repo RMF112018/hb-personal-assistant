@@ -12,7 +12,7 @@ from hb_assistant.store.schedule_cpm_import_observability_repository import (
 )
 from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
-from .project_schedule_analytics_trust_service import ledger_for_hub_version
+from .project_schedule_identity_trust_service import build_identity_trust_from_hub
 from .project_schedule_baseline_vocabulary import (
     comparison_label_for_basis,
     is_named_baseline_basis,
@@ -158,6 +158,15 @@ class ProjectScheduleControlsService:
         wb_summary = workbench.get("summary") or {}
         comparison_label = comparison_label_for_basis(basis)
 
+        analytics_trust = context.get("analytics_trust") or self._controls_analytics_trust(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            context=context,
+            cpm_obs_row=cpm_obs_row,
+            project_display_name=str(context.get("project_display_name") or project_key),
+        )
+        identity_trust = analytics_trust.get("identity_trust") or {}
+
         sections = self._build_sections(
             direct=direct,
             remaining_health=remaining_health,
@@ -165,6 +174,7 @@ class ProjectScheduleControlsService:
             cpm_obs_row=cpm_obs_row,
             wb_summary=wb_summary,
             comparison_basis=basis,
+            identity_trust=identity_trust,
         )
         top_controls = self._build_top_controls(
             project_key=project_key,
@@ -188,13 +198,6 @@ class ProjectScheduleControlsService:
         if is_named_baseline_basis(basis) and named_resolution:
             baseline_context = self._baseline_context_from_resolution(basis=basis, resolution=named_resolution)
 
-        analytics_trust = context.get("analytics_trust") or self._controls_analytics_trust(
-            project_key=project_key,
-            schedule_version_key=schedule_version_key,
-            context=context,
-            cpm_obs_row=cpm_obs_row,
-        )
-
         as_of_str = as_of_date.isoformat() if isinstance(as_of_date, date) else str(as_of_date)
         payload: dict[str, Any] = {
             "available": True,
@@ -207,6 +210,7 @@ class ProjectScheduleControlsService:
             "baseline_context": baseline_context,
             "advisory_posture": _ADVISORY_POSTURE,
             "analytics_trust": analytics_trust,
+            "identity_trust": identity_trust,
             "summary": overall,
             "sections": sections,
             "top_controls": top_controls,
@@ -275,8 +279,10 @@ class ProjectScheduleControlsService:
         schedule_version_key: str,
         context: dict[str, Any],
         cpm_obs_row: dict[str, Any] | None,
+        project_display_name: str = "",
     ) -> dict[str, Any]:
         from .project_schedule_analytics_trust_service import (
+            ledger_for_hub_version,
             map_committed_cpm_status,
             map_committed_identity_status,
             normalize_quality_status,
@@ -290,19 +296,25 @@ class ProjectScheduleControlsService:
         )
         cpm_read = ScheduleCpmReadService(db_path=self._db_path).cpm_summary(schedule_version_key)
         cpm_status = map_committed_cpm_status(cpm_read, observability=cpm_obs_row)
-        membership_status = (context.get("schedule_trust") or {}).get("membership_status")
-        if (context.get("identity_review") or {}).get("required"):
-            identity_status = "partial"
-        elif membership_status:
-            identity_status = map_committed_identity_status({"membership_status": membership_status})
-        else:
-            identity_status = "complete"
+        membership_status = (context.get("schedule_trust") or {}).get("current_membership_status")
+        identity_trust = build_identity_trust_from_hub(
+            project_display_name=project_display_name or None,
+            schedule_trust=context.get("schedule_trust"),
+            identity_review=context.get("identity_review"),
+            current_schedule=context.get("current_schedule"),
+            identity_match=None,
+            membership={"membership_status": membership_status} if membership_status else None,
+        )
+        identity_status = map_committed_identity_status(
+            {"membership_status": membership_status} if membership_status else None
+        )
         return ledger_for_hub_version(
             quality_status=quality_status,
             cpm_status=cpm_status,
             identity_status=identity_status,
             identity_membership_status=membership_status,
             cpm_observability=cpm_obs_row,
+            identity_trust=identity_trust,
             canonical_activity_count=int((context.get("current_schedule") or {}).get("activity_count") or 0)
             or None,
             canonical_relationship_count=int(
@@ -321,9 +333,15 @@ class ProjectScheduleControlsService:
         cpm_obs_row: dict[str, Any] | None,
         wb_summary: dict[str, Any],
         comparison_basis: str,
+        identity_trust: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         float_pressure = remaining_health.get("float_pressure") or {}
         cpm_sum = cpm_summary.get("summary") or {}
+        identity = identity_trust or {}
+        identity_status = str(identity.get("identity_trust_status") or "unavailable")
+        identity_headline = str(
+            identity.get("pm_message") or "Schedule identity trust gates comparison analytics."
+        )
         return {
             "movement": {
                 "available": bool(direct),
@@ -354,6 +372,14 @@ class ProjectScheduleControlsService:
             "quality": {
                 "available": True,
                 "headline": "Schedule quality findings appear as review cues when evaluations are available.",
+            },
+            "identity_trust": {
+                "available": True,
+                "identity_trust_status": identity_status,
+                "identity_gate": identity.get("identity_gate"),
+                "headline": identity_headline,
+                "safe_schedule_label": identity.get("safe_schedule_label"),
+                "operator_action_required": identity.get("operator_action_required"),
             },
             "cpm_observability": self._cpm_observability_section(cpm_obs_row),
             "review_workbench": {

@@ -44,6 +44,7 @@ from .project_schedule_analytics_trust_service import (
     map_committed_identity_status,
     normalize_quality_status,
 )
+from .project_schedule_identity_trust_service import build_identity_trust_from_hub
 from .project_schedule_review_service import ProjectScheduleReviewService
 from .schedule_cpm_read_service import ScheduleCpmReadService
 from .schedule_trust_service import ScheduleTrustService
@@ -353,6 +354,27 @@ class ProjectScheduleSummaryService:
             ),
             "identity_review_url": f"/schedules/identity-review?project={project_key}",
         }
+
+        analytics_trust = self._hub_analytics_trust(
+            project_key=project_key,
+            project_name=project_name,
+            schedule_version_key=current_key,
+            current=current,
+            current_choice=current_choice,
+            schedule_trust=schedule_trust,
+            identity_review=identity_review,
+        )
+        identity_trust = analytics_trust.get("identity_trust") or {}
+        identity_review.update(
+            {
+                "identity_trust_status": identity_trust.get("identity_trust_status"),
+                "identity_gate": identity_trust.get("identity_gate"),
+                "pm_message": identity_trust.get("pm_message"),
+                "safe_reasons": identity_trust.get("safe_reasons", []),
+                "recommended_operator_actions": identity_trust.get("recommended_operator_actions", []),
+                "operator_action_required": identity_trust.get("operator_action_required"),
+            }
+        )
         readiness = self._readiness(
             versions=versions,
             current_choice=current_choice,
@@ -387,13 +409,6 @@ class ProjectScheduleSummaryService:
             change_driver_analysis=change_driver_analysis,
             actions=actions,
             readiness=readiness,
-        )
-
-        analytics_trust = self._hub_analytics_trust(
-            project_key=project_key,
-            schedule_version_key=current_key,
-            current=current,
-            cpm_summary=cpm_summary,
         )
 
         hub_payload = {
@@ -476,11 +491,13 @@ class ProjectScheduleSummaryService:
         self,
         *,
         project_key: str,
+        project_name: str,
         schedule_version_key: str,
         current: dict[str, Any],
-        cpm_summary: dict[str, Any],
+        current_choice: _VersionChoice,
+        schedule_trust: dict[str, Any],
+        identity_review: dict[str, Any],
     ) -> dict[str, Any]:
-        del cpm_summary
         quality_run = self._quality_repo.get_latest_run(schedule_version_key)
         quality_status = normalize_quality_status(
             str(quality_run.get("status")) if quality_run else None,
@@ -494,12 +511,25 @@ class ProjectScheduleSummaryService:
             schedule_version_key=schedule_version_key,
         )
         identity_status = map_committed_identity_status(membership)
+        identity_trust = build_identity_trust_from_hub(
+            project_display_name=project_name,
+            schedule_trust=schedule_trust,
+            identity_review=identity_review,
+            current_schedule={
+                "friendly_label": current.get("display_label"),
+                "source_filename": current.get("display_label"),
+                "data_date": current.get("data_date"),
+            },
+            identity_match=current_choice.identity_match,
+            membership=membership,
+        )
         return ledger_for_hub_version(
             quality_status=quality_status,
             cpm_status=cpm_status,
             identity_status=identity_status,
             identity_membership_status=(membership or {}).get("membership_status"),
             cpm_observability=cpm_obs,
+            identity_trust=identity_trust,
             canonical_activity_count=int(current.get("activity_count") or 0) or None,
             canonical_relationship_count=int(current.get("relationship_count") or 0) or None,
             source_format=str(current.get("source_format") or "") or None,
@@ -1622,7 +1652,45 @@ class ProjectScheduleSummaryService:
         current_choice = self._resolve_current(project_key, versions, as_of_date=as_of_date)
         enriched = dict(context)
         if current_choice:
-            enriched["schedule_data_date"] = _date_str(self._data_date(current_choice.version))
+            current = current_choice.version
+            current_key = str(current["schedule_version_key"])
+            enriched["schedule_data_date"] = _date_str(self._data_date(current))
+            enriched["current_schedule"] = {
+                "friendly_label": self._friendly_label(current),
+                "source_filename": current.get("display_label"),
+                "data_date": _date_str(self._data_date(current)),
+                "activity_count": current.get("activity_count"),
+                "relationship_count": current.get("relationship_count"),
+                "source_format": current.get("source_format"),
+            }
+            accepted_identity_key = _identity_key(current_choice.identity_match)
+            schedule_trust = self._trust.build_trust_envelope(
+                project_key=project_key,
+                current_choice=current_choice,
+                versions=versions,
+                accepted_identity_key=accepted_identity_key,
+            )
+            identity_review = {
+                "status": schedule_trust.get("status"),
+                "review_reasons": schedule_trust.get("review_reasons", []),
+                "identity_review_url": f"/schedules/identity-review?project={project_key}",
+            }
+            enriched["schedule_trust"] = schedule_trust
+            enriched["identity_review"] = identity_review
+            enriched["project_display_name"] = self._timed(
+                "project_display_lookup",
+                project_key=project_key,
+                fn=lambda: self._project_display_name(project_key),
+            )
+            enriched["analytics_trust"] = self._hub_analytics_trust(
+                project_key=project_key,
+                project_name=str(enriched.get("project_display_name") or project_key),
+                schedule_version_key=current_key,
+                current=current,
+                current_choice=current_choice,
+                schedule_trust=schedule_trust,
+                identity_review=identity_review,
+            )
         return enriched
 
     def build_baseline_summary_for_version(

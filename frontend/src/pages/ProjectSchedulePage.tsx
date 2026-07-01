@@ -10,6 +10,7 @@ import { TechnicalDetails } from '../components/common/TechnicalDetails'
 import { ForecastDialog } from '../components/forecast/ForecastDialog'
 import { ScheduleBaselineSelector } from '../components/project-schedule/ScheduleBaselineSelector'
 import { ScheduleControlsPanel } from '../components/project-schedule/ScheduleControlsPanel'
+import { TrustBanner } from '../components/project-schedule/TrustBanner'
 import { ScheduleImportFlow } from '../components/project-schedule/ScheduleImportFlow'
 import type { ProjectScheduleImportCommitResult } from '../components/project-schedule/scheduleImportTypes'
 import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
@@ -71,50 +72,6 @@ function ReadinessList({ readiness }: { readiness: Record<string, any> }) {
           {key.replaceAll('_', ' ')}
         </span>
       ))}
-    </div>
-  )
-}
-
-function TrustBanner({
-  scheduleTrust,
-  identityReview,
-}: {
-  scheduleTrust: Record<string, any>
-  identityReview: Record<string, any>
-}) {
-  const status = String(scheduleTrust?.status || identityReview?.status || 'unknown')
-  if (status === 'trusted') return null
-  const reasons = Array.isArray(scheduleTrust?.review_reasons)
-    ? scheduleTrust.review_reasons
-    : Array.isArray(identityReview?.review_reasons)
-      ? identityReview.review_reasons
-      : []
-  const reviewUrl = text(identityReview?.identity_review_url, '/schedules/identity-review')
-  return (
-    <div className={`card ${toneFor(status)}`}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-wide text-[var(--hb-muted)]">Schedule Trust</div>
-          <div className="mt-1 font-semibold capitalize">{status.replaceAll('_', ' ')}</div>
-          <p className="mt-1 text-sm text-[var(--hb-muted)]">
-            {status === 'excluded'
-              ? 'The current update is excluded from the trusted schedule series.'
-              : 'Schedule comparisons are gated until identity and series membership are resolved.'}
-          </p>
-          {reasons.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {reasons.slice(0, 4).map((reason: string) => (
-                <span key={reason} className="badge">
-                  {reason.replaceAll('_', ' ')}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <Link className="badge shrink-0" to={reviewUrl}>
-          Open Identity Review
-        </Link>
-      </div>
     </div>
   )
 }
@@ -565,6 +522,7 @@ export function ProjectSchedulePage() {
   const upstream = change.upstream_remaining_impact || {}
   const trends = schedule.trend_summary || {}
   const trendSeries = schedule.trend_series || {}
+  const analyticsTrust = schedule.analytics_trust || {}
   const scheduleTrust = schedule.schedule_trust || {}
   const identityReview = schedule.identity_review || {}
   const baselineState = (baselinePayload || {}) as Record<string, any>
@@ -731,7 +689,11 @@ export function ProjectSchedulePage() {
           </div>
         )}
 
-        <TrustBanner scheduleTrust={scheduleTrust} identityReview={identityReview} />
+        <TrustBanner
+          scheduleTrust={scheduleTrust}
+          identityReview={identityReview}
+          analyticsTrust={analyticsTrust}
+        />
 
         <ScheduleControlsPanel
           controls={controlsPayload}
