@@ -1,0 +1,40 @@
+{
+  "approved_pairs": 0,
+  "candidate_basis_counts": {
+    "same_document_number": 2,
+    "same_document_type": 200,
+    "same_email_domain": 45,
+    "same_participant": 45,
+    "same_procore_id": 200,
+    "same_project_alias": 45,
+    "same_project_key": 200,
+    "same_project_number": 200,
+    "same_subject_normalized": 1,
+    "same_thread_topic": 1,
+    "shared_title_phrase": 42
+  },
+  "candidate_pairs": 200,
+  "created": 0,
+  "db_before": {
+    "by_status": {
+      "generated": 128,
+      "not_generated": 67
+    },
+    "meta_sha12": "b40883fa9356",
+    "processing": 0,
+    "queued": 0,
+    "summaries_rows": 7
+  },
+  "db_mutations": 0,
+  "deleted": 0,
+  "mode": "dry-run",
+  "model": "qwen2.5:14b",
+  "notes_modified": 0,
+  "notes_selected": 128,
+  "ollama_called": false,
+  "queue_delta": 0,
+  "reciprocal_links_applied": 0,
+  "relationships_applied": 0,
+  "tags_added": 0,
+  "vetted_pairs": 0
+}

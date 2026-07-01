@@ -109,6 +109,10 @@ class NoteFact:
     participant_hashes: frozenset[str] = frozenset()
     attachment_hashes: frozenset[str] = frozenset()
     project_alias: str | None = None
+    # Graph-safe attachment facts parsed from the card's hb-email-attachment block (Phase 10F).
+    parent_email_hash: str | None = None
+    attachment_sha256s: frozenset[str] = frozenset()
+    attachment_extension: str | None = None
 
 
 def _norm(s: str | None) -> str:
@@ -218,6 +222,9 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
     email_domains = _split(em.get("recipient_domains"))
     if em.get("from_domain"):
         email_domains = email_domains | {str(em["from_domain"]).lower()}
+    # Graph-safe attachment facts from the managed hb-email-attachment block (Phase 10F), if present.
+    from .source_email_attachments import parse_email_attachment_marker
+    ea = parse_email_attachment_marker(card_text) or {}
     return NoteFact(
         note_id=source_id, note_rel=note_rel, basename=basename, display=_display_name(basename),
         project=_norm(detail.get("project_number") or detail.get("project_key")) or None,
@@ -233,7 +240,10 @@ def note_fact_from(repo: Any, row: dict[str, Any], card_text: str) -> NoteFact:
         email_domains=email_domains,
         participant_hashes=_split(em.get("participant_hashes")),
         attachment_hashes=_split(em.get("attachment_hashes")),
-        project_alias=_norm(em.get("project_alias")) or None)
+        project_alias=_norm(em.get("project_alias")) or None,
+        parent_email_hash=_norm(ea.get("parent_email_hash")) or None,
+        attachment_sha256s=_split(ea.get("attachment_sha256")),
+        attachment_extension=_norm(ea.get("attachment_extension")) or None)
 
 
 def _section_body(text: str, heading: str) -> list[str]:
@@ -260,7 +270,8 @@ class Candidate:
 
 # Signals that are informative for reporting but NOT strong enough alone to make a candidate.
 # same_email_domain is weak: a shared big-GC/owner domain must not link two unrelated emails.
-_WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type", "same_email_domain"})
+_WEAK_SIGNALS = frozenset({"shared_title_phrase", "same_document_type", "same_email_domain",
+                           "same_attachment_extension"})
 
 
 def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
@@ -301,6 +312,15 @@ def _pair_signals(a: NoteFact, b: NoteFact) -> list[str]:
         s.append("same_project_alias")
     if a.email_domains & b.email_domains:
         s.append("same_email_domain")  # weak / reporting only
+    # Attachment signals (Phase 10F) — deterministic. Strong: same parent email, same attachment content
+    # sha256. Weak: same file extension only (a shared ".pdf" must not link unrelated attachments).
+    if a.parent_email_hash and b.parent_email_hash and a.parent_email_hash == b.parent_email_hash:
+        s.append("same_parent_email")
+    if a.attachment_sha256s & b.attachment_sha256s:
+        s.append("same_attachment_sha256")
+    if a.attachment_extension and b.attachment_extension and \
+            a.attachment_extension == b.attachment_extension:
+        s.append("same_attachment_extension")  # weak / reporting only
     return s
 
 

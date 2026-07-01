@@ -165,3 +165,82 @@ def generate_advisory(client: OllamaChatClient, prompt: str, *,
     if not lines:
         return None, "invalid_response"
     return lines, "ok"
+
+
+# ---- advisory quality gate (Phase 10F; pure/deterministic — never calls a model) -----------------
+# The canonical advisory shape mandated by LOCAL_SUMMARY_SYSTEM_PROMPT: one preamble line + exactly
+# these four H3 sections, nothing else.
+CANONICAL_HEADINGS: tuple[str, ...] = (
+    "Summary", "PM Attention", "Follow-Up Questions", "Limits / Uncertainty")
+_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(?P<text>.+?)\s*$")
+_ADVISORY_PREAMBLE_RE = re.compile(r"^\s*[_*]+advisory\b", re.IGNORECASE)
+_EMPHASIS_ONLY_RE = re.compile(r"^\s*[_*]{1,2}[^_*].*[^_*][_*]{1,2}\s*$")
+_BOLD_LABEL_RE = re.compile(r"^\s*\*\*[^*]+\*\*\s*:")
+# A line asserting a filename (e.g. "File:", "**Filename**:", "Attachment name =").
+_FILENAME_ASSERT_RE = re.compile(
+    r"^\s*[*_]*\s*(?:file\s*name|filename|file|attachment\s*name)\s*[*_]*\s*[:=]", re.IGNORECASE)
+# Any size/byte figure — deterministic size is authoritative and already on the card.
+_SIZE_ASSERT_RE = re.compile(r"\b\d[\d,.]*\s*(?:kib|mib|gib|kb|mb|gb|bytes?)\b", re.IGNORECASE)
+# Format/type vocabulary → canonical family, for contradiction detection.
+_TYPE_FAMILY: dict[str, str] = {
+    "pdf": "pdf",
+    "doc": "word", "docx": "word", "word": "word",
+    "xls": "excel", "xlsx": "excel", "excel": "excel", "spreadsheet": "excel", "workbook": "excel",
+    "ppt": "ppt", "pptx": "ppt", "powerpoint": "ppt",
+    "csv": "csv",
+}
+_TYPE_TOKEN_RE = re.compile(
+    r"\b(pdf|docx?|word|xlsx?|excel|spreadsheet|workbook|pptx?|powerpoint|csv)\b", re.IGNORECASE)
+
+
+def _deterministic_type_family(detail: dict) -> str | None:
+    ext = str(detail.get("file_ext") or "").lower().lstrip(".")
+    if ext in _TYPE_FAMILY:
+        return _TYPE_FAMILY[ext]
+    dtype = str(detail.get("document_type") or "").lower()
+    for word, fam in _TYPE_FAMILY.items():
+        if word in dtype:
+            return fam
+    return None
+
+
+def validate_advisory(lines: list[str], detail: dict | None = None) -> tuple[bool, str]:
+    """Gate a sanitized advisory against the canonical shape + deterministic metadata.
+
+    Returns ``(ok, reason)``; rejects (ok=False) when the advisory:
+      - contradicts deterministic metadata — asserts a filename or a size/byte figure, or names a
+        document/format type inconsistent with ``detail`` file_ext/document_type -> ``metadata_conflict``;
+      - is missing any of the four canonical headings                            -> ``format_invalid``;
+      - has a noncanonical/duplicated shape (extra or repeated headings, >1 advisory preamble, stray
+        emphasized pseudo-headers, or bold ``**Label**:`` lines)                 -> ``noncanonical_shape``.
+    Pure/deterministic; never calls a model.
+    """
+    detail = detail or {}
+    # --- metadata contradiction (strongest signal first) ---
+    fam = _deterministic_type_family(detail)
+    for ln in lines:
+        if _FILENAME_ASSERT_RE.match(ln) or _SIZE_ASSERT_RE.search(ln):
+            return False, "metadata_conflict"
+        if fam:
+            for tok in _TYPE_TOKEN_RE.findall(ln):
+                if _TYPE_FAMILY.get(tok.lower()) not in (None, fam):
+                    return False, "metadata_conflict"
+    # --- all four canonical headings present ---
+    headings = [m.group("text").strip() for ln in lines if (m := _HEADING_RE.match(ln))]
+    heading_set = set(headings)
+    if any(want not in heading_set for want in CANONICAL_HEADINGS):
+        return False, "format_invalid"
+    # --- noncanonical / duplicated shape ---
+    canonical = set(CANONICAL_HEADINGS)
+    if any(h not in canonical for h in headings):
+        return False, "noncanonical_shape"                       # extra/renamed heading
+    if any(headings.count(want) > 1 for want in CANONICAL_HEADINGS):
+        return False, "noncanonical_shape"                       # duplicated heading
+    if sum(1 for ln in lines if _ADVISORY_PREAMBLE_RE.match(ln)) > 1:
+        return False, "noncanonical_shape"                       # duplicate advisory preamble
+    for ln in lines:
+        if _BOLD_LABEL_RE.match(ln):
+            return False, "noncanonical_shape"                   # bold pseudo-heading (**File**:, ...)
+        if _EMPHASIS_ONLY_RE.match(ln) and not _ADVISORY_PREAMBLE_RE.match(ln):
+            return False, "noncanonical_shape"                   # stray _Advisory_ / _Advisory Summary_
+    return True, "ok"
