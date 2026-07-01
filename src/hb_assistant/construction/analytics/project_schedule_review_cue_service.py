@@ -7,6 +7,7 @@ from typing import Any
 
 from hb_assistant.store.connection import open_connection
 from hb_assistant.store.schedule_identity_repository import parse_schedule_version_data_date
+from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
 from .project_schedule_baseline_vocabulary import comparison_label_for_basis
 from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
@@ -45,6 +46,7 @@ class ProjectScheduleReviewCueService:
         self._db_path = db_path
         self._udf = ProjectScheduleUdfNormalizationService(db_path=db_path)
         self._evidence = ProjectScheduleReviewEvidenceService(db_path=db_path)
+        self._quality_repo = ScheduleQualityRepository(db_path=db_path)
 
     def cue_source_map(self) -> list[dict[str, Any]]:
         return [
@@ -133,7 +135,7 @@ class ProjectScheduleReviewCueService:
         comparison_phrase = _comparison_phrase(persisted_basis)
 
         driver_source = (driver_analysis or {}).get(cue_basis) or (
-            driver_analysis if cue_basis == "prior_update" else {}
+            (driver_analysis or {}) if cue_basis == "prior_update" else {}
         )
         if driver_source.get("available"):
             for driver in driver_source.get("top_drivers") or []:
@@ -459,6 +461,9 @@ class ProjectScheduleReviewCueService:
                 )
             )
 
+        for preview in self._quality_metric_preview_cues(schedule_version_key):
+            add(preview)
+
         if baseline_summary:
             readiness = baseline_summary.get("readiness") or {}
             if baseline_summary.get("recompute_required") or not readiness.get("ready"):
@@ -575,6 +580,157 @@ class ProjectScheduleReviewCueService:
                 (schedule_version_key,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def _quality_metric_preview_cues(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        run = self._quality_repo.get_latest_run(schedule_version_key)
+        if not run or run.get("status") != "completed":
+            return []
+        metrics = self._quality_repo.list_metrics(str(run["evaluation_run_id"]))
+        scorecard = self._quality_repo.get_latest_scorecard(schedule_version_key)
+        downstream = ScheduleQualityRepository.parse_json_field(
+            scorecard.get("downstream_readiness_json") if scorecard else None,
+            {},
+        )
+        by_code = {str(m.get("metric_code") or ""): m for m in metrics}
+        cues: list[dict[str, Any]] = []
+        seen: set[str] = set()
+
+        def add_preview(
+            *,
+            item_type: str,
+            signal_type: str,
+            title: str,
+            summary: str,
+            severity: str = "medium",
+            priority: int = 68,
+        ) -> None:
+            stable = f"metric:quality_preview:{signal_type}"
+            if stable in seen:
+                return
+            seen.add(stable)
+            cues.append(
+                self._candidate(
+                    stable_item_key=stable,
+                    item_type=item_type,
+                    item_title=title,
+                    priority=priority,
+                    source_metric_key="schedule_quality_metrics",
+                    source_signal_type=signal_type,
+                    confidence=CONFIDENCE_PRODUCTION,
+                    severity=severity,
+                    comparison_basis="prior_update",
+                    as_of=date.today().isoformat(),
+                    schedule_data_date=self._schedule_data_date(schedule_version_key),
+                    cue_summary=summary,
+                    caveats=[NON_CAUSATION_CUE],
+                    materializable=False,
+                )
+            )
+
+        logic = by_code.get("dcma_logic")
+        if logic:
+            evidence = ScheduleQualityRepository.parse_json_field(logic.get("evidence_json"), {})
+            status = str(logic.get("status") or "")
+            if status in {"warning_threshold", "failed_threshold"}:
+                add_preview(
+                    item_type="metric_quality_missing_logic",
+                    signal_type="missing_logic",
+                    title="Logic integrity warning",
+                    summary="Logic integrity metrics exceeded thresholds for this schedule update.",
+                    severity="high" if status == "failed_threshold" else "medium",
+                    priority=80,
+                )
+            open_start = int(evidence.get("open_start_count") or 0)
+            if open_start > 0 and status in {"warning_threshold", "failed_threshold"}:
+                add_preview(
+                    item_type="metric_quality_open_start",
+                    signal_type="open_start",
+                    title="Open starts detected",
+                    summary=f"{open_start} assessed activities have no predecessors (project-level count).",
+                )
+            open_finish = int(evidence.get("open_finish_count") or 0)
+            if open_finish > 0 and status in {"warning_threshold", "failed_threshold"}:
+                add_preview(
+                    item_type="metric_quality_open_finish",
+                    signal_type="open_finish",
+                    title="Open finishes detected",
+                    summary=f"{open_finish} assessed activities have no successors (project-level count).",
+                )
+            dup = int(evidence.get("duplicate_relationship_count") or 0)
+            if dup > 0:
+                add_preview(
+                    item_type="metric_quality_duplicate_relationship",
+                    signal_type="duplicate_relationship",
+                    title="Duplicate relationships detected",
+                    summary=f"{dup} duplicate relationship tie(s) were counted in the quality evaluation.",
+                )
+            self_rel = int(evidence.get("self_relationship_count") or 0)
+            if self_rel > 0:
+                add_preview(
+                    item_type="metric_quality_self_relationship",
+                    signal_type="self_relationship",
+                    title="Self relationships detected",
+                    summary=f"{self_rel} self-referencing relationship(s) were counted in the quality evaluation.",
+                )
+            orphan_refs = int(evidence.get("invalid_relationship_reference_count") or 0)
+            if orphan_refs > 0:
+                add_preview(
+                    item_type="metric_quality_orphan_activity",
+                    signal_type="orphan_activity",
+                    title="Orphan relationship references",
+                    summary=f"{orphan_refs} relationship reference(s) point to missing activities.",
+                    severity="high",
+                    priority=85,
+                )
+
+        metric_map = {
+            "dcma_leads": ("metric_quality_lead", "lead", "Leads (negative lag) detected"),
+            "dcma_lags": ("metric_quality_lag", "lag", "Excessive lags detected"),
+            "dcma_hard_constraints": ("metric_quality_hard_constraint", "hard_constraint", "Hard constraints detected"),
+            "dcma_high_float": ("metric_quality_high_float", "high_float", "High float detected"),
+            "dcma_negative_float": ("metric_quality_negative_float", "negative_float", "Negative float quality signal"),
+            "dcma_high_duration": ("metric_quality_high_duration", "high_duration", "High duration activities detected"),
+            "dcma_invalid_dates": ("metric_quality_invalid_date", "invalid_date", "Invalid dates detected"),
+        }
+        for code, (item_type, signal, title) in metric_map.items():
+            metric = by_code.get(code)
+            if not metric:
+                continue
+            status = str(metric.get("status") or "")
+            if status not in {"warning_threshold", "failed_threshold"}:
+                continue
+            num = metric.get("numerator")
+            summary = f"{title} — measured ratio/count indicates review is needed (project-level aggregate)."
+            if num is not None:
+                summary = f"{title} — {int(num)} affected item(s) in the aggregate quality metric."
+            add_preview(
+                item_type=item_type,
+                signal_type=signal,
+                title=title,
+                summary=summary,
+                severity="high" if status == "failed_threshold" else "medium",
+            )
+
+        cp_state = str(downstream.get("critical_path_analytics") or "")
+        if cp_state not in {"available_cpm_recalculated", "available"}:
+            add_preview(
+                item_type="metric_quality_critical_path_readiness",
+                signal_type="critical_path_readiness",
+                title="Critical path readiness gap",
+                summary="Critical-path analytics are not fully ready for this schedule update.",
+                severity="medium",
+            )
+        cost_state = str(downstream.get("true_cost_loaded_analytics") or "")
+        if cost_state in {"unavailable_not_cost_loaded", "unknown", "not_ready"}:
+            add_preview(
+                item_type="metric_quality_cost_resource_readiness",
+                signal_type="cost_resource_readiness",
+                title="Cost/resource readiness gap",
+                summary="Cost or resource loading analytics are limited for this schedule update.",
+                severity="medium",
+                priority=60,
+            )
+        return cues
 
     @staticmethod
     def _schedule_data_date(schedule_version_key: str) -> str | None:

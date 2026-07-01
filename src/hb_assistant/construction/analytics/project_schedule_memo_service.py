@@ -147,6 +147,56 @@ class ProjectScheduleMemoService:
         return lines
 
     @staticmethod
+    def _quality_controls_section_lines(quality: dict[str, Any], *, analytics_trust: dict[str, Any] | None = None) -> list[str]:
+        if not quality:
+            return []
+        trust = analytics_trust or {}
+        lines = [
+            "## Schedule Quality Controls",
+            "",
+            f"- Overall quality status: {quality.get('quality_trust_status') or 'unknown'}",
+            f"- Quality run status: {quality.get('quality_run_status') or 'unknown'}",
+        ]
+        scorecard = quality.get("scorecard") or {}
+        if scorecard.get("overall_score") is not None:
+            lines.append(f"- Quality score: {scorecard.get('overall_score')} ({scorecard.get('quality_grade') or '—'})")
+        group_labels = {
+            "logic_integrity": "Logic integrity",
+            "constraint_quality": "Constraints",
+            "float_quality": "Float quality",
+            "duration_quality": "Duration quality",
+            "date_quality": "Date quality",
+            "critical_path_readiness": "Critical path readiness",
+            "cost_resource_readiness": "Cost/resource readiness",
+            "baseline_readiness": "Baseline readiness",
+        }
+        groups = {g.get("group_key"): g for g in quality.get("control_groups") or []}
+        for key, label in group_labels.items():
+            group = groups.get(key) or {}
+            lines.append(f"- {label}: {group.get('status') or 'unavailable'} — {group.get('summary') or '—'}")
+        limitations = quality.get("capability_limitations") or []
+        lines.append("- Capability limitations:")
+        if limitations:
+            for item in limitations[:8]:
+                lines.append(f"  - {item}")
+        else:
+            lines.append("  - None listed.")
+        if trust.get("analytics_trust_status") in {"degraded", "blocked"} or trust.get("identity_gate") in {
+            "degraded",
+            "blocked",
+        }:
+            lines.append(
+                "- Note: Identity or analytics trust is degraded/blocked; interpret quality controls with that context."
+            )
+        actions = quality.get("recommended_pm_actions") or []
+        if actions:
+            lines.extend(["", "### Recommended PM Review Actions", ""])
+            for action in actions[:8]:
+                lines.append(f"- {action}")
+        lines.append("")
+        return lines
+
+    @staticmethod
     def _comparison_context_section_lines(ctx: dict[str, Any]) -> list[str]:
         return [
             "## Comparison Context",
@@ -291,6 +341,9 @@ class ProjectScheduleMemoService:
         analytics_trust = summary.get("analytics_trust") or {}
         if analytics_trust:
             lines.extend(self._analytics_trust_section_lines(analytics_trust))
+        quality_controls = summary.get("quality_controls") or {}
+        if quality_controls:
+            lines.extend(self._quality_controls_section_lines(quality_controls, analytics_trust=analytics_trust))
         if variant == "executive":
             lines.extend(
                 [

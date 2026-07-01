@@ -60,6 +60,36 @@ function statusTone(status: string) {
   }
 }
 
+function trustTone(status: string) {
+  switch (status) {
+    case 'ready':
+    case 'trusted':
+    case 'healthy':
+      return 'text-emerald-400'
+    case 'degraded':
+    case 'watch':
+    case 'review_required':
+      return 'text-amber-400'
+    case 'blocked':
+    case 'critical':
+    case 'mismatch':
+      return 'text-red-400'
+    default:
+      return 'text-[var(--hb-muted)]'
+  }
+}
+
+const QUALITY_GROUP_KEYS = [
+  'logic_integrity',
+  'constraints',
+  'float_quality',
+  'duration_quality',
+  'date_quality',
+  'critical_path_readiness',
+  'cost_resource_readiness',
+  'baseline_readiness',
+] as const
+
 export type ScheduleControlsPanelProps = {
   controls?: Record<string, any>
   loading?: boolean
@@ -121,7 +151,17 @@ export function ScheduleControlsPanel({
 
   const summary = controls.summary || {}
   const topControls = Array.isArray(controls.top_controls) ? controls.top_controls : []
-  const cpmSection = controls.sections?.cpm_observability || {}
+  const sections = controls.sections || {}
+  const cpmSection = sections.cpm_observability || {}
+  const identitySection = sections.identity_trust || {}
+  const analyticsSection = sections.analytics_trust || {}
+  const qualityControls = controls.quality_controls || {}
+  const qualityScorecard = qualityControls.scorecard || sections.quality || {}
+  const capabilityItems =
+    (sections.capability_limitations?.items as string[] | undefined) ||
+    (qualityControls.capability_limitations as string[] | undefined) ||
+    []
+  const recommendedActions = (qualityControls.recommended_pm_actions as string[] | undefined) || []
   const workbenchLinks = controls.links || {}
   const baselineCtx = normalizeBaselineContext(controls.baseline_context)
   const activeBasisLabel = labelForComparisonBasis(comparisonBasis)
@@ -152,6 +192,100 @@ export function ScheduleControlsPanel({
         </div>
 
         <p className="text-sm text-[var(--hb-muted)]">{comparisonContextLine}</p>
+
+        {(identitySection.available || analyticsSection.available) && (
+          <div className="space-y-2 rounded border border-[var(--hb-border)] p-3 text-sm">
+            {identitySection.available && (
+              <div>
+                <div className={`text-xs font-semibold uppercase tracking-wide ${trustTone(String(identitySection.identity_trust_status || 'unknown'))}`}>
+                  Identity trust: {text(identitySection.identity_trust_status, 'unknown').replace(/_/g, ' ')}
+                </div>
+                <p className="mt-1 text-[var(--hb-muted)]">{text(identitySection.headline)}</p>
+              </div>
+            )}
+            {analyticsSection.available && (
+              <div>
+                <div className={`text-xs font-semibold uppercase tracking-wide ${trustTone(String(analyticsSection.analytics_trust_status || 'unknown'))}`}>
+                  Analytics trust: {text(analyticsSection.analytics_trust_status, 'unknown').replace(/_/g, ' ')}
+                </div>
+                {analyticsSection.failure_message_redacted && (
+                  <p className="mt-1 text-[var(--hb-muted)]">{text(analyticsSection.failure_message_redacted)}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(qualityControls.quality_trust_status || qualityScorecard.overall_score) && (
+          <div className="rounded border border-[var(--hb-border)] p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">Quality scorecard</div>
+            <div className={`mt-1 text-sm font-medium ${trustTone(String(qualityControls.quality_trust_status || 'unknown'))}`}>
+              {text(qualityControls.quality_trust_status, 'unknown').replace(/_/g, ' ')}
+              {qualityScorecard.overall_score != null ? ` · Score ${qualityScorecard.overall_score}` : ''}
+              {qualityScorecard.quality_grade ? ` (${qualityScorecard.quality_grade})` : ''}
+            </div>
+            <p className="mt-1 text-sm text-[var(--hb-muted)]">
+              Run status: {text(qualityControls.quality_run_status, 'unknown').replace(/_/g, ' ')}
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">Quality control groups</div>
+          {QUALITY_GROUP_KEYS.map((key) => {
+            const group = sections[key]
+            if (!group?.available) return null
+            return (
+              <details key={key} className="rounded border border-[var(--hb-border)] p-3">
+                <summary className="cursor-pointer font-medium">
+                  {text(group.label || key.replace(/_/g, ' '))}
+                  <span className={`ml-2 text-xs ${trustTone(String(group.status || 'unknown'))}`}>
+                    {text(group.status, 'unknown').replace(/_/g, ' ')}
+                  </span>
+                </summary>
+                <p className="mt-2 text-sm text-[var(--hb-muted)]">{text(group.headline)}</p>
+                {(group.metrics || []).length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--hb-muted)]">
+                    {(group.metrics || []).map((metric: any) => (
+                      <li key={`${key}-${text(metric.label)}`}>
+                        {text(metric.label)} — {text(metric.resolved_status, 'unknown').replace(/_/g, ' ')}
+                        {(metric.counts || []).map((count: any) => (
+                          <span key={`${count.label}-${count.count}`}> · {count.label}: {count.count}</span>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+            )
+          })}
+        </div>
+
+        {capabilityItems.length > 0 && (
+          <div className="rounded border border-dashed border-[var(--hb-border)] p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">
+              Capability limitations
+            </div>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--hb-muted)]">
+              {capabilityItems.slice(0, 6).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {recommendedActions.length > 0 && (
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">
+              Recommended PM actions
+            </div>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+              {recommendedActions.slice(0, 5).map((action) => (
+                <li key={action}>{action}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

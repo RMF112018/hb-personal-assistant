@@ -1222,7 +1222,6 @@ def create_app(*, db_path: str | None = None) -> Any:
         comparison_basis: str = "prior_update",
         role: dict[str, str] = role_dep,
     ) -> dict[str, Any]:
-        del role
         from datetime import date as date_type
 
         from fastapi import HTTPException
@@ -1233,6 +1232,8 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.project_schedule_controls_service import (
             ProjectScheduleControlsService,
         )
+
+        include_technical = role.get("role") in {"operator", "admin"}
 
         as_of_date: date_type | None = None
         if as_of:
@@ -1250,6 +1251,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             project_key,
             as_of=as_of_date,
             comparison_basis=basis,
+            include_technical=include_technical,
         )
 
     @app.get("/api/projects/{project_key}/schedule/drilldowns")

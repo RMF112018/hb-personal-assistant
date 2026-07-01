@@ -45,6 +45,10 @@ from .project_schedule_analytics_trust_service import (
     normalize_quality_status,
 )
 from .project_schedule_identity_trust_service import build_identity_trust_from_hub
+from .project_schedule_quality_controls_service import (
+    ProjectScheduleQualityControlsService,
+    pm_quality_controls_payload,
+)
 from .project_schedule_review_service import ProjectScheduleReviewService
 from .schedule_cpm_read_service import ScheduleCpmReadService
 from .schedule_trust_service import ScheduleTrustService
@@ -2063,6 +2067,20 @@ class ProjectScheduleSummaryService:
             "review_workbench": {},
         }
 
+    def _attach_quality_controls_for_export(self, summary: dict[str, Any]) -> dict[str, Any]:
+        schedule_version_key = str(summary.get("schedule_version_key") or "")
+        if not schedule_version_key:
+            return summary
+        analytics_trust = summary.get("analytics_trust") or {}
+        identity_trust = analytics_trust.get("identity_trust") or {}
+        quality_controls = ProjectScheduleQualityControlsService(db_path=self._db_path).build_quality_controls(
+            schedule_version_key,
+            analytics_trust=analytics_trust,
+            identity_trust=identity_trust,
+        )
+        summary["quality_controls"] = pm_quality_controls_payload(quality_controls)
+        return summary
+
     def build_export(
         self,
         project_key: str,
@@ -2134,6 +2152,7 @@ class ProjectScheduleSummaryService:
                         limit=100,
                     )
                     summary["persisted_review_items"] = listed.get("items") or []
+        summary = self._attach_quality_controls_for_export(summary)
         return self._memo.build_export(
             summary,
             export_format=export_format,

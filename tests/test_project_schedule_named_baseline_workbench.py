@@ -362,7 +362,7 @@ def test_controls_reinstates_named_workbench_and_driver_links(tmp_path: Path) ->
     assert "review_workbench" in payload["links"]
     assert "comparison_basis=current_contract_baseline" in payload["links"]["review_workbench"]
     assert "as_of=2026-07-03" in payload["links"]["review_workbench"]
-    control = next(c for c in payload["top_controls"] if c.get("activity_id"))
+    control = next(c for c in payload["top_controls"] if c.get("links", {}).get("driver_detail"))
     assert control["links"]["review_item"]
     assert "comparison_basis=current_contract_baseline" in control["links"]["review_item"]
     assert control["links"]["driver_detail"]
@@ -381,8 +381,8 @@ def test_controls_and_routes_resolve_same_named_slot(tmp_path: Path) -> None:
         as_of=date(2026, 7, 3),
         comparison_basis="current_contract_baseline",
     )
-    control = next(c for c in controls["top_controls"] if c.get("activity_id"))
-    activity_id = str(control["activity_id"])
+    control = next(c for c in controls["top_controls"] if c.get("links", {}).get("driver_detail"))
+    activity_id = control["links"]["driver_detail"].split("activity_id=", 1)[-1].split("&", 1)[0]
     workbench = client.get(
         "/api/projects/tropical/schedule/review-items",
         headers=_viewer(),

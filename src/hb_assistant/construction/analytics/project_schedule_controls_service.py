@@ -13,6 +13,10 @@ from hb_assistant.store.schedule_cpm_import_observability_repository import (
 from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
 from .project_schedule_identity_trust_service import build_identity_trust_from_hub
+from .project_schedule_quality_controls_service import (
+    ProjectScheduleQualityControlsService,
+    pm_quality_controls_payload,
+)
 from .project_schedule_baseline_vocabulary import (
     comparison_label_for_basis,
     is_named_baseline_basis,
@@ -58,6 +62,7 @@ class ProjectScheduleControlsService:
         self._review = ProjectScheduleReviewService(db_path=db_path)
         self._cpm_obs = ScheduleCpmImportObservabilityRepository(db_path=db_path)
         self._quality_repo = ScheduleQualityRepository(db_path=db_path)
+        self._quality_controls = ProjectScheduleQualityControlsService(db_path=db_path)
         self._named_baselines = ProjectScheduleNamedBaselineService(db_path=db_path)
 
     def build_controls(
@@ -66,6 +71,7 @@ class ProjectScheduleControlsService:
         *,
         as_of: date | None = None,
         comparison_basis: str = "prior_update",
+        include_technical: bool = False,
     ) -> dict[str, Any]:
         basis = normalize_controls_comparison_basis(comparison_basis)
         baseline_context = self._baseline_context_for_basis(project_key, basis=basis, as_of=as_of)
@@ -167,6 +173,13 @@ class ProjectScheduleControlsService:
         )
         identity_trust = analytics_trust.get("identity_trust") or {}
 
+        quality_controls = self._quality_controls.build_quality_controls(
+            schedule_version_key,
+            analytics_trust=analytics_trust,
+            identity_trust=identity_trust,
+            cpm_observability=cpm_obs_row,
+        )
+
         sections = self._build_sections(
             direct=direct,
             remaining_health=remaining_health,
@@ -175,6 +188,8 @@ class ProjectScheduleControlsService:
             wb_summary=wb_summary,
             comparison_basis=basis,
             identity_trust=identity_trust,
+            analytics_trust=analytics_trust,
+            quality_controls=quality_controls,
         )
         top_controls = self._build_top_controls(
             project_key=project_key,
@@ -185,6 +200,7 @@ class ProjectScheduleControlsService:
             comparison_basis=basis,
             include_workbench_links=include_workbench_links,
             comparison_label=comparison_label,
+            quality_controls=quality_controls,
         )
         overall = self._overall_summary(
             remaining_health=remaining_health,
@@ -193,6 +209,9 @@ class ProjectScheduleControlsService:
             direct=direct,
             top_controls=top_controls,
             comparison_label=comparison_label,
+            quality_controls=quality_controls,
+            identity_trust=identity_trust,
+            analytics_trust=analytics_trust,
         )
 
         if is_named_baseline_basis(basis) and named_resolution:
@@ -211,6 +230,7 @@ class ProjectScheduleControlsService:
             "advisory_posture": _ADVISORY_POSTURE,
             "analytics_trust": analytics_trust,
             "identity_trust": identity_trust,
+            "quality_controls": pm_quality_controls_payload(quality_controls),
             "summary": overall,
             "sections": sections,
             "top_controls": top_controls,
@@ -224,6 +244,19 @@ class ProjectScheduleControlsService:
                 include_workbench_link=include_workbench_links,
             ),
         }
+        if include_technical:
+            payload["technical"] = {
+                "schedule_version_key": schedule_version_key,
+                "quality_controls": quality_controls,
+                "cpm_observability": sections.get("cpm_observability", {}).get("technical_evidence"),
+            }
+        else:
+            cpm_section = dict(sections.get("cpm_observability") or {})
+            cpm_section.pop("technical_evidence", None)
+            sections["cpm_observability"] = cpm_section
+            payload["sections"] = sections
+            payload["top_controls"] = [self._pm_top_control(row) for row in top_controls]
+            payload.pop("schedule_version_key", None)
         qa = validate_controls_text(payload)
         payload["controls_language_qa"] = qa
         return payload
@@ -334,6 +367,8 @@ class ProjectScheduleControlsService:
         wb_summary: dict[str, Any],
         comparison_basis: str,
         identity_trust: dict[str, Any] | None = None,
+        analytics_trust: dict[str, Any] | None = None,
+        quality_controls: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         float_pressure = remaining_health.get("float_pressure") or {}
         cpm_sum = cpm_summary.get("summary") or {}
@@ -342,6 +377,12 @@ class ProjectScheduleControlsService:
         identity_headline = str(
             identity.get("pm_message") or "Schedule identity trust gates comparison analytics."
         )
+        quality = quality_controls or {}
+        scorecard = quality.get("scorecard") or {}
+        analytics = analytics_trust or {}
+        quality_groups = {
+            g.get("group_key"): g for g in quality.get("control_groups") or [] if g.get("group_key")
+        }
         return {
             "movement": {
                 "available": bool(direct),
@@ -370,8 +411,49 @@ class ProjectScheduleControlsService:
                 "note": "See top controls for should-have-finished and window accuracy cues.",
             },
             "quality": {
+                "available": bool(quality),
+                "headline": "Schedule quality scorecard and control groups for PM review.",
+                "quality_trust_status": quality.get("quality_trust_status"),
+                "quality_run_status": quality.get("quality_run_status"),
+                "overall_score": scorecard.get("overall_score"),
+                "quality_grade": scorecard.get("quality_grade"),
+                "groups": [
+                    {
+                        "group_key": g.get("group_key"),
+                        "label": g.get("label"),
+                        "status": g.get("status"),
+                        "summary": g.get("summary"),
+                    }
+                    for g in quality.get("control_groups") or []
+                    if g.get("group_key") != "capability_limitations"
+                ],
+            },
+            "analytics_trust": {
                 "available": True,
-                "headline": "Schedule quality findings appear as review cues when evaluations are available.",
+                "analytics_trust_status": analytics.get("analytics_trust_status"),
+                "identity_gate": analytics.get("identity_gate") or identity.get("identity_gate"),
+                "headline": "Analytics trust reflects import, quality, CPM, and identity readiness.",
+                "trust_reasons": (analytics.get("trust_reasons") or [])[:6],
+                "capability_limitations": (analytics.get("capability_limitations") or [])[:4],
+                "failure_message_redacted": analytics.get("failure_message_redacted"),
+            },
+            "logic_integrity": self._quality_group_section(quality_groups.get("logic_integrity")),
+            "constraints": self._quality_group_section(quality_groups.get("constraint_quality")),
+            "float_quality": self._quality_group_section(quality_groups.get("float_quality")),
+            "duration_quality": self._quality_group_section(quality_groups.get("duration_quality")),
+            "date_quality": self._quality_group_section(quality_groups.get("date_quality")),
+            "critical_path_readiness": self._quality_group_section(
+                quality_groups.get("critical_path_readiness")
+            ),
+            "cost_resource_readiness": self._quality_group_section(
+                quality_groups.get("cost_resource_readiness")
+            ),
+            "baseline_readiness": self._quality_group_section(quality_groups.get("baseline_readiness")),
+            "capability_limitations": {
+                "available": True,
+                "headline": "Known capability limitations (not schedule defects).",
+                "items": quality.get("capability_limitations") or [],
+                "group": quality_groups.get("capability_limitations"),
             },
             "identity_trust": {
                 "available": True,
@@ -391,6 +473,32 @@ class ProjectScheduleControlsService:
                 "read_only_baseline_preview": comparison_basis == "baseline" or is_named_baseline_basis(comparison_basis),
             },
         }
+
+    @staticmethod
+    def _quality_group_section(group: dict[str, Any] | None) -> dict[str, Any]:
+        if not group:
+            return {"available": False, "headline": "Quality group data is not available."}
+        return {
+            "available": True,
+            "group_key": group.get("group_key"),
+            "label": group.get("label"),
+            "status": group.get("status"),
+            "headline": group.get("summary"),
+            "metrics": group.get("metrics") or [],
+        }
+
+    @staticmethod
+    def _pm_top_control(row: dict[str, Any]) -> dict[str, Any]:
+        cleaned = dict(row)
+        for key in (
+            "schedule_version_key",
+            "activity_id",
+            "review_item_id",
+            "source_metric_key",
+            "source_signal_type",
+        ):
+            cleaned.pop(key, None)
+        return cleaned
 
     def _cpm_observability_section(self, row: dict[str, Any] | None) -> dict[str, Any]:
         if not row:
@@ -445,9 +553,78 @@ class ProjectScheduleControlsService:
         comparison_basis: str,
         include_workbench_links: bool = True,
         comparison_label: str | None = None,
+        quality_controls: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         candidates: list[dict[str, Any]] = []
         as_of_str = as_of_date.isoformat()
+        for finding in (quality_controls or {}).get("top_findings") or []:
+            code = str(finding.get("finding_code") or "quality_finding")
+            severity = self._map_review_severity(finding.get("severity"))
+            candidates.append(
+                {
+                    "control_id": f"quality:{code}",
+                    "category": "quality",
+                    "severity": severity,
+                    "confidence": "high",
+                    "title": f"Quality finding: {finding.get('summary') or code.replace('_', ' ')}",
+                    "summary": str(finding.get("summary") or "Schedule quality finding for PM review."),
+                    "why_it_matters": "Persisted quality findings may indicate schedule data issues worth review.",
+                    "recommended_action": "Review the quality finding and confirm whether PM follow-up is needed.",
+                    "comparison_basis": comparison_basis,
+                    "source_metric_key": "schedule_quality_findings",
+                    "source_signal_type": code,
+                    "schedule_version_key": schedule_version_key,
+                    "schedule_data_date": schedule_data_date or None,
+                    "as_of": as_of_str,
+                    "activity_id": None,
+                    "activity_name": None,
+                    "wbs_code": None,
+                    "review_item_id": None,
+                    "links": {
+                        "review_item": f"/projects/{project_key}/schedule/workbench?{urlencode({'comparison_basis': comparison_basis, 'as_of': as_of_str})}",
+                        "driver_detail": None,
+                        "schedule_hub": f"/projects/{project_key}/schedule",
+                    },
+                    "caveats": [NON_CAUSATION_CAVEAT],
+                    "data_quality_notes": [],
+                    "_priority": 90 if severity in {"critical", "review"} else 70,
+                }
+            )
+        for group in (quality_controls or {}).get("control_groups") or []:
+            if group.get("group_key") == "capability_limitations":
+                continue
+            if group.get("status") not in {"degraded", "blocked"}:
+                continue
+            candidates.append(
+                {
+                    "control_id": f"quality-group:{group.get('group_key')}",
+                    "category": "quality",
+                    "severity": "review" if group.get("status") == "degraded" else "critical",
+                    "confidence": "high",
+                    "title": str(group.get("label") or "Schedule quality group"),
+                    "summary": str(group.get("summary") or "Quality group requires PM review."),
+                    "why_it_matters": "Grouped quality metrics highlight schedule readiness gaps for review.",
+                    "recommended_action": "Review the quality control group metrics before relying on comparisons.",
+                    "comparison_basis": comparison_basis,
+                    "source_metric_key": "schedule_quality_scorecard",
+                    "source_signal_type": str(group.get("group_key") or "quality_group"),
+                    "schedule_version_key": schedule_version_key,
+                    "schedule_data_date": schedule_data_date or None,
+                    "as_of": as_of_str,
+                    "activity_id": None,
+                    "activity_name": None,
+                    "wbs_code": None,
+                    "review_item_id": None,
+                    "links": {
+                        "review_item": f"/projects/{project_key}/schedule/workbench?{urlencode({'comparison_basis': comparison_basis, 'as_of': as_of_str})}",
+                        "driver_detail": None,
+                        "schedule_hub": f"/projects/{project_key}/schedule",
+                    },
+                    "caveats": [NON_CAUSATION_CAVEAT],
+                    "data_quality_notes": [],
+                    "_priority": 75,
+                }
+            )
         for item in items:
             if str(item.get("review_status") or "open") not in {"open", "watching"}:
                 continue
@@ -554,16 +731,28 @@ class ProjectScheduleControlsService:
         direct: dict[str, Any],
         top_controls: list[dict[str, Any]],
         comparison_label: str | None = None,
+        quality_controls: dict[str, Any] | None = None,
+        identity_trust: dict[str, Any] | None = None,
+        analytics_trust: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         open_count = int(wb_summary.get("open_count") or 0)
         high_priority = sum(1 for c in top_controls if c.get("severity") in {"critical", "review"})
         health = str(remaining_health.get("status") or "unknown")
         neg_float = int((remaining_health.get("float_pressure") or {}).get("negative_float_count") or 0)
         later = int(direct.get("finish_moved_later_count") or 0)
+        identity_gate = str((identity_trust or {}).get("identity_gate") or (analytics_trust or {}).get("identity_gate") or "ready")
+        analytics_status = str((analytics_trust or {}).get("analytics_trust_status") or "ready")
+        quality_status = str((quality_controls or {}).get("quality_trust_status") or "unavailable")
 
-        if health == "blocked" or (cpm_obs_row and str(cpm_obs_row.get("status")) == "failed"):
+        if identity_gate == "blocked" or analytics_status == "blocked" or quality_status == "blocked":
+            overall_status = "critical"
+            headline = "Schedule controls are blocked by identity, analytics, or quality trust gates."
+        elif health == "blocked" or (cpm_obs_row and str(cpm_obs_row.get("status")) == "failed"):
             overall_status = "critical"
             headline = "Schedule controls indicate critical review is needed before relying on comparisons."
+        elif identity_gate == "degraded" or analytics_status == "degraded" or quality_status == "degraded":
+            overall_status = "review"
+            headline = "Schedule controls are degraded; review identity, analytics, and quality signals."
         elif open_count > 0 or high_priority >= 3 or neg_float >= 5:
             overall_status = "review"
             headline = "Schedule controls recommend PM review of priority sequence and float signals."

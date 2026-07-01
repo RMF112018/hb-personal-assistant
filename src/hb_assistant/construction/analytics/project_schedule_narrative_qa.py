@@ -79,6 +79,17 @@ _CONTROLS_FORBIDDEN_TERMS = _FORBIDDEN_TERMS + (
     "claim entitlement",
 )
 
+_FORBIDDEN_ID_PATTERNS = (
+    r"schedule_version_key",
+    r"schedule_identity_key",
+    r"\bimport_id\b",
+    r"\bpackage_id\b",
+    r"\bcpm_run_id\b",
+    r"source_export_proxy",
+    r"file_sha256",
+    r"RuntimeError",
+)
+
 
 def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
     """Validate PM-facing schedule controls copy for forbidden causation/entitlement language."""
@@ -100,6 +111,15 @@ def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
     for section_key, section in (payload.get("sections") or {}).items():
         if isinstance(section, dict):
             fields[f"section:{section_key}:headline"] = str(section.get("headline") or "")
+            for metric_index, metric in enumerate(section.get("metrics") or []):
+                if isinstance(metric, dict):
+                    fields[f"section:{section_key}:metric:{metric_index}"] = str(metric.get("label") or "")
+    quality = payload.get("quality_controls") or {}
+    fields["quality_headline"] = str((quality.get("scorecard") or {}).get("overall_status") or "")
+    for index, group in enumerate(quality.get("control_groups") or []):
+        fields[f"quality_group:{index}"] = str(group.get("summary") or "")
+    for index, item in enumerate(quality.get("capability_limitations") or []):
+        fields[f"quality_limitation:{index}"] = str(item)
     combined = " ".join(fields.values()).lower()
     for term in _CONTROLS_FORBIDDEN_TERMS:
         if _contains_forbidden_term(combined, term):
@@ -107,6 +127,14 @@ def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
                 {
                     "code": "forbidden_term",
                     "message": f"Forbidden claim language detected in controls payload: {term}",
+                }
+            )
+    for pattern in _FORBIDDEN_ID_PATTERNS:
+        if re.search(pattern, combined, flags=re.I):
+            violations.append(
+                {
+                    "code": "forbidden_technical_leak",
+                    "message": f"Forbidden technical identifier pattern in controls payload: {pattern}",
                 }
             )
     basis = str(payload.get("comparison_basis") or "")
@@ -134,6 +162,34 @@ def validate_controls_text(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "passed": not violations,
         "violations": violations,
+        "advisory_posture": _ADVISORY_POSTURE,
+    }
+
+
+def validate_rendered_text(text: str, *, surface: str) -> dict[str, Any]:
+    """Validate rendered Controls/Export copy for forbidden language and technical leaks."""
+    violations: list[dict[str, str]] = []
+    combined = str(text or "").lower()
+    for term in _CONTROLS_FORBIDDEN_TERMS:
+        if _contains_forbidden_term(combined, term):
+            violations.append(
+                {
+                    "code": "forbidden_term",
+                    "message": f"Forbidden claim language detected in {surface}: {term}",
+                }
+            )
+    for pattern in _FORBIDDEN_ID_PATTERNS:
+        if re.search(pattern, combined, flags=re.I):
+            violations.append(
+                {
+                    "code": "forbidden_technical_leak",
+                    "message": f"Forbidden technical identifier in {surface}: {pattern}",
+                }
+            )
+    return {
+        "passed": not violations,
+        "violations": violations,
+        "surface": surface,
         "advisory_posture": _ADVISORY_POSTURE,
     }
 
