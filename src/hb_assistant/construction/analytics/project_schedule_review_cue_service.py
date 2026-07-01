@@ -8,6 +8,8 @@ from typing import Any
 from hb_assistant.store.connection import open_connection
 from hb_assistant.store.schedule_identity_repository import parse_schedule_version_data_date
 
+from .project_schedule_baseline_vocabulary import comparison_label_for_basis
+from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
 from .project_schedule_review_cue_taxonomy import apply_taxonomy_fields
 from .project_schedule_review_evidence_service import ProjectScheduleReviewEvidenceService
 from .project_schedule_udf_normalization_service import ProjectScheduleUdfNormalizationService
@@ -123,12 +125,15 @@ class ProjectScheduleReviewCueService:
             seen.add(key)
             out.append(candidate)
 
-        basis = comparison_basis if comparison_basis in {"prior_update", "baseline"} else "prior_update"
+        resolved = resolve_workbench_comparison_basis(comparison_basis)
+        cue_basis = resolved.preview_basis
+        persisted_basis = resolved.comparison_basis
         as_of = as_of_date.isoformat()
         schedule_data_date = self._schedule_data_date(schedule_version_key)
+        comparison_phrase = _comparison_phrase(persisted_basis)
 
-        driver_source = (driver_analysis or {}).get(basis) or (
-            driver_analysis if basis == "prior_update" else {}
+        driver_source = (driver_analysis or {}).get(cue_basis) or (
+            driver_analysis if cue_basis == "prior_update" else {}
         )
         if driver_source.get("available"):
             for driver in driver_source.get("top_drivers") or []:
@@ -146,7 +151,7 @@ class ProjectScheduleReviewCueService:
                         source_signal_type="driver",
                         confidence=CONFIDENCE_PRODUCTION,
                         severity="high",
-                        comparison_basis=basis,
+                        comparison_basis=persisted_basis,
                         as_of=as_of,
                         schedule_data_date=schedule_data_date,
                         activity_name=str(driver.get("activity_name") or ""),
@@ -174,11 +179,11 @@ class ProjectScheduleReviewCueService:
                     source_signal_type="milestone_moved_later",
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high" if movement >= 7 else "medium",
-                    comparison_basis=basis,
+                    comparison_basis=persisted_basis,
                     as_of=as_of,
                     schedule_data_date=schedule_data_date,
                     activity_name=str(ms.get("activity_name") or ""),
-                    cue_summary=f"Milestone forecast moved {movement} days later since prior update.",
+                    cue_summary=f"Milestone forecast moved {movement} days later {comparison_phrase}.",
                     caveats=[NON_CAUSATION_CUE],
                 )
             )
@@ -199,7 +204,7 @@ class ProjectScheduleReviewCueService:
                     source_signal_type="negative_float",
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high",
-                    comparison_basis=basis,
+                    comparison_basis=persisted_basis,
                     as_of=as_of,
                     schedule_data_date=schedule_data_date,
                     activity_name=str(row.get("activity_name") or ""),
@@ -226,11 +231,11 @@ class ProjectScheduleReviewCueService:
                     source_signal_type="worsened_float",
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="medium",
-                    comparison_basis=basis,
+                    comparison_basis=persisted_basis,
                     as_of=as_of,
                     schedule_data_date=schedule_data_date,
                     activity_name=str(row.get("activity_name") or ""),
-                    cue_summary="Float eroded between updates.",
+                    cue_summary=f"Float eroded {comparison_phrase}.",
                     caveats=[NON_CAUSATION_CUE],
                 )
             )
@@ -250,7 +255,7 @@ class ProjectScheduleReviewCueService:
                     source_signal_type="critical_remaining",
                     confidence=CONFIDENCE_PRODUCTION,
                     severity="high",
-                    comparison_basis=basis,
+                    comparison_basis=persisted_basis,
                     as_of=as_of,
                     schedule_data_date=schedule_data_date,
                     activity_name=str(row.get("activity_name") or ""),
@@ -281,7 +286,7 @@ class ProjectScheduleReviewCueService:
                         source_signal_type=f"{status}_activity",
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="high" if status == "delayed" else "medium",
-                        comparison_basis=basis,
+                        comparison_basis=persisted_basis,
                         as_of=as_of,
                         schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
@@ -319,7 +324,7 @@ class ProjectScheduleReviewCueService:
                         source_signal_type=signal,
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="medium",
-                        comparison_basis=basis,
+                        comparison_basis=persisted_basis,
                         as_of=as_of,
                         schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
@@ -352,7 +357,7 @@ class ProjectScheduleReviewCueService:
                         source_signal_type=signal,
                         confidence=activity_cue.get("confidence", CONFIDENCE_PRODUCTION),
                         severity="medium",
-                        comparison_basis=basis,
+                        comparison_basis=persisted_basis,
                         as_of=as_of,
                         schedule_data_date=schedule_data_date,
                         activity_name=activity_cue.get("activity_name"),
@@ -388,7 +393,7 @@ class ProjectScheduleReviewCueService:
                             source_signal_type="issue_category",
                             confidence=confidence,
                             severity="high" if count >= 5 else "medium",
-                            comparison_basis=basis,
+                            comparison_basis=persisted_basis,
                             as_of=as_of,
                             schedule_data_date=schedule_data_date,
                             partial_dimension_support=critical_payload.get("partial_dimension_support", False),
@@ -416,7 +421,7 @@ class ProjectScheduleReviewCueService:
                         source_signal_type="period_movement",
                         confidence=CONFIDENCE_PARTIAL if delay_payload.get("partial_dimension_support") else CONFIDENCE_PRODUCTION,
                         severity="medium",
-                        comparison_basis=basis,
+                        comparison_basis=persisted_basis,
                         as_of=as_of,
                         schedule_data_date=schedule_data_date,
                         partial_dimension_support=delay_payload.get("partial_dimension_support", False),
@@ -445,7 +450,7 @@ class ProjectScheduleReviewCueService:
                     source_signal_type="quality_finding",
                     confidence=CONFIDENCE_PRODUCTION,
                     severity=str(finding.get("severity") or "medium"),
-                    comparison_basis=basis,
+                    comparison_basis=persisted_basis,
                     as_of=as_of,
                     schedule_data_date=schedule_data_date,
                     activity_name=finding.get("activity_name"),
@@ -657,3 +662,12 @@ class ProjectScheduleReviewCueService:
 def _activity_label(activity_name: Any) -> str:
     label = str(activity_name or "").strip()
     return label or "Unnamed activity"
+
+
+def _comparison_phrase(comparison_basis: str) -> str:
+    if comparison_basis == "prior_update":
+        return "since prior update"
+    label = comparison_label_for_basis(comparison_basis)
+    if label:
+        return label.lower()
+    return "relative to comparison baseline"

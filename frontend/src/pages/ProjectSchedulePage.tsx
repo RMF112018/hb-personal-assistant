@@ -165,23 +165,26 @@ function DrilldownPanel({
   drilldownType,
   preview,
   asOfDate,
+  comparisonBasis,
 }: {
   projectKey: string
   drilldownType: string
   preview: Record<string, any>
   asOfDate?: string
+  comparisonBasis?: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const count = Number(preview?.count || 0)
   const previewItems = Array.isArray(preview?.items) ? preview.items : []
 
   const { data, isFetching } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'drilldown', drilldownType, asOfDate],
+    queryKey: ['project', 'schedule', projectKey, 'drilldown', drilldownType, asOfDate, comparisonBasis],
     queryFn: () =>
       api.getProjectScheduleDrilldown(projectKey, drilldownType, {
         limit: 100,
         offset: 0,
         asOf: asOfDate,
+        comparisonBasis,
       }),
     enabled: expanded && count > 0,
   })
@@ -678,6 +681,7 @@ export function ProjectSchedulePage() {
                 onClick={() => {
                   void api.downloadProjectScheduleExport(projectKey, 'markdown', {
                     asOf: requestAsOf,
+                    comparisonBasis: controlsComparisonBasis,
                   })
                 }}
               >

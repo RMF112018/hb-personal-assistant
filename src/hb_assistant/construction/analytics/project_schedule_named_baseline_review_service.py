@@ -84,6 +84,7 @@ class ProjectScheduleNamedBaselineReviewService:
             remaining_activities=remaining_activities,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
             materializable_only=True,
         )
         synced = 0
@@ -195,6 +196,7 @@ class ProjectScheduleNamedBaselineReviewService:
             remaining_activities=remaining_activities,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
             materializable_only=True,
         )
         live_keys = {str(c["stable_item_key"]) for c in materializable}
@@ -209,6 +211,7 @@ class ProjectScheduleNamedBaselineReviewService:
             remaining_activities=remaining_activities,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
+            comparison_basis=comparison_basis,
             materializable_only=False,
         )
         persisted_rows = self._repo.list_in_scope(scope=scope)
@@ -306,6 +309,7 @@ class ProjectScheduleNamedBaselineReviewService:
         remaining_activities: list[dict[str, Any]] | None,
         as_of_date: date,
         baseline_summary: dict[str, Any] | None,
+        comparison_basis: str,
         materializable_only: bool,
     ) -> list[dict[str, Any]]:
         return self._review._collect_candidates(
@@ -319,7 +323,7 @@ class ProjectScheduleNamedBaselineReviewService:
             remaining_activities=remaining_activities,
             as_of_date=as_of_date,
             baseline_summary=baseline_summary,
-            comparison_basis="baseline",
+            comparison_basis=comparison_basis,
             materializable_only=materializable_only,
             include_activity_metric_cues=True,
         )

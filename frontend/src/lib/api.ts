@@ -370,12 +370,13 @@ export function getProjectScheduleDrivers(
 export function getProjectScheduleDrilldown(
   projectKey: string,
   drilldownType: string,
-  opts?: { limit?: number; offset?: number; asOf?: string },
+  opts?: { limit?: number; offset?: number; asOf?: string; comparisonBasis?: string },
 ) {
   const params = new URLSearchParams({ type: drilldownType });
   if (opts?.limit != null) params.set('limit', String(opts.limit));
   if (opts?.offset != null) params.set('offset', String(opts.offset));
   if (opts?.asOf) params.set('as_of', opts.asOf);
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/drilldowns?${params.toString()}`,
   );
@@ -544,6 +545,7 @@ export async function downloadProjectScheduleExport(
     variant?: 'standard' | 'executive';
     scope?: 'full' | 'review_items';
     includePersistedReview?: boolean;
+    comparisonBasis?: string;
   },
 ) {
   const { downloadBlob } = await import('../components/forecast/forecastMonthlyExportWriters');
@@ -553,6 +555,7 @@ export async function downloadProjectScheduleExport(
   if (opts?.variant) params.set('variant', opts.variant);
   if (opts?.scope) params.set('scope', opts.scope);
   if (opts?.includePersistedReview) params.set('include_persisted_review', 'true');
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
   const response = await fetch(
     `${API_BASE}/api/projects/${encodeURIComponent(projectKey)}/schedule/export?${params.toString()}`,
     { headers: { 'X-HB-UI-Role': role } },
