@@ -1328,16 +1328,14 @@ def create_app(*, db_path: str | None = None) -> Any:
                 raise HTTPException(status_code=400, detail="unsupported_driver_drilldown_type") from exc
             raise
 
-    @app.get("/api/projects/{project_key}/schedule/drivers/{activity_id}/detail")
-    def project_schedule_driver_detail(
+    def _project_schedule_driver_detail_response(
         project_key: str,
         activity_id: str,
-        comparison_basis: str | None = None,
-        basis: str | None = None,
-        as_of: str | None = None,
-        role: dict[str, str] = role_dep,
+        *,
+        comparison_basis: str | None,
+        basis: str | None,
+        as_of: str | None,
     ) -> dict[str, Any]:
-        del role
         from datetime import date as date_type
 
         from fastapi import HTTPException
@@ -1348,6 +1346,9 @@ def create_app(*, db_path: str | None = None) -> Any:
         from hb_assistant.construction.analytics.project_schedule_summary_service import (
             ProjectScheduleSummaryService,
         )
+
+        if not str(activity_id or "").strip():
+            raise HTTPException(status_code=400, detail="driver_activity_id_required")
 
         as_of_date: date_type | None = None
         if as_of:
@@ -1370,6 +1371,42 @@ def create_app(*, db_path: str | None = None) -> Any:
             activity_id,
             comparison_basis=resolved_basis,
             as_of=as_of_date,
+        )
+
+    @app.get("/api/projects/{project_key}/schedule/drivers/detail")
+    def project_schedule_driver_detail_query(
+        project_key: str,
+        activity_id: str = Query(...),
+        comparison_basis: str | None = None,
+        basis: str | None = None,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _project_schedule_driver_detail_response(
+            project_key,
+            activity_id,
+            comparison_basis=comparison_basis,
+            basis=basis,
+            as_of=as_of,
+        )
+
+    @app.get("/api/projects/{project_key}/schedule/drivers/{activity_id}/detail")
+    def project_schedule_driver_detail(
+        project_key: str,
+        activity_id: str,
+        comparison_basis: str | None = None,
+        basis: str | None = None,
+        as_of: str | None = None,
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _project_schedule_driver_detail_response(
+            project_key,
+            activity_id,
+            comparison_basis=comparison_basis,
+            basis=basis,
+            as_of=as_of,
         )
 
     @app.get("/api/projects/{project_key}/schedule/review-items")

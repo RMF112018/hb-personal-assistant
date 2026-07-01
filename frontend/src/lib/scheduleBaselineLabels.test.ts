@@ -49,17 +49,24 @@ describe('scheduleBaselineLabels', () => {
         comparisonBasis: 'current_contract_baseline',
       }),
     ).toBe('/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03')
-    expect(
-      driverDetailHref('tropical', 'DRV-A', {
-        asOf: '2026-07-03',
-        comparisonBasis: 'current_contract_baseline',
-      }),
-    ).toContain('comparison_basis=current_contract_baseline')
-    expect(
-      driverDetailHref('tropical', 'DRV-A', {
-        asOf: '2026-07-03',
-        comparisonBasis: 'current_contract_baseline',
-      }),
-    ).toContain('basis=current_contract_baseline')
+    const href = driverDetailHref('tropical', 'DRV-A', {
+      asOf: '2026-07-03',
+      comparisonBasis: 'current_contract_baseline',
+    })
+    expect(href).toContain('comparison_basis=current_contract_baseline')
+    expect(href).toContain('/schedule/driver-detail?')
+    expect(href).toContain('activity_id=DRV-A')
+    expect(href).not.toContain('/schedule/drivers/DRV-A')
+  })
+
+  it('encodes slash-bearing activity IDs as query param not path segment', () => {
+    const href = driverDetailHref('tropical', 'FAB/DEL-10', {
+      asOf: '2026-07-03',
+      comparisonBasis: 'current_contract_baseline',
+    })
+    expect(href).toBe(
+      '/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-10&comparison_basis=current_contract_baseline&as_of=2026-07-03',
+    )
+    expect(href).not.toMatch(/\/schedule\/drivers\/FAB/)
   })
 })

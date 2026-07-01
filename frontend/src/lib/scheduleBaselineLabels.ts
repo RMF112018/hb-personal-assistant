@@ -70,11 +70,10 @@ export function driverDetailHref(
   opts?: { asOf?: string; comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline' },
 ): string {
   const params = new URLSearchParams()
+  params.set('activity_id', activityId)
   if (opts?.comparisonBasis) {
     params.set('comparison_basis', opts.comparisonBasis)
-    params.set('basis', opts.comparisonBasis)
   }
   if (opts?.asOf) params.set('as_of', opts.asOf)
-  const qs = params.toString()
-  return `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(activityId)}${qs ? `?${qs}` : ''}`
+  return `/projects/${projectKey}/schedule/driver-detail?${params.toString()}`
 }

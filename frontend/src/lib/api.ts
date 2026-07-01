@@ -443,11 +443,11 @@ export function getProjectScheduleDriverDetail(
   opts?: { comparisonBasis?: ReviewWorkbenchComparisonBasis | 'baseline'; asOf?: string },
 ) {
   const params = new URLSearchParams();
+  params.set('activity_id', activityId);
   if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis);
   if (opts?.asOf) params.set('as_of', opts.asOf);
-  const qs = params.toString();
   return fetchJson(
-    `/api/projects/${encodeURIComponent(projectKey)}/schedule/drivers/${encodeURIComponent(activityId)}/detail${qs ? `?${qs}` : ''}`,
+    `/api/projects/${encodeURIComponent(projectKey)}/schedule/drivers/detail?${params.toString()}`,
   );
 }
 export function syncProjectScheduleReviewItems(

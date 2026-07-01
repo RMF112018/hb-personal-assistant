@@ -327,7 +327,7 @@ function controlsResponse(overrides: Record<string, unknown> = {}) {
         summary: 'Candidate driver sequence cue for PM review.',
         recommended_action: 'Review the linked activity sequence and downstream movement before disposition.',
         links: {
-          driver_detail: '/projects/tropical/schedule/drivers/DRV-A?basis=prior_update',
+          driver_detail: '/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=prior_update',
           review_item: '/projects/tropical/schedule/workbench?review=driver%3ADRV-A&comparison_basis=prior_update',
         },
       },
