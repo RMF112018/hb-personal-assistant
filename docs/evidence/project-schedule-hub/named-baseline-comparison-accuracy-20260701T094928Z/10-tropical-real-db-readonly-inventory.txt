@@ -1,0 +1,109 @@
+DB: /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+97
+
+Baseline tables:
+project_schedule_baseline_selections
+project_schedule_named_baseline_review_item_events
+project_schedule_named_baseline_review_items
+project_schedule_named_baseline_slots
+schedule_baseline_activities
+schedule_baseline_activity_codes
+schedule_baseline_activity_crosswalk
+schedule_baseline_health_facts
+schedule_baseline_projects
+schedule_baseline_relationships
+schedule_baseline_udfs
+schedule_baseline_wbs
+
+Schedule tables:
+forecast_output_schedule_phasing
+launchd_schedule_previews
+procore_ep_schedule_activities
+procore_ep_schedule_activity_code_assignments
+procore_ep_schedule_calendars
+procore_ep_schedule_relationships
+procore_ep_schedule_udf_values
+procore_ep_schedule_wbs_nodes
+procore_ep_schedules
+procore_raw_schedule_activities
+procore_raw_schedules
+project_schedule_baseline_selections
+project_schedule_named_baseline_review_item_events
+project_schedule_named_baseline_review_items
+project_schedule_named_baseline_slots
+project_schedule_review_item_events
+project_schedule_review_items
+project_schedule_series_membership
+schedule_baseline_activities
+schedule_baseline_activity_codes
+schedule_baseline_activity_crosswalk
+schedule_baseline_health_facts
+schedule_baseline_projects
+schedule_baseline_relationships
+schedule_baseline_udfs
+schedule_baseline_wbs
+schedule_cost_distributions
+schedule_cost_mapping_candidates
+schedule_cost_mapping_runs
+schedule_cost_weighting_results
+schedule_cpm_activity_results
+schedule_cpm_diagnostics
+schedule_cpm_import_observability
+schedule_cpm_path_activities
+schedule_cpm_paths
+schedule_cpm_relationship_results
+schedule_cpm_runs
+schedule_file_imports
+schedule_identities
+schedule_identity_manual_actions
+schedule_import_package_files
+schedule_import_packages
+schedule_package_equivalence_facts
+schedule_package_field_lineage
+schedule_quality_evaluation_runs
+schedule_quality_findings
+schedule_quality_metric_results
+schedule_quality_metric_results_v66
+schedule_quality_scorecards
+schedule_source_capabilities
+schedule_version_diff_detail_facts
+schedule_version_diff_facts
+schedule_version_diff_impact_rollups
+schedule_version_diffs
+schedule_version_identity_matches
+
+Tropical named baseline slots:
+project_key  slot_key                            schedule_version_key            selected_at                       selected_by  is_active
+-----------  ----------------------------------  ------------------------------  --------------------------------  -----------  ---------
+tropical     current_contract_baseline           tropical|815|2025-08-07 08:00   2026-07-01T07:32:42.252272+00:00  operator     1        
+tropical     previous_progress_update_baseline   tropical|1069|2026-05-26 08:00  2026-07-01T07:32:42.270421+00:00  operator     1        
+tropical     secondary_progress_update_baseline  tropical|851|2025-11-28 08:00   2026-07-01T07:32:42.287270+00:00  operator     1        
+
+Tropical schedule imports (committed):
+schedule_version_key                 source_filename_redacted  created_at           activity_count
+-----------------------------------  ------------------------  -------------------  --------------
+tropical|1071|2026-06-23 08:00       TWNU19.zip                2026-06-28 12:03:10  1507          
+tropical|1069|2026-05-26 08:00       TWNU18.zip                2026-06-28 12:02:46  1378          
+tropical|957|2026-01-29 08:00        TWNU16.zip                2026-06-28 09:34:41  1420          
+tropical|851|2025-11-28 08:00        TWNU14.zip                2026-06-28 09:34:27  1404          
+tropical|815|2025-08-07 08:00        TWNU07.zip                2026-06-28 09:34:05  1177          
+tropical|TWNU19|2026-06-23T08:00:00  TWNU19.xml                2026-06-26 11:31:36  1507          
+tropical|24836|2026-06-23 08:00      TWNU19.xer                2026-06-24 12:28:28  1507          
+tropical|TWNU18|2026-05-26T08:00:00  TWNU18.xml                2026-06-22 13:47:28  1378          
+tropical|TWNU07|2025-08-07T08:00:00  TWNU07.xml                2026-06-22 10:05:20  1177          
+tropical|TWNU16|2026-01-29T08:00:00  TWNU16.xml                2026-06-22 10:05:20  1420          
+
+Tropical named-baseline review items (psnbri-):
+review_item_id                           comparison_basis           review_status  baseline_schedule_version_key  item_title                                                               
+---------------------------------------  -------------------------  -------------  -----------------------------  -------------------------------------------------------------------------
+psnbri-89314af1e4ca4c5e893e75753d3d2b83  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Relationship lag value 159 days is out of expected range
+psnbri-4710ebd4e9294c0e8aba876fc341e291  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Completed activity missing actual finish                
+psnbri-4215386ce77d4b26b73ac08047d9abf5  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Completed activity missing actual finish                
+psnbri-ecd69869337743638d33c7c8a0469da0  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual start is after schedule data date                
+psnbri-abf4954973a7418fb1844861317a2f31  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               
+psnbri-51c86397a2a74d15903c8e16d19daeb4  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               
+psnbri-b7208b8437f54e3699688b702d7ccbc5  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               
+psnbri-18a506b8435343a287cc5f45d79590b6  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               
+psnbri-b5ae085447bb42f3b163d287460f1a7a  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               
+psnbri-4390ba77178b4849a11bfc0d052e0269  current_contract_baseline  open           tropical|815|2025-08-07 08:00  Quality finding: Actual finish is after schedule data date               

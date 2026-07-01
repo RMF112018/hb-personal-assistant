@@ -1,0 +1,674 @@
+===== prior_update =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "prior_update",
+  "baseline_context": {
+    "basis": "prior_update",
+    "selection_status": "not_applicable"
+  },
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "change_driver_analysis",
+      "milestones",
+      "should_have_finished_status"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "comparison_label": "Compared against prior update"
+  },
+  "movement": {
+    "available": true,
+    "headline": "Schedule movement since comparison context",
+    "finish_moved_later_count": 461,
+    "finish_moved_earlier_count": 76,
+    "worsened_float_count": 378,
+    "comparison_basis": "prior_update"
+  },
+  "top_controls": [
+    {
+      "title": "Candidate change driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "review_status": null,
+      "review_item_id": "psri-108fca1c737247fb83d1d2342ed4cf75",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "activity_id": "FAB/DEL-10",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-10&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-10&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Candidate change driver: FAB/DEL WINDOW TREATMENT",
+      "review_status": null,
+      "review_item_id": "psri-542c9d5326d1418f860f64b5a5fd80b9",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "activity_id": "FAB/DEL-210",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-210&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-210&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Candidate change driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "review_status": null,
+      "review_item_id": "psri-40e1eb80b2de4c69b5b599e801571511",
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "activity_id": "FAB/DEL-240",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-240&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-240&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "review_status": null,
+      "review_item_id": "psri-541df91a2c1144bc9d5f9a15142353c1",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FILTER-OUT-20",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-20&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-20&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: PERM POWER",
+      "review_status": null,
+      "review_item_id": "psri-71fca9e3f6da4dd1b12f64776a4749ba",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-PERMPOWER",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-PERMPOWER&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": null,
+      "review_item_id": "psri-3854cfe4c1144cbe90d222836cba9420",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "FM-CNSTELEVS",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AFM-CNSTELEVS&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-CNSTELEVS&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FAB/DEL FPL METERS",
+      "review_status": null,
+      "review_item_id": "psri-f23c43f55c9941539fc62476b9760cbd",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-POWER-70",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-POWER-70&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FINE GRADE",
+      "review_status": null,
+      "review_item_id": "psri-9ecf6557545e4e4d87d21e32ed7227c2",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-RECAREA-10",
+      "comparison_basis": "prior_update",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-RECAREA-10&comparison_basis=prior_update&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-RECAREA-10&comparison_basis=prior_update&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    }
+  ]
+}
+===== baseline =====
+{
+  "available": false,
+  "reason": "baseline_unavailable",
+  "comparison_basis": "baseline",
+  "baseline_context": {
+    "basis": "baseline",
+    "selection_status": "not_applicable"
+  },
+  "provenance": {
+    "source_services": [
+      "project_schedule_controls_service"
+    ]
+  },
+  "movement": null,
+  "top_controls": []
+}
+===== current_contract_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "current_contract_baseline",
+  "baseline_context": {
+    "basis": "current_contract_baseline",
+    "slot_key": "current_contract_baseline",
+    "slot_label": "Current Contract Baseline",
+    "selection_status": "selected",
+    "baseline_schedule_version_key": "tropical|815|2025-08-07 08:00",
+    "baseline_schedule_data_date": "2025-08-07",
+    "baseline_display_name": "TWNU07.zip",
+    "selected_at": "2026-07-01T07:32:42.252272+00:00",
+    "selected_by": "operator",
+    "notes": null
+  },
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "milestones",
+      "should_have_finished_status"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "comparison_label": "Compared against Current Contract Baseline"
+  },
+  "movement": {
+    "available": true,
+    "headline": "Schedule movement since comparison context",
+    "finish_moved_later_count": 440,
+    "finish_moved_earlier_count": 0,
+    "worsened_float_count": 436,
+    "comparison_basis": "current_contract_baseline"
+  },
+  "top_controls": [
+    {
+      "title": "Milestone moved later: SITE WATER AVAILABLE",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-SITEWATER",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-SITEWATER&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-SITEWATER&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: TCO-1- AMENITIES TURNOVER",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-P1A-AMEN- OTURN",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-P1A-AMEN-+OTURN&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-P1A-AMEN-+OTURN&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: TCO-1- SUBSTANTIAL COMPLETION / TCO",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-P1A-GSUBCOMP",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-P1A-GSUBCOMP&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-P1A-GSUBCOMP&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: TCO-1- TURNOVER 99 UNITS",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-P1A-GTURN",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-P1A-GTURN&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-P1A-GTURN&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: PERM POWER",
+      "review_status": null,
+      "review_item_id": "psri-71fca9e3f6da4dd1b12f64776a4749ba",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-PERMPOWER",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-PERMPOWER&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": null,
+      "review_item_id": "psri-3854cfe4c1144cbe90d222836cba9420",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "FM-CNSTELEVS",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AFM-CNSTELEVS&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-CNSTELEVS&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FAB/DEL FPL METERS",
+      "review_status": null,
+      "review_item_id": "psri-f23c43f55c9941539fc62476b9760cbd",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-POWER-70",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-POWER-70&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FINE GRADE",
+      "review_status": null,
+      "review_item_id": "psri-9ecf6557545e4e4d87d21e32ed7227c2",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-RECAREA-10",
+      "comparison_basis": "current_contract_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-RECAREA-10&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-RECAREA-10&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    }
+  ]
+}
+===== previous_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "previous_progress_update_baseline",
+  "baseline_context": {
+    "basis": "previous_progress_update_baseline",
+    "slot_key": "previous_progress_update_baseline",
+    "slot_label": "Previous Progress Update Baseline",
+    "selection_status": "selected",
+    "baseline_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+    "baseline_schedule_data_date": "2026-05-26",
+    "baseline_display_name": "TWNU18.zip",
+    "selected_at": "2026-07-01T07:32:42.270421+00:00",
+    "selected_by": "operator",
+    "notes": null
+  },
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "milestones",
+      "should_have_finished_status"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "comparison_label": "Compared against Previous Progress Update Baseline"
+  },
+  "movement": {
+    "available": true,
+    "headline": "Schedule movement since comparison context",
+    "finish_moved_later_count": 461,
+    "finish_moved_earlier_count": 76,
+    "worsened_float_count": 378,
+    "comparison_basis": "previous_progress_update_baseline"
+  },
+  "top_controls": [
+    {
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "review_status": null,
+      "review_item_id": "psri-541df91a2c1144bc9d5f9a15142353c1",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FILTER-OUT-20",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-20&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-20&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: PERM POWER",
+      "review_status": null,
+      "review_item_id": "psri-71fca9e3f6da4dd1b12f64776a4749ba",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-PERMPOWER",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-PERMPOWER&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": null,
+      "review_item_id": "psri-3854cfe4c1144cbe90d222836cba9420",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "FM-CNSTELEVS",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AFM-CNSTELEVS&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-CNSTELEVS&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FAB/DEL FPL METERS",
+      "review_status": null,
+      "review_item_id": "psri-f23c43f55c9941539fc62476b9760cbd",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-POWER-70",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-POWER-70&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FINE GRADE",
+      "review_status": null,
+      "review_item_id": "psri-9ecf6557545e4e4d87d21e32ed7227c2",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-RECAREA-10",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-RECAREA-10&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-RECAREA-10&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FRAME CEILINGS",
+      "review_status": null,
+      "review_item_id": "psri-7c4fc5ba5b07416e86d986bfea137999",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1B-01-RI-110",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1B-01-RI-110&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1B-01-RI-110&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FRAME CEILINGS",
+      "review_status": null,
+      "review_item_id": "psri-25352f4485094f2c83d4930e4e0b106d",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P2-01-RI-110",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP2-01-RI-110&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P2-01-RI-110&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: GUTTERS",
+      "review_status": null,
+      "review_item_id": "psri-b7c67cee35d648babb658cca4c0848e9",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1B-NORTH-C2-70",
+      "comparison_basis": "previous_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1B-NORTH-C2-70&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1B-NORTH-C2-70&comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    }
+  ]
+}
+===== secondary_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "secondary_progress_update_baseline",
+  "baseline_context": {
+    "basis": "secondary_progress_update_baseline",
+    "slot_key": "secondary_progress_update_baseline",
+    "slot_label": "Secondary Progress Update Baseline",
+    "selection_status": "selected",
+    "baseline_schedule_version_key": "tropical|851|2025-11-28 08:00",
+    "baseline_schedule_data_date": "2025-11-28",
+    "baseline_display_name": "TWNU14.zip",
+    "selected_at": "2026-07-01T07:32:42.287270+00:00",
+    "selected_by": "operator",
+    "notes": null
+  },
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "milestones",
+      "should_have_finished_status"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "comparison_label": "Compared against Secondary Progress Update Baseline"
+  },
+  "movement": {
+    "available": true,
+    "headline": "Schedule movement since comparison context",
+    "finish_moved_later_count": 593,
+    "finish_moved_earlier_count": 19,
+    "worsened_float_count": 578,
+    "comparison_basis": "secondary_progress_update_baseline"
+  },
+  "top_controls": [
+    {
+      "title": "Milestone moved later: PHASE 3 INTERIOR COMPLETION",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FILTER-OUT-50",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-50&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-50&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: SITE WATER AVAILABLE",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-SITEWATER",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-SITEWATER&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-SITEWATER&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: UNITS 100 - 120 AVAILABLE (PHASE 2)",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "U14-AVAILABLE-50",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AU14-AVAILABLE-50&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=U14-AVAILABLE-50&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: UNITS 121 - 141 AVAILABLE (PHASE 2)",
+      "review_status": null,
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "U14-AVAILABLE-80",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AU14-AVAILABLE-80&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=U14-AVAILABLE-80&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "review_status": null,
+      "review_item_id": "psri-541df91a2c1144bc9d5f9a15142353c1",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FILTER-OUT-20",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-20&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-20&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Milestone moved later: PERM POWER",
+      "review_status": null,
+      "review_item_id": "psri-71fca9e3f6da4dd1b12f64776a4749ba",
+      "source_metric_key": "milestones",
+      "source_signal_type": "milestone_moved_later",
+      "activity_id": "FM-PERMPOWER",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-PERMPOWER&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": null,
+      "review_item_id": "psri-3854cfe4c1144cbe90d222836cba9420",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "FM-CNSTELEVS",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AFM-CNSTELEVS&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-CNSTELEVS&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    },
+    {
+      "title": "Should have finished: FAB/DEL FPL METERS",
+      "review_status": null,
+      "review_item_id": "psri-f23c43f55c9941539fc62476b9760cbd",
+      "source_metric_key": "should_have_finished_status",
+      "source_signal_type": "delayed_activity",
+      "activity_id": "P1A-POWER-70",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "evidence": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-POWER-70&comparison_basis=secondary_progress_update_baseline&as_of=2026-07-03",
+        "schedule_hub": "/projects/tropical/schedule"
+      }
+    }
+  ]
+}

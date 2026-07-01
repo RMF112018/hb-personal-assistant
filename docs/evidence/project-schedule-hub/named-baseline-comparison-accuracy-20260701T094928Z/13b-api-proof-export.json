@@ -1,0 +1,48 @@
+===== prior_update =====
+{
+  "http_status": 200,
+  "comparison_basis": "prior_update",
+  "content_type": "text/markdown; charset=utf-8",
+  "body_length": 4157,
+  "body_excerpt": "# Schedule Review Memo \u2014 23-435-01 - Tropical World Nursery Senior Living Facility\n\nAs of 2026-07-03\n\n## Headline\nForecast finish is unchanged, but remaining work moved materially.\n\n## Synopsis\nThe current update is TWNU19 with data date 2026-06-23. Previous data date is 2026-05-26. 461 remaining activities moved later, 537 changed finish, and 378 lost float. Candidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first. Review remaining negative-float work\n\n## What Changed\n461 remaining activities moved later, 537 changed finish, and 378 lost float.\n\n## Why It Matters\nCandidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first.\n\n## Primary Driver (sequence cue)\nThe largest movement appears concentrated around \u2014. FAB/DEL EXTERIOR LIGHT FIXTURES moved by 42 days and appears connected to 15 downstream activities, including ENVELOPE COMPLETION. Review this sequence first.\n\n## Command Summary\n- Forecast finish: 2026-11-03 (0 days vs prior)\n- Remaining activities: 712\n- Critical / near-critical: 613 / 0\n- Negative float (remaining): 711\n\n## Milestone Impacts\n\n- ELEVATORS FOR CONSTRUCTION USE: +1 days\n- PERM POWER: +22 days\n- TCO-1- AMENITIES TURNOVER: +2 days\n- TCO-1- SITE DEVELOPMENT COMPLETE: +2 days\n- PHASE 2 INTERIOR COMPLETION: +6 days\n- ENVELOPE COMPLETION: +26 days\n\n## Float / CPM Pressure\n- Negative float remaining: 711\n- Near-critical rem",
+  "includes_comparison_basis": true,
+  "includes_baseline_context": false
+}
+===== baseline =====
+{
+  "http_status": 200,
+  "comparison_basis": "baseline",
+  "content_type": "text/markdown; charset=utf-8",
+  "body_length": 4157,
+  "body_excerpt": "# Schedule Review Memo \u2014 23-435-01 - Tropical World Nursery Senior Living Facility\n\nAs of 2026-07-03\n\n## Headline\nForecast finish is unchanged, but remaining work moved materially.\n\n## Synopsis\nThe current update is TWNU19 with data date 2026-06-23. Previous data date is 2026-05-26. 461 remaining activities moved later, 537 changed finish, and 378 lost float. Candidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first. Review remaining negative-float work\n\n## What Changed\n461 remaining activities moved later, 537 changed finish, and 378 lost float.\n\n## Why It Matters\nCandidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first.\n\n## Primary Driver (sequence cue)\nThe largest movement appears concentrated around \u2014. FAB/DEL EXTERIOR LIGHT FIXTURES moved by 42 days and appears connected to 15 downstream activities, including ENVELOPE COMPLETION. Review this sequence first.\n\n## Command Summary\n- Forecast finish: 2026-11-03 (0 days vs prior)\n- Remaining activities: 712\n- Critical / near-critical: 613 / 0\n- Negative float (remaining): 711\n\n## Milestone Impacts\n\n- ELEVATORS FOR CONSTRUCTION USE: +1 days\n- PERM POWER: +22 days\n- TCO-1- AMENITIES TURNOVER: +2 days\n- TCO-1- SITE DEVELOPMENT COMPLETE: +2 days\n- PHASE 2 INTERIOR COMPLETION: +6 days\n- ENVELOPE COMPLETION: +26 days\n\n## Float / CPM Pressure\n- Negative float remaining: 711\n- Near-critical rem",
+  "includes_comparison_basis": false,
+  "includes_baseline_context": false
+}
+===== current_contract_baseline =====
+{
+  "http_status": 422,
+  "comparison_basis": "current_contract_baseline",
+  "detail": {
+    "detail": "narrative_qa_failed"
+  },
+  "silent_prior_update_fallback": false
+}
+===== previous_progress_update_baseline =====
+{
+  "http_status": 200,
+  "comparison_basis": "previous_progress_update_baseline",
+  "content_type": "text/markdown; charset=utf-8",
+  "body_length": 4157,
+  "body_excerpt": "# Schedule Review Memo \u2014 23-435-01 - Tropical World Nursery Senior Living Facility\n\nAs of 2026-07-03\n\n## Headline\nForecast finish is unchanged, but remaining work moved materially.\n\n## Synopsis\nThe current update is TWNU19 with data date 2026-06-23. Previous data date is 2026-05-26. 461 remaining activities moved later, 537 changed finish, and 378 lost float. Candidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first. Review remaining negative-float work\n\n## What Changed\n461 remaining activities moved later, 537 changed finish, and 378 lost float.\n\n## Why It Matters\nCandidate driver FAB/DEL EXTERIOR LIGHT FIXTURES in \u2014 appears connected to 15 downstream activities \u2014 review this sequence first.\n\n## Primary Driver (sequence cue)\nThe largest movement appears concentrated around \u2014. FAB/DEL EXTERIOR LIGHT FIXTURES moved by 42 days and appears connected to 15 downstream activities, including ENVELOPE COMPLETION. Review this sequence first.\n\n## Command Summary\n- Forecast finish: 2026-11-03 (0 days vs prior)\n- Remaining activities: 712\n- Critical / near-critical: 613 / 0\n- Negative float (remaining): 711\n\n## Milestone Impacts\n\n- ELEVATORS FOR CONSTRUCTION USE: +1 days\n- PERM POWER: +22 days\n- TCO-1- AMENITIES TURNOVER: +2 days\n- TCO-1- SITE DEVELOPMENT COMPLETE: +2 days\n- PHASE 2 INTERIOR COMPLETION: +6 days\n- ENVELOPE COMPLETION: +26 days\n\n## Float / CPM Pressure\n- Negative float remaining: 711\n- Near-critical rem",
+  "includes_comparison_basis": false,
+  "includes_baseline_context": false
+}
+===== secondary_progress_update_baseline =====
+{
+  "http_status": 422,
+  "comparison_basis": "secondary_progress_update_baseline",
+  "detail": {
+    "detail": "narrative_qa_failed"
+  },
+  "silent_prior_update_fallback": false
+}

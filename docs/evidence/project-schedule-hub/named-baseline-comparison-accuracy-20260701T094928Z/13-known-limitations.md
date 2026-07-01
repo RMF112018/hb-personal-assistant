@@ -1,23 +1,24 @@
-# Known Limitations (Phase 13A)
+# Known limitations — Phase 13B
 
-## Named baseline export memo (`narrative_qa_failed`)
+| ID | Issue | Class | PR impact | Production rollout |
+|----|-------|-------|-----------|-------------------|
+| L1 | Named export `current_contract_baseline` / `secondary_progress_update_baseline` returns **422** `narrative_qa_failed` | **P1** | Does not block core comparison-accuracy PR | Blocks full export sign-off |
+| L2 | Export `previous_progress_update_baseline` returns 200 but excerpt lacks explicit `comparison_basis` string | **P2** | Document only | Verify memo body in UI before rollout |
+| L3 | Legacy `comparison_basis=baseline` unavailable on Tropical (`baseline_unavailable`) | **Real-DB limitation** | Expected — named slots are primary path | N/A for Tropical |
+| L4 | Driver Detail API/UI lacks disposition fields (`review_status`, etc.) | **P2 / follow-up** | Not a blocker when Controls + Workbench prove comparison | Follow-up slice |
+| L5 | Controls `top_controls` expose `review_item_id` but often `review_status: null` | **Evidence-only** | Disposition proof via Workbench `psnbri-*` rows | Acceptable |
+| L6 | Frontend vitest: `ProjectSchedulePage` export spy expects no `comparisonBasis` (13A added param) | **Frontend-only** | Test fix follow-up | Non-blocking |
+| L7 | Tropical API requests slow on operator laptop (15–180s) | **Evidence-only** | Observability | N/A |
+| L8 | Browser shot `08-driver-detail-disposition` — disposition UI absent | **P2 / follow-up** | Manifest `loaded: false` acceptable | Follow-up |
 
-`GET /api/projects/tropical/schedule/export?comparison_basis=current_contract_baseline` returns **422** with `detail: narrative_qa_failed` on the Tropical real DB. Prior-update export succeeds (200). Drilldown and controls surfaces are named-aware; export QA gate needs a follow-up slice to accept named-baseline comparison summaries.
+## Export named-awareness (per 13B amendment)
 
-Captured in `api-export-markdown-current_contract_baseline.json`.
+| Basis | HTTP | Named-aware? | Notes |
+|-------|------|--------------|-------|
+| `prior_update` | 200 | yes | `includes_comparison_basis: true` in excerpt |
+| `baseline` | 200 | no | Legacy path; not available in controls anyway |
+| `current_contract_baseline` | 422 | fails safe | Explicit `narrative_qa_failed`; **no** silent prior-update fallback |
+| `previous_progress_update_baseline` | 200 | partial | 200 response; basis string not confirmed in excerpt |
+| `secondary_progress_update_baseline` | 422 | fails safe | Explicit `narrative_qa_failed` |
 
-## Legacy `baseline` controls unavailable on Tropical
-
-`comparison_basis=baseline` controls return `available: false` (no active legacy baseline selection for current as-of). Named slots are the supported baseline path on Tropical.
-
-## Workbench GET vs POST
-
-Named workbench **GET** returns preview scope with zero items until operator **POST** sync materializes cues. Evidence uses POST sync for cue-basis proof (`api-workbench-sync-*.json`) without additional PATCH mutations during 13A capture.
-
-## Performance on real DB
-
-Tropical controls/drilldown requests can exceed 15s per basis on the operator laptop; browser capture uses 180s load waits. This is observability-only, not a correctness defect.
-
-## Screenshot disposition state
-
-Shot `05-controls-disposition-item` captures the named workbench after Phase 13 sync materialization (open/watching items may appear). A dedicated controls-card disposition badge depends on top_controls linking to persisted named items — verify against `api-named-workbench-disposition-sample.json`.
+**Do not describe export as fully named-aware** until L1 is resolved or product accepts 422 as the safe degraded behavior for memo export.

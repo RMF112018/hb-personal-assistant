@@ -1,0 +1,55 @@
+{
+  "stamp": "2026-07-01T11:05:46Z",
+  "as_of": "2026-07-03",
+  "shots": [
+    {
+      "file": "01-schedule-hub-named-baselines.png",
+      "surface": "Schedule hub + Baseline Anchors",
+      "loaded": true
+    },
+    {
+      "file": "02-controls-current-contract-baseline.png",
+      "surface": "Controls current_contract_baseline",
+      "loaded": true
+    },
+    {
+      "file": "03-controls-previous-progress-baseline.png",
+      "surface": "Controls previous_progress_update_baseline",
+      "loaded": true
+    },
+    {
+      "file": "04-controls-secondary-progress-baseline.png",
+      "surface": "Controls secondary_progress_update_baseline",
+      "loaded": true
+    },
+    {
+      "file": "05-controls-disposition-item.png",
+      "surface": "Controls item linked to review disposition",
+      "loaded": true
+    },
+    {
+      "file": "06-workbench-named-baseline-filter.png",
+      "surface": "Workbench named-baseline filter",
+      "loaded": true
+    },
+    {
+      "file": "07-driver-detail-named-baseline.png",
+      "surface": "Driver detail named baseline context",
+      "loaded": true
+    },
+    {
+      "file": "08-driver-detail-disposition.png",
+      "surface": "Driver detail disposition (if present)",
+      "loaded": false,
+      "limitation": "P2 \u2014 Driver Detail disposition fields not implemented"
+    },
+    {
+      "file": "09-scope-isolation-prior-vs-named.png",
+      "surface": "prior_update vs named-baseline scope isolation",
+      "loaded": true,
+      "prior_movement_snippet": "461 remaining activities moved later in the comparison window.",
+      "named_movement_snippet": "593 remaining activities moved later in the comparison window."
+    }
+  ],
+  "fully_loaded_required": true
+}
