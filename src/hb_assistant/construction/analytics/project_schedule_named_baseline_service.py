@@ -181,6 +181,7 @@ class ProjectScheduleNamedBaselineService:
       "selection_status": "selected",
       "slot_key": slot_key,
       "slot_label": label_for_slot(slot_key),
+      "selection_id": row.get("selection_id"),
       "schedule_version_key": version_key,
       "schedule_data_date": _date_str(self._summary._data_date(version)) if version else None,
       "display_name": row.get("display_name") or self._friendly_label(version, version_key),

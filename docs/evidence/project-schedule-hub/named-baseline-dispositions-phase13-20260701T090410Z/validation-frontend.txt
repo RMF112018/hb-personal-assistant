@@ -1,0 +1,2270 @@
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-named-baseline-dispositions-phase13-20260701T090410Z/frontend
+
+ ✓ src/lib/scheduleApiAsOf.test.ts  (6 tests) 6ms
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ❯ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (5 tests | 1 failed) 1267ms
+   ❯ src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs named baseline review items for operators when slot is selected
+     → Found multiple elements with the text: /Named baseline review/
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<p[39m
+  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+[36m>[39m
+  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+  [0m As of 2026-07-03.[0m
+[36m</p>[39m
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"font-medium"[39m
+[36m>[39m
+  [0mNamed baseline review[0m
+[36m</div>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule Workbench[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+                  [0m As of 2026-07-03.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule?as_of=2026-07-03"[39m
+                [36m>[39m
+                  [0mBack to Schedule[0m
+                [36m</a>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (Markdown)[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (HTML)[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm"[39m
+              [33mrole[39m=[32m"status"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"font-medium"[39m
+              [36m>[39m
+                [0mNamed baseline review[0m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mComparing against Current Contract Baseline · 2026-06-01 · Contract baseline · As of 2026-07-03[0m
+              [36m</p>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mDispositions are saved separately from Prior Update and other named baseline anchors.[0m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge "[39m
+              [36m>[39m
+                [0mSince previous update[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge ring-1 ring-[var(--hb-border)]"[39m
+              [36m>[39m
+                [0mCurrent Contract Baseline[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card space-y-3"[39m
+            [36m>[39m
+              [36m<h4[39m
+                [33mclass[39m=[32m"text-sm font-semibold"[39m
+              [36m>[39m
+                [0mFilters[0m
+              [36m</h4>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"grid gap-3 md:grid-cols-2 xl:grid-cols-5"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mStatus[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"open"[39m
+                    [36m>[39m
+                      [0mopen[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"watching"[39m
+                    [36m>[39m
+                      [0mwatching[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"reviewed"[39m
+                    [36m>[39m
+                      [0mreviewed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"dismissed"[39m
+                    [36m>[39m
+                      [0mdismissed[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSeverity[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"critical"[39m
+                    [36m>[39m
+                      [0mcritical[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"high"[39m
+                    [36m>[39m
+                      [0mhigh[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"medium"[39m
+                    [36m>[39m
+                      [0mmedium[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"low"[39m
+                    [36m>[39m
+                      [0mlow[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSource metric[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"change_driver_analysis"[39m
+                    [36m>[39m
+                      [0mchange_driver_analysis[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"milestones"[39m
+                    [36m>[39m
+                      [0mmilestones[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mConfidence[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"production_backed"[39m
+                    [36m>[39m
+                      [0mproduction backed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"partial_dimension_support"[39m
+                    [36m>[39m
+                      [0mpartial dimension support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"sparse_support"[39m
+                    [36m>[39m
+                      [0msparse support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"readiness_only"[39m
+                    [36m>[39m
+                      [0mreadiness only[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"blocked"[39m
+                    [36m>[39m
+                      [0mblocked[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mPhase[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Phase 1"[39m
+                    [36m>[39m
+                      [0mPhase 1[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3"[39m
+            [36m>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m85[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mchange driver[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mCandidate change driver[0m
+                    [36m</h4>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCandidate driver sequence cue for PM review.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-sm"[39m
+                    [36m>[39m
+                      [0mReview the linked activity sequence and downstream movement before disposition.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-xs text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCanonical activity merged from primary.xer.[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m72[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mMilestone moved later: Substantial completion[0m
+                    [36m</h4>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=MS-1&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-[var(--hb-muted)]"[39m
+            [36m>[39m
+              [0mSequence cues only — not causation findings.[0m
+              [0m Dispositions persist by stable item key across schedule updates.[0m
+            [36m</p>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule Workbench[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+                  [0m As of 2026-07-03.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule?as_of=2026-07-03"[39m
+                [36m>[39m
+                  [0mBack to Schedule[0m
+                [36m</a>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (Markdown)[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (HTML)[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm"[39m
+              [33mrole[39m=[32m"status"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"font-medium"[39m
+              [36m>[39m
+                [0mNamed baseline review[0m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mComparing against Current Contract Baseline · 2026-06-01 · Contract baseline · As of 2026-07-03[0m
+              [36m</p>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mDispositions are saved separately from Prior Update and other named baseline anchors.[0m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge "[39m
+              [36m>[39m
+                [0mSince previous update[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge ring-1 ring-[var(--hb-border)]"[39m
+              [36m>[39m
+                [0mCurrent Contract Baseline[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card space-y-3"[39m
+            [36m>[39m
+              [36m<h4[39m
+                [33mclass[39m=[32m"text-sm font-semibold"[39m
+              [36m>[39m
+                [0mFilters[0m
+              [36m</h4>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"grid gap-3 md:grid-cols-2 xl:grid-cols-5"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mStatus[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"open"[39m
+                    [36m>[39m
+                      [0mopen[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"watching"[39m
+                    [36m>[39m
+                      [0mwatching[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"reviewed"[39m
+                    [36m>[39m
+                      [0mreviewed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"dismissed"[39m
+                    [36m>[39m
+                      [0mdismissed[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSeverity[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"critical"[39m
+                    [36m>[39m
+                      [0mcritical[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"high"[39m
+                    [36m>[39m
+                      [0mhigh[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"medium"[39m
+                    [36m>[39m
+                      [0mmedium[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"low"[39m
+                    [36m>[39m
+                      [0mlow[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSource metric[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"change_driver_analysis"[39m
+                    [36m>[39m
+                      [0mchange_driver_analysis[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"milestones"[39m
+                    [36m>[39m
+                      [0mmilestones[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mConfidence[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"production_backed"[39m
+                    [36m>[39m
+                      [0mproduction backed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"partial_dimension_support"[39m
+                    [36m>[39m
+                      [0mpartial dimension support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"sparse_support"[39m
+                    [36m>[39m
+                      [0msparse support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"readiness_only"[39m
+                    [36m>[39m
+                      [0mreadiness only[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"blocked"[39m
+                    [36m>[39m
+                      [0mblocked[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mPhase[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Phase 1"[39m
+                    [36m>[39m
+                      [0mPhase 1[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3"[39m
+            [36m>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m85[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mchange driver[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mCandidate change driver[0m
+                    [36m</h4>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCandidate driver sequence cue for PM review.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-sm"[39m
+                    [36m>[39m
+                      [0mReview the linked activity sequence and downstream movement before disposition.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-xs text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCanonical activity merged from primary.xer.[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m72[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mMilestone moved later: Substantial completion[0m
+                    [36m</h4>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=MS-1&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-[var(--hb-muted)]"[39m
+            [36m>[39m
+              [0mSequence cues only — not causation findings.[0m
+              [0m Dispositions persist by stable item key across schedule updates.[0m
+            [36m</p>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs named baseline review items for operators when slot is selected
+TestingLibraryElementError: Found multiple elements with the text: /Named baseline review/
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<p[39m
+  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+[36m>[39m
+  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+  [0m As of 2026-07-03.[0m
+[36m</p>[39m
+
+Ignored nodes: comments, script, style
+[36m<div[39m
+  [33mclass[39m=[32m"font-medium"[39m
+[36m>[39m
+  [0mNamed baseline review[0m
+[36m</div>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule Workbench[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+                  [0m As of 2026-07-03.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule?as_of=2026-07-03"[39m
+                [36m>[39m
+                  [0mBack to Schedule[0m
+                [36m</a>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (Markdown)[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (HTML)[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm"[39m
+              [33mrole[39m=[32m"status"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"font-medium"[39m
+              [36m>[39m
+                [0mNamed baseline review[0m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mComparing against Current Contract Baseline · 2026-06-01 · Contract baseline · As of 2026-07-03[0m
+              [36m</p>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mDispositions are saved separately from Prior Update and other named baseline anchors.[0m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge "[39m
+              [36m>[39m
+                [0mSince previous update[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge ring-1 ring-[var(--hb-border)]"[39m
+              [36m>[39m
+                [0mCurrent Contract Baseline[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card space-y-3"[39m
+            [36m>[39m
+              [36m<h4[39m
+                [33mclass[39m=[32m"text-sm font-semibold"[39m
+              [36m>[39m
+                [0mFilters[0m
+              [36m</h4>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"grid gap-3 md:grid-cols-2 xl:grid-cols-5"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mStatus[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"open"[39m
+                    [36m>[39m
+                      [0mopen[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"watching"[39m
+                    [36m>[39m
+                      [0mwatching[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"reviewed"[39m
+                    [36m>[39m
+                      [0mreviewed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"dismissed"[39m
+                    [36m>[39m
+                      [0mdismissed[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSeverity[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"critical"[39m
+                    [36m>[39m
+                      [0mcritical[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"high"[39m
+                    [36m>[39m
+                      [0mhigh[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"medium"[39m
+                    [36m>[39m
+                      [0mmedium[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"low"[39m
+                    [36m>[39m
+                      [0mlow[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSource metric[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"change_driver_analysis"[39m
+                    [36m>[39m
+                      [0mchange_driver_analysis[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"milestones"[39m
+                    [36m>[39m
+                      [0mmilestones[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mConfidence[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"production_backed"[39m
+                    [36m>[39m
+                      [0mproduction backed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"partial_dimension_support"[39m
+                    [36m>[39m
+                      [0mpartial dimension support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"sparse_support"[39m
+                    [36m>[39m
+                      [0msparse support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"readiness_only"[39m
+                    [36m>[39m
+                      [0mreadiness only[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"blocked"[39m
+                    [36m>[39m
+                      [0mblocked[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mPhase[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Phase 1"[39m
+                    [36m>[39m
+                      [0mPhase 1[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3"[39m
+            [36m>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m85[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mchange driver[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mCandidate change driver[0m
+                    [36m</h4>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCandidate driver sequence cue for PM review.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-sm"[39m
+                    [36m>[39m
+                      [0mReview the linked activity sequence and downstream movement before disposition.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-xs text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCanonical activity merged from primary.xer.[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m72[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mMilestone moved later: Substantial completion[0m
+                    [36m</h4>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=MS-1&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-[var(--hb-muted)]"[39m
+            [36m>[39m
+              [0mSequence cues only — not causation findings.[0m
+              [0m Dispositions persist by stable item key across schedule updates.[0m
+            [36m</p>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule Workbench[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mNamed baseline review — sync and disposition for Current Contract Baseline.[0m
+                  [0m As of 2026-07-03.[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule?as_of=2026-07-03"[39m
+                [36m>[39m
+                  [0mBack to Schedule[0m
+                [36m</a>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (Markdown)[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mExport Memo (HTML)[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm"[39m
+              [33mrole[39m=[32m"status"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"font-medium"[39m
+              [36m>[39m
+                [0mNamed baseline review[0m
+              [36m</div>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mComparing against Current Contract Baseline · 2026-06-01 · Contract baseline · As of 2026-07-03[0m
+              [36m</p>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"mt-1 text-xs text-[var(--hb-muted)]"[39m
+              [36m>[39m
+                [0mDispositions are saved separately from Prior Update and other named baseline anchors.[0m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge "[39m
+              [36m>[39m
+                [0mSince previous update[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"badge ring-1 ring-[var(--hb-border)]"[39m
+              [36m>[39m
+                [0mCurrent Contract Baseline[0m
+              [36m</button>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card space-y-3"[39m
+            [36m>[39m
+              [36m<h4[39m
+                [33mclass[39m=[32m"text-sm font-semibold"[39m
+              [36m>[39m
+                [0mFilters[0m
+              [36m</h4>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"grid gap-3 md:grid-cols-2 xl:grid-cols-5"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mStatus[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"open"[39m
+                    [36m>[39m
+                      [0mopen[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"watching"[39m
+                    [36m>[39m
+                      [0mwatching[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"reviewed"[39m
+                    [36m>[39m
+                      [0mreviewed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"dismissed"[39m
+                    [36m>[39m
+                      [0mdismissed[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSeverity[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"critical"[39m
+                    [36m>[39m
+                      [0mcritical[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"high"[39m
+                    [36m>[39m
+                      [0mhigh[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"medium"[39m
+                    [36m>[39m
+                      [0mmedium[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"low"[39m
+                    [36m>[39m
+                      [0mlow[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mSource metric[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"change_driver_analysis"[39m
+                    [36m>[39m
+                      [0mchange_driver_analysis[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"milestones"[39m
+                    [36m>[39m
+                      [0mmilestones[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mConfidence[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"production_backed"[39m
+                    [36m>[39m
+                      [0mproduction backed[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"partial_dimension_support"[39m
+                    [36m>[39m
+                      [0mpartial dimension support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"sparse_support"[39m
+                    [36m>[39m
+                      [0msparse support[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"readiness_only"[39m
+                    [36m>[39m
+                      [0mreadiness only[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"blocked"[39m
+                    [36m>[39m
+                      [0mblocked[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"text-xs"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"mb-1 block text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mPhase[0m
+                  [36m</span>[39m
+                  [36m<select[39m
+                    [33mclass[39m=[32m"w-full rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                  [36m>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m""[39m
+                    [36m>[39m
+                      [0mAll[0m
+                    [36m</option>[39m
+                    [36m<option[39m
+                      [33mvalue[39m=[32m"Phase 1"[39m
+                    [36m>[39m
+                      [0mPhase 1[0m
+                    [36m</option>[39m
+                  [36m</select>[39m
+                [36m</label>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-3"[39m
+            [36m>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m85[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mchange driver[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mCandidate change driver[0m
+                    [36m</h4>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCandidate driver sequence cue for PM review.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-sm"[39m
+                    [36m>[39m
+                      [0mReview the linked activity sequence and downstream movement before disposition.[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"mt-2 text-xs text-[var(--hb-muted)]"[39m
+                    [36m>[39m
+                      [0mCanonical activity merged from primary.xer.[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+              [36m<article[39m
+                [33mclass[39m=[32m"card "[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1"[39m
+                  [36m>[39m
+                    [36m<div[39m
+                      [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+                    [36m>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mP[0m
+                        [0m72[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge capitalize"[39m
+                      [36m>[39m
+                        [0mhigh[0m
+                      [36m</span>[39m
+                      [36m<span[39m
+                        [33mclass[39m=[32m"badge"[39m
+                      [36m>[39m
+                        [0mproduction backed[0m
+                      [36m</span>[39m
+                    [36m</div>[39m
+                    [36m<h4[39m
+                      [33mclass[39m=[32m"mt-2 font-semibold"[39m
+                    [36m>[39m
+                      [0mMilestone moved later: Substantial completion[0m
+                    [36m</h4>[39m
+                  [36m</div>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex flex-col gap-2 sm:flex-row sm:items-center"[39m
+                  [36m>[39m
+                    [36m<button[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mtype[39m=[32m"button"[39m
+                    [36m>[39m
+                      [0mShow detail[0m
+                    [36m</button>[39m
+                    [36m<a[39m
+                      [33mclass[39m=[32m"badge"[39m
+                      [33mhref[39m=[32m"/projects/tropical/schedule/driver-detail?activity_id=MS-1&comparison_basis=current_contract_baseline&as_of=2026-07-03"[39m
+                    [36m>[39m
+                      [0mOpen Driver Detail[0m
+                    [36m</a>[39m
+                    [36m<select[39m
+                      [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-black/20 px-2 py-1 text-sm"[39m
+                    [36m>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"open"[39m
+                      [36m>[39m
+                        [0mopen[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"watching"[39m
+                      [36m>[39m
+                        [0mwatching[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"reviewed"[39m
+                      [36m>[39m
+                        [0mreviewed[0m
+                      [36m</option>[39m
+                      [36m<option[39m
+                        [33mvalue[39m=[32m"dismissed"[39m
+                      [36m>[39m
+                        [0mdismissed[0m
+                      [36m</option>[39m
+                    [36m</select>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</article>[39m
+            [36m</div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-[var(--hb-muted)]"[39m
+            [36m>[39m
+              [0mSequence cues only — not causation findings.[0m
+              [0m Dispositions persist by stable item key across schedule updates.[0m
+            [36m</p>[39m
+          [36m</section>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/ProjectScheduleWorkbenchPage.test.tsx:234:25
+    232|       }))
+    233|     })
+    234|     expect(await screen.findByText(/Named baseline review/)).toBeInThe…
+       |                         ^
+    235|     expect(screen.queryByText(/Named baseline preview — read only/i)).…
+    236|     expect(screen.getByText(/Comparing against Current Contract Baseli…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 10 passed (11)
+   Start at  05:31:25
+   Duration  2.03s (transform 110ms, setup 103ms, collect 209ms, tests 1.27s, environment 552ms, prepare 262ms)
+

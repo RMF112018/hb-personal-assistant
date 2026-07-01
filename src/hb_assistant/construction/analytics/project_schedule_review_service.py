@@ -21,6 +21,7 @@ _QUEUE_LIMIT = 100
 
 class ProjectScheduleReviewService:
     def __init__(self, *, db_path: str) -> None:
+        self._db_path = db_path
         self._repo = ProjectScheduleHubRepository(db_path=db_path)
         from .project_schedule_review_cue_service import ProjectScheduleReviewCueService
 
@@ -315,6 +316,31 @@ class ProjectScheduleReviewService:
         }
 
     def get_item_detail(self, *, review_item_id: str) -> dict[str, Any]:
+        from hb_assistant.store.project_schedule_named_baseline_review_repository import (
+            ProjectScheduleNamedBaselineReviewRepository,
+        )
+
+        if ProjectScheduleNamedBaselineReviewRepository.is_named_review_item_id(review_item_id):
+            from .project_schedule_named_baseline_review_service import (
+                ProjectScheduleNamedBaselineReviewService,
+            )
+
+            named = ProjectScheduleNamedBaselineReviewService(db_path=self._db_path)
+            row = named._repo.get_review_item(review_item_id=review_item_id)
+            if not row:
+                raise ValueError("review_item_not_found")
+            events = named._repo.list_review_item_events(review_item_id=review_item_id, limit=100)
+            item = self._public_item(row)
+            return {
+                "available": True,
+                "item": item,
+                "events": events,
+                "lineage": {
+                    "lineage": item.get("lineage"),
+                    "new_since_last_review": item.get("new_since_last_review"),
+                    "still_open_from_prior": item.get("still_open_from_prior"),
+                },
+            }
         row = self._repo.get_review_item(review_item_id=review_item_id)
         if not row:
             raise ValueError("review_item_not_found")
@@ -333,6 +359,20 @@ class ProjectScheduleReviewService:
         }
 
     def list_item_events(self, *, review_item_id: str, limit: int = 100, offset: int = 0) -> dict[str, Any]:
+        from hb_assistant.store.project_schedule_named_baseline_review_repository import (
+            ProjectScheduleNamedBaselineReviewRepository,
+        )
+
+        if ProjectScheduleNamedBaselineReviewRepository.is_named_review_item_id(review_item_id):
+            from .project_schedule_named_baseline_review_service import (
+                ProjectScheduleNamedBaselineReviewService,
+            )
+
+            return ProjectScheduleNamedBaselineReviewService(db_path=self._db_path).list_item_events(
+                review_item_id=review_item_id,
+                limit=limit,
+                offset=offset,
+            )
         row = self._repo.get_review_item(review_item_id=review_item_id)
         if not row:
             raise ValueError("review_item_not_found")
@@ -357,6 +397,21 @@ class ProjectScheduleReviewService:
         pm_notes: str | None = None,
         reviewed_by_operator: str | None = None,
     ) -> dict[str, Any]:
+        from hb_assistant.store.project_schedule_named_baseline_review_repository import (
+            ProjectScheduleNamedBaselineReviewRepository,
+        )
+
+        if ProjectScheduleNamedBaselineReviewRepository.is_named_review_item_id(review_item_id):
+            from .project_schedule_named_baseline_review_service import (
+                ProjectScheduleNamedBaselineReviewService,
+            )
+
+            return ProjectScheduleNamedBaselineReviewService(db_path=self._db_path).update_item(
+                review_item_id=review_item_id,
+                review_status=review_status,
+                pm_notes=pm_notes,
+                reviewed_by_operator=reviewed_by_operator,
+            )
         updated = self._repo.update_review_item(
             review_item_id=review_item_id,
             review_status=review_status,

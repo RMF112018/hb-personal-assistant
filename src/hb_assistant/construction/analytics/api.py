@@ -1556,8 +1556,8 @@ def create_app(*, db_path: str | None = None) -> Any:
                 comparison_basis=comparison_basis,
             )
         except ValueError as exc:
-            if str(exc) == "named_baseline_sync_not_supported":
-                raise HTTPException(status_code=400, detail="named_baseline_sync_not_supported") from exc
+            if str(exc) in {"baseline_not_selected", "baseline_invalid"}:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             raise
         return {"available": workbench.get("available", True), "workbench": workbench}
 

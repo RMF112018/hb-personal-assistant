@@ -128,7 +128,6 @@ export function ProjectScheduleWorkbenchPage() {
   const [phaseFilter, setPhaseFilter] = useState('')
 
   const namedPreview = isNamedWorkbenchBasis(comparisonBasis)
-  const canSyncWorkbench = canSync && !namedPreview
 
   const baselinesQuery = useQuery({
     queryKey: ['project', 'schedule', 'baselines', projectKey, asOfDate],
@@ -144,6 +143,19 @@ export function ProjectScheduleWorkbenchPage() {
     const slots = Array.isArray((baselinesQuery.data as any)?.slots) ? (baselinesQuery.data as any).slots : []
     return slots.filter((slot: any) => slot.status === 'selected')
   }, [baselinesQuery.data])
+
+  const activeNamedSlot = useMemo(() => {
+    if (!namedPreview) return null
+    return (
+      selectedNamedSlots.find((slot: any) => String(slot.slot_key) === comparisonBasis) || {
+        slot_label: labelForComparisonBasis(comparisonBasis),
+        selection: null,
+        status: 'missing',
+      }
+    )
+  }, [comparisonBasis, namedPreview, selectedNamedSlots])
+  const namedSlotReady = !namedPreview || activeNamedSlot?.status === 'selected'
+  const canSyncWorkbench = canSync && (!namedPreview || namedSlotReady)
 
   const selectComparisonBasis = (basis: ReviewWorkbenchComparisonBasis) => {
     setComparisonBasis(basis)
@@ -215,17 +227,8 @@ export function ProjectScheduleWorkbenchPage() {
   const envelope = (data || {}) as Record<string, any>
   const workbench = (envelope.workbench || {}) as Record<string, any>
   const items = Array.isArray(envelope.items) ? envelope.items : []
-  const readOnlyNamedPreview = namedPreview || Boolean(workbench.read_only_baseline_preview)
-  const activeNamedSlot = useMemo(() => {
-    if (!namedPreview) return null
-    return (
-      selectedNamedSlots.find((slot: any) => String(slot.slot_key) === comparisonBasis) || {
-        slot_label: labelForComparisonBasis(comparisonBasis),
-        selection: null,
-        status: 'missing',
-      }
-    )
-  }, [comparisonBasis, namedPreview, selectedNamedSlots])
+  const readOnlyNamedPreview =
+    Boolean(workbench.read_only_baseline_preview) || (namedPreview && !namedSlotReady)
   const namedComparisonLine = namedPreview
     ? formatNamedComparisonContextLine({
         slotLabel: activeNamedSlot?.slot_label || labelForComparisonBasis(comparisonBasis),
@@ -279,15 +282,17 @@ export function ProjectScheduleWorkbenchPage() {
           <div>
             <h3 className="section-title mb-0">Schedule Workbench</h3>
             <p className="mt-1 text-sm text-[var(--hb-muted)]">
-              {readOnlyNamedPreview
-                ? 'Live preview for named baseline comparison — dispositions are not persisted.'
-                : 'Persisted PM review queue with disposition carry-forward across updates.'}
+              {namedPreview && namedSlotReady
+                ? `Named baseline review — sync and disposition for ${labelForComparisonBasis(comparisonBasis)}.`
+                : readOnlyNamedPreview
+                  ? 'Live preview for named baseline comparison — select a valid baseline anchor to persist dispositions.'
+                  : 'Persisted PM review queue with disposition carry-forward across updates.'}
               {asOfDate ? ` As of ${asOfDate}.` : ''}
             </p>
             {!canSyncWorkbench && (
               <p className="mt-1 text-xs text-[var(--hb-muted)]">
-                {namedPreview
-                  ? 'Named baseline workbench is read-only preview.'
+                {namedPreview && !namedSlotReady
+                  ? 'Select a valid named baseline anchor on the Schedule hub before syncing review cues.'
                   : 'Preview only — operator access is required to sync and update dispositions.'}
               </p>
             )}
@@ -322,16 +327,33 @@ export function ProjectScheduleWorkbenchPage() {
             className="rounded border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
             role="status"
           >
-            <div className="font-medium text-amber-200">Named baseline preview — read only</div>
+            <div className="font-medium text-amber-200">
+              {namedPreview && !namedSlotReady
+                ? 'Named baseline not ready'
+                : 'Selected baseline preview — read only'}
+            </div>
             <p className="mt-1 text-[var(--hb-muted)]">
-              This Workbench view compares against a named baseline anchor. Review signals are shown for PM
-              preview only — disposition sync and status updates are disabled until you switch to Prior Update.
+              {namedPreview && !namedSlotReady
+                ? 'This named baseline anchor is missing or invalid. Choose a baseline on the Schedule hub, then return here to sync review cues.'
+                : 'This Workbench view compares against the legacy selected baseline. Review signals are preview only — switch to Prior Update or a named baseline anchor to persist dispositions.'}
             </p>
             {namedComparisonLine ? (
               <p className="mt-2 text-xs text-[var(--hb-muted)]">{namedComparisonLine}</p>
             ) : null}
           </div>
         )}
+
+        {namedPreview && namedSlotReady && !readOnlyNamedPreview ? (
+          <div className="rounded border border-[var(--hb-border)] bg-black/20 px-4 py-3 text-sm" role="status">
+            <div className="font-medium">Named baseline review</div>
+            {namedComparisonLine ? (
+              <p className="mt-1 text-xs text-[var(--hb-muted)]">{namedComparisonLine}</p>
+            ) : null}
+            <p className="mt-1 text-xs text-[var(--hb-muted)]">
+              Dispositions are saved separately from Prior Update and other named baseline anchors.
+            </p>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <button

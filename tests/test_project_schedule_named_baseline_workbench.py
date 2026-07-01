@@ -173,7 +173,8 @@ def test_review_items_named_selected_live_preview(tmp_path: Path) -> None:
     workbench = body["workbench"]
     assert workbench["comparison_basis"] == "current_contract_baseline"
     assert workbench.get("synced") is False
-    assert workbench.get("read_only_baseline_preview") is True
+    assert workbench.get("read_only_baseline_preview") is False
+    assert workbench.get("review_scope") == "named_baseline"
     assert workbench["baseline_context"]["schedule_version_key"] == "tropical|S1|2026-06-01"
 
 
@@ -213,7 +214,7 @@ def test_review_items_named_skips_disposition_carry_forward(tmp_path: Path) -> N
     assert all(item.get("review_status") == "open" for item in driver_items)
 
 
-def test_post_named_baseline_sync_not_supported(tmp_path: Path) -> None:
+def test_post_named_baseline_sync_supported(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
     _seed_driver_chain(db)
     _select_named_contract_baseline(db)
@@ -222,8 +223,11 @@ def test_post_named_baseline_sync_not_supported(tmp_path: Path) -> None:
         headers=_operator(),
         params={"comparison_basis": "current_contract_baseline", "as_of": "2026-07-03"},
     )
-    assert response.status_code == 400
-    assert response.json()["detail"] == "named_baseline_sync_not_supported"
+    assert response.status_code == 200
+    body = response.json()
+    assert body["workbench"]["review_scope"] == "named_baseline"
+    assert body["workbench"]["synced"] is True
+    assert body["workbench"]["read_only_baseline_preview"] is False
 
 
 def test_post_unknown_basis_returns_400(tmp_path: Path) -> None:

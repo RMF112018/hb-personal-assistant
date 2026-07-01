@@ -96,6 +96,17 @@ class ProjectScheduleSummaryService:
         self._imports = ScheduleImportRepository(db_path=db_path)
         self._canonical_metrics = ProjectScheduleCanonicalMetricService(db_path=db_path)
         self._stage_timings: list[dict[str, Any]] = []
+        self._named_review: Any = None
+
+    @property
+    def _named_baseline_review(self) -> Any:
+        if self._named_review is None:
+            from .project_schedule_named_baseline_review_service import (
+                ProjectScheduleNamedBaselineReviewService,
+            )
+
+            self._named_review = ProjectScheduleNamedBaselineReviewService(db_path=self._db_path)
+        return self._named_review
 
     def build_summary(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any]:
         self._stage_timings = []
@@ -1075,26 +1086,44 @@ class ProjectScheduleSummaryService:
                 "reason": str((context.get("baseline_summary") or {}).get("reason") or "baseline_unavailable"),
                 "comparison_basis": resolved.comparison_basis,
             }
-        named_preview = resolved.source_model == "named_slot"
-        workbench = self._review.build_preview(
-            project_key=context["project_key"],
-            schedule_version_key=context["schedule_version_key"],
-            driver_analysis=context.get("driver_analysis"),
-            milestones=context.get("milestones"),
-            remaining_health=context.get("remaining_health"),
-            cpm_summary=context.get("cpm_summary"),
-            change_impact=context.get("change_impact"),
-            remaining_activities=context.get("remaining_activities"),
-            comparison_basis=resolved.preview_basis,
-            as_of_date=context.get("as_of_date"),
-            baseline_summary=context.get("baseline_summary"),
-            include_activity_metric_cues=True,
-            response_comparison_basis=resolved.comparison_basis,
-            carry_forward_disposition=not named_preview,
-        )
-        if named_preview:
-            workbench["synced"] = False
-            workbench["read_only_baseline_preview"] = True
+        if resolved.source_model == "named_slot":
+            scope = self._named_baseline_review.scope_from_context(
+                project_key=context["project_key"],
+                current_schedule_version_key=context["schedule_version_key"],
+                comparison_basis=resolved.comparison_basis,
+                baseline_context=baseline_context or {},
+                as_of_date=context.get("as_of_date"),
+                schedule_data_date=context.get("schedule_data_date"),
+            )
+            workbench = self._named_baseline_review.build_preview(
+                scope=scope,
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                as_of_date=context.get("as_of_date"),
+                baseline_summary=context.get("baseline_summary"),
+                comparison_basis=resolved.comparison_basis,
+            )
+        else:
+            workbench = self._review.build_preview(
+                project_key=context["project_key"],
+                schedule_version_key=context["schedule_version_key"],
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                comparison_basis=resolved.preview_basis,
+                as_of_date=context.get("as_of_date"),
+                baseline_summary=context.get("baseline_summary"),
+                include_activity_metric_cues=True,
+                response_comparison_basis=resolved.comparison_basis,
+                carry_forward_disposition=True,
+            )
         items = workbench.get("items") or []
         items = self._review.filter_items(
             items,
@@ -1134,7 +1163,41 @@ class ProjectScheduleSummaryService:
 
         resolved = resolve_workbench_comparison_basis(comparison_basis)
         if resolved.source_model == "named_slot":
-            raise ValueError("named_baseline_sync_not_supported")
+            try:
+                context, baseline_context = self.build_resolved_hub_context(
+                    project_key,
+                    resolved=resolved,
+                    as_of=as_of,
+                )
+            except ValueError as exc:
+                reason = str(exc)
+                if reason in {"baseline_not_selected", "baseline_invalid"}:
+                    raise
+                raise
+            if not context:
+                return {"available": False, "reason": "no_schedule", "comparison_basis": resolved.comparison_basis}
+            scope = self._named_baseline_review.scope_from_context(
+                project_key=context["project_key"],
+                current_schedule_version_key=context["schedule_version_key"],
+                comparison_basis=resolved.comparison_basis,
+                baseline_context=baseline_context or {},
+                as_of_date=context.get("as_of_date"),
+                schedule_data_date=context.get("schedule_data_date"),
+            )
+            workbench = self._named_baseline_review.sync_and_list(
+                scope=scope,
+                driver_analysis=context.get("driver_analysis"),
+                milestones=context.get("milestones"),
+                remaining_health=context.get("remaining_health"),
+                cpm_summary=context.get("cpm_summary"),
+                change_impact=context.get("change_impact"),
+                remaining_activities=context.get("remaining_activities"),
+                as_of_date=context.get("as_of_date"),
+                baseline_summary=context.get("baseline_summary"),
+                comparison_basis=resolved.comparison_basis,
+            )
+            workbench["baseline_context"] = baseline_context
+            return workbench
         context = self._review_workbench_context(project_key, as_of=as_of)
         if not context:
             return {"available": False, "reason": "no_schedule"}
@@ -1501,6 +1564,7 @@ class ProjectScheduleSummaryService:
             "slot_key": slot_key,
             "slot_label": str(resolution.get("slot_label") or label_for_slot(slot_key)),
             "selection_status": str(resolution.get("selection_status") or "missing"),
+            "selection_id": resolution.get("selection_id"),
             "schedule_version_key": resolution.get("schedule_version_key"),
             "schedule_data_date": resolution.get("schedule_data_date"),
             "display_name": resolution.get("display_name"),

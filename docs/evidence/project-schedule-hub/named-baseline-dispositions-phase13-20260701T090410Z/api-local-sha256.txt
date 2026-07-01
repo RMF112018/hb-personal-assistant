@@ -1,0 +1,9 @@
+# SHA-256 of pre-slim full captures (local-only archive)
+57beba9d06acafb15b88b486877c68eaf680a869115924fc9d816c20e6207215  api-cross-slot-isolation.json
+7a6a03f6191ce5d44df8d3c23e36607d9336808ec75cfa8426b848f47cd33847  api-legacy-baseline-regression.json
+bfbf886f315ced2ed0b129fd71c563bcf81ba027ea240609ca7637f4ae0d266c  api-named-workbench-after-patch.json
+5b2b520c9e02921e79f56effbc2fb22169d8967b7ffc24d2873caf37210e812b  api-named-workbench-after-sync.json
+89158b0275eebecefe8b5573525bcbbbe44b59ab57f9565140d9585c679055e2  api-named-workbench-before-sync.json
+926483332b43afd8970945db2dab9bc5471d56d8303b20da576af78dfd9ad5e2  api-named-workbench-patch.json
+b647096ca731777c907836e4fb9c7ed3de8dff00263c98bd1f52bb627c3d00fc  api-named-workbench-sync.json
+615fcb8aed0d2837300ffe221a5539c386560f95f9ac72a1ab166cd46478d8c2  api-prior-update-regression.json
