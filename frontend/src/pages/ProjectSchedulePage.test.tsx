@@ -571,6 +571,7 @@ describe('ProjectSchedulePage', () => {
         limit: 100,
         offset: 0,
         asOf: '2026-06-16',
+        comparisonBasis: 'prior_update',
       })
     })
 
@@ -774,7 +775,7 @@ describe('ProjectSchedulePage', () => {
     })
   })
 
-  it('keeps workbench driver basis separate from controls comparison basis', async () => {
+  it('propagates driver comparison basis to controls and driver detail links', async () => {
     const user = userEvent.setup()
     renderPage(
       scheduleResponse({
@@ -798,9 +799,11 @@ describe('ProjectSchedulePage', () => {
     )
 
     await user.click(await screen.findByRole('button', { name: 'Since selected baseline' }))
-    expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
-      asOf: undefined,
-      comparisonBasis: 'prior_update',
+    await waitFor(() => {
+      expect(getProjectScheduleControlsMock).toHaveBeenLastCalledWith('tropical', {
+        asOf: undefined,
+        comparisonBasis: 'baseline',
+      })
     })
     const driverLink = await screen.findByRole('link', { name: 'Envelope Completion' })
     expect(driverLink).toHaveAttribute('href', expect.stringContaining('basis=baseline'))

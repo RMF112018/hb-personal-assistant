@@ -113,7 +113,32 @@ class ProjectScheduleMemoService:
             "export_warnings": export_warnings,
             "comparison_basis": summary.get("comparison_basis"),
             "export_comparison_context": export_ctx,
+            "analytics_trust": summary.get("analytics_trust"),
         }
+
+    @staticmethod
+    def _analytics_trust_section_lines(trust: dict[str, Any]) -> list[str]:
+        if not trust:
+            return []
+        lines = [
+            "## Analytics Trust",
+            "",
+            f"- Status: {trust.get('analytics_trust_status') or 'unknown'}",
+        ]
+        reasons = trust.get("trust_reasons") or []
+        if reasons:
+            lines.append("- Trust notes:")
+            for reason in reasons[:8]:
+                lines.append(f"  - {reason}")
+        limitations = trust.get("capability_limitations") or []
+        if limitations:
+            lines.append("- Capability limitations:")
+            for item in limitations[:4]:
+                lines.append(f"  - {item}")
+        if trust.get("failure_message_redacted"):
+            lines.append(f"- CPM note: {trust.get('failure_message_redacted')}")
+        lines.append("")
+        return lines
 
     @staticmethod
     def _comparison_context_section_lines(ctx: dict[str, Any]) -> list[str]:
@@ -257,6 +282,9 @@ class ProjectScheduleMemoService:
         export_ctx = summary.get("export_comparison_context")
         if _export_comparison_context_complete(export_ctx):
             lines.extend(self._comparison_context_section_lines(export_ctx))
+        analytics_trust = summary.get("analytics_trust") or {}
+        if analytics_trust:
+            lines.extend(self._analytics_trust_section_lines(analytics_trust))
         if variant == "executive":
             lines.extend(
                 [

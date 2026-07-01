@@ -356,16 +356,23 @@ export function getProjectScheduleMetricTrends(
 export function getProjectScheduleDrivers(
   projectKey: string,
   drilldownType: string,
-  opts?: { limit?: number; offset?: number; asOf?: string; driverActivityId?: string },
+  opts?: {
+    limit?: number
+    offset?: number
+    asOf?: string
+    driverActivityId?: string
+    comparisonBasis?: string
+  },
 ) {
-  const params = new URLSearchParams({ type: drilldownType });
-  if (opts?.limit != null) params.set('limit', String(opts.limit));
-  if (opts?.offset != null) params.set('offset', String(opts.offset));
-  if (opts?.asOf) params.set('as_of', opts.asOf);
-  if (opts?.driverActivityId) params.set('driver_activity_id', opts.driverActivityId);
+  const params = new URLSearchParams({ type: drilldownType })
+  if (opts?.limit != null) params.set('limit', String(opts.limit))
+  if (opts?.offset != null) params.set('offset', String(opts.offset))
+  if (opts?.asOf) params.set('as_of', opts.asOf)
+  if (opts?.driverActivityId) params.set('driver_activity_id', opts.driverActivityId)
+  if (opts?.comparisonBasis) params.set('comparison_basis', opts.comparisonBasis)
   return fetchJson(
     `/api/projects/${encodeURIComponent(projectKey)}/schedule/drivers?${params.toString()}`,
-  );
+  )
 }
 export function getProjectScheduleDrilldown(
   projectKey: string,

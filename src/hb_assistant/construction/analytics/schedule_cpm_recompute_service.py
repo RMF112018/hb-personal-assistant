@@ -230,6 +230,13 @@ def _optional_int(value: Any) -> int | None:
 
 
 def _public_observability_fields(row: dict[str, Any]) -> dict[str, Any]:
+    from hb_assistant.construction.analytics.schedule_cpm_trust import public_cpm_trust_fields
+
+    trust = public_cpm_trust_fields(
+        observability=row,
+        cpm_recompute_status=str(row.get("status") or "unavailable"),
+        trigger_source=str(row.get("trigger_source") or "") or None,
+    )
     return {
         "import_id": row.get("import_id"),
         "package_id": row.get("package_id"),
@@ -243,9 +250,9 @@ def _public_observability_fields(row: dict[str, Any]) -> dict[str, Any]:
         "started_at": row.get("started_at"),
         "finished_at": row.get("finished_at"),
         "duration_ms": row.get("duration_ms"),
-        "failure_code": row.get("failure_code"),
-        "failure_message": row.get("failure_message"),
-        "failed_step": row.get("failed_step"),
+        "failure_code": trust.get("failure_code"),
+        "failed_step": trust.get("failed_step"),
+        "failure_message_redacted": trust.get("failure_message_redacted"),
+        "cpm_trust_status": trust.get("cpm_trust_status"),
         "cpm_run_id": row.get("cpm_run_id"),
-        "diagnostics": row.get("diagnostics") or {},
     }

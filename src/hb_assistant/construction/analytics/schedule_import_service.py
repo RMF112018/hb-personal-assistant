@@ -1454,6 +1454,7 @@ class ScheduleImportService:
         from .schedule_project_catalog import ScheduleProjectCatalog
 
         catalog = ScheduleProjectCatalog(db_path=self._db_path)
+        cpm_observability = cpm_result.get("cpm_observability") or {}
         return {
             "import_id": import_id,
             "project_key": project_key,
@@ -1487,8 +1488,10 @@ class ScheduleImportService:
             "computed_near_critical_activity_count": cpm_result.get("computed_near_critical_activity_count"),
             "longest_path_available": cpm_result.get("longest_path_available"),
             "diagnostics_count": cpm_result.get("diagnostics_count"),
-            "cpm_failure_reason": cpm_result.get("failure_reason"),
-            "cpm_observability": cpm_result.get("cpm_observability"),
+            "failure_code": cpm_observability.get("failure_code"),
+            "failed_step": cpm_observability.get("failed_step"),
+            "failure_message_redacted": cpm_observability.get("failure_message_redacted"),
+            "cpm_observability": cpm_observability,
             "canonical_input_activity_count": cpm_result.get("canonical_input_activity_count"),
             "canonical_input_relationship_count": cpm_result.get("canonical_input_relationship_count"),
             "graph_node_count": cpm_result.get("graph_node_count"),

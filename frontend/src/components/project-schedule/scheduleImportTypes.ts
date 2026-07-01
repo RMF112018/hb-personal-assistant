@@ -86,7 +86,7 @@ export type ProjectScheduleImportStatus = {
   cpm?: {
     cpm_recompute_status?: string
     failure_code?: string
-    failure_message?: string
+    failure_message_redacted?: string
     failed_step?: string
     canonical_input_activity_count?: number
     canonical_input_relationship_count?: number
@@ -108,6 +108,8 @@ export type ProjectScheduleImportCommitResult = {
   canonical_input_activity_count?: number
   canonical_input_relationship_count?: number
   cpm_failure_reason?: string
+  failure_message_redacted?: string
+  analytics_trust?: Record<string, unknown>
   pipeline?: ProjectScheduleImportStatus
   supersede_performed?: boolean
   [key: string]: unknown

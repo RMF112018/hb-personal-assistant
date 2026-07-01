@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from hb_assistant.construction.analytics.project_schedule_analytics_trust_service import (
+    ledger_from_import_preview,
+    ledger_from_pipeline_status,
+    normalize_quality_status,
+)
 from hb_assistant.construction.analytics.schedule_cpm_read_service import ScheduleCpmReadService
+from hb_assistant.construction.analytics.schedule_cpm_trust import public_cpm_trust_fields
 from hb_assistant.construction.analytics.schedule_cpm_recompute_service import (
     ScheduleCpmRecomputeService,
 )
@@ -73,6 +79,7 @@ class ProjectScheduleImportPipelineService:
         out = dict(preview)
         out["pipeline_scope"] = "project_schedule_import"
         out["trust_preview"] = trust_preview
+        out["analytics_trust"] = ledger_from_import_preview(preview, trust_preview=trust_preview)
         out["parse_stage_status"] = "complete"
         return out
 
@@ -98,6 +105,7 @@ class ProjectScheduleImportPipelineService:
         out["pipeline_scope"] = "project_schedule_import"
         out.update(self._cpm_fields_from_pipeline(pipeline))
         out["pipeline"] = pipeline
+        out["analytics_trust"] = pipeline.get("analytics_trust")
         return out
 
     def retry_cpm(self, *, project_key: str, import_id: str) -> dict[str, Any]:
@@ -224,6 +232,13 @@ class ProjectScheduleImportPipelineService:
             "limitations": [
                 "Status is derived from persisted facts; this endpoint does not recompute CPM or quality.",
             ],
+            "analytics_trust": ledger_from_pipeline_status(
+                {
+                    "cpm": self._cpm_public_fields(cpm_summary, observability=cpm_observability),
+                    "quality_evaluation_status": quality_status,
+                    "identity_membership_status": (membership or {}).get("membership_status"),
+                }
+            ),
         }
 
     def _build_trust_preview(self, *, project_key: str, preview: dict[str, Any]) -> dict[str, Any]:
@@ -260,14 +275,7 @@ class ProjectScheduleImportPipelineService:
 
     @staticmethod
     def _map_quality_status(run: dict[str, Any] | None, *, committed: bool) -> str:
-        if not committed:
-            return "not_started"
-        if not run:
-            return "pending"
-        status = str(run.get("status") or "pending")
-        if status in {"pending", "running", "complete", "failed"}:
-            return status
-        return "pending"
+        return normalize_quality_status(str(run.get("status")) if run else None, committed=committed)
 
     @staticmethod
     def _map_cpm_status(
@@ -332,40 +340,37 @@ class ProjectScheduleImportPipelineService:
         runs = summary.get("runs") or {}
         critical = runs.get("criticality") or {}
         dcma = summary.get("dcma_critical_path") or {}
+        cpm_status = self._map_cpm_status(summary, committed=True, observability=observability)
+        trust = public_cpm_trust_fields(
+            observability=observability,
+            cpm_recompute_status=cpm_status,
+            trigger_source=str((observability or {}).get("trigger_source") or "") or None,
+        )
         out: dict[str, Any] = {
             "available": bool(summary.get("available")),
-            "cpm_recompute_status": self._map_cpm_status(
-                summary, committed=True, observability=observability
-            ),
+            "cpm_recompute_status": cpm_status,
+            "cpm_trust_status": trust.get("cpm_trust_status"),
             "cpm_run_id": critical.get("cpm_run_id") if critical.get("available") else None,
             "computed_critical_activity_count": dcma.get("computed_critical_activity_count"),
             "longest_path_available": bool((runs.get("longest_path") or {}).get("available")),
             "diagnostics_count": (runs.get("graph_diagnostics") or {}).get("diagnostic_count"),
+            "failure_code": trust.get("failure_code"),
+            "failed_step": trust.get("failed_step"),
+            "failure_message_redacted": trust.get("failure_message_redacted"),
+            "trigger_source": trust.get("trigger_source"),
+            "canonical_input_activity_count": trust.get("canonical_input_activity_count"),
+            "canonical_input_relationship_count": trust.get("canonical_input_relationship_count"),
+            "graph_node_count": trust.get("graph_node_count"),
+            "graph_edge_count": trust.get("graph_edge_count"),
+            "duration_ms": trust.get("duration_ms"),
         }
-        if observability:
-            out.update(
-                {
-                    "canonical_input_activity_count": observability.get("canonical_input_activity_count"),
-                    "canonical_input_relationship_count": observability.get(
-                        "canonical_input_relationship_count"
-                    ),
-                    "graph_node_count": observability.get("graph_node_count"),
-                    "graph_edge_count": observability.get("graph_edge_count"),
-                    "failure_code": observability.get("failure_code"),
-                    "failure_message": observability.get("failure_message"),
-                    "failed_step": observability.get("failed_step"),
-                    "duration_ms": observability.get("duration_ms"),
-                    "trigger_source": observability.get("trigger_source"),
-                    "started_at": observability.get("started_at"),
-                    "finished_at": observability.get("finished_at"),
-                }
-            )
-            if observability.get("cpm_run_id"):
-                out["cpm_run_id"] = observability.get("cpm_run_id")
+        if observability and observability.get("cpm_run_id"):
+            out["cpm_run_id"] = observability.get("cpm_run_id")
         return out
 
     @staticmethod
     def _cpm_fields_from_result(cpm: dict[str, Any]) -> dict[str, Any]:
+        observability = cpm.get("cpm_observability") or {}
         return {
             "cpm_recompute_triggered": cpm.get("cpm_recompute_triggered"),
             "cpm_recompute_status": cpm.get("cpm_recompute_status"),
@@ -375,8 +380,10 @@ class ProjectScheduleImportPipelineService:
             "computed_near_critical_activity_count": cpm.get("computed_near_critical_activity_count"),
             "longest_path_available": cpm.get("longest_path_available"),
             "diagnostics_count": cpm.get("diagnostics_count"),
-            "failure_reason": cpm.get("failure_reason"),
-            "cpm_observability": cpm.get("cpm_observability"),
+            "failure_code": observability.get("failure_code"),
+            "failed_step": observability.get("failed_step"),
+            "failure_message_redacted": observability.get("failure_message_redacted"),
+            "cpm_observability": observability,
             "canonical_input_activity_count": cpm.get("canonical_input_activity_count"),
             "canonical_input_relationship_count": cpm.get("canonical_input_relationship_count"),
             "graph_node_count": cpm.get("graph_node_count"),
