@@ -1,0 +1,38 @@
+Phase 10I — Runtime Preconditions + Live Read-Only Run (count/flag only)
+========================================================================
+
+Config:  ~/Library/Application Support/HB Personal Assistant/analytics/obsidian_mcp_config.json
+  vault_root = ~/Documents/Obsidian Vault  (matches --vault-path)
+DB:      ~/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+Frozen flags (all False):
+  external_source_watch_enabled = False
+  source_card_auto_generate_enabled = False
+  source_summary_auto_generate_enabled = False
+  source_note_auto_refresh_enabled = False
+
+Backend :8000: UP (owned by another worktree). NOT stopped — the Phase 10I review is READ-ONLY and
+  never requires the backend down. The review was run UNSANDBOXED so mode=ro reads work against the
+  hot WAL. No writes of any kind were performed.
+
+Live read-only run (--all over the bounded Tropical set 23-435-01 / tropical / 2525840):
+  cards_checked                = 103
+  identity_consistent          = 103   (inconsistent 0, ambiguous 0, missing 0, non_tropical 0)
+  duplicate_review_pairs       = 28    (same_source 28, same_email 1, same_attachment 0)
+  duplicate_clusters           = 4     (size2=1, size3-5=2, size6+=1; largest=7)
+  existing graph_blocks        = 0     (relationships 0, one_way 0, reciprocal_pass true,
+                                        invalid_types 0, durable_same_project 0, durable_duplicate 0,
+                                        invalid_tags 0)
+  candidate_pairs (default)    = 5225  (near-universal: in a single bounded project almost every pair
+                                        shares a project signal — see primary_secondary below)
+  primary_secondary_eligible   = 3     (durable rule: needs a PRIMARY strong signal)
+  project_only_rejected        = 5178  weak_only_rejected = 0
+  isolated_cards               = 103   (no gc-graph-links exist yet)
+  isolated_high_value_cards    = 66    isolated_email = 10, isolated_attachment = 2,
+                                       isolated_submittal_or_rfi = 2
+
+Read-only invariants (proved pre/post):
+  cards_modified = 0 ; db_mutations = 0 ; queue_delta = 0 ; runtime_json_mutated = false ;
+  ollama_calls = 0.
+
+Identity + duplicate counts reproduce the post-10H corpus state exactly.

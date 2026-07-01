@@ -1,0 +1,43 @@
+Phase 10I — Repo Truth Audit (module/function/count/schema only; no titles/paths/bodies)
+=========================================================================================
+
+Base:      origin/main @ d86d59de (PR #252, Phase 10H merged)
+Worktree:  feat/obsidian-phase10i-graph-review-controls-20260701T164455Z
+
+Scope of this change (git diff vs base) — ADDITIVE, reuse-only, no engine change:
+  - scripts/obsidian_source_graph_review.py                       (NEW, read-only review CLI)
+  - tests/test_obsidian_source_graph_review.py                    (NEW)
+  - tests/test_obsidian_source_operator_controls_design.py        (NEW)
+  - docs/evidence/obsidian-phase10i-graph-review-controls/**       (safe, count-only)
+
+Reused UNCHANGED (no edits):
+  src/hb_assistant/obsidian_mcp/source_note_graph.py
+     note_fact_from / _pair_signals / is_candidate (modes default, primary_secondary) /
+     is_duplicate_pair / related_block_entries / _related_block_bounds / parse_frontmatter_tags /
+     taxonomy frozensets (RELATIONSHIP_TYPES, REVIEW_ONLY_TYPES, DUPLICATE_SIGNALS, _WEAK_SIGNALS,
+     RELATED_TAGS, REVIEW_TAGS), REL_BLOCK_BEGIN/END
+  scripts/obsidian_source_note_apply_graph.py
+     GraphError / _matches_project / _classify / _db_fingerprint / _queue_counts / _ro
+     (the applier's _render_review_report and its test test_obsidian_source_graph_review_report.py
+      are NOT touched)
+  scripts/obsidian_source_note_correct_graph.py
+     _select / _duplicate_inventory / _plan_all_tropical_identity (10H helpers, present on origin/main)
+  src/hb_assistant/obsidian_mcp/source_index_repository.py
+     SourceIndexRepository.list_generated_notes / get_source_detail
+
+Design invariants (enforced in code + tests):
+  - READ-ONLY: reads generated Work cards (via DB index) + read-only DB counts only. Never reads
+    original source files / attachment binaries / .eml / Email Archive notes / source payloads.
+  - No graph link/tag apply or removal; no duplicate delete/merge/rename/move; no identity write;
+    no card generation; no source indexing; no attachment extraction; no advisory summaries.
+  - No Qwen/Ollama: candidate review is deterministic; ollama_calls == 0 always. --vet is a gated
+    controlled refusal (requires --model + --confirm-local-vet) and still calls no model (deferred 10J).
+  - No DB write, no runtime-JSON write. Pre/post proof: db fingerprint, queue counts, per-card SHA256,
+    and config-file SHA compared before/after; any delta raises (read-only invariant).
+  - Review state is FILE/REPORT ONLY. No DB table, no schema migration, no persistent store. Cluster
+    ids are derived deterministically from sorted member-hash sets (stable, no persistence).
+  - Safe evidence is count-only; per-cluster/per-pair/per-link detail (12-char id hashes) goes only to
+    local-sensitive/ (git-ignored via docs/evidence/**/local-sensitive/).
+
+Tests: 2 new files (20 tests) pass; existing applier review-report test passes unchanged; full
+obsidian_source suite green; ruff clean. scripts/tests are ruff-enforced (E,F,I,B,SIM,C4, len 100).
