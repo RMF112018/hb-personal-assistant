@@ -18,7 +18,7 @@
 - PR retrospective: scope limited to export, disposition, frontend tests, evidence (38 files, PR #249)
 - CI: `forecasting-semantic-gates` passed; `claude-review` failed (Claude App not installed — environmental)
 - Named-baseline pytest modules: all green
-- Hub API PM-field tests: 2 failures — substring false positive on `comparison_schedule_version_key` (P3)
+- Hub API PM-field tests: corrected — path-aware provenance allowlist (`02c-backend-test-correction.md`)
 
 ## Dual verdict
 

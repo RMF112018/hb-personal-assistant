@@ -23,10 +23,11 @@
 
 | Suite | Result |
 |-------|--------|
-| Backend focused (`02-backend-test-results.txt`) | 97 passed, **2 failed**, 1 skipped |
+| Backend focused (`02-backend-test-results.txt`) | 97 passed, **2 failed**, 1 skipped (P3 test drift — see `02c-backend-test-correction.md`) |
+| Backend post-correction (`02b-backend-test-results-post-correction.txt`) | **90 passed, 1 skipped** |
 | Frontend focused (`03-frontend-test-results.txt`) | **35 passed** |
 
-**Backend failures (non-blocking):** `test_project_schedule_hub_api.py` PM-field identifier tests fail because `comparison_schedule_version_key` (Phase 13A provenance) contains substring `schedule_version_key`. Named-baseline tests all pass. Classified **P3 test assertion drift**, not a named-baseline workflow regression.
+**Correction:** PM-field assertion updated to path-aware allowlist for Phase 13 provenance keys. Hub API module: **23 passed** post-fix.
 
 ## Tropical read-only proof
 
