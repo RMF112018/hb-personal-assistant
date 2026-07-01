@@ -1,0 +1,256 @@
+
+===== WORKBENCH basis=prior_update =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "prior_update",
+  "count": 100,
+  "workbench": {
+    "comparison_basis": "prior_update",
+    "baseline_context": null
+  },
+  "items": [
+    {
+      "title": "Review driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "review_status": "watching",
+      "review_item_id": "psri-108fca1c737247fb83d1d2342ed4cf75",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "prior_update",
+      "activity_id": "FAB/DEL-10"
+    },
+    {
+      "title": "Review driver: FAB/DEL WINDOW TREATMENT",
+      "review_status": "open",
+      "review_item_id": "psri-542c9d5326d1418f860f64b5a5fd80b9",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "prior_update",
+      "activity_id": "FAB/DEL-210"
+    },
+    {
+      "title": "Review driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "review_status": "open",
+      "review_item_id": "psri-40e1eb80b2de4c69b5b599e801571511",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "prior_update",
+      "activity_id": "FAB/DEL-240"
+    },
+    {
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "review_status": "open",
+      "review_item_id": "psri-541df91a2c1144bc9d5f9a15142353c1",
+      "source_metric_key": "milestones",
+      "evidence_basis": "prior_update",
+      "activity_id": "FILTER-OUT-20"
+    },
+    {
+      "title": "Critical issue category: Execution and status gaps",
+      "review_status": "open",
+      "review_item_id": "psri-950f39f7966d4300b4cd0b512cd59b39",
+      "source_metric_key": "critical_issues_category_model",
+      "evidence_basis": "prior_update",
+      "activity_id": null
+    }
+  ]
+}
+
+===== WORKBENCH basis=current_contract_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "current_contract_baseline",
+  "count": 100,
+  "workbench": {
+    "comparison_basis": "current_contract_baseline",
+    "baseline_context": {
+      "basis": "current_contract_baseline",
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline",
+      "selection_status": "selected",
+      "selection_id": "pnbs-867756f629b44dbc960537dc687db519",
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "schedule_data_date": "2025-08-07",
+      "display_name": "TWNU07.zip"
+    }
+  },
+  "items": [
+    {
+      "title": "Review driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "review_status": "watching",
+      "review_item_id": "psnbri-2401f3c1b28b4f9196bb679c881b9198",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "current_contract_baseline",
+      "activity_id": "FAB/DEL-10"
+    },
+    {
+      "title": "Review driver: FAB/DEL MAIL BOXES",
+      "review_status": "open",
+      "review_item_id": "psnbri-e35120d339fc4969bd6d375f474398d5",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "current_contract_baseline",
+      "activity_id": "FAB/DEL-260"
+    },
+    {
+      "title": "Review driver: FAB/DEL WINDOW TREATMENT",
+      "review_status": "open",
+      "review_item_id": "psnbri-904d96a0f42948c7b458f6898ff05074",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "current_contract_baseline",
+      "activity_id": "FAB/DEL-210"
+    },
+    {
+      "title": "Review driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "review_status": "open",
+      "review_item_id": "psnbri-01270a9886634f94a904419dc5853d4e",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "current_contract_baseline",
+      "activity_id": "FAB/DEL-240"
+    },
+    {
+      "title": "Milestone moved later: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": "open",
+      "review_item_id": "psnbri-ddabbdee281946ce9e594bcd0099ddec",
+      "source_metric_key": "milestones",
+      "evidence_basis": "current_contract_baseline",
+      "activity_id": "FM-CNSTELEVS"
+    }
+  ]
+}
+
+===== WORKBENCH basis=previous_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "previous_progress_update_baseline",
+  "count": 100,
+  "workbench": {
+    "comparison_basis": "previous_progress_update_baseline",
+    "baseline_context": {
+      "basis": "previous_progress_update_baseline",
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline",
+      "selection_status": "selected",
+      "selection_id": "pnbs-3b3297c1d45d4125ac74f2e6bbb89d68",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "schedule_data_date": "2026-05-26",
+      "display_name": "TWNU18.zip"
+    }
+  },
+  "items": [
+    {
+      "title": "Review driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "review_status": "open",
+      "review_item_id": "psnbri-af6eb64464e04ff39e42b1595bc965e5",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "previous_progress_update_baseline",
+      "activity_id": "FAB/DEL-10"
+    },
+    {
+      "title": "Review driver: FAB/DEL WINDOW TREATMENT",
+      "review_status": "open",
+      "review_item_id": "psnbri-be42c9d2a10f46d693ef10c96b0fe63c",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "previous_progress_update_baseline",
+      "activity_id": "FAB/DEL-210"
+    },
+    {
+      "title": "Review driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "review_status": "open",
+      "review_item_id": "psnbri-3e9458eeace0460282ea2c6783f36a1b",
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "previous_progress_update_baseline",
+      "activity_id": "FAB/DEL-240"
+    },
+    {
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "review_status": "open",
+      "review_item_id": "psnbri-8a40b23e76d14bcaa98408c24d1cb213",
+      "source_metric_key": "milestones",
+      "evidence_basis": "previous_progress_update_baseline",
+      "activity_id": "FILTER-OUT-20"
+    },
+    {
+      "title": "Critical issue category: Execution and status gaps",
+      "review_status": "open",
+      "review_item_id": "psnbri-7fadf4cea7fb4dd79c019225c7a87a1b",
+      "source_metric_key": "critical_issues_category_model",
+      "evidence_basis": "previous_progress_update_baseline",
+      "activity_id": null
+    }
+  ]
+}
+
+===== WORKBENCH basis=secondary_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "secondary_progress_update_baseline",
+  "count": 100,
+  "workbench": {
+    "comparison_basis": "secondary_progress_update_baseline",
+    "baseline_context": {
+      "basis": "secondary_progress_update_baseline",
+      "slot_key": "secondary_progress_update_baseline",
+      "slot_label": "Secondary Progress Update Baseline",
+      "selection_status": "selected",
+      "selection_id": "pnbs-3f88372278c74b18a198bdd9183b0b86",
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "schedule_data_date": "2025-11-28",
+      "display_name": "TWNU14.zip"
+    }
+  },
+  "items": [
+    {
+      "title": "Review driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "review_status": "open",
+      "review_item_id": null,
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "secondary_progress_update_baseline",
+      "activity_id": "FAB/DEL-10"
+    },
+    {
+      "title": "Review driver: FAB/DEL MAIL BOXES",
+      "review_status": "open",
+      "review_item_id": null,
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "secondary_progress_update_baseline",
+      "activity_id": "FAB/DEL-260"
+    },
+    {
+      "title": "Review driver: FAB/DEL WINDOW TREATMENT",
+      "review_status": "open",
+      "review_item_id": null,
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "secondary_progress_update_baseline",
+      "activity_id": "FAB/DEL-210"
+    },
+    {
+      "title": "Review driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "review_status": "open",
+      "review_item_id": null,
+      "source_metric_key": "change_driver_analysis",
+      "evidence_basis": "secondary_progress_update_baseline",
+      "activity_id": "FAB/DEL-240"
+    },
+    {
+      "title": "Milestone moved later: ELEVATORS FOR CONSTRUCTION USE",
+      "review_status": "open",
+      "review_item_id": null,
+      "source_metric_key": "milestones",
+      "evidence_basis": "secondary_progress_update_baseline",
+      "activity_id": "FM-CNSTELEVS"
+    }
+  ]
+}
+
+===== WORKBENCH basis=baseline =====
+{
+  "available": false,
+  "reason": "baseline_unavailable",
+  "comparison_basis": "baseline",
+  "count": 0,
+  "workbench": {
+    "comparison_basis": null,
+    "baseline_context": null
+  },
+  "items": []
+}

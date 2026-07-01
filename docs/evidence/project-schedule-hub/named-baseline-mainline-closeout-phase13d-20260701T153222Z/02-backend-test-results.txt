@@ -1,0 +1,38 @@
+..s..................................................................... [ 72%]
+..............F..F.........                                              [100%]
+=================================== FAILURES ===================================
+______ test_project_schedule_populated_comparison_actions_and_no_mutation ______
+tests/test_project_schedule_hub_api.py:1235: in test_project_schedule_populated_comparison_actions_and_no_mutation
+    _assert_default_pm_fields_have_no_raw_identifiers(body)
+tests/test_project_schedule_hub_api.py:533: in _assert_default_pm_fields_have_no_raw_identifiers
+    assert token not in payload
+E   assert 'schedule_version_key' not in '{"actions":..."TWNU19"}]}}'
+E     
+E     'schedule_version_key' is contained here:
+E     ?           ^^
+E       omparison_schedule_version_key": "tropical|S1|2026-06-01", "diff_id": 1, "direct_remaining_changes": {"default_limit": 10, "items": [{"activity": {"activity_id": "A200", "activity_name": "Substantial completion milestone", "actual_finish": null, "actual_start": null, "forecast_finish": "2026-06-25", "forecast_start": "2026-06-18", "total_float": 0.0, "wbs_code": "WBS-A", "wbs_path": null}, "finish_delta_days": 15, "float_delta_days": 0.0, "start_delta_days": 12}, {"activity": {"activity_id": "A100", "activity_name": "Ar...
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+______ test_project_schedule_large_fixture_performance_under_two_seconds _______
+tests/test_project_schedule_hub_api.py:1313: in test_project_schedule_large_fixture_performance_under_two_seconds
+    _assert_default_pm_fields_have_no_raw_identifiers(body)
+tests/test_project_schedule_hub_api.py:533: in _assert_default_pm_fields_have_no_raw_identifiers
+    assert token not in payload
+E   assert 'schedule_version_key' not in '{"actions":...t-large"}]}}'
+E     
+E     'schedule_version_key' is contained here:
+E     ?           ^^
+E       omparison_schedule_version_key": "tropical|S1|2026-06-01", "diff_id": 1, "direct_remaining_changes": {"default_limit": 10, "items": [{"activity": {"activity_id": "A00001", "activity_name": "Activity 00001", "actual_finish": null, "actual_start": null, "forecast_finish": "2026-07-02", "forecast_start": "2026-07-02", "total_float": 6.0, "wbs_code": "WBS-01", "wbs_path": null}, "finish_delta_days": 30, "float_delta_days": 1.0, "start_delta_days": 30}, {"activity": {"activity_id": "A00002", "activity_name": "Activity 00002"...
+E     
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.construction.analytics.project_schedule_summary_service:project_schedule_summary_service.py:612 project_schedule_hub_slow_stage stage=review_queue elapsed_ms=521.580 project_key=tropical schedule_version_key=tropical|S1|2026-07-01 query_key=hub_review_workbench row_count=49 cap=None
+=============================== warnings summary ===============================
+../../../hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_project_schedule_hub_api.py::test_project_schedule_populated_comparison_actions_and_no_mutation
+FAILED tests/test_project_schedule_hub_api.py::test_project_schedule_large_fixture_performance_under_two_seconds

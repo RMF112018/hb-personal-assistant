@@ -1,0 +1,32 @@
+{
+  "stamp": "2026-07-01T15:44:28Z",
+  "as_of": "2026-07-03",
+  "shots": [
+    {
+      "file": "01-schedule-hub-named-baselines.png",
+      "surface": "Schedule hub named baseline selector",
+      "loaded": true
+    },
+    {
+      "file": "02-controls-current-contract-baseline.png",
+      "surface": "Controls current_contract_baseline movement",
+      "loaded": true
+    },
+    {
+      "file": "03-workbench-named-baseline.png",
+      "surface": "Workbench named comparison basis",
+      "loaded": true
+    },
+    {
+      "file": "04-driver-detail-disposition.png",
+      "surface": "Driver detail named context + disposition",
+      "loaded": true
+    },
+    {
+      "file": "05-export-named-basis-selected.png",
+      "surface": "Export control with named basis selected",
+      "loaded": true
+    }
+  ],
+  "fully_loaded_required": true
+}

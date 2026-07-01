@@ -1,0 +1,117 @@
+
+===== DRIVER DETAIL basis=prior_update =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "prior_update",
+  "baseline_context": null,
+  "review_status": "open",
+  "review_item_id": null,
+  "disposition_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+  "disposition_basis": "prior_update",
+  "disposition_source": "preview",
+  "review_scope": "prior_update",
+  "activity": {
+    "activity_id": "FILTER-OUT-50",
+    "activity_name": "PHASE 3 INTERIOR COMPLETION"
+  }
+}
+
+===== DRIVER DETAIL basis=current_contract_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "current_contract_baseline",
+  "baseline_context": {
+    "basis": "current_contract_baseline",
+    "slot_key": "current_contract_baseline",
+    "slot_label": "Current Contract Baseline",
+    "selection_status": "selected",
+    "selection_id": "pnbs-867756f629b44dbc960537dc687db519",
+    "schedule_version_key": "tropical|815|2025-08-07 08:00",
+    "schedule_data_date": "2025-08-07",
+    "display_name": "TWNU07.zip"
+  },
+  "review_status": "open",
+  "review_item_id": null,
+  "disposition_schedule_version_key": "tropical|815|2025-08-07 08:00",
+  "disposition_basis": "current_contract_baseline",
+  "disposition_source": "preview",
+  "review_scope": "named_baseline",
+  "activity": {
+    "activity_id": "FILTER-OUT-50",
+    "activity_name": "PHASE 3 INTERIOR COMPLETION"
+  }
+}
+
+===== DRIVER DETAIL basis=previous_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "previous_progress_update_baseline",
+  "baseline_context": {
+    "basis": "previous_progress_update_baseline",
+    "slot_key": "previous_progress_update_baseline",
+    "slot_label": "Previous Progress Update Baseline",
+    "selection_status": "selected",
+    "selection_id": "pnbs-3b3297c1d45d4125ac74f2e6bbb89d68",
+    "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+    "schedule_data_date": "2026-05-26",
+    "display_name": "TWNU18.zip"
+  },
+  "review_status": "open",
+  "review_item_id": null,
+  "disposition_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+  "disposition_basis": "previous_progress_update_baseline",
+  "disposition_source": "preview",
+  "review_scope": "named_baseline",
+  "activity": {
+    "activity_id": "FILTER-OUT-50",
+    "activity_name": "PHASE 3 INTERIOR COMPLETION"
+  }
+}
+
+===== DRIVER DETAIL basis=secondary_progress_update_baseline =====
+{
+  "available": true,
+  "reason": null,
+  "comparison_basis": "secondary_progress_update_baseline",
+  "baseline_context": {
+    "basis": "secondary_progress_update_baseline",
+    "slot_key": "secondary_progress_update_baseline",
+    "slot_label": "Secondary Progress Update Baseline",
+    "selection_status": "selected",
+    "selection_id": "pnbs-3f88372278c74b18a198bdd9183b0b86",
+    "schedule_version_key": "tropical|851|2025-11-28 08:00",
+    "schedule_data_date": "2025-11-28",
+    "display_name": "TWNU14.zip"
+  },
+  "review_status": "open",
+  "review_item_id": null,
+  "disposition_schedule_version_key": "tropical|851|2025-11-28 08:00",
+  "disposition_basis": "secondary_progress_update_baseline",
+  "disposition_source": "preview",
+  "review_scope": "named_baseline",
+  "activity": {
+    "activity_id": "FILTER-OUT-50",
+    "activity_name": "PHASE 3 INTERIOR COMPLETION"
+  }
+}
+
+===== DRIVER DETAIL basis=baseline =====
+{
+  "available": false,
+  "reason": "baseline_unavailable",
+  "comparison_basis": "baseline",
+  "baseline_context": null,
+  "review_status": null,
+  "review_item_id": null,
+  "disposition_schedule_version_key": null,
+  "disposition_basis": null,
+  "disposition_source": null,
+  "review_scope": null,
+  "activity": {
+    "activity_id": null,
+    "activity_name": null
+  }
+}
