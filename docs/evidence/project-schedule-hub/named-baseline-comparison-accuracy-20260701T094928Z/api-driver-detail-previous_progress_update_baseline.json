@@ -1,0 +1,75 @@
+{
+  "activity_id": "FILTER-OUT-50",
+  "body": {
+    "activity": {
+      "activity_id": "FILTER-OUT-50",
+      "activity_name": "PHASE 3 INTERIOR COMPLETION",
+      "computed_cpm_critical": true,
+      "computed_cpm_near_critical": false,
+      "current_finish": "2026-09-10 16:00",
+      "current_float": -624.0,
+      "current_start": "2026-09-10 16:00",
+      "finish_delta_days": 0,
+      "float_delta_days": 0.0,
+      "prior_finish": "2026-09-10 16:00",
+      "prior_float": -624.0,
+      "prior_start": "2026-09-10 16:00",
+      "start_delta_days": 0,
+      "wbs_code": null
+    },
+    "activity_id": "FILTER-OUT-50",
+    "advisory_posture": "sequence_cues_not_causation",
+    "available": true,
+    "baseline_context": {
+      "basis": "previous_progress_update_baseline",
+      "display_name": "TWNU18.zip",
+      "schedule_data_date": "2026-05-26",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "selection_id": "pnbs-3b3297c1d45d4125ac74f2e6bbb89d68",
+      "selection_status": "selected",
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline"
+    },
+    "comparison_basis": "previous_progress_update_baseline",
+    "detail_url": "/api/projects/tropical/schedule/drivers/detail?activity_id=FILTER-OUT-50",
+    "downstream_impacts": [],
+    "driver_rank": null,
+    "logic_changes": [],
+    "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+    "upstream_path": [
+      {
+        "activity_id": "P1A-C1-STRCT-50",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A-C1-STRCT-60",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A-C1-STRCT-70",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-10",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-20",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-30",
+        "activity_name": null
+      },
+      {
+        "activity_id": "FM-1B-OHD-DRY",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1B-01U-FIN-10",
+        "activity_name": "HANG DRYWALL"
+      }
+    ]
+  },
+  "status": 200
+}

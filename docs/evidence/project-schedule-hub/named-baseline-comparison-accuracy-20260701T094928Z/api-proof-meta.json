@@ -1,0 +1,94 @@
+{
+  "activity_id": "FILTER-OUT-50",
+  "as_of": "2026-07-03",
+  "basis_proofs": {
+    "baseline": {
+      "available": false,
+      "baseline_schedule_version_key": null,
+      "comparison_basis": "baseline",
+      "finish_moved_later_count": null
+    },
+    "current_contract_baseline": {
+      "available": true,
+      "baseline_schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "comparison_basis": "current_contract_baseline",
+      "finish_moved_later_count": 440
+    },
+    "previous_progress_update_baseline": {
+      "available": true,
+      "baseline_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "comparison_basis": "previous_progress_update_baseline",
+      "finish_moved_later_count": 461
+    },
+    "prior_update": {
+      "available": true,
+      "baseline_schedule_version_key": null,
+      "comparison_basis": "prior_update",
+      "finish_moved_later_count": 461
+    },
+    "secondary_progress_update_baseline": {
+      "available": true,
+      "baseline_schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "comparison_basis": "secondary_progress_update_baseline",
+      "finish_moved_later_count": 593
+    },
+    "workbench:baseline": {
+      "comparison_basis": "baseline",
+      "item_count": 0,
+      "review_scope": null,
+      "sample_comparison_basis": null,
+      "sample_cue_summary": null,
+      "sample_review_status": null
+    },
+    "workbench:current_contract_baseline": {
+      "comparison_basis": "current_contract_baseline",
+      "item_count": 0,
+      "review_scope": "named_baseline",
+      "sample_comparison_basis": null,
+      "sample_cue_summary": null,
+      "sample_review_status": null
+    },
+    "workbench:previous_progress_update_baseline": {
+      "comparison_basis": "previous_progress_update_baseline",
+      "item_count": 0,
+      "review_scope": "named_baseline",
+      "sample_comparison_basis": null,
+      "sample_cue_summary": null,
+      "sample_review_status": null
+    },
+    "workbench:prior_update": {
+      "comparison_basis": "prior_update",
+      "item_count": 0,
+      "review_scope": null,
+      "sample_comparison_basis": null,
+      "sample_cue_summary": null,
+      "sample_review_status": null
+    },
+    "workbench:secondary_progress_update_baseline": {
+      "comparison_basis": "secondary_progress_update_baseline",
+      "item_count": 0,
+      "review_scope": "named_baseline",
+      "sample_comparison_basis": null,
+      "sample_cue_summary": null,
+      "sample_review_status": null
+    },
+    "workbench_sync:current_contract_baseline": {
+      "comparison_basis": "current_contract_baseline",
+      "item_count": 137,
+      "review_scope": "named_baseline",
+      "sample_comparison_basis": "current_contract_baseline",
+      "sample_cue_summary": "Milestone forecast moved 74 days later compared against current contract baseline.",
+      "sample_review_status": "open"
+    },
+    "workbench_sync:previous_progress_update_baseline": {
+      "comparison_basis": "previous_progress_update_baseline",
+      "item_count": 131,
+      "review_scope": "named_baseline",
+      "sample_comparison_basis": "previous_progress_update_baseline",
+      "sample_cue_summary": "Milestone forecast moved 26 days later compared against previous progress update baseline.",
+      "sample_review_status": "open"
+    }
+  },
+  "driver_detail_comparison_key": "tropical|815|2025-08-07 08:00",
+  "project_key": "tropical"
+}

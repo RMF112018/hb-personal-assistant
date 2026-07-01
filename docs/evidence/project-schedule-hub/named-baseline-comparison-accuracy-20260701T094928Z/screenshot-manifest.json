@@ -1,0 +1,57 @@
+{
+  "stamp": "2026-07-01T10:32:56Z",
+  "as_of": "2026-07-03",
+  "base_url": "http://127.0.0.1:5173",
+  "activity_id": "FILTER-OUT-50",
+  "fully_loaded": true,
+  "shots": [
+    {
+      "file": "01-schedule-hub-baselines.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule?as_of=2026-07-03",
+      "wait_text": "Baseline Anchors",
+      "loaded": true
+    },
+    {
+      "file": "02-controls-current-contract-baseline.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule?as_of=2026-07-03",
+      "wait_text": "Schedule Controls",
+      "loaded": true
+    },
+    {
+      "file": "03-controls-previous-progress-baseline.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule?as_of=2026-07-03",
+      "wait_text": "Schedule Controls",
+      "loaded": true
+    },
+    {
+      "file": "04-controls-secondary-progress-baseline.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule?as_of=2026-07-03",
+      "wait_text": "Schedule Controls",
+      "loaded": true
+    },
+    {
+      "file": "05-controls-disposition-item.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03",
+      "wait_text": "Named baseline review",
+      "loaded": true
+    },
+    {
+      "file": "06-workbench-named-contract.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03",
+      "wait_text": "Named baseline review",
+      "loaded": true
+    },
+    {
+      "file": "07-workbench-named-progress.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule/workbench?comparison_basis=previous_progress_update_baseline&as_of=2026-07-03",
+      "wait_text": "Schedule Workbench",
+      "loaded": true
+    },
+    {
+      "file": "08-driver-detail-named-baseline.png",
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-50&comparison_basis=current_contract_baseline&as_of=2026-07-03",
+      "wait_text": "Driver detail",
+      "loaded": true
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "activity_id": "FILTER-OUT-50",
+  "body": {
+    "activity": {
+      "activity_id": "FILTER-OUT-50",
+      "activity_name": "PHASE 3 INTERIOR COMPLETION",
+      "computed_cpm_critical": true,
+      "computed_cpm_near_critical": false,
+      "current_finish": "2026-09-10 16:00",
+      "current_float": -624.0,
+      "current_start": "2026-09-10 16:00",
+      "finish_delta_days": null,
+      "float_delta_days": null,
+      "prior_finish": null,
+      "prior_float": null,
+      "prior_start": null,
+      "start_delta_days": null,
+      "wbs_code": null
+    },
+    "activity_id": "FILTER-OUT-50",
+    "advisory_posture": "sequence_cues_not_causation",
+    "available": true,
+    "baseline_context": {
+      "basis": "current_contract_baseline",
+      "display_name": "TWNU07.zip",
+      "schedule_data_date": "2025-08-07",
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "selection_id": "pnbs-867756f629b44dbc960537dc687db519",
+      "selection_status": "selected",
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline"
+    },
+    "comparison_basis": "current_contract_baseline",
+    "detail_url": "/api/projects/tropical/schedule/drivers/detail?activity_id=FILTER-OUT-50",
+    "downstream_impacts": [
+      {
+        "activity_id": "FM-P1B-GSUBCOMP",
+        "activity_name": "TCO-3- SUBSTANTIAL COMPLETION / TCO",
+        "affected_milestone_path": [
+          {
+            "activity_id": "FM-P1B-GSUBCOMP",
+            "activity_name": "TCO-3- SUBSTANTIAL COMPLETION / TCO"
+          }
+        ],
+        "computed_cpm_critical": true,
+        "computed_cpm_near_critical": false,
+        "current_finish": "2026-10-13 16:00",
+        "current_float": -504.0,
+        "current_start": "2026-10-13 16:00",
+        "depth_from_driver": 4,
+        "finish_delta_days": 81,
+        "float_delta_days": -288.0,
+        "prior_finish": "2026-07-24 16:00",
+        "prior_float": -216.0,
+        "prior_start": "2026-07-24 16:00",
+        "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+        "start_delta_days": 81,
+        "wbs_code": null
+      },
+      {
+        "activity_id": "FM-P1B-GTURN",
+        "activity_name": "TCO-3- TURNOVER 46 UNITS",
+        "affected_milestone_path": [
+          {
+            "activity_id": "FM-P1B-GTURN",
+            "activity_name": "TCO-3- TURNOVER 46 UNITS"
+          }
+        ],
+        "computed_cpm_critical": true,
+        "computed_cpm_near_critical": false,
+        "current_finish": "2026-10-13 16:00",
+        "current_float": -504.0,
+        "current_start": "2026-10-13 16:00",
+        "depth_from_driver": 4,
+        "finish_delta_days": 81,
+        "float_delta_days": -288.0,
+        "prior_finish": "2026-07-24 16:00",
+        "prior_float": -216.0,
+        "prior_start": "2026-07-24 16:00",
+        "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+        "start_delta_days": 81,
+        "wbs_code": null
+      },
+      {
+        "activity_id": "FM-P1B-OTURN",
+        "activity_name": "TCO-3- TURNOVER 46 UNITS",
+        "affected_milestone_path": [
+          {
+            "activity_id": "FM-P1B-OTURN",
+            "activity_name": "TCO-3- TURNOVER 46 UNITS"
+          }
+        ],
+        "computed_cpm_critical": true,
+        "computed_cpm_near_critical": false,
+        "current_finish": "2026-10-13 16:00",
+        "current_float": -504.0,
+        "current_start": "2026-10-13 16:00",
+        "depth_from_driver": 4,
+        "finish_delta_days": 74,
+        "float_delta_days": -288.0,
+        "prior_finish": "2026-07-31 16:00",
+        "prior_float": -216.0,
+        "prior_start": "2026-07-31 16:00",
+        "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+        "start_delta_days": 74,
+        "wbs_code": null
+      }
+    ],
+    "driver_rank": null,
+    "logic_changes": [],
+    "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+    "upstream_path": [
+      {
+        "activity_id": "P1A-C1-STRCT-50",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A-C1-STRCT-60",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A-C1-STRCT-70",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-10",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-20",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1A/B-ROOF-30",
+        "activity_name": null
+      },
+      {
+        "activity_id": "FM-1B-OHD-DRY",
+        "activity_name": null
+      },
+      {
+        "activity_id": "P1B-01U-FIN-10",
+        "activity_name": "HANG DRYWALL"
+      }
+    ]
+  },
+  "status": 200
+}
