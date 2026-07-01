@@ -9,6 +9,9 @@ export function ProjectSubNav({ projectKey }: { projectKey: string }) {
     { to: `${base}/field-operations`, label: 'Field Operations' },
     { to: `${base}/cost-time`, label: 'Cost & Time' },
   ]
+  if (projectKey === 'all') {
+    items.push({ to: '/projects/all/schedule/review', label: 'Schedule Review Dashboard' })
+  }
   return (
     <nav className="subnav" aria-label="Project sections">
       {items.map((it) => {

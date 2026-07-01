@@ -1,0 +1,5 @@
+node_modules/
+fixture-phase18-portfolio.db
+*.log
+_capture_*.cjs.tmp
+vite-phase18-live.log

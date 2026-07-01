@@ -228,6 +228,92 @@ export function getProjectCostTime(projectKey: string) {
   const key = projectKey || 'all';
   return fetchJson(`/api/projects/${encodeURIComponent(key)}/cost-time`);
 }
+
+export type ScheduleReviewDashboardProject = {
+  project_key: string
+  project_label: string
+  schedule_label?: string | null
+  schedule_data_date?: string | null
+  schedule_age_days?: number | null
+  schedule_staleness_status: string
+  analytics_trust_status: string
+  identity_trust_status: string
+  cpm_trust_status: string
+  quality_trust_status: string
+  portfolio_status: string
+  operator_action_required?: boolean
+  ready?: boolean
+  review_status: {
+    persisted_item_count: number
+    preview_cue_count: number
+    needs_review: number
+    accepted_for_follow_up: number
+    dismissed_not_material: number
+    resolved: number
+    blocked: number
+  }
+  recommended_next_action: {
+    action_key: string
+    label: string
+    pm_description: string
+    primary_link: string
+    priority: number
+  }
+  links: {
+    hub: string
+    controls: string
+    workbench: string
+    import: string
+    identity_review: string
+  }
+}
+
+export type ScheduleReviewDashboardResponse = {
+  portfolio_summary: {
+    project_count: number
+    projects_with_schedule: number
+    projects_without_schedule: number
+    ready_count: number
+    degraded_count: number
+    blocked_count: number
+    needs_review_count: number
+    stale_schedule_count: number
+    operator_action_required_count: number
+  }
+  projects: ScheduleReviewDashboardProject[]
+  filters: {
+    available_statuses: string[]
+    available_actions: string[]
+  }
+  meta?: Record<string, unknown>
+}
+
+export function getScheduleReviewDashboard(opts?: {
+  status?: string | null
+  projectKey?: string | null
+  asOf?: string | null
+}) {
+  const params = new URLSearchParams()
+  if (opts?.status) params.set('status', opts.status)
+  if (opts?.projectKey) params.set('project_key', opts.projectKey)
+  if (opts?.asOf) params.set('as_of', opts.asOf)
+  const qs = params.toString()
+  return fetchJson<ScheduleReviewDashboardResponse>(
+    `/api/projects/schedule-review-dashboard${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export function downloadScheduleReviewDashboardExport(opts?: {
+  format?: 'markdown' | 'csv' | 'json'
+  status?: string | null
+  projectKey?: string | null
+}) {
+  const params = new URLSearchParams()
+  params.set('format', opts?.format || 'markdown')
+  if (opts?.status) params.set('status', opts.status)
+  if (opts?.projectKey) params.set('project_key', opts.projectKey)
+  return fetch(`/api/projects/schedule-review-dashboard/export?${params.toString()}`)
+}
 export interface ProjectScheduleSummaryResponse {
   surface?: string;
   project_key: string;
@@ -2771,6 +2857,8 @@ export const api = {
   getProjectMeetings,
   getProjectFieldOperations,
   getProjectCostTime,
+  getScheduleReviewDashboard,
+  downloadScheduleReviewDashboardExport,
   getProjectScheduleSummary,
   getProjectScheduleControls,
   getProjectScheduleMetricTrend,

@@ -1,0 +1,40 @@
+{
+  "portfolio_summary": {
+    "project_count": 0,
+    "projects_with_schedule": 0,
+    "projects_without_schedule": 0,
+    "ready_count": 0,
+    "degraded_count": 0,
+    "blocked_count": 0,
+    "needs_review_count": 0,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 0
+  },
+  "projects": [],
+  "filters": {
+    "available_statuses": [
+      "ready",
+      "degraded",
+      "blocked",
+      "missing",
+      "stale",
+      "needs_review",
+      "operator_action_required"
+    ],
+    "available_actions": [
+      "identity_review_required",
+      "analytics_trust_blocked",
+      "schedule_import_needed",
+      "schedule_update_stale",
+      "review_items_need_disposition",
+      "preview_cues_available",
+      "quality_review_required",
+      "ready_for_pm_review"
+    ]
+  },
+  "meta": {
+    "as_of": "2026-07-01",
+    "staleness_threshold_days": 30,
+    "project_loop": "per_project_thin_trust_slice"
+  }
+}

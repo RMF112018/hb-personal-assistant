@@ -1,0 +1,155 @@
+{
+  "portfolio_summary": {
+    "project_count": 3,
+    "projects_with_schedule": 0,
+    "projects_without_schedule": 3,
+    "ready_count": 0,
+    "degraded_count": 0,
+    "blocked_count": 0,
+    "needs_review_count": 0,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 3
+  },
+  "projects": [
+    {
+      "project_key": "alton-hilltop-pbg",
+      "project_label": "alton-hilltop-pbg \u2014 24-606-01 - Hilltop Gardens \u00b7 #24-606-01 \u00b7 Procore 2982068",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "missing",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/alton-hilltop-pbg/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/alton-hilltop-pbg/schedule",
+        "controls": "/projects/alton-hilltop-pbg/schedule?panel=controls",
+        "workbench": "/projects/alton-hilltop-pbg/schedule/workbench",
+        "import": "/projects/alton-hilltop-pbg/schedule/import",
+        "identity_review": "/schedules/identity-review?project=alton-hilltop-pbg"
+      }
+    },
+    {
+      "project_key": "rybovich",
+      "project_label": "rybovich \u2014 25-745-01 - RYBOVICH-SAFE HARBOR \u00b7 #25-745-01 \u00b7 Procore 3133242",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "missing",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/rybovich/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/rybovich/schedule",
+        "controls": "/projects/rybovich/schedule?panel=controls",
+        "workbench": "/projects/rybovich/schedule/workbench",
+        "import": "/projects/rybovich/schedule/import",
+        "identity_review": "/schedules/identity-review?project=rybovich"
+      }
+    },
+    {
+      "project_key": "the-wellington",
+      "project_label": "the-wellington \u2014 25-244-01 - THE WELLINGTON ESTATE HOMES \u00b7 #25-244-01 \u00b7 Procore 3215931",
+      "schedule_label": null,
+      "schedule_data_date": null,
+      "schedule_age_days": null,
+      "schedule_staleness_status": "missing",
+      "analytics_trust_status": "unavailable",
+      "identity_trust_status": "unavailable",
+      "cpm_trust_status": "unavailable",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "missing",
+      "operator_action_required": true,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "schedule_import_needed",
+        "label": "Schedule import needed",
+        "pm_description": "Import a committed schedule update before schedule review metrics are available.",
+        "primary_link": "/projects/the-wellington/schedule/import",
+        "priority": 30
+      },
+      "links": {
+        "hub": "/projects/the-wellington/schedule",
+        "controls": "/projects/the-wellington/schedule?panel=controls",
+        "workbench": "/projects/the-wellington/schedule/workbench",
+        "import": "/projects/the-wellington/schedule/import",
+        "identity_review": "/schedules/identity-review?project=the-wellington"
+      }
+    }
+  ],
+  "filters": {
+    "available_statuses": [
+      "ready",
+      "degraded",
+      "blocked",
+      "missing",
+      "stale",
+      "needs_review",
+      "operator_action_required"
+    ],
+    "available_actions": [
+      "identity_review_required",
+      "analytics_trust_blocked",
+      "schedule_import_needed",
+      "schedule_update_stale",
+      "review_items_need_disposition",
+      "preview_cues_available",
+      "quality_review_required",
+      "ready_for_pm_review"
+    ]
+  },
+  "meta": {
+    "as_of": "2026-07-01",
+    "staleness_threshold_days": 30,
+    "project_loop": "per_project_thin_trust_slice"
+  }
+}

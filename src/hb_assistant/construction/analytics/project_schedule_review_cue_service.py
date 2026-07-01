@@ -590,6 +590,10 @@ class ProjectScheduleReviewCueService:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def list_quality_preview_cues(self, schedule_version_key: str) -> list[dict[str, Any]]:
+        """PM-safe quality preview cues for portfolio rollup (no driver/workbench intel)."""
+        return self._quality_metric_preview_cues(schedule_version_key)
+
     def _quality_metric_preview_cues(self, schedule_version_key: str) -> list[dict[str, Any]]:
         run = self._quality_repo.get_latest_run(schedule_version_key)
         if not run or run.get("status") != "completed":
