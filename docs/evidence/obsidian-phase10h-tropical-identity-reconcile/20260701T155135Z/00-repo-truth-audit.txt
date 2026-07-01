@@ -1,0 +1,40 @@
+Phase 10H — Repo Truth Audit (count/scope only; no titles/paths/addresses/bodies)
+==================================================================================
+
+Base branch:  origin/main @ 476aa7a1 (merge of PR #250, Phase 10G bounded graph apply)
+Worktree:     fix/obsidian-phase10h-tropical-identity-reconcile-20260701T155135Z
+
+Phase 10G merged on origin/main (verified): the note-graph applier + email-card identity
+reconcile + gc-graph-links rename are present in the base. 10H builds on top; no 10G behavior
+is altered.
+
+Scope of this change (git diff vs base):
+  - scripts/obsidian_source_note_correct_graph.py   (MODIFIED: two new bounded modes)
+      * --reconcile-all-tropical-identity  -> _plan_all_tropical_identity()
+      * --duplicate-review-inventory       -> _duplicate_inventory()   (count-only)
+      * apply-time identity-ambiguity guard inside the write loop
+  - tests/test_obsidian_source_project_identity_reconcile.py   (NEW)
+  - tests/test_obsidian_source_duplicate_inventory.py          (NEW)
+  - tests/test_obsidian_source_tropical_identity_correction.py (NEW)
+
+Reused unchanged from 10G (block-authoritative, NOT email-specific):
+  src/hb_assistant/obsidian_mcp/source_project_identity.py
+      reconcile_card_identity / reconcile_frontmatter_identity /
+      reconcile_related_project_text / parse_identity_marker / IDENTITY_BEGIN_PREFIX
+  src/hb_assistant/obsidian_mcp/source_note_graph.py
+      NoteFact.source_sha256 / message_id_hash / attachment_sha256s ;
+      _pair_signals / is_duplicate_pair / DUPLICATE_SIGNALS
+  -> No engine module changed in 10H.
+
+Design invariants (enforced in code):
+  - Scope keyed on the authoritative hb-project-identity block, NOT analyzer document_type
+    (the 10G over-scope lesson).
+  - Eligible iff exactly ONE identity block resolving EXACTLY 23-435-01 / tropical / 2525840
+    AND frontmatter or visible "## Related Project" text disagrees.
+  - Only frontmatter project_key/project_number + one project/23-435-01 tag + the visible
+    Related Project line may change; every managed block is byte-preserved.
+  - No graph links added/removed/reordered; no graph tags added.
+  - Duplicate inventory is COUNT-ONLY: creates/changes nothing.
+  - No DB / runtime-JSON mutation; no card create/delete; no source-file read; no Qwen/Ollama.
+
+Tests: 3 new files (13 tests) pass; full obsidian_source suite (490 tests) green; ruff clean.
