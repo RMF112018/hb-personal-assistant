@@ -1,0 +1,58 @@
+{
+  "available": true,
+  "project_key": "tropical",
+  "as_of_date": "2026-07-03",
+  "current_schedule_version_key": "tropical|S1|2026-07-01",
+  "current_schedule_data_date": "2026-07-01",
+  "slots": [
+    {
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline",
+      "selection": {
+        "schedule_version_key": "tropical|S1|2026-06-01",
+        "schedule_data_date": "2026-06-01",
+        "display_name": "TWNU18.xer",
+        "selected_at": "2026-07-01T06:49:03.684717+00:00",
+        "selected_by": "operator",
+        "notes": null
+      },
+      "status": "selected"
+    },
+    {
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline",
+      "selection": null,
+      "status": "missing"
+    },
+    {
+      "slot_key": "secondary_progress_update_baseline",
+      "slot_label": "Secondary Progress Update Baseline",
+      "selection": null,
+      "status": "missing"
+    }
+  ],
+  "available_versions": [
+    {
+      "schedule_version_key": "tropical|S1|2026-07-01",
+      "schedule_data_date": "2026-07-01",
+      "display_name": "TWNU19.xer",
+      "source_label": "TWNU19.xer",
+      "import_id": "imp-current",
+      "package_id": null,
+      "is_current_as_of": true,
+      "eligible_baseline": false,
+      "ineligibility_reason": "cannot_select_current_schedule_version"
+    },
+    {
+      "schedule_version_key": "tropical|S1|2026-06-01",
+      "schedule_data_date": "2026-06-01",
+      "display_name": "TWNU18.xer",
+      "source_label": "TWNU18.xer",
+      "import_id": "imp-prior",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    }
+  ]
+}

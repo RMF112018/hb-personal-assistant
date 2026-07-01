@@ -39,6 +39,8 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', projectKey, 'baselines'] })
       void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', 'controls', projectKey] })
+      void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', 'review-items', projectKey] })
+      void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', projectKey] })
     },
   })
 
@@ -78,7 +80,6 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
               {status === 'selected' && selection && (
                 <p className="mt-1 text-sm text-[var(--hb-muted)]">
                   {text(selection.display_name)} · data date {text(selection.schedule_data_date)}
-                  <span className="ml-2 text-xs">({text(selectedKey)})</span>
                 </p>
               )}
               {status === 'invalid' && (

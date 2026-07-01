@@ -8,6 +8,11 @@ import { LoadingState } from '../components/common/LoadingState'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
 import type { ReviewWorkbenchComparisonBasis } from '../lib/api'
+import {
+  labelForComparisonBasis,
+  normalizeBaselineContext,
+  workbenchHref as buildWorkbenchHref,
+} from '../lib/scheduleBaselineLabels'
 
 const NAMED_BASIS = new Set<string>([
   'current_contract_baseline',
@@ -44,12 +49,7 @@ export function ProjectScheduleDriverDetailPage() {
     searchParams.get('comparison_basis'),
     searchParams.get('basis'),
   )
-  const workbenchHref = (() => {
-    const params = new URLSearchParams()
-    params.set('comparison_basis', comparisonBasis)
-    if (asOfDate) params.set('as_of', asOfDate)
-    return `/projects/${projectKey}/schedule/workbench?${params.toString()}`
-  })()
+  const workbenchLink = buildWorkbenchHref(projectKey, { asOf: asOfDate, comparisonBasis })
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['project', 'schedule', 'driver-detail', projectKey, activityId, asOfDate, comparisonBasis],
@@ -89,7 +89,14 @@ export function ProjectScheduleDriverDetailPage() {
           title="Driver detail unavailable"
           hint={text(detail.reason, 'Comparison or activity facts are not available.')}
           actions={
-            <Link className="badge" to={`/projects/${projectKey}/schedule`}>
+            <Link
+              className="badge"
+              to={
+                asOfDate
+                  ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
+                  : `/projects/${projectKey}/schedule`
+              }
+            >
               Back to Schedule
             </Link>
           }
@@ -103,6 +110,8 @@ export function ProjectScheduleDriverDetailPage() {
     : `/projects/${projectKey}/schedule`
 
   const activity = detail.activity || {}
+  const baselineCtx = normalizeBaselineContext(detail.baseline_context)
+  const basisLabel = baselineCtx.slotLabel || labelForComparisonBasis(String(detail.comparison_basis || ''))
   const downstream = Array.isArray(detail.downstream_impacts) ? detail.downstream_impacts : []
   const upstream = Array.isArray(detail.upstream_path) ? detail.upstream_path : []
   const logic = Array.isArray(detail.logic_changes) ? detail.logic_changes : []
@@ -114,12 +123,13 @@ export function ProjectScheduleDriverDetailPage() {
           <div>
             <h3 className="section-title mb-0">Driver Detail</h3>
             <p className="mt-1 text-sm text-[var(--hb-muted)]">
-              {text(activity.activity_name) || 'Unnamed activity'} · Basis {text(detail.comparison_basis)}
+              {text(activity.activity_name) || 'Unnamed activity'} · {basisLabel}
+              {baselineCtx.displayName ? ` · ${baselineCtx.displayName}` : ''}
               {asOfDate ? ` · As of ${asOfDate}` : ''}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link className="badge" to={workbenchHref}>
+            <Link className="badge" to={workbenchLink}>
               Workbench
             </Link>
             <Link className="badge" to={scheduleHref}>

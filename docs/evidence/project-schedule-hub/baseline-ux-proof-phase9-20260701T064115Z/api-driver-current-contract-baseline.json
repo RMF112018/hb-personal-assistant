@@ -1,0 +1,114 @@
+{
+  "available": true,
+  "activity_id": "A100",
+  "comparison_basis": "current_contract_baseline",
+  "advisory_posture": "sequence_cues_not_causation",
+  "activity": {
+    "activity_id": "A100",
+    "activity_name": "Area A start",
+    "wbs_code": "WBS-A",
+    "prior_start": "2026-06-01",
+    "current_start": "2026-06-01",
+    "start_delta_days": 0,
+    "prior_finish": "2026-06-05",
+    "current_finish": "2026-06-17",
+    "finish_delta_days": 12,
+    "prior_float": 5.0,
+    "current_float": -2.0,
+    "float_delta_days": -7.0,
+    "computed_cpm_critical": false,
+    "computed_cpm_near_critical": false
+  },
+  "driver_rank": {
+    "activity_id": "A100",
+    "activity_name": "Area A start",
+    "wbs_code": "WBS-A",
+    "display_wbs": "WBS-A",
+    "wbs_context_reason": null,
+    "finish_delta_days": 12,
+    "start_delta_days": 0,
+    "duration_delta_days": null,
+    "float_delta_days": -7.0,
+    "downstream_moved_later_count": 1,
+    "milestone_touch_count": 1,
+    "float_degradation_score": 0,
+    "logic_change_count": 0,
+    "predecessor_count_delta": 0,
+    "successor_count_delta": 0,
+    "computed_cpm_critical": false,
+    "computed_cpm_near_critical": false,
+    "dominant_impacted_wbs": "WBS-A",
+    "top_milestone_name": "Substantial completion milestone",
+    "review_priority": 37,
+    "driver_score": 37.0,
+    "movement_basis": "self_finish_moved",
+    "context_quality": "high",
+    "missing_context_reasons": [],
+    "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+    "impacted_successors_preview": [
+      {
+        "activity_id": "A200",
+        "activity_name": "Substantial completion milestone",
+        "wbs_code": "WBS-A",
+        "prior_start": "2026-06-06",
+        "current_start": "2026-06-18",
+        "start_delta_days": 12,
+        "prior_finish": "2026-06-10",
+        "current_finish": "2026-06-25",
+        "finish_delta_days": 15,
+        "prior_float": 0.0,
+        "current_float": 0.0,
+        "float_delta_days": 0.0,
+        "computed_cpm_critical": false,
+        "computed_cpm_near_critical": false,
+        "affected_milestone_path": [
+          {
+            "activity_id": "A200",
+            "activity_name": "Substantial completion milestone"
+          }
+        ],
+        "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+        "depth_from_driver": 1
+      }
+    ]
+  },
+  "upstream_path": [],
+  "downstream_impacts": [
+    {
+      "activity_id": "A200",
+      "activity_name": "Substantial completion milestone",
+      "wbs_code": "WBS-A",
+      "prior_start": "2026-06-06",
+      "current_start": "2026-06-18",
+      "start_delta_days": 12,
+      "prior_finish": "2026-06-10",
+      "current_finish": "2026-06-25",
+      "finish_delta_days": 15,
+      "prior_float": 0.0,
+      "current_float": 0.0,
+      "float_delta_days": 0.0,
+      "computed_cpm_critical": false,
+      "computed_cpm_near_critical": false,
+      "affected_milestone_path": [
+        {
+          "activity_id": "A200",
+          "activity_name": "Substantial completion milestone"
+        }
+      ],
+      "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+      "depth_from_driver": 1
+    }
+  ],
+  "logic_changes": [],
+  "sequence_cue": "Sequence cue only \u2014 review logic and dates; not a causation finding.",
+  "detail_url": "/api/projects/tropical/schedule/drivers/A100/detail",
+  "baseline_context": {
+    "basis": "current_contract_baseline",
+    "slot_key": "current_contract_baseline",
+    "slot_label": "Current Contract Baseline",
+    "selection_status": "selected",
+    "schedule_version_key": "tropical|S1|2026-06-01",
+    "schedule_data_date": "2026-06-01",
+    "display_name": "TWNU18.xer"
+  }
+}

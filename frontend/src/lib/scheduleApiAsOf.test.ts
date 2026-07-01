@@ -110,4 +110,25 @@ describe('schedule API as-of helpers', () => {
     ]);
   });
 
+  it('only emits whitelisted comparison_basis values for controls requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getProjectScheduleControls('tropical', { comparisonBasis: 'prior_update' });
+    await getProjectScheduleControls('tropical', { comparisonBasis: 'current_contract_baseline' });
+    await getProjectScheduleControls('tropical', { comparisonBasis: 'previous_progress_update_baseline' });
+    await getProjectScheduleControls('tropical', { comparisonBasis: 'secondary_progress_update_baseline' });
+
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls).toEqual([
+      '/api/projects/tropical/schedule/controls?comparison_basis=prior_update',
+      '/api/projects/tropical/schedule/controls?comparison_basis=current_contract_baseline',
+      '/api/projects/tropical/schedule/controls?comparison_basis=previous_progress_update_baseline',
+      '/api/projects/tropical/schedule/controls?comparison_basis=secondary_progress_update_baseline',
+    ]);
+    for (const url of urls) {
+      expect(url).not.toContain('mystery_basis');
+    }
+  });
+
 });

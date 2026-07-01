@@ -356,3 +356,52 @@ def test_controls_previous_and_secondary_named_bases(tmp_path: Path) -> None:
     assert prev["baseline_context"]["slot_label"] == "Previous Progress Update Baseline"
     assert sec["baseline_context"]["slot_label"] == "Secondary Progress Update Baseline"
 
+
+def test_controls_get_unknown_basis_returns_400(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_comparable_versions(db)
+    response = _client(db).get(
+        "/api/projects/tropical/schedule/controls",
+        headers=_viewer(),
+        params={"comparison_basis": "mystery_basis", "as_of": "2026-07-03"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "invalid_comparison_basis"
+
+
+def test_controls_get_omitted_basis_defaults_prior_update(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_comparable_versions(db)
+    response = _client(db).get(
+        "/api/projects/tropical/schedule/controls",
+        headers=_viewer(),
+        params={"as_of": "2026-07-03"},
+    )
+    assert response.status_code == 200
+    assert response.json()["comparison_basis"] == "prior_update"
+
+
+def test_controls_get_invalid_basis_does_not_return_prior_update_payload(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_comparable_versions(db)
+    bad = _client(db).get(
+        "/api/projects/tropical/schedule/controls",
+        headers=_viewer(),
+        params={"comparison_basis": "mystery_basis"},
+    )
+    assert bad.status_code == 400
+    body = bad.json()
+    assert body.get("detail") == "invalid_comparison_basis"
+    assert "top_controls" not in body
+    assert "comparison_basis" not in body
+
+
+def test_controls_service_rejects_unknown_basis(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_comparable_versions(db)
+    with pytest.raises(ValueError, match="invalid_comparison_basis"):
+        ProjectScheduleControlsService(db_path=str(db)).build_controls(
+            "tropical",
+            comparison_basis="mystery_basis",
+        )
+

@@ -49,10 +49,14 @@ def label_for_slot(slot_key: str) -> str:
     return BASELINE_SLOT_LABELS.get(slot_key, slot_key.replace("_", " ").title())
 
 
+def validate_controls_comparison_basis(comparison_basis: str) -> str:
+    if comparison_basis not in CONTROLS_COMPARISON_BASIS_ACCEPTED:
+        raise ValueError("invalid_comparison_basis")
+    return comparison_basis
+
+
 def normalize_controls_comparison_basis(comparison_basis: str) -> str:
-    if comparison_basis in CONTROLS_COMPARISON_BASIS_ACCEPTED:
-        return comparison_basis
-    return "prior_update"
+    return validate_controls_comparison_basis(comparison_basis)
 
 
 def comparison_label_for_basis(comparison_basis: str) -> str | None:

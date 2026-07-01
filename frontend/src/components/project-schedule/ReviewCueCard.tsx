@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { ReviewWorkbenchComparisonBasis } from '../../lib/api'
+import { driverDetailHref } from '../../lib/scheduleBaselineLabels'
 
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
@@ -106,7 +107,10 @@ export function ReviewCueCard({
     ? item.data_quality_notes
     : evidence.data_quality_notes || []
   const driverHref = item.source_activity_id
-    ? `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(String(item.source_activity_id))}?basis=${comparisonBasis}${asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''}`
+    ? driverDetailHref(projectKey, String(item.source_activity_id), {
+        comparisonBasis,
+        asOf: asOfDate,
+      })
     : null
 
   return (
