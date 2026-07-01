@@ -179,6 +179,10 @@ const router = createBrowserRouter([
         element: <ProjectScheduleWorkbenchPage />,
       },
       {
+        path: 'projects/:projectKey/schedule/driver-detail',
+        element: <ProjectScheduleDriverDetailPage />,
+      },
+      {
         path: 'projects/:projectKey/schedule/drivers/:activityId',
         element: <ProjectScheduleDriverDetailPage />,
       },

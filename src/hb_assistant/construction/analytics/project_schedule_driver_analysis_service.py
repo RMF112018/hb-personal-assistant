@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from typing import Any
+from urllib.parse import urlencode
 
 from hb_assistant.store.connection import open_connection
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
@@ -254,7 +255,10 @@ class ProjectScheduleDriverAnalysisService:
             "downstream_impacts": downstream[:15],
             "logic_changes": logic_for_activity[:10],
             "sequence_cue": _SEQUENCE_CUE,
-            "detail_url": f"/api/projects/{project_key}/schedule/drivers/{activity_id}/detail",
+            "detail_url": (
+                f"/api/projects/{project_key}/schedule/drivers/detail?"
+                f"{urlencode({'activity_id': activity_id})}"
+            ),
         }
         if baseline_context:
             payload["baseline_context"] = baseline_context

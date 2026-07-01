@@ -1,0 +1,13 @@
+{
+  "status": 400,
+  "available": null,
+  "comparison_basis": null,
+  "activity_id": null,
+  "activity_name": null,
+  "baseline_context": {
+    "slot_key": null,
+    "slot_label": null,
+    "schedule_version_key": null
+  },
+  "sequence_cue_present": false
+}

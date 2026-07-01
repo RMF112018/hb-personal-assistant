@@ -416,11 +416,11 @@ class ProjectScheduleControlsService:
                     params["as_of"] = as_of_str
                 links["review_item"] = f"/projects/{project_key}/schedule/workbench?{urlencode(params)}"
             if include_workbench_links and activity_id:
-                params = {"basis": comparison_basis}
+                params = {"activity_id": activity_id, "comparison_basis": comparison_basis}
                 if as_of_str:
                     params["as_of"] = as_of_str
                 links["driver_detail"] = (
-                    f"/projects/{project_key}/schedule/drivers/{activity_id}?{urlencode(params)}"
+                    f"/projects/{project_key}/schedule/driver-detail?{urlencode(params)}"
                 )
             candidates.append(
                 {

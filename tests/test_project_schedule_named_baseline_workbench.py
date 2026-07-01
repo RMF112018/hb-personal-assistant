@@ -75,6 +75,25 @@ def _seed_extra_baseline_version(db: Path) -> str:
     return version_key
 
 
+def _seed_slash_driver_activity(db: Path) -> None:
+    with sqlite3.connect(db) as conn:
+        for version_key, import_id, start, finish in (
+            ("tropical|S1|2026-06-01", "imp-prior", "2026-07-01", "2026-07-10"),
+            ("tropical|S1|2026-07-01", "imp-current", "2026-07-11", "2026-07-20"),
+        ):
+            conn.execute(
+                """
+                INSERT INTO procore_ep_schedule_activities (
+                  project_key, schedule_id, schedule_version_key, import_id,
+                  source_type, source_format, activity_id, activity_name,
+                  start_date, finish_date, wbs_code, duration_remaining, is_milestone
+                ) VALUES ('tropical', 'S1', ?, ?, 'xer', 'primavera_xer', 'FAB/DEL-10', 'Fabrication delivery', ?, ?, 'WBS-FAB', '10', 0)
+                """,
+                (version_key, import_id, start, finish),
+            )
+        conn.commit()
+
+
 def _select_named_contract_baseline(db: Path, version_key: str = "tropical|S1|2026-06-01") -> None:
     ProjectScheduleNamedBaselineService(db_path=str(db)).update_baselines(
         "tropical",
@@ -343,7 +362,9 @@ def test_controls_reinstates_named_workbench_and_driver_links(tmp_path: Path) ->
     assert control["links"]["review_item"]
     assert "comparison_basis=current_contract_baseline" in control["links"]["review_item"]
     assert control["links"]["driver_detail"]
-    assert "basis=current_contract_baseline" in control["links"]["driver_detail"]
+    assert "comparison_basis=current_contract_baseline" in control["links"]["driver_detail"]
+    assert "activity_id=" in control["links"]["driver_detail"]
+    assert "/schedule/driver-detail?" in control["links"]["driver_detail"]
 
 
 def test_controls_and_routes_resolve_same_named_slot(tmp_path: Path) -> None:
@@ -401,6 +422,58 @@ def test_all_three_named_slots_supported_on_workbench(tmp_path: Path) -> None:
         ).json()
         assert body["available"] is True
         assert body["comparison_basis"] == basis
+
+
+def test_driver_detail_query_route_accepts_slash_activity_id(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _seed_slash_driver_activity(db)
+    _select_named_contract_baseline(db)
+    response = _client(db).get(
+        "/api/projects/tropical/schedule/drivers/detail",
+        headers=_viewer(),
+        params={
+            "activity_id": "FAB/DEL-10",
+            "comparison_basis": "current_contract_baseline",
+            "as_of": "2026-07-03",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["available"] is True
+    assert body["comparison_basis"] == "current_contract_baseline"
+    assert body["activity"]["activity_id"] == "FAB/DEL-10"
+    assert body["baseline_context"]["slot_key"] == "current_contract_baseline"
+
+
+def test_driver_detail_query_route_rejects_conflicting_basis(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    response = _client(db).get(
+        "/api/projects/tropical/schedule/drivers/detail",
+        headers=_viewer(),
+        params={
+            "activity_id": "DRV-A",
+            "basis": "prior_update",
+            "comparison_basis": "current_contract_baseline",
+            "as_of": "2026-07-03",
+        },
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "conflicting_comparison_params"
+
+
+def test_driver_detail_legacy_path_route_still_works(tmp_path: Path) -> None:
+    db = _fresh_db(tmp_path)
+    _seed_driver_chain(db)
+    _select_named_contract_baseline(db)
+    response = _client(db).get(
+        "/api/projects/tropical/schedule/drivers/DRV-A/detail",
+        headers=_viewer(),
+        params={"comparison_basis": "current_contract_baseline", "as_of": "2026-07-03"},
+    )
+    assert response.status_code == 200
+    assert response.json()["available"] is True
 
 
 def test_prior_update_sync_still_runs(tmp_path: Path) -> None:

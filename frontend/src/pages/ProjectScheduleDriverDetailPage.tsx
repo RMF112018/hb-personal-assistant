@@ -20,20 +20,24 @@ const NAMED_BASIS = new Set<string>([
   'secondary_progress_update_baseline',
 ])
 
+type DriverBasisResolution =
+  | { ok: true; comparisonBasis: ReviewWorkbenchComparisonBasis | 'baseline' }
+  | { ok: false; reason: 'conflicting_comparison_params' | 'invalid_comparison_basis' }
+
 function resolveDriverComparisonBasis(
   comparisonBasisParam: string | null,
   basisParam: string | null,
-): ReviewWorkbenchComparisonBasis | 'baseline' {
+): DriverBasisResolution {
   const comparisonBasis = comparisonBasisParam?.trim() || null
   const basis = basisParam?.trim() || null
   if (comparisonBasis && basis && comparisonBasis !== basis) {
-    return 'prior_update'
+    return { ok: false, reason: 'conflicting_comparison_params' }
   }
   const raw = comparisonBasis || basis || 'prior_update'
   if (raw === 'prior_update' || raw === 'baseline' || NAMED_BASIS.has(raw)) {
-    return raw as ReviewWorkbenchComparisonBasis | 'baseline'
+    return { ok: true, comparisonBasis: raw as ReviewWorkbenchComparisonBasis | 'baseline' }
   }
-  return 'prior_update'
+  return { ok: false, reason: 'invalid_comparison_basis' }
 }
 
 function text(value: unknown, fallback = '—') {
@@ -42,13 +46,16 @@ function text(value: unknown, fallback = '—') {
 }
 
 export function ProjectScheduleDriverDetailPage() {
-  const { projectKey = '', activityId = '' } = useParams()
+  const { projectKey = '', activityId: pathActivityId = '' } = useParams()
   const [searchParams] = useSearchParams()
+  const queryActivityId = searchParams.get('activity_id')?.trim() || ''
+  const activityId = queryActivityId || pathActivityId
   const asOfDate = searchParams.get('as_of') || undefined
-  const comparisonBasis = resolveDriverComparisonBasis(
+  const basisResolution = resolveDriverComparisonBasis(
     searchParams.get('comparison_basis'),
     searchParams.get('basis'),
   )
+  const comparisonBasis = basisResolution.ok ? basisResolution.comparisonBasis : 'prior_update'
   const workbenchLink = buildWorkbenchHref(projectKey, { asOf: asOfDate, comparisonBasis })
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -58,8 +65,20 @@ export function ProjectScheduleDriverDetailPage() {
         asOf: asOfDate,
         comparisonBasis,
       }),
-    enabled: Boolean(projectKey && activityId),
+    enabled: Boolean(projectKey && activityId && basisResolution.ok),
   })
+
+  if (!basisResolution.ok) {
+    const message =
+      basisResolution.reason === 'conflicting_comparison_params'
+        ? 'Driver detail cannot load because comparison_basis and basis conflict.'
+        : 'Driver detail cannot load because comparison_basis is invalid.'
+    return (
+      <ProjectWorkspaceShell>
+        <ErrorState userMessage={message} />
+      </ProjectWorkspaceShell>
+    )
+  }
 
   if (isLoading) {
     return (

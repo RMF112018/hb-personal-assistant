@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "available": true,
+  "comparison_basis": "current_contract_baseline",
+  "activity_id": "FM-PERMPOWER",
+  "activity_name": "PERM POWER",
+  "baseline_context": {
+    "slot_key": "current_contract_baseline",
+    "slot_label": "Current Contract Baseline",
+    "schedule_version_key": "tropical|815|2025-08-07 08:00"
+  },
+  "sequence_cue_present": true
+}
