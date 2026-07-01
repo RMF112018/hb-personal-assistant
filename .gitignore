@@ -195,6 +195,9 @@ config/config.yml
 /local_audit_outputs/
 /tmp/
 
+# Local-sensitive evidence (per-note detail, rollback bundles, logs) — never committed.
+docs/evidence/**/local-sensitive/
+
 # Local DB backups / cutover restore points
 docs/evidence/**/backups/*.sqlite
 docs/evidence/**/backups/*.sqlite-*

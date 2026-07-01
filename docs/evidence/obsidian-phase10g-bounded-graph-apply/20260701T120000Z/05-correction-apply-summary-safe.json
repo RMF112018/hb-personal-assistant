@@ -1,0 +1,29 @@
+{
+  "created": 0,
+  "db_before": {
+    "by_status": {
+      "generated": 128,
+      "not_generated": 67
+    },
+    "meta_sha12": "31dce7a78878",
+    "processing": 0,
+    "queued": 0,
+    "summaries_rows": 7
+  },
+  "db_mutations": 0,
+  "deleted": 0,
+  "email_cards_disagreeing": 16,
+  "email_cards_reconciled": 16,
+  "email_cards_scanned": 16,
+  "email_cards_skipped": 0,
+  "graph_tag_notes_stripped": 2,
+  "mode": "apply",
+  "notes_modified": 16,
+  "notes_selected": 103,
+  "offending_links_remaining": 0,
+  "offending_pairs": 1,
+  "queue_delta": 0,
+  "reasons": {
+    "banned_type:same_project": 1
+  }
+}

@@ -1,0 +1,34 @@
+Phase 10G — Bounded Note-Graph Apply — Repo-Truth Audit (count/schema only)
+==========================================================================
+Base: origin/main 881c56a8 (Phase 10F merged). Worktree branch:
+  feat/obsidian-phase10g-bounded-graph-apply-20260701T110855Z
+
+Changed (source):
+  scripts/obsidian_source_note_apply_graph.py  — bounded project selection; primary+secondary mode;
+      lineage-pair exclusion (amend 1); same-sha duplicate review-only counting (amend 2);
+      post-vet --confirm-apply-approved-count checkpoint (amend 3); --max-apply-relationships cap;
+      project confirm gates; ollama_calls counter; applied_relationship_types + rejection_reasons;
+      post-apply backlink-integrity check; count-only phase10g-review-report-safe.md renderer.
+  src/hb_assistant/obsidian_mcp/source_note_graph.py — block rename hb-related-notes -> gc-graph-links;
+      RELATED_TAGS += related/email, related/attachment; REVIEW_TAGS += review/project-context;
+      PRIMARY_STRONG / SECONDARY_STRONG / DUPLICATE_SIGNALS; is_candidate(mode=), is_duplicate_pair;
+      build_candidates(mode=); fact-only build_vetting_prompt + _vetting_fact_line (amend 4).
+Added (tests):
+  tests/test_obsidian_source_graph_apply.py         (13 tests)
+  tests/test_obsidian_source_graph_vetting.py        (4 tests)
+  tests/test_obsidian_source_graph_review_report.py  (3 tests)
+Modified (tests):
+  tests/test_obsidian_source_note_graph.py — gc-graph-links rename (via REL_BLOCK_* constants);
+      _args() now passes the required --confirm-apply-approved-count on apply.
+.gitignore: + docs/evidence/**/local-sensitive/
+
+Test results (venv, PYTHONPATH=src:subrepos/construction-financial-review/src):
+  test_obsidian_source_note_graph.py ............................ 23 passed
+  test_obsidian_source_graph_apply.py .......................... 13 passed
+  test_obsidian_source_graph_vetting.py ........................  4 passed
+  test_obsidian_source_graph_review_report.py .................. 3 passed
+  adjacent (email_graph_facts, email_attachment_graph, self_index_guard, email_archive,
+    email_attachments, email_attachment_cards, project_identity) ..... all passed
+  slow/adjacent (local_summary_appender, taxonomy_phase10a, cards_pm_grade,
+    watch_ownership) ..... all passed
+  ruff check (changed source + all new/edited tests) ..... clean

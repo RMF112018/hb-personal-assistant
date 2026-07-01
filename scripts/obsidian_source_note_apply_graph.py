@@ -13,10 +13,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 import socket
 import sqlite3
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import quote
@@ -90,6 +92,43 @@ def _default_client_factory(model: str, timeout: float) -> OllamaChatClient:
     return OllamaChatClient(model=model, timeout=timeout)
 
 
+# Matches the parent-email link written by source_email_attachments (hb-email-attachment block):
+#   "- Parent email card: [[<rel-without-.md>|<display>]]"
+_PARENT_EMAIL_RE = re.compile(r"parent email card:\s*\[\[([^\]|]+)", re.IGNORECASE)
+
+
+def _n(s: str | None) -> str:
+    return re.sub(r"\s+", " ", str(s or "").strip().lower())
+
+
+def _classify(f: ng.NoteFact) -> str:
+    """Bounded card-type classification from graph-safe facts only (never bodies/paths)."""
+    if f.attachment_extension or f.parent_email_hash:
+        return "attachment"
+    if f.thread_topic or f.subject_norm:
+        return "email"
+    return "project"
+
+
+def _matches_project(f: ng.NoteFact, args: argparse.Namespace) -> bool:
+    """True iff the card belongs to the requested bounded project (number/key/procore-id)."""
+    if args.project_number and f.project == _n(args.project_number):
+        return True
+    if args.project_key and (f.canonical_project_key == _n(args.project_key)
+                             or f.project == _n(args.project_key)):
+        return True
+    return bool(args.procore_project_id and f.procore_project_id == _n(args.procore_project_id))
+
+
+def _parent_email_rel(text: str) -> str | None:
+    """Parse the attachment card's parent-email-card wiki link target (with .md) for lineage exclusion."""
+    m = _PARENT_EMAIL_RE.search(text)
+    if not m:
+        return None
+    target = m.group(1).strip()
+    return target if target.endswith(".md") else target + ".md"
+
+
 def run(args: argparse.Namespace, *,
         client_factory: Callable[[str, float], Any] = _default_client_factory) -> dict[str, Any]:
     vault_root = Path(args.vault_path).resolve()
@@ -99,29 +138,87 @@ def run(args: argparse.Namespace, *,
     repo = SourceIndexRepository(args.db_path)
     fp_before = _db_fingerprint(args.db_path)
 
+    # ---- bounded selection --------------------------------------------------------------------
+    # Only generated `.md` cards under Source Notes/Work/ (excludes Email Archive/, stale, binaries).
+    # When project filters are set, keep ONLY cards of that one project (number/key/procore-id).
     prefix = "Source Notes/Work/"
-    rows = sorted((r for r in repo.list_generated_notes(statuses=("generated",))
-                   if str(r.get("note_rel_path") or "").startswith(prefix)),
-                  key=lambda r: str(r["note_rel_path"]))[:args.max_notes]
+    project_scoped = bool(args.project_number or args.project_key or args.procore_project_id)
+    all_rows = sorted((r for r in repo.list_generated_notes(statuses=("generated",))
+                       if str(r.get("note_rel_path") or "").startswith(prefix)),
+                      key=lambda r: str(r["note_rel_path"]))
     facts: dict[str, ng.NoteFact] = {}
     text_by_id: dict[str, str] = {}
-    for row in rows:
+    excluded_outside_project = 0
+    selection_truncated = False
+    for row in all_rows:
         target = vault_root / str(row["note_rel_path"])
         if not target.is_file():
             raise GraphError("selected card file is missing")
         text = target.read_text(encoding="utf-8")
         f = ng.note_fact_from(repo, row, text)
+        if project_scoped and not _matches_project(f, args):
+            excluded_outside_project += 1
+            continue
+        if len(facts) >= args.max_notes:
+            selection_truncated = True
+            break
         facts[f.note_id] = f
         text_by_id[f.note_id] = text
 
-    candidates = ng.build_candidates(list(facts.values()), max_per_note=args.max_candidates_per_note,
-                                     max_relationships=args.max_relationships)
+    fact_list = list(facts.values())
+    card_types = Counter(_classify(f) for f in fact_list)
+
+    mode = "primary_secondary" if project_scoped else "default"
+    candidates = ng.build_candidates(fact_list, max_per_note=args.max_candidates_per_note,
+                                     max_relationships=args.max_relationships, mode=mode)
+
+    # ---- amendment 1: exclude direct parent-email <-> its-own-attachment lineage pairs -----------
+    # (already linked via hb-email-attachment(s); same_parent_email still supports SIBLING pairs).
+    rel_to_id = {f.note_rel: f.note_id for f in fact_list}
+    lineage_pairs: set[frozenset[str]] = set()
+    for nid, f in facts.items():
+        if _classify(f) != "attachment":
+            continue
+        parent_rel = _parent_email_rel(text_by_id[nid])
+        if parent_rel and parent_rel in rel_to_id:
+            lineage_pairs.add(frozenset((nid, rel_to_id[parent_rel])))
+    lineage_pairs_excluded = 0
+    kept: list[ng.Candidate] = []
+    for c in candidates:
+        if frozenset((c.a.note_id, c.b.note_id)) in lineage_pairs:
+            lineage_pairs_excluded += 1
+            continue
+        kept.append(c)
+    candidates = kept
+
+    # ---- amendment 2 (+ 10G correction): duplicate/same-source evidence = review-only ------------
+    # Any pair sharing attachment/source content SHA or email message-id hash is a duplicate pair; it is
+    # VETOED from durable candidacy (see is_candidate) even when it also shares thread/subject/etc, and
+    # is counted here for review — separately from the applied relationship types.
+    duplicate_review_candidates = 0
+    for i, a in enumerate(fact_list):
+        for b in fact_list[i + 1:]:
+            if ng.is_duplicate_pair(ng._pair_signals(a, b)):
+                duplicate_review_candidates += 1
+
     result: dict[str, Any] = {
         "mode": "apply" if args.apply else "dry-run", "model": args.model,
-        "notes_selected": len(facts), "candidate_pairs": len(candidates),
+        "eligibility_mode": mode,
+        "project_number": args.project_number, "project_key": args.project_key,
+        "procore_project_id": args.procore_project_id,
+        "notes_selected": len(facts), "selection_truncated": selection_truncated,
+        "project_cards": card_types.get("project", 0), "email_cards": card_types.get("email", 0),
+        "attachment_cards": card_types.get("attachment", 0),
+        "excluded_outside_project": excluded_outside_project,
+        "candidate_pairs": len(candidates),
+        "lineage_pairs_excluded": lineage_pairs_excluded,
+        "duplicate_review_candidates": duplicate_review_candidates,
         "candidate_basis_counts": ng.candidate_basis_counts(candidates),
-        "vetted_pairs": 0, "approved_pairs": 0, "relationships_applied": 0, "notes_modified": 0,
+        "vetted_pairs": 0, "approved_pairs": 0, "ollama_calls": 0,
+        "relationships_applied": 0, "notes_modified": 0,
         "reciprocal_links_applied": 0, "tags_added": 0, "created": 0, "deleted": 0,
+        "applied_relationship_types": {}, "rejection_reasons": {},
+        "backlink_integrity_passed": None, "backlinks_verified": 0,
         "queue_delta": 0, "db_mutations": 0, "db_before": fp_before, "ollama_called": False,
     }
     detail_rows: list[dict[str, Any]] = []
@@ -137,6 +234,11 @@ def run(args: argparse.Namespace, *,
         if not (args.confirm_db_path == args.db_path and args.confirm_vault_path == args.vault_path
                 and args.confirm_model == args.model):
             raise GraphError("--apply requires matching --confirm-db-path/--confirm-vault-path/--confirm-model")
+        # When bounded project selection is used, its confirm flags must match exactly (Phase 10G).
+        if not ((args.confirm_project_number or None) == (args.project_number or None)
+                and (args.confirm_project_key or None) == (args.project_key or None)
+                and (args.confirm_procore_project_id or None) == (args.procore_project_id or None)):
+            raise GraphError("--apply requires matching --confirm-project-number/-key/-procore-project-id")
         if any(getattr(config, f, False) for f in _FROZEN_FLAGS):
             raise GraphError("runtime frozen flags are not all false")
         if _backend_listening():
@@ -153,12 +255,29 @@ def run(args: argparse.Namespace, *,
 
     result["ollama_called"] = True
     approved: list[tuple[ng.NoteFact, ng.NoteFact, dict[str, Any]]] = []
+    rejections: Counter[str] = Counter()
     for cand in candidates:
         result["vetted_pairs"] += 1
-        vet, _reason = ng.vet_candidate(client, cand, threshold=args.confidence_threshold)
+        result["ollama_calls"] += 1
+        vet, reason = ng.vet_candidate(client, cand, threshold=args.confidence_threshold)
         if vet is not None:
             approved.append((cand.a, cand.b, vet))
+        else:
+            rejections[reason] += 1
     result["approved_pairs"] = len(approved)
+    result["rejection_reasons"] = dict(sorted(rejections.items()))
+
+    # ---- amendment 3: post-vet apply checkpoint (hard-stop before any write) --------------------
+    if args.apply and len(approved) > 0:
+        if args.confirm_apply_approved_count is None:
+            raise GraphError("--apply with approved>0 requires --confirm-apply-approved-count")
+        if int(args.confirm_apply_approved_count) != len(approved):
+            raise GraphError(
+                f"confirm_apply_approved_count mismatch: got {args.confirm_apply_approved_count}, "
+                f"vetted approved={len(approved)}")
+        if len(approved) > args.max_apply_relationships:
+            raise GraphError(
+                f"approved {len(approved)} exceeds --max-apply-relationships {args.max_apply_relationships}")
 
     # ---- plan per-note edits (deterministic) --------------------------------------------------
     links: dict[str, set[str]] = {nid: set() for nid in facts}
@@ -227,6 +346,10 @@ def run(args: argparse.Namespace, *,
     result["relationships_applied"] = applied_pairs
     result["reciprocal_links_applied"] = applied_pairs * 2
     result["notes_modified"] = len(plan)
+    # amendment 6: applied relationship types are the qwen-approved types — reported SEPARATELY from
+    # candidate_basis_counts (the deterministic signals). A basis is never the applied relationship.
+    result["applied_relationship_types"] = dict(sorted(
+        Counter(v["relationship_type"] for (_x, _y, v) in pair_notes).items()))
     result["tags_added"] = sum(
         len([t for t in tags[nid] if t not in facts[nid].existing_tags][:8]) for nid in plan)
 
@@ -268,6 +391,20 @@ def run(args: argparse.Namespace, *,
         raise GraphError("queue changed during apply")
     if fp_after != fp_before:
         raise GraphError("DB metadata changed during apply")
+
+    # ---- backlink integrity: every applied relationship must be reciprocal on BOTH cards ----------
+    verified, integrity_ok = 0, True
+    for a_id, b_id, _v in pair_notes:
+        a_text = (vault_root / facts[a_id].note_rel).read_text(encoding="utf-8")
+        b_text = (vault_root / facts[b_id].note_rel).read_text(encoding="utf-8")
+        if ng.build_wiki_link(facts[b_id]) in a_text and ng.build_wiki_link(facts[a_id]) in b_text:
+            verified += 1
+        else:
+            integrity_ok = False
+    result["backlinks_verified"] = verified
+    result["backlink_integrity_passed"] = integrity_ok
+    if not integrity_ok:
+        raise GraphError("backlink_integrity_failed")
     return {"safe": result, "detail_rows": detail_rows}
 
 
@@ -282,7 +419,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-notes", type=int, default=25)
     p.add_argument("--max-candidates-per-note", type=int, default=10)
     p.add_argument("--max-relationships", type=int, default=50)
+    p.add_argument("--max-apply-relationships", type=int, default=25,
+                   help="post-vet cap on relationships actually applied (distinct from candidate cap)")
     p.add_argument("--confidence-threshold", type=float, default=0.80)
+    # bounded project selection (Phase 10G) — restricts the run to one project's Work source cards
+    p.add_argument("--project-number", default="")
+    p.add_argument("--project-key", default="")
+    p.add_argument("--procore-project-id", default="")
+    p.add_argument("--confirm-project-number", default="")
+    p.add_argument("--confirm-project-key", default="")
+    p.add_argument("--confirm-procore-project-id", default="")
+    p.add_argument("--confirm-apply-approved-count", type=int, default=None,
+                   help="post-vet checkpoint: must equal the vetted approved count when applying")
     p.add_argument("--timeout-seconds", type=float, default=None)
     p.add_argument("--backup-dir", default=None)
     p.add_argument("--evidence-dir", default=None)
@@ -296,6 +444,57 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--require-empty-queue", action="store_true", default=True)
     p.add_argument("--no-require-empty-queue", dest="require_empty_queue", action="store_false")
     return p
+
+
+def _render_review_report(safe: dict[str, Any]) -> str:
+    """Count-only / redacted human-review report — no titles/paths/subjects/addresses/ids/names/qwen text."""
+    def _dist(d: dict[str, Any]) -> str:
+        return ", ".join(f"{k}: {v}" for k, v in sorted((d or {}).items())) or "none"
+    lines = [
+        "# Phase 10G — Bounded Note-Graph Apply — Review Report (safe / count-only)",
+        "",
+        f"- mode: {safe.get('mode')}",
+        f"- eligibility_mode: {safe.get('eligibility_mode')}",
+        f"- project_number: {safe.get('project_number') or 'none'}",
+        f"- project_key: {safe.get('project_key') or 'none'}",
+        f"- procore_project_id: {safe.get('procore_project_id') or 'none'}",
+        "",
+        "## Selection",
+        f"- notes_selected: {safe.get('notes_selected')} "
+        f"(project={safe.get('project_cards')}, email={safe.get('email_cards')}, "
+        f"attachment={safe.get('attachment_cards')})",
+        f"- selection_truncated: {safe.get('selection_truncated')}",
+        f"- excluded_outside_project: {safe.get('excluded_outside_project')}",
+        "",
+        "## Candidates (deterministic basis — NOT applied relationships)",
+        f"- candidate_pairs: {safe.get('candidate_pairs')}",
+        f"- lineage_pairs_excluded: {safe.get('lineage_pairs_excluded')}",
+        f"- duplicate_review_candidates (same-content, review-only): "
+        f"{safe.get('duplicate_review_candidates')}",
+        f"- candidate_basis_counts: {_dist(safe.get('candidate_basis_counts'))}",
+        "",
+        "## Vetting (local qwen2.5:14b, advisory)",
+        f"- ollama_calls: {safe.get('ollama_calls')}",
+        f"- vetted_pairs: {safe.get('vetted_pairs')}",
+        f"- approved_pairs: {safe.get('approved_pairs')}",
+        f"- rejection_reasons: {_dist(safe.get('rejection_reasons'))}",
+        "",
+        "## Applied (qwen-approved relationships — separate from basis)",
+        f"- relationships_applied: {safe.get('relationships_applied')}",
+        f"- reciprocal_links_applied: {safe.get('reciprocal_links_applied')}",
+        f"- applied_relationship_types: {_dist(safe.get('applied_relationship_types'))}",
+        f"- notes_modified: {safe.get('notes_modified')}",
+        f"- tags_added: {safe.get('tags_added')}",
+        f"- backlink_integrity_passed: {safe.get('backlink_integrity_passed')} "
+        f"(verified={safe.get('backlinks_verified')})",
+        "",
+        "## Invariants",
+        f"- queue_delta: {safe.get('queue_delta')}",
+        f"- db_mutations: {safe.get('db_mutations')}",
+        f"- created: {safe.get('created')}, deleted: {safe.get('deleted')}",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None, *,
@@ -318,6 +517,8 @@ def main(argv: list[str] | None = None, *,
             json.dumps(safe, indent=2, sort_keys=True), encoding="utf-8")
         (ev / f"note-graph-{mode}-detail-local-sensitive.json").write_text(
             json.dumps({"rows": detail_rows}, indent=2, sort_keys=True), encoding="utf-8")
+        (ev / "phase10g-review-report-safe.md").write_text(
+            _render_review_report(safe), encoding="utf-8")
     print(json.dumps(safe, indent=2, sort_keys=True))
     return 0
 
