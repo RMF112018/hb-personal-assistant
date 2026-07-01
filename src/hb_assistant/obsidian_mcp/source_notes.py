@@ -378,6 +378,34 @@ _PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
         "cues": ["Use for coordination scope only; verify against current responsibility assignments."],
         "followup": ["Confirm assignments are current; do not treat as a control document."],
     },
+    # Phase 10K repaired families.
+    "value_analysis": {
+        "why": ["A value-analysis log tracks proposed cost, scope, or specification changes for PM "
+                "review and budget/scope alignment."],
+        "cues": ["Confirm status of pending or conditional items.",
+                 "Verify cost impacts against the current budget/change log.",
+                 "Confirm accepted items are reflected in current project documents."],
+        "followup": ["Confirm the disposition of pending/conditional items.",
+                     "Reconcile cost impacts against the budget/change log."],
+    },
+    "specification_template": {
+        "why": ["A specification template may inform project requirements, but it must be confirmed "
+                "before treating it as a project-specific submittal or contract requirement."],
+        "cues": ["Confirm whether this template was adopted for the project.",
+                 "Identify applicable sections and any project-specific edits.",
+                 "Do not treat template language as approved project direction without confirmation."],
+        "followup": ["Confirm whether the template was adopted and which sections apply.",
+                     "Do not record template language as approved project direction."],
+    },
+    "clarification_memo": {
+        "why": ["A clarification memo captures open questions or coordination points that may require "
+                "PM follow-up before relying on scope, sequence, or schedule assumptions."],
+        "cues": ["Identify which questions remain open.",
+                 "Confirm responses, decisions, or follow-up owners.",
+                 "Tie resolved clarifications back to governing project documents."],
+        "followup": ["Track open questions to a documented response/decision owner.",
+                     "Tie resolved clarifications back to governing project documents."],
+    },
 }
 _PM_GUIDANCE_FALLBACK = {
     "why": ["Indexed source retained for reference and search; classification is low-signal."],

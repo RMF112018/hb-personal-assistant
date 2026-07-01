@@ -1,0 +1,37 @@
+Phase 10K — Redaction proof (2026-07-01T22:15:59Z)
+Scans committable SAFE evidence for sensitive tokens: note titles, filenames, source paths,
+source IDs, 64-hex content SHAs, emails, message IDs, raw excerpts/summaries, and liability
+language. Project key 'tropical' / number '23-435-01' are ALLOWED (bounded project scope).
+00-repo-state.txt is repo git metadata (contains the base commit SHA) and is excluded.
+
+## Safe files scanned:
+04-targeted-VA-dry-run.json
+05-targeted-VA-dry-run.md
+06-targeted-spec-dry-run.json
+07-targeted-spec-dry-run.md
+08-targeted-memo-dry-run.json
+09-targeted-memo-dry-run.md
+10-tropical-classifier-repair-dry-run.json
+11-tropical-classifier-repair-report-safe.md
+12-targeted-apply-report-safe.md
+12-targeted-apply-summary.json
+
+## Matches (should be none):
+(none — all safe evidence is count/enum only)
+
+## local-sensitive/ contents (git-ignored, NOT committed):
+local-sensitive/after/1.docx__d34fa22a991a.md
+local-sensitive/after/2021-ICP-BSG-Masterworks-Specification-02-87-13-Mold-Remediation-_V3-22-21-1.doc__9e0d5bba2084.md
+local-sensitive/after/20241016_TWN_VA_Log.pdf__98a82f37a66a.md
+local-sensitive/backups/classifier_repair/Source Notes/Work/1.docx__d34fa22a991a.md
+local-sensitive/backups/classifier_repair/Source Notes/Work/2021-ICP-BSG-Masterworks-Specification-02-87-13-Mold-Remediation-_V3-22-21-1.doc__9e0d5bba2084.md
+local-sensitive/backups/classifier_repair/Source Notes/Work/20241016_TWN_VA_Log.pdf__98a82f37a66a.md
+local-sensitive/before/1.docx__d34fa22a991a.md
+local-sensitive/before/2021-ICP-BSG-Masterworks-Specification-02-87-13-Mold-Remediation-_V3-22-21-1.doc__9e0d5bba2084.md
+local-sensitive/before/20241016_TWN_VA_Log.pdf__98a82f37a66a.md
+local-sensitive/phase10k-classifier-repair-detail-local-sensitive.json
+
+## git check-ignore confirmation:
+local-sensitive/before/x
+local-sensitive/after/x
+local-sensitive/backups/x

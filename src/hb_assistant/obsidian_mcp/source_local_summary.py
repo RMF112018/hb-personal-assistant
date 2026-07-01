@@ -14,6 +14,11 @@ import re
 
 from hb_assistant.construction.classification.client import OllamaChatClient, OllamaUnavailable
 
+from .source_document_classifier import (
+    _FAMILY_REQUIRED,
+    _title_signal,
+    detect_classification_conflict,  # noqa: F401  (re-exported for 10J scripts/tests)
+)
 from .source_notes import LOCAL_SUMMARY_BEGIN_PREFIX, LOCAL_SUMMARY_END
 
 LOCAL_SUMMARY_SYSTEM_PROMPT = (
@@ -311,7 +316,6 @@ def build_source_card_summary_prompt(card_text: str, detail: dict, *, title: str
     return "\n".join(parts)
 
 
-_SPEC_SECTION_RE = re.compile(r"\b\d\d[\s-]\d\d[\s-]\d\d\b")  # e.g. 02 87 13 / 02-87-13
 _GROUND_STOP = frozenset({
     "this", "that", "with", "from", "have", "will", "your", "there", "which", "their", "about",
     "document", "source", "card", "project", "summary", "advisory", "please", "shall", "these",
@@ -322,56 +326,6 @@ _GROUND_STOP = frozenset({
 
 def _content_tokens(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9#]{4,}", str(text or "").lower()) if w not in _GROUND_STOP}
-
-
-def _title_signal(title: str, excerpt: str) -> str | None:
-    """Deterministic document-family signal from the title + excerpt header (never body-only guess)."""
-    ttok = set(re.sub(r"[^a-z0-9]+", " ", str(title or "").lower()).split())
-    head = (str(title or "") + "\n" + str(excerpt or "")[:1200]).lower()
-    hnorm = re.sub(r"[^a-z0-9]+", " ", head)
-    if ("va" in ttok and ("log" in ttok or "tracking" in ttok)) or "value analysis" in hnorm \
-            or "value engineering" in hnorm:
-        return "value_analysis_log"
-    if _SPEC_SECTION_RE.search(head) or "masterworks" in hnorm or "master works" in hnorm \
-            or "specification" in hnorm or "part 1 general" in hnorm or "part 2 products" in hnorm:
-        return "specification_generic"
-    if re.search(r"clarification|open items|open questions|memorandum|preconstruction question", hnorm) \
-            or " memo " in f" {hnorm} " or head.count("?") >= 2:
-        return "memo_questions"
-    if "transmittal" in hnorm:
-        return "transmittal"
-    if "warranty" in hnorm or "warrant" in ttok:
-        return "warranty"
-    if "tracking" in hnorm or "log" in ttok:
-        return "tracker"
-    return None
-
-
-# document_type values that CONTRADICT a detected family (surface, don't repair, in this pass).
-_FAMILY_CONFLICTS = {
-    "value_analysis_log": {"warranty", "contract", "submittal"},
-    "specification_generic": {"submittal", "scope_of_work", "warranty", "contract"},
-    "memo_questions": {"scope_of_work", "contract", "submittal", "warranty"},
-    "transmittal": {"scope_of_work", "contract"},
-}
-# For a detected family, the summary must satisfy EACH required signal group (>=1 match per group).
-_FAMILY_REQUIRED: dict[str, list[str]] = {
-    "value_analysis_log": [r"value[- ]?analysis|value engineering|\bva\b|tracking log|value tracking",
-                           r"line[- ]?item|status|value|alternate"],
-    "specification_generic": [r"generic|template|specification|spec package|standard|master ?works",
-                              r"clean|kill|coat|moisture|iicrc|s\s?520|submittal|sds|voc|product|"
-                              r"manufacturer|remediation"],
-    "memo_questions": [r"clarification|question|open item|preconstruction|unresolved|"
-                       r"to be (confirmed|determined)|\bmemo\b"],
-}
-
-
-def detect_classification_conflict(document_type: str | None, title: str, excerpt: str) -> str | None:
-    """Return the true document family when title/content contradict document_type, else None."""
-    fam = _title_signal(title, excerpt)
-    if fam and str(document_type or "").lower() in _FAMILY_CONFLICTS.get(fam, set()):
-        return fam
-    return None
 
 
 def _section_bullets(lines: list[str], heading: str) -> list[str]:
