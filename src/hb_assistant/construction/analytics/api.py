@@ -1228,7 +1228,7 @@ def create_app(*, db_path: str | None = None) -> Any:
         from fastapi import HTTPException
 
         from hb_assistant.construction.analytics.project_schedule_baseline_vocabulary import (
-            normalize_controls_comparison_basis,
+            validate_controls_comparison_basis,
         )
         from hb_assistant.construction.analytics.project_schedule_controls_service import (
             ProjectScheduleControlsService,
@@ -1240,7 +1240,12 @@ def create_app(*, db_path: str | None = None) -> Any:
                 as_of_date = date_type.fromisoformat(as_of)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
-        basis = normalize_controls_comparison_basis(comparison_basis)
+        try:
+            basis = validate_controls_comparison_basis(comparison_basis)
+        except ValueError as exc:
+            if str(exc) == "invalid_comparison_basis":
+                raise HTTPException(status_code=400, detail="invalid_comparison_basis") from exc
+            raise
         return ProjectScheduleControlsService(db_path=_schedule_db_path()).build_controls(
             project_key,
             as_of=as_of_date,

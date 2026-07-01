@@ -20,6 +20,7 @@ import type {
   ReviewWorkbenchComparisonBasis,
   ScheduleControlsComparisonBasis,
 } from '../lib/api'
+import { driverDetailHref, workbenchHref } from '../lib/scheduleBaselineLabels'
 
 function text(value: unknown, fallback = 'Not available') {
   if (value === null || value === undefined || value === '') return fallback
@@ -229,9 +230,7 @@ function DriverEvidenceSection({
   onComparisonBasisChange: (basis: ReviewWorkbenchComparisonBasis | 'baseline') => void
 }) {
   const driverDetailQuery = (activityId: string, basis: ReviewWorkbenchComparisonBasis | 'baseline') =>
-    `/projects/${projectKey}/schedule/drivers/${encodeURIComponent(activityId)}?basis=${basis}${
-      asOfDate ? `&as_of=${encodeURIComponent(asOfDate)}` : ''
-    }`
+    driverDetailHref(projectKey, activityId, { comparisonBasis: basis, asOf: asOfDate })
   const driverAnalysis =
     comparisonBasis === 'baseline'
       ? driverHub.baseline || { available: false }
@@ -438,7 +437,6 @@ export function ProjectSchedulePage() {
   const queryClient = useQueryClient()
   const focusDriver = searchParams.get('driver')
   const focusReview = searchParams.get('review')
-  const focusBasis = searchParams.get('basis') === 'baseline' ? 'baseline' : 'prior_update'
   const rawAsOf = searchParams.get('as_of') || ''
   const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : ''
   const requestAsOf = asOf || undefined
@@ -669,11 +667,7 @@ export function ProjectSchedulePage() {
             </button>
             <Link
               className="badge"
-              to={
-                requestAsOf
-                  ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
-                  : `/projects/${projectKey}/schedule/workbench`
-              }
+              to={workbenchHref(projectKey, { asOf: requestAsOf, comparisonBasis: controlsComparisonBasis })}
             >
               Open Workbench
             </Link>
@@ -701,7 +695,10 @@ export function ProjectSchedulePage() {
               {focusDriver && (
                 <Link
                   className="badge"
-                  to={`/projects/${projectKey}/schedule/drivers/${encodeURIComponent(focusDriver)}?basis=${focusBasis}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
+                  to={driverDetailHref(projectKey, focusDriver, {
+                    comparisonBasis: controlsComparisonBasis,
+                    asOf: requestAsOf,
+                  })}
                 >
                   Open driver {focusDriver}
                 </Link>
@@ -709,7 +706,14 @@ export function ProjectSchedulePage() {
               {focusReview && (
                 <Link
                   className="badge"
-                  to={`/projects/${projectKey}/schedule/workbench?review=${encodeURIComponent(focusReview)}${requestAsOf ? `&as_of=${encodeURIComponent(requestAsOf)}` : ''}`}
+                  to={(() => {
+                    const base = workbenchHref(projectKey, {
+                      asOf: requestAsOf,
+                      comparisonBasis: controlsComparisonBasis,
+                    })
+                    const sep = base.includes('?') ? '&' : '?'
+                    return `${base}${sep}review=${encodeURIComponent(focusReview)}`
+                  })()}
                 >
                   Open review item
                 </Link>
@@ -797,11 +801,7 @@ export function ProjectSchedulePage() {
               </div>
               <Link
                 className="badge"
-                to={
-                  requestAsOf
-                    ? `/projects/${projectKey}/schedule/workbench?as_of=${encodeURIComponent(requestAsOf)}`
-                    : `/projects/${projectKey}/schedule/workbench`
-                }
+                to={workbenchHref(projectKey, { asOf: requestAsOf, comparisonBasis: controlsComparisonBasis })}
               >
                 Open Queue
               </Link>

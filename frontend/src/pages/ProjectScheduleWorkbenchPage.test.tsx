@@ -11,6 +11,7 @@ const getProjectScheduleReviewItemsMock = vi.fn()
 const getProjectScheduleReviewItemEventsMock = vi.fn()
 const patchProjectScheduleReviewItemMock = vi.fn()
 const getProjectsMock = vi.fn()
+const getProjectScheduleBaselinesMock = vi.fn()
 const getLocalUiRoleMock = vi.fn(() => 'operator' as 'operator' | 'viewer' | 'admin')
 
 vi.mock('../lib/api', async () => {
@@ -20,6 +21,7 @@ vi.mock('../lib/api', async () => {
     api: {
       ...actual.api,
       getProjects: (...args: unknown[]) => getProjectsMock(...args),
+      getProjectScheduleBaselines: (...args: unknown[]) => getProjectScheduleBaselinesMock(...args),
       syncProjectScheduleReviewItems: (...args: unknown[]) => syncProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItems: (...args: unknown[]) => getProjectScheduleReviewItemsMock(...args),
       getProjectScheduleReviewItemEvents: (...args: unknown[]) => getProjectScheduleReviewItemEventsMock(...args),
@@ -104,6 +106,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
     })
     syncProjectScheduleReviewItemsMock.mockResolvedValue({ available: true, workbench: { available: true } })
     getProjectScheduleReviewItemsMock.mockResolvedValue(reviewItems)
+    getProjectScheduleBaselinesMock.mockResolvedValue({ available: true, slots: [] })
     getProjectScheduleReviewItemEventsMock.mockResolvedValue({
       available: true,
       events: [{ event_type: 'created', created_at: '2026-07-03T10:00:00Z' }],
@@ -202,5 +205,29 @@ describe('ProjectScheduleWorkbenchPage', () => {
     expect(screen.queryByText(/Raw technical payload/)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Show technical evidence' }))
     expect(screen.getByText(/Raw technical payload/)).toBeInTheDocument()
+  })
+
+  it('does not sync when comparison_basis is a named baseline from URL', async () => {
+    getLocalUiRoleMock.mockReturnValue('operator')
+    getProjectScheduleBaselinesMock.mockResolvedValue({
+      available: true,
+      slots: [
+        {
+          slot_key: 'current_contract_baseline',
+          slot_label: 'Current Contract Baseline',
+          status: 'selected',
+        },
+      ],
+    })
+    renderPage('/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-03')
+
+    await waitFor(() => {
+      expect(getProjectScheduleReviewItemsMock).toHaveBeenCalledWith('tropical', expect.objectContaining({
+        comparisonBasis: 'current_contract_baseline',
+        asOf: '2026-07-03',
+      }))
+    })
+    expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
+    expect(await screen.findByText(/read-only preview/i)).toBeInTheDocument()
   })
 })

@@ -16,6 +16,7 @@ from .project_schedule_baseline_vocabulary import (
     is_named_baseline_basis,
     label_for_slot,
     normalize_controls_comparison_basis,
+    validate_controls_comparison_basis,
     slot_key_for_basis,
 )
 from .project_schedule_named_baseline_service import ProjectScheduleNamedBaselineService

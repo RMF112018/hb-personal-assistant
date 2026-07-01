@@ -104,7 +104,7 @@ function ReviewItemEvents({
 
 export function ProjectScheduleWorkbenchPage() {
   const { projectKey = '' } = useParams()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const asOfDate = searchParams.get('as_of') || undefined
   const focusReview = searchParams.get('review') || undefined
   const urlComparisonBasis = searchParams.get('comparison_basis')
@@ -140,6 +140,17 @@ export function ProjectScheduleWorkbenchPage() {
     const slots = Array.isArray((baselinesQuery.data as any)?.slots) ? (baselinesQuery.data as any).slots : []
     return slots.filter((slot: any) => slot.status === 'selected')
   }, [baselinesQuery.data])
+
+  const selectComparisonBasis = (basis: ReviewWorkbenchComparisonBasis) => {
+    setComparisonBasis(basis)
+    const next = new URLSearchParams(searchParams)
+    if (basis === 'prior_update') {
+      next.delete('comparison_basis')
+    } else {
+      next.set('comparison_basis', basis)
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   const reviewItemsQueryKey = [
     'project',
@@ -287,7 +298,7 @@ export function ProjectScheduleWorkbenchPage() {
         <div className="flex flex-wrap gap-2">
           <button
             className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-            onClick={() => setComparisonBasis('prior_update')}
+            onClick={() => selectComparisonBasis('prior_update')}
           >
             Since previous update
           </button>
@@ -295,7 +306,7 @@ export function ProjectScheduleWorkbenchPage() {
             <button
               key={String(slot.slot_key)}
               className={`badge ${comparisonBasis === slot.slot_key ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
-              onClick={() => setComparisonBasis(slot.slot_key as ReviewWorkbenchComparisonBasis)}
+              onClick={() => selectComparisonBasis(slot.slot_key as ReviewWorkbenchComparisonBasis)}
             >
               {String(slot.slot_label || slot.slot_key).replace(/_/g, ' ')}
             </button>
