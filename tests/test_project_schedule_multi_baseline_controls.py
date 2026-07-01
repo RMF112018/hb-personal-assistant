@@ -290,9 +290,14 @@ def test_controls_top_controls_use_named_label(tmp_path: Path) -> None:
     assert "Current Contract Baseline" in combined
 
 
+def _seed_named_baseline_controls_fixture(db: Path) -> None:
+    """Driver-linked schedule chain required for activity-backed named-baseline controls."""
+    _seed_driver_chain(db)
+
+
 def test_controls_named_includes_workbench_links(tmp_path: Path) -> None:
     db = _fresh_db(tmp_path)
-    _seed_comparable_versions(db)
+    _seed_named_baseline_controls_fixture(db)
     ProjectScheduleNamedBaselineService(db_path=str(db)).update_baselines(
         "tropical",
         selections={"current_contract_baseline": {"schedule_version_key": "tropical|S1|2026-06-01"}},
@@ -306,13 +311,17 @@ def test_controls_named_includes_workbench_links(tmp_path: Path) -> None:
     )
     assert "review_workbench" in payload["links"]
     assert "comparison_basis=current_contract_baseline" in payload["links"]["review_workbench"]
-    for control in payload["top_controls"]:
-        if control.get("activity_id"):
-            assert control["links"]["review_item"]
-            assert control["links"]["driver_detail"]
-            break
-    else:
-        pytest.fail("expected at least one activity-backed control")
+    activity_backed = [
+        control
+        for control in payload["top_controls"]
+        if control.get("links", {}).get("driver_detail")
+        and control["links"].get("review_item")
+    ]
+    assert activity_backed, "expected at least one activity-backed control with workbench links"
+    control = activity_backed[0]
+    assert "comparison_basis=current_contract_baseline" in control["links"]["review_item"]
+    assert "comparison_basis=current_contract_baseline" in control["links"]["driver_detail"]
+    assert "activity_id=" in control["links"]["driver_detail"]
 
 
 def test_controls_language_qa_passes_named_baseline(tmp_path: Path) -> None:
