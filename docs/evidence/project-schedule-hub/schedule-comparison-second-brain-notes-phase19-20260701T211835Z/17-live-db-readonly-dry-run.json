@@ -1,0 +1,20 @@
+{
+  "mode": "dry_run",
+  "notes_planned": 1,
+  "notes_written": 0,
+  "notes_updated": 0,
+  "conflicts": 0,
+  "ollama_calls": 0,
+  "db_mutations": 0,
+  "vault_root": "/Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z/docs/evidence/project-schedule-hub/schedule-comparison-second-brain-notes-phase19-20260701T211835Z/fixture-vault",
+  "outputs": [
+    {
+      "note_type": "portfolio_snapshot",
+      "project_key": null,
+      "relative_path": "Work/HB Personal Assistant/Schedule Review/Portfolio/2026-07-01 - Portfolio Schedule Review.md",
+      "action": "planned_create",
+      "idempotency_key": "portfolio_snapshot|portfolio|2026-07-01|portfolio|Portfolio schedule review"
+    }
+  ],
+  "advisory_failures": []
+}

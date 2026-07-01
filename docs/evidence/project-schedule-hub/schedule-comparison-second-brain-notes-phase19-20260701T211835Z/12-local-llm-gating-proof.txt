@@ -1,0 +1,2 @@
+default_ollama_calls=0
+summarize_requires_confirm_local_llm=True

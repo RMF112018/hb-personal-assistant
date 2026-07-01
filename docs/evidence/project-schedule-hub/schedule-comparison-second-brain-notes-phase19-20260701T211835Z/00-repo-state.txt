@@ -1,0 +1,18 @@
+branch=feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z
+head=1aa070bf45c8a315d28d8405eb668f6f5063358e
+phase18a_base=1aa070bf
+?? docs/evidence/project-schedule-hub/schedule-comparison-second-brain-notes-phase19-20260701T211835Z/
+?? scripts/obsidian_schedule_review_notes.py
+?? src/hb_assistant/construction/analytics/project_schedule_second_brain_note_service.py
+?? src/hb_assistant/obsidian_mcp/schedule_note_advisory_validation.py
+?? src/hb_assistant/obsidian_mcp/schedule_obsidian_note_writer.py
+?? src/hb_assistant/obsidian_mcp/schedule_review_note_generator.py
+?? tests/test_obsidian_schedule_note_advisory_validation.py
+?? tests/test_obsidian_schedule_review_note_generator.py
+?? tests/test_obsidian_schedule_review_notes_cli.py
+?? tests/test_project_schedule_second_brain_note_service.py
+1aa070bf fix(schedule): restore named-baseline regression gate
+ef00fc73 Merge pull request #259 from RMF112018/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z
+6a9857ba Add schedule review dashboard and portfolio rollup (Phase 18).
+19d37316 Merge pull request #258 from RMF112018/feature/schedule-review-workbench-action-loop-phase17-20260701T192327Z
+0430c321 Add schedule review workbench action loop for operator dispositions (Phase 17).

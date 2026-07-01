@@ -1,0 +1,92 @@
+{
+  "note_type": "portfolio_snapshot",
+  "project_key": null,
+  "project_label": "Portfolio",
+  "schedule_label": null,
+  "schedule_data_date": "2026-07-03",
+  "comparison_basis": "portfolio",
+  "comparison_label": "Portfolio schedule review",
+  "analytics_trust_status": "mixed",
+  "identity_trust_status": "mixed",
+  "cpm_trust_status": "mixed",
+  "quality_trust_status": "mixed",
+  "review_status": {
+    "project_count": 1,
+    "projects_with_schedule": 1,
+    "projects_without_schedule": 0,
+    "ready_count": 0,
+    "degraded_count": 1,
+    "blocked_count": 0,
+    "needs_review_count": 0,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 0
+  },
+  "quality_controls": {},
+  "recommended_actions": [
+    "tropical \u2014 Tropical Wind \u00b7 Procore 9001: Quality review recommended"
+  ],
+  "safe_links": {
+    "portfolio_dashboard": "/projects/all/schedule/review"
+  },
+  "capability_limitations": [
+    "Sequence cues are advisory and highlight sequence movement for PM review only.",
+    "HTML-in-ZIP schedule imports remain unsupported.",
+    "Portfolio rollup uses thin per-project trust slices; large catalogs may need batching."
+  ],
+  "portfolio_summary": {
+    "project_count": 1,
+    "projects_with_schedule": 1,
+    "projects_without_schedule": 0,
+    "ready_count": 0,
+    "degraded_count": 1,
+    "blocked_count": 0,
+    "needs_review_count": 0,
+    "stale_schedule_count": 0,
+    "operator_action_required_count": 0
+  },
+  "projects": [
+    {
+      "project_key": "tropical",
+      "project_label": "tropical \u2014 Tropical Wind \u00b7 Procore 9001",
+      "schedule_label": "imp-current",
+      "schedule_data_date": "2026-07-01",
+      "schedule_age_days": 2,
+      "schedule_staleness_status": "current",
+      "analytics_trust_status": "degraded",
+      "identity_trust_status": "trusted",
+      "cpm_trust_status": "degraded",
+      "quality_trust_status": "unavailable",
+      "review_status": {
+        "persisted_item_count": 0,
+        "preview_cue_count": 0,
+        "needs_review": 0,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0
+      },
+      "portfolio_status": "degraded",
+      "operator_action_required": false,
+      "ready": false,
+      "recommended_next_action": {
+        "action_key": "quality_review_required",
+        "label": "Quality review recommended",
+        "pm_description": "Schedule quality controls indicate limitations that warrant PM review.",
+        "primary_link": "/projects/tropical/schedule?panel=controls",
+        "priority": 70
+      },
+      "links": {
+        "hub": "/projects/tropical/schedule",
+        "controls": "/projects/tropical/schedule?panel=controls",
+        "workbench": "/projects/tropical/schedule/workbench",
+        "import": "/projects/tropical/schedule/import",
+        "identity_review": "/schedules/identity-review?project=tropical"
+      }
+    }
+  ],
+  "body_markdown": "## Portfolio Schedule Review Status\n\n- Generated: 2026-07-01 21:23 UTC\n- Staleness threshold: 30 days\n- Limitation: Rollup depends on imported schedule data and completed review workflows.\n\n- Total projects: 1\n- Ready: 0\n- Degraded: 1\n- Blocked: 0\n- Missing schedule: 0\n- Stale schedule: 0\n- Needs review: 0\n- Operator action required: 0\n\n## Priority Projects\n\n| Project | Schedule | Trust | Quality | Review | Recommended Action |\n|---|---|---|---|---|---|\n| tropical \u2014 Tropical Wind \u00b7 Procore 9001 | imp-current (current) | A:degraded I:trusted C:degraded | unavailable | needs 0 / preview 0 | Quality review recommended |\n",
+  "available": true,
+  "as_of": "2026-07-03",
+  "generated_at": "2026-07-01T21:23:46+00:00",
+  "generation_mode": "deterministic"
+}

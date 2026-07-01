@@ -1,0 +1,139 @@
+{
+  "note_type": "schedule_update",
+  "project_key": "tropical",
+  "project_label": "Tropical Wind",
+  "schedule_label": "imp-current",
+  "schedule_data_date": "2026-07-01",
+  "comparison_basis": "prior_update",
+  "comparison_label": "Compared against prior update",
+  "analytics_trust_status": "unavailable",
+  "identity_trust_status": "unavailable",
+  "cpm_trust_status": "unavailable",
+  "quality_trust_status": "unavailable",
+  "review_status": {
+    "total_items": 0,
+    "preview_cue_count": 0,
+    "persisted_item_count": 0,
+    "needs_review": 0,
+    "accepted_for_follow_up": 0,
+    "dismissed_not_material": 0,
+    "resolved": 0,
+    "blocked": 0,
+    "superseded": 0,
+    "duplicate": 0,
+    "last_reviewed_at": null,
+    "pm_summary": "Schedule review queue has no open operator actions.",
+    "recommended_next_action": "No open review items require immediate operator action.",
+    "open_count": 0,
+    "watching_count": 0,
+    "reviewed_count": 0,
+    "dismissed_count": 0,
+    "total_count": 0
+  },
+  "quality_controls": {
+    "quality_trust_status": "unavailable",
+    "quality_run_status": "unavailable",
+    "scorecard": {
+      "overall_status": "unavailable",
+      "overall_score": null,
+      "quality_grade": null,
+      "metrics_available": 0,
+      "metrics_failed": 0,
+      "completion_posture": null
+    },
+    "control_groups": [
+      {
+        "group_key": "logic_integrity",
+        "label": "Logic Integrity",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "constraint_quality",
+        "label": "Constraint Quality",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "float_quality",
+        "label": "Float Quality",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "duration_quality",
+        "label": "Duration Quality",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "date_quality",
+        "label": "Date Quality",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "critical_path_readiness",
+        "label": "Critical Path Readiness",
+        "status": "unavailable",
+        "summary": "No quality metrics are available for this group in the current evaluation.",
+        "metrics": []
+      },
+      {
+        "group_key": "cost_resource_readiness",
+        "label": "Cost Resource Readiness",
+        "status": "unavailable",
+        "summary": "Cost/resource loading analytics is not available for this schedule update.",
+        "metrics": []
+      },
+      {
+        "group_key": "baseline_readiness",
+        "label": "Baseline Readiness",
+        "status": "unavailable",
+        "summary": "Baseline comparison analytics is not available for this schedule update.",
+        "metrics": []
+      },
+      {
+        "group_key": "capability_limitations",
+        "label": "Capability limitations",
+        "status": "ready",
+        "summary": "Known measurement limits for this release. These are not schedule defects.",
+        "metrics": [],
+        "limitations": [
+          "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+        ]
+      }
+    ],
+    "top_findings": [],
+    "capability_limitations": [
+      "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+    ],
+    "recommended_pm_actions": [
+      "Confirm the latest schedule quality evaluation completed successfully."
+    ],
+    "cpm_observability_summary": null
+  },
+  "recommended_actions": [
+    "No open review items require immediate operator action."
+  ],
+  "safe_links": {
+    "schedule_hub": "/projects/tropical/schedule",
+    "workbench": "/projects/tropical/schedule/workbench?comparison_basis=prior_update",
+    "controls": "/projects/tropical/schedule/controls?comparison_basis=prior_update"
+  },
+  "capability_limitations": [
+    "Sequence cues are advisory and highlight sequence movement for PM review only.",
+    "HTML-in-ZIP schedule imports remain unsupported.",
+    "Portfolio rollup uses thin per-project trust slices; large catalogs may need batching."
+  ],
+  "body_markdown": "# Schedule Review Memo \u2014 Tropical Wind\n\nAs of 2026-07-03\n\n## Analytics Trust\n\n- Status: degraded\n- Identity: trusted\n- Identity gate: ready\n- CPM: degraded\n\nSchedule analytics depend on trusted schedule identity for this project.\n\n- Trust notes:\n  - Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.\n  - Computed CPM is not yet available for this schedule version.\n  - Schedule quality evaluation is still running.\n- Capability limitations:\n  - Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.\n\n## Schedule Review Status\n\n- Persisted review items: 0\n- Preview cues: 9\n- Needs review: 0\n- Accepted for PM follow-up: 0\n- Dismissed as not material: 0\n- Resolved: 0\n- Blocked by trust/identity: 0\n\n- Note: Identity or analytics trust is degraded/blocked; complete trust review before relying on review dispositions.\n\n### Recommended Review Actions\n\n- Review preview cues and persisted items, then record operator dispositions.\n\n## Headline\nForecast finish moved 7 days later since the previous update.\n\n## Synopsis\nThe current update is imp-current with data date 2026-07-01. Previous data date is 2026-06-01. 4 remaining activities moved later, 4 changed finish, and 0 lost float. Candidate driver Driver Activity in WBS-A appears connected to 3 downstream activities \u2014 review this sequence first. Review forecast finish movement\n\n## What Changed\n4 remaining activities moved later, 4 changed finish, and 0 lost float.\n\n## Why It Matters\nCandidate driver Driver Activity in WBS-A appears connected to 3 downstream activities \u2014 review this sequence first.\n\n## Primary Driver (sequence cue)\nThe largest movement appears concentrated around WBS-A. Driver Activity moved by 10 days and appears connected to 3 downstream activities, including Substantial completion. Review this sequence first.\n\n## Command Summary\n- Forecast finish: 2026-08-12 (7 days vs prior)\n- Remaining activities: 4\n- Critical / near-critical: 0 / 0\n- Negative float (remaining): 0\n\n## Milestone Impacts\n\n- Substantial completion: +7 days\n\n## Float / CPM Pressure\n- Negative float remaining: 0\n- Near-critical remaining: 0\n- Computed CPM critical remaining: 0\n\n## Review Workbench\n\n- [needs_review] P69 Review driver: Driver Activity (new)\n- [needs_review] P67 Milestone moved later: Substantial completion (new)\n- [needs_review] P65 Compression readiness: selected baseline recompute required (new)\n- [needs_review] P56 Review driver: Successor B (new)\n- [needs_review] P43 Review driver: Successor C (new)\n- [needs_review] P19 Review driver: Substantial completion (new)\n- [needs_review] P10 Metric not ready: delay analysis (new)\n- [needs_review] P10 Metric not ready: window finish accuracy (new)\n- [needs_review] P10 Metric not ready: window start accuracy (new)\n\n## Top Candidate Driver\n- Activity: Driver Activity\n- WBS: WBS-A\n- Downstream moved later: 3\n\n## Suggested Review Agenda\n\n1. Review driver: Driver Activity [needs_review]\n2. Milestone moved later: Substantial completion [needs_review]\n3. Compression readiness: selected baseline recompute required [needs_review]\n4. Review driver: Successor B [needs_review]\n5. Review driver: Successor C [needs_review]\n6. Review driver: Substantial completion [needs_review]\n7. Metric not ready: delay analysis [needs_review]\n8. Metric not ready: window finish accuracy [needs_review]\n9. Metric not ready: window start accuracy [needs_review]\n\n## Caveats\n- Computed CPM is unavailable for this update.\n- This summary identifies schedule movement and review priorities. It does not determine delay causation, responsibility, entitlement, or compensability.\n- Driver rankings and downstream chains are sequence cues for review, not causation findings.\n\n\n## Source Basis\n\n- forecast_finish: `command_summary.forecast_finish`\n- forecast_finish_delta_days: `command_summary.forecast_finish_delta_days`\n- negative_float_remaining_count: `command_summary.negative_float_remaining_count`\n- primary_driver_narrative: `change_driver_analysis.prior_update`\n- remaining_activity_count: `command_summary.remaining_activity_count`\n- remaining_finish_moved_later_count: `change_impact.direct_remaining_changes.summary.finish_moved_later_count`\n- review_workbench_counts: `review_workbench.summary`\n- worsened_float_count: `change_impact.direct_remaining_changes.summary.worsened_float_count`\n_Sequence cues only \u2014 not causation findings. This memo does not determine delay responsibility, entitlement, or compensability._",
+  "available": true,
+  "as_of": "2026-07-03",
+  "generated_at": "2026-07-01T21:23:45+00:00",
+  "generation_mode": "deterministic"
+}

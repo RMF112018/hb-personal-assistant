@@ -1,0 +1,5 @@
+node_modules/
+fixture-phase19.db
+fixture-vault/
+local-sensitive/
+*.log

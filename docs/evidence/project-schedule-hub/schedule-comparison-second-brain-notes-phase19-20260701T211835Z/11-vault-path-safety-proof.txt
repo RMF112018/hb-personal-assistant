@@ -1,0 +1,2 @@
+path_traversal_rejected_for_../
+vault_root_bounded=True
