@@ -1,0 +1,16 @@
+PWD: /Users/bobbyfetting/hb-personal-assistant-worktrees/verify/schedule-named-baseline-phase13d-mainline-20260701T153222Z
+
+?? docs/evidence/project-schedule-hub/named-baseline-mainline-closeout-phase13d-20260701T153222Z/
+
+verify/schedule-named-baseline-phase13d-mainline-20260701T153222Z
+
+c983b1f4 fix(schedule): complete named baseline export and driver disposition (#249)
+ac6b9441 fix(schedule): align named baseline comparisons with selected slot (#248)
+881c56a8 Merge pull request #247 from RMF112018/feat/obsidian-phase10f-email-attachments-20260701T090000Z
+e06bf6ed feat(obsidian): extract email attachments as source cards
+fae13113 Merge pull request #246 from RMF112018/feature/schedule-named-baseline-dispositions-phase13-20260701T090410Z
+1acbe324 feat(schedule): persist named baseline review dispositions
+bc240b38 Merge pull request #245 from RMF112018/fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z
+85f6f169 docs(evidence): re-capture loaded-state PM browser sign-off
+c2d8a70c fix(schedule): polish named baseline PM workflow
+28c64fbc Merge pull request #244 from RMF112018/feat/obsidian-phase10e-eml-email-archive-20260701T074534Z

@@ -1,0 +1,5 @@
+Movement counts @ as_of=2026-07-03:
+prior_update: 461
+current_contract_baseline: 440
+previous_progress_update_baseline: 461
+secondary_progress_update_baseline: 593

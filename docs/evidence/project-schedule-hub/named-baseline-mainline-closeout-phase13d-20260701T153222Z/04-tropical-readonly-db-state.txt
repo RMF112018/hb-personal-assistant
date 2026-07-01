@@ -1,0 +1,13 @@
+DB: /Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite
+
+0
+
+Tropical named baseline slots:
+tropical|current_contract_baseline|tropical|815|2025-08-07 08:00|2026-07-01T07:32:42.252272+00:00|operator|1
+tropical|previous_progress_update_baseline|tropical|1069|2026-05-26 08:00|2026-07-01T07:32:42.270421+00:00|operator|1
+tropical|secondary_progress_update_baseline|tropical|851|2025-11-28 08:00|2026-07-01T07:32:42.287270+00:00|operator|1
+
+Tropical named baseline review rows:
+tropical|current_contract_baseline|tropical|815|2025-08-07 08:00|open|136
+tropical|current_contract_baseline|tropical|815|2025-08-07 08:00|watching|1
+tropical|previous_progress_update_baseline|tropical|1069|2026-05-26 08:00|open|131
