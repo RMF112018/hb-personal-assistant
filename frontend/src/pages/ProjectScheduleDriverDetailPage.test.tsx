@@ -140,4 +140,20 @@ describe('ProjectScheduleDriverDetailPage', () => {
       })
     })
   })
+
+  it('shows review disposition without exposing raw review item id in primary copy', async () => {
+    getProjectScheduleDriverDetailMock.mockResolvedValue({
+      ...driverDetail,
+      review_status: 'watching',
+      review_item_id: 'psnbri-abc123',
+      disposition_source: 'named_baseline_review',
+    })
+    renderPage(
+      '/projects/tropical/schedule/driver-detail?activity_id=DRV-A&comparison_basis=current_contract_baseline&as_of=2026-07-03',
+    )
+    expect(await screen.findByRole('heading', { name: 'Review Disposition' })).toBeInTheDocument()
+    expect(screen.getByText('watching')).toBeInTheDocument()
+    expect(screen.getByText('Named baseline review')).toBeInTheDocument()
+    expect(screen.queryByText('psnbri-abc123')).not.toBeInTheDocument()
+  })
 })

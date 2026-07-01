@@ -1382,7 +1382,7 @@ class ProjectScheduleSummaryService:
             diff_id = None
 
         milestones = self._milestones(current_key, comparison_key, {"completed_milestone_count": 0})
-        return self._drivers.build_driver_detail(
+        detail = self._drivers.build_driver_detail(
             project_key=project_key,
             activity_id=activity_id,
             current_key=current_key,
@@ -1394,6 +1394,98 @@ class ProjectScheduleSummaryService:
             comparison_basis=resolved.comparison_basis,
             baseline_context=baseline_context,
         )
+        if not detail.get("available"):
+            return detail
+        detail.update(
+            self._driver_detail_disposition_fields(
+                project_key=project_key,
+                activity_id=activity_id,
+                current_schedule_version_key=current_key,
+                comparison_basis=resolved.comparison_basis,
+                source_model=resolved.source_model,
+                baseline_context=baseline_context,
+                comparison_schedule_version_key=comparison_key,
+            )
+        )
+        return detail
+
+    def _driver_detail_disposition_fields(
+        self,
+        *,
+        project_key: str,
+        activity_id: str,
+        current_schedule_version_key: str,
+        comparison_basis: str,
+        source_model: str,
+        baseline_context: dict[str, Any] | None,
+        comparison_schedule_version_key: str | None,
+    ) -> dict[str, Any]:
+        from hb_assistant.store.project_schedule_named_baseline_review_repository import (
+            NamedBaselineReviewIdentity,
+        )
+
+        stable_key = f"driver:{activity_id}"
+        source_metric_key = "change_driver_analysis"
+        source_signal_type = "driver"
+        default = {
+            "review_status": "open",
+            "review_item_id": None,
+            "disposition_schedule_version_key": comparison_schedule_version_key,
+            "disposition_basis": comparison_basis,
+            "disposition_source": "preview",
+            "review_scope": None,
+        }
+        if source_model == "legacy_v90":
+            return {
+                **default,
+                "disposition_source": "unavailable_or_preview",
+            }
+        if source_model == "prior_update":
+            row = self._hub_repo.get_review_item_for_version_scope(
+                project_key=project_key,
+                schedule_version_key=current_schedule_version_key,
+                stable_item_key=stable_key,
+                source_activity_id=activity_id,
+            )
+            if not row:
+                return {**default, "disposition_source": "preview", "review_scope": "prior_update"}
+            return {
+                "review_status": str(row.get("review_status") or "open"),
+                "review_item_id": row.get("review_item_id"),
+                "disposition_schedule_version_key": current_schedule_version_key,
+                "disposition_basis": "prior_update",
+                "disposition_source": "prior_update_review",
+                "review_scope": "prior_update",
+            }
+        baseline_key = str((baseline_context or {}).get("schedule_version_key") or comparison_schedule_version_key or "")
+        if not baseline_key:
+            return default
+        identity = NamedBaselineReviewIdentity(
+            project_key=project_key,
+            current_schedule_version_key=current_schedule_version_key,
+            comparison_basis=comparison_basis,
+            baseline_schedule_version_key=baseline_key,
+            source_stable_key=stable_key,
+            source_metric_key=source_metric_key,
+            source_signal_type=source_signal_type,
+            source_activity_id=activity_id,
+        )
+        row = self._named_baseline_review._repo.get_by_identity(identity=identity)
+        if not row:
+            return {
+                **default,
+                "disposition_source": "preview",
+                "review_scope": "named_baseline",
+                "disposition_schedule_version_key": baseline_key,
+            }
+        return {
+            "review_status": str(row.get("review_status") or "open"),
+            "review_item_id": row.get("review_item_id"),
+            "disposition_schedule_version_key": str(row.get("baseline_schedule_version_key") or baseline_key),
+            "disposition_basis": str(row.get("comparison_basis") or comparison_basis),
+            "disposition_source": "named_baseline_review",
+            "review_scope": "named_baseline",
+        }
 
     def _review_workbench_context(self, project_key: str, *, as_of: date | None = None) -> dict[str, Any] | None:
         as_of_date = as_of or datetime.now(timezone.utc).date()
@@ -1695,6 +1787,160 @@ class ProjectScheduleSummaryService:
             "display_name": resolution.get("display_name"),
         }
 
+    def _export_comparison_context_from_named(
+        self,
+        *,
+        project_key: str,
+        project_name: str,
+        as_of: date,
+        comparison_basis: str,
+        hub_context: dict[str, Any],
+        baseline_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        from .project_schedule_baseline_vocabulary import comparison_label_for_basis, label_for_slot
+
+        provenance = hub_context.get("comparison_provenance") or {}
+        current_key = str(
+            provenance.get("current_schedule_version_key")
+            or hub_context.get("schedule_version_key")
+            or ""
+        )
+        comparison_key = str(
+            provenance.get("comparison_schedule_version_key")
+            or baseline_context.get("schedule_version_key")
+            or ""
+        )
+        slot_key = str(baseline_context.get("slot_key") or comparison_basis)
+        return {
+            "project_key": project_key,
+            "project_name": project_name,
+            "as_of": as_of.isoformat(),
+            "comparison_basis": comparison_basis,
+            "comparison_label": comparison_label_for_basis(comparison_basis) or comparison_basis,
+            "source_model": "named_slot",
+            "slot_key": slot_key,
+            "slot_label": str(baseline_context.get("slot_label") or label_for_slot(slot_key)),
+            "current_schedule_version_key": current_key,
+            "comparison_schedule_version_key": comparison_key,
+            "baseline_schedule_version_key": comparison_key,
+            "current_data_date": hub_context.get("schedule_data_date"),
+            "comparison_data_date": baseline_context.get("schedule_data_date"),
+        }
+
+    def _schedule_story_for_named_export(
+        self,
+        *,
+        comparison_label: str,
+        comparison_version_key: str,
+        current_label: str,
+        change_impact: dict[str, Any],
+        driver_analysis: dict[str, Any],
+        remaining_health: dict[str, Any],
+    ) -> dict[str, Any]:
+        summary = (
+            change_impact.get("direct_remaining_changes", {}).get("summary", {})
+            if change_impact.get("available")
+            else {}
+        )
+        later = int(summary.get("finish_moved_later_count") or 0)
+        earlier = int(summary.get("finish_moved_earlier_count") or 0)
+        worsened = int(summary.get("worsened_float_count") or 0)
+        negative_float = remaining_health.get("float_pressure", {}).get("negative_float_count", 0)
+        baseline_drivers = (driver_analysis or {}).get("baseline") or driver_analysis or {}
+        driver_narrative = self._drivers.build_narrative(baseline_drivers)
+        headline = f"Remaining schedule movement compared against {comparison_label.lower()}."
+        synopsis = (
+            f"Current update {current_label} is compared against named anchor version "
+            f"{comparison_version_key}. "
+            f"{later} remaining activities moved later, {earlier} moved earlier, and {worsened} lost float."
+        )
+        what_changed = synopsis
+        why_it_matters = driver_narrative.get("primary_driver_narrative") or (
+            f"Review movement relative to {comparison_label.lower()} before disposition updates."
+        )
+        return {
+            "headline": headline,
+            "synopsis": synopsis,
+            "what_changed": what_changed,
+            "why_it_matters": why_it_matters,
+            "primary_driver_narrative": driver_narrative.get("primary_driver_narrative"),
+            "primary_change_driver": why_it_matters,
+            "caveats": [
+                "Named-baseline export uses the selected slot schedule version as the comparison anchor.",
+            ],
+        }
+
+    def _build_named_export_summary(
+        self,
+        project_key: str,
+        *,
+        hub_context: dict[str, Any],
+        baseline_context: dict[str, Any],
+        comparison_basis: str,
+        as_of: date,
+    ) -> dict[str, Any]:
+        project_name = self._project_display_name(project_key)
+        export_comparison_context = self._export_comparison_context_from_named(
+            project_key=project_key,
+            project_name=project_name,
+            as_of=as_of,
+            comparison_basis=comparison_basis,
+            hub_context=hub_context,
+            baseline_context=baseline_context,
+        )
+        if not export_comparison_context.get("comparison_schedule_version_key"):
+            return {
+                "available": False,
+                "reason": "comparison_context_incomplete",
+                "comparison_basis": comparison_basis,
+            }
+        current_key = str(hub_context.get("schedule_version_key") or "")
+        change_impact = hub_context.get("change_impact") or {}
+        milestones = hub_context.get("milestones") or {}
+        remaining_health = hub_context.get("remaining_health") or {}
+        cpm_summary = hub_context.get("cpm_summary") or {"summary": {}}
+        remaining = hub_context.get("remaining_activities") or []
+        driver_analysis = hub_context.get("driver_analysis") or {}
+        current_version = self._version_row(project_key, current_key) or {}
+        current_label = self._friendly_label(current_version) if current_version else current_key
+        forecast = self._forecast_finish(
+            current_key,
+            str(export_comparison_context.get("comparison_schedule_version_key")),
+        )
+        command = self._command_summary(
+            forecast=forecast,
+            remaining=remaining,
+            remaining_health=remaining_health,
+            cpm_summary=cpm_summary,
+            change_impact=change_impact,
+            milestones=milestones,
+        )
+        schedule_story = self._schedule_story_for_named_export(
+            comparison_label=str(export_comparison_context.get("comparison_label") or comparison_basis),
+            comparison_version_key=str(export_comparison_context.get("comparison_schedule_version_key")),
+            current_label=current_label,
+            change_impact=change_impact,
+            driver_analysis=driver_analysis,
+            remaining_health=remaining_health,
+        )
+        return {
+            "available": True,
+            "project_key": project_key,
+            "project_display_name": project_name,
+            "as_of_date": as_of.isoformat(),
+            "comparison_basis": comparison_basis,
+            "comparison_provenance": hub_context.get("comparison_provenance"),
+            "export_comparison_context": export_comparison_context,
+            "schedule_story": schedule_story,
+            "command_summary": command,
+            "change_impact": change_impact,
+            "milestones": milestones,
+            "remaining_health": remaining_health,
+            "computed_cpm": cpm_summary.get("summary") or {},
+            "change_driver_analysis": driver_analysis,
+            "review_workbench": {},
+        }
+
     def build_export(
         self,
         project_key: str,
@@ -1709,13 +1955,13 @@ class ProjectScheduleSummaryService:
         from .project_schedule_comparison_basis_resolver import resolve_workbench_comparison_basis
 
         resolved = resolve_workbench_comparison_basis(comparison_basis)
-        summary = self.build_summary(project_key, as_of=as_of)
+        as_of_date = as_of or datetime.now(timezone.utc).date()
         if resolved.source_model == "named_slot":
             try:
                 hub_context, baseline_context = self.build_resolved_hub_context(
                     project_key,
                     resolved=resolved,
-                    as_of=as_of,
+                    as_of=as_of_date,
                 )
             except ValueError as exc:
                 reason = str(exc)
@@ -1726,24 +1972,46 @@ class ProjectScheduleSummaryService:
                         "comparison_basis": resolved.comparison_basis,
                     }
                 raise
-            if hub_context:
-                summary["comparison_basis"] = resolved.comparison_basis
-                summary["comparison_provenance"] = hub_context.get("comparison_provenance")
-                summary["change_impact"] = hub_context.get("change_impact") or summary.get("change_impact")
-                summary["milestones"] = hub_context.get("milestones") or summary.get("milestones")
-                summary["driver_analysis"] = hub_context.get("driver_analysis") or summary.get("driver_analysis")
-                summary["baseline_summary"] = hub_context.get("baseline_summary") or summary.get("baseline_summary")
-        else:
-            summary["comparison_basis"] = resolved.comparison_basis
-        if include_persisted_review or variant == "executive" or scope == "review_items":
-            context = self._review_workbench_context(project_key, as_of=as_of)
-            if context:
-                listed = self._review.list_items(
+            if not hub_context:
+                return {
+                    "available": False,
+                    "reason": "no_schedule",
+                    "comparison_basis": resolved.comparison_basis,
+                }
+            summary = self._build_named_export_summary(
+                project_key,
+                hub_context=hub_context,
+                baseline_context=baseline_context,
+                comparison_basis=resolved.comparison_basis,
+                as_of=as_of_date,
+            )
+            if not summary.get("available", True):
+                return summary
+            if include_persisted_review or variant == "executive" or scope == "review_items":
+                scope_obj = self._named_baseline_review.scope_from_context(
                     project_key=project_key,
-                    schedule_version_key=context["schedule_version_key"],
+                    current_schedule_version_key=str(hub_context.get("schedule_version_key") or ""),
+                    comparison_basis=resolved.comparison_basis,
+                    baseline_context=baseline_context,
+                    as_of_date=as_of_date,
+                    schedule_data_date=hub_context.get("schedule_data_date"),
+                )
+                summary["persisted_review_items"] = self._named_baseline_review._repo.list_in_scope(
+                    scope=scope_obj,
                     limit=100,
                 )
-                summary["persisted_review_items"] = listed.get("items") or []
+        else:
+            summary = self.build_summary(project_key, as_of=as_of_date)
+            summary["comparison_basis"] = resolved.comparison_basis
+            if include_persisted_review or variant == "executive" or scope == "review_items":
+                context = self._review_workbench_context(project_key, as_of=as_of_date)
+                if context:
+                    listed = self._review.list_items(
+                        project_key=project_key,
+                        schedule_version_key=context["schedule_version_key"],
+                        limit=100,
+                    )
+                    summary["persisted_review_items"] = listed.get("items") or []
         return self._memo.build_export(
             summary,
             export_format=export_format,

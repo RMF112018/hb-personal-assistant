@@ -1,0 +1,116 @@
+{
+  "stamp": "2026-07-01T14:37:40Z",
+  "db_path": "/Users/bobbyfetting/Library/Application Support/HB Personal Assistant/db/hb-personal-assistant.sqlite",
+  "mode": "read_only",
+  "project_key": "tropical",
+  "schema": {
+    "version": 97,
+    "applied_at": "2026-07-01T09:24:21.904399+00:00"
+  },
+  "named_baseline_slots": [
+    {
+      "slot_key": "current_contract_baseline",
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "display_name": null,
+      "selected_at": "2026-07-01T07:32:42.252272+00:00",
+      "selected_by": "operator",
+      "is_active": 1
+    },
+    {
+      "slot_key": "previous_progress_update_baseline",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "display_name": null,
+      "selected_at": "2026-07-01T07:32:42.270421+00:00",
+      "selected_by": "operator",
+      "is_active": 1
+    },
+    {
+      "slot_key": "secondary_progress_update_baseline",
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "display_name": null,
+      "selected_at": "2026-07-01T07:32:42.287270+00:00",
+      "selected_by": "operator",
+      "is_active": 1
+    }
+  ],
+  "named_disposition_row_count": 268,
+  "legacy_baseline_selections": [],
+  "committed_import_count": 10,
+  "committed_versions": [
+    {
+      "import_id": "beeb6dea0360",
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "source_filename_redacted": "TWNU19.zip",
+      "created_at": "2026-06-28 12:03:10",
+      "activity_count": 1507
+    },
+    {
+      "import_id": "9a20e3de7c74",
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "source_filename_redacted": "TWNU18.zip",
+      "created_at": "2026-06-28 12:02:46",
+      "activity_count": 1378
+    },
+    {
+      "import_id": "1aba677fcf98",
+      "schedule_version_key": "tropical|957|2026-01-29 08:00",
+      "source_filename_redacted": "TWNU16.zip",
+      "created_at": "2026-06-28 09:34:41",
+      "activity_count": 1420
+    },
+    {
+      "import_id": "0f4bc830b623",
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "source_filename_redacted": "TWNU14.zip",
+      "created_at": "2026-06-28 09:34:27",
+      "activity_count": 1404
+    },
+    {
+      "import_id": "55b57c7ea49f",
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "source_filename_redacted": "TWNU07.zip",
+      "created_at": "2026-06-28 09:34:05",
+      "activity_count": 1177
+    },
+    {
+      "import_id": "d99fec1afb5a",
+      "schedule_version_key": "tropical|TWNU19|2026-06-23T08:00:00",
+      "source_filename_redacted": "TWNU19.xml",
+      "created_at": "2026-06-26 11:31:36",
+      "activity_count": 1507
+    },
+    {
+      "import_id": "a2778cdf208b",
+      "schedule_version_key": "tropical|24836|2026-06-23 08:00",
+      "source_filename_redacted": "TWNU19.xer",
+      "created_at": "2026-06-24 12:28:28",
+      "activity_count": 1507
+    },
+    {
+      "import_id": "7898325a1aca",
+      "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+      "source_filename_redacted": "TWNU18.xml",
+      "created_at": "2026-06-22 13:47:28",
+      "activity_count": 1378
+    },
+    {
+      "import_id": "b5b87f9190ce",
+      "schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00",
+      "source_filename_redacted": "TWNU07.xml",
+      "created_at": "2026-06-22 10:05:20",
+      "activity_count": 1177
+    },
+    {
+      "import_id": "508129b6843b",
+      "schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00",
+      "source_filename_redacted": "TWNU16.xml",
+      "created_at": "2026-06-22 10:05:20",
+      "activity_count": 1420
+    }
+  ],
+  "tables_present": {
+    "project_schedule_named_baseline_slots": true,
+    "project_schedule_named_baseline_review_items": true,
+    "project_schedule_named_baseline_review_item_events": true
+  }
+}

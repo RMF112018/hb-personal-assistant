@@ -217,7 +217,10 @@ export function ProjectScheduleWorkbenchPage() {
 
   const exportMutation = useMutation({
     mutationFn: (format: 'markdown' | 'html') =>
-      api.downloadProjectScheduleExport(projectKey, format, { asOf: asOfDate }),
+      api.downloadProjectScheduleExport(projectKey, format, {
+        asOf: asOfDate,
+        comparisonBasis,
+      }),
   })
 
   const scheduleHref = asOfDate
