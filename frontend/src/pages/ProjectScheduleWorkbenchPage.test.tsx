@@ -216,6 +216,10 @@ describe('ProjectScheduleWorkbenchPage', () => {
           slot_key: 'current_contract_baseline',
           slot_label: 'Current Contract Baseline',
           status: 'selected',
+          selection: {
+            display_name: 'Contract baseline',
+            schedule_data_date: '2026-06-01',
+          },
         },
       ],
     })
@@ -228,6 +232,7 @@ describe('ProjectScheduleWorkbenchPage', () => {
       }))
     })
     expect(syncProjectScheduleReviewItemsMock).not.toHaveBeenCalled()
-    expect(await screen.findByText(/read-only preview/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Named baseline preview — read only/i)).toBeInTheDocument()
+    expect(screen.getByText(/Comparing against Current Contract Baseline/)).toBeInTheDocument()
   })
 })

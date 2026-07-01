@@ -2,6 +2,11 @@
 import { Link } from 'react-router-dom'
 
 import type { ScheduleControlsComparisonBasis } from '../../lib/api'
+import {
+  formatNamedComparisonContextLine,
+  labelForComparisonBasis,
+  normalizeBaselineContext,
+} from '../../lib/scheduleBaselineLabels'
 import { SectionCard } from '../common/SectionCard'
 
 const COMPARISON_CHOICES: { id: ScheduleControlsComparisonBasis; label: string }[] = [
@@ -14,6 +19,30 @@ const COMPARISON_CHOICES: { id: ScheduleControlsComparisonBasis; label: string }
 function text(value: unknown, fallback = '—') {
   if (value === null || value === undefined || value === '') return fallback
   return String(value)
+}
+
+function humanizeControlsUnavailableReason(
+  reason: string | null | undefined,
+  slotLabel: string,
+): string {
+  switch (reason) {
+    case 'baseline_not_selected':
+      return slotLabel
+        ? `Select a prior schedule update for ${slotLabel} in Baseline Anchors below.`
+        : 'Select a prior schedule update for this comparison anchor in Baseline Anchors below.'
+    case 'baseline_invalid':
+      return slotLabel
+        ? `${slotLabel} is invalid for the current as-of context. Reselect it in Baseline Anchors below.`
+        : 'The selected comparison anchor is invalid for the current as-of context. Reselect it in Baseline Anchors below.'
+    case 'no_schedule':
+      return 'Import a schedule update before schedule controls can run.'
+    case 'baseline_unavailable':
+      return 'Schedule comparison data is unavailable for the selected anchor.'
+    default:
+      return reason
+        ? reason.replace(/_/g, ' ')
+        : 'Schedule controls are not available for this project.'
+  }
 }
 
 function statusTone(status: string) {
@@ -67,11 +96,8 @@ export function ScheduleControlsPanel({
   }
 
   if (!controls?.available) {
-    const slotLabel = text(controls?.baseline_context?.slot_label, '')
-    const missingNamed =
-      controls?.reason === 'baseline_not_selected' && slotLabel
-        ? `No ${slotLabel} selected.`
-        : null
+    const baselineCtx = normalizeBaselineContext(controls?.baseline_context)
+    const slotLabel = text(baselineCtx.slotLabel, '')
     return (
       <SectionCard title="Schedule Controls">
         <div className="mb-3 flex flex-wrap gap-2">
@@ -87,7 +113,7 @@ export function ScheduleControlsPanel({
           ))}
         </div>
         <p className="text-sm text-[var(--hb-muted)]">
-          {missingNamed || text(controls?.reason?.replace(/_/g, ' '), 'Schedule controls are not available for this project.')}
+          {humanizeControlsUnavailableReason(controls?.reason, slotLabel)}
         </p>
       </SectionCard>
     )
@@ -97,6 +123,17 @@ export function ScheduleControlsPanel({
   const topControls = Array.isArray(controls.top_controls) ? controls.top_controls : []
   const cpmSection = controls.sections?.cpm_observability || {}
   const workbenchLinks = controls.links || {}
+  const baselineCtx = normalizeBaselineContext(controls.baseline_context)
+  const activeBasisLabel = labelForComparisonBasis(comparisonBasis)
+  const comparisonContextLine =
+    comparisonBasis === 'prior_update'
+      ? `Comparing against Prior Update${controls.as_of_date ? ` · As of ${controls.as_of_date}` : ''}`
+      : formatNamedComparisonContextLine({
+          slotLabel: baselineCtx.slotLabel || activeBasisLabel,
+          displayName: baselineCtx.displayName,
+          dataDate: baselineCtx.dataDate,
+          asOf: controls.as_of_date || null,
+        })
 
   return (
     <SectionCard title="Schedule Controls">
@@ -113,6 +150,8 @@ export function ScheduleControlsPanel({
             </button>
           ))}
         </div>
+
+        <p className="text-sm text-[var(--hb-muted)]">{comparisonContextLine}</p>
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

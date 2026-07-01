@@ -1,0 +1,745 @@
+
+> frontend@0.0.0 test
+> vitest run ProjectSchedulePage ProjectScheduleWorkbenchPage ProjectScheduleDriverDetailPage scheduleBaselineLabels scheduleApiAsOf
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z/frontend
+
+ ✓ src/lib/scheduleBaselineLabels.test.ts  (7 tests) 2ms
+ ✓ src/lib/scheduleApiAsOf.test.ts  (6 tests) 5ms
+stderr | src/pages/ProjectScheduleDriverDetailPage.test.tsx > ProjectScheduleDriverDetailPage > loads named basis from comparison_basis query param and shows humanized labels
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+stderr | src/pages/ProjectScheduleWorkbenchPage.test.tsx > ProjectScheduleWorkbenchPage > syncs review items for operators and passes as_of
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ✓ src/pages/ProjectScheduleDriverDetailPage.test.tsx  (6 tests) 100ms
+ ✓ src/pages/ProjectScheduleWorkbenchPage.test.tsx  (5 tests) 269ms
+stderr | src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > renders baseline anchor helper text and comparison context in controls
+⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+ ❯ src/pages/ProjectSchedulePage.test.tsx  (19 tests | 1 failed) 1864ms
+   ❯ src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > humanizes missing named baseline controls state without raw reason codes
+     → Unable to find an element with the text: /Select a prior schedule update for Current Contract Baseline in Baseline Anchors below/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33maria-current[39m=[32m"page"[39m
+              [33mclass[39m=[32m"active"[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAs of [0m
+                  [0m2026-06-28[0m
+                  [0m · Current update [0m
+                  [0mTWNU19[0m
+                  [0m · Data date [0m
+                  [0m2026-06-23[0m
+                  [0m · Previous data date 2026-06-16[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 text-xs text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0mAs-of date[0m
+                  [36m</span>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm text-[var(--hb-text)]"[39m
+                    [33mtype[39m=[32m"date"[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mImport schedule package[0m
+                [36m</button>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline"[39m
+                [36m>[39m
+                  [0mOpen Workbench[0m
+                [36m</a>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mcpm unavailable[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<section[39m
+              [33mclass[39m=[32m"card min-w-0 hover:border-[var(--hb-accent)] transition-colors "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"min-w-0"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"section-title mb-0"[39m
+                  [36m>[39m
+                    [0mSchedule Controls[0m
+                  [36m</h3>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-3"[39m
+       ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33maria-current[39m=[32m"page"[39m
+              [33mclass[39m=[32m"active"[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAs of [0m
+                  [0m2026-06-28[0m
+                  [0m · Current update [0m
+                  [0mTWNU19[0m
+                  [0m · Data date [0m
+                  [0m2026-06-23[0m
+                  [0m · Previous data date 2026-06-16[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 text-xs text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0mAs-of date[0m
+                  [36m</span>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm text-[var(--hb-text)]"[39m
+                    [33mtype[39m=[32m"date"[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mImport schedule package[0m
+                [36m</button>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline"[39m
+                [36m>[39m
+                  [0mOpen Workbench[0m
+                [36m</a>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mcpm unavailable[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<section[39m
+              [33mclass[39m=[32m"card min-w-0 hover:border-[var(--hb-accent)] transition-colors "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"min-w-0"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"section-title mb-0"[39m
+                  [36m>[39m
+                    [0mSchedule Controls[0m
+                  [36m</h3>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-3"[39m
+       ...
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/ProjectSchedulePage.test.tsx > ProjectSchedulePage > humanizes missing named baseline controls state without raw reason codes
+TestingLibraryElementError: Unable to find an element with the text: /Select a prior schedule update for Current Contract Baseline in Baseline Anchors below/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33maria-current[39m=[32m"page"[39m
+              [33mclass[39m=[32m"active"[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAs of [0m
+                  [0m2026-06-28[0m
+                  [0m · Current update [0m
+                  [0mTWNU19[0m
+                  [0m · Data date [0m
+                  [0m2026-06-23[0m
+                  [0m · Previous data date 2026-06-16[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 text-xs text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0mAs-of date[0m
+                  [36m</span>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm text-[var(--hb-text)]"[39m
+                    [33mtype[39m=[32m"date"[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mImport schedule package[0m
+                [36m</button>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline"[39m
+                [36m>[39m
+                  [0mOpen Workbench[0m
+                [36m</a>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mcpm unavailable[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<section[39m
+              [33mclass[39m=[32m"card min-w-0 hover:border-[var(--hb-accent)] transition-colors "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"min-w-0"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"section-title mb-0"[39m
+                  [36m>[39m
+                    [0mSchedule Controls[0m
+                  [36m</h3>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-3"[39m
+       ...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"space-y-4 "[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"min-w-0"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<header[39m
+            [33mclass[39m=[32m"card"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 md:flex-row md:items-start md:justify-between"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"min-w-0"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-xs font-medium uppercase tracking-[0.16em] text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mProject workspace[0m
+                [36m</div>[39m
+                [36m<h2[39m
+                  [33mclass[39m=[32m"mt-1 text-xl font-semibold"[39m
+                [36m>[39m
+                  [0mTropical Resort[0m
+                [36m</h2>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAddress not available[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<dl[39m
+                [33mclass[39m=[32m"grid gap-2 text-xs sm:grid-cols-3 md:max-w-xl"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"rounded-md border border-[var(--hb-border)] px-3 py-2"[39m
+                [36m>[39m
+                  [36m<dt[39m
+                    [33mclass[39m=[32m"text-[var(--hb-muted)]"[39m
+                  [36m>[39m
+                    [0mProject key[0m
+                  [36m</dt>[39m
+                  [36m<dd[39m
+                    [33mclass[39m=[32m"mt-1 font-medium text-[var(--hb-text)]"[39m
+                  [36m>[39m
+                    [0mtropical[0m
+                  [36m</dd>[39m
+                [36m</div>[39m
+              [36m</dl>[39m
+            [36m</div>[39m
+          [36m</header>[39m
+          [36m<nav[39m
+            [33maria-label[39m=[32m"Project workspace sections"[39m
+            [33mclass[39m=[32m"subnav"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical"[39m
+            [36m>[39m
+              [0mOverview[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/forecasting"[39m
+            [36m>[39m
+              [0mForecasting[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33maria-current[39m=[32m"page"[39m
+              [33mclass[39m=[32m"active"[39m
+              [33mhref[39m=[32m"/projects/tropical/schedule"[39m
+            [36m>[39m
+              [0mSchedule[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/staffing"[39m
+            [36m>[39m
+              [0mStaffing[0m
+            [36m</a>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m""[39m
+              [33mhref[39m=[32m"/projects/tropical/exposures"[39m
+            [36m>[39m
+              [0mExposures[0m
+            [36m</a>[39m
+          [36m</nav>[39m
+          [36m<section[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"[39m
+            [36m>[39m
+              [36m<div>[39m
+                [36m<h3[39m
+                  [33mclass[39m=[32m"section-title mb-0"[39m
+                [36m>[39m
+                  [0mSchedule[0m
+                [36m</h3>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"mt-1 text-sm text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [0mAs of [0m
+                  [0m2026-06-28[0m
+                  [0m · Current update [0m
+                  [0mTWNU19[0m
+                  [0m · Data date [0m
+                  [0m2026-06-23[0m
+                  [0m · Previous data date 2026-06-16[0m
+                [36m</p>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap items-center gap-2"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center gap-2 text-xs text-[var(--hb-muted)]"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0mAs-of date[0m
+                  [36m</span>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"rounded border border-[var(--hb-border)] bg-transparent px-2 py-1 text-sm text-[var(--hb-text)]"[39m
+                    [33mtype[39m=[32m"date"[39m
+                    [33mvalue[39m=[32m""[39m
+                  [36m/>[39m
+                [36m</label>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mImport schedule package[0m
+                [36m</button>[39m
+                [36m<a[39m
+                  [33mclass[39m=[32m"badge"[39m
+                  [33mhref[39m=[32m"/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline"[39m
+                [36m>[39m
+                  [0mOpen Workbench[0m
+                [36m</a>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"badge"[39m
+                [36m>[39m
+                  [0mcpm unavailable[0m
+                [36m</span>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<section[39m
+              [33mclass[39m=[32m"card min-w-0 hover:border-[var(--hb-accent)] transition-colors "[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-start justify-between gap-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"min-w-0"[39m
+                [36m>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"section-title mb-0"[39m
+                  [36m>[39m
+                    [0mSchedule Controls[0m
+                  [36m</h3>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"mt-3"[39m
+       ...
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/ProjectSchedulePage.test.tsx:470:20
+    468|     await user.click(await screen.findByRole('button', { name: 'Curren…
+    469|     expect(
+    470|       await screen.findByText(/Select a prior schedule update for Curr…
+       |                    ^
+    471|     ).toBeInTheDocument()
+    472|     expect(screen.queryByText(/baseline_not_selected/)).not.toBeInTheD…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 42 passed (43)
+   Start at  04:23:41
+   Duration  3.10s (transform 324ms, setup 342ms, collect 929ms, tests 2.24s, environment 1.79s, prepare 995ms)
+

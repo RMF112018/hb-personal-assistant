@@ -1,0 +1,37 @@
+{
+  "method": "playwright",
+  "shots": [
+    {
+      "file": "01-schedule-hub-baseline-anchors.png",
+      "surface": "schedule hub + baseline anchors",
+      "loaded": true
+    },
+    {
+      "file": "02-controls-named-baseline.png",
+      "surface": "schedule controls named baseline",
+      "loaded": true
+    },
+    {
+      "file": "03-workbench-named-baseline.png",
+      "surface": "named workbench",
+      "loaded": true
+    },
+    {
+      "file": "04-driver-detail-slash-activity.png",
+      "surface": "driver detail FAB/DEL-10",
+      "loaded": true
+    },
+    {
+      "file": "05-back-to-workbench.png",
+      "surface": "back navigation",
+      "loaded": true,
+      "url": "http://127.0.0.1:5173/projects/tropical/schedule/workbench?comparison_basis=current_contract_baseline&as_of=2026-07-01"
+    },
+    {
+      "file": "06-missing-baseline-controls.png",
+      "surface": "missing baseline (mocked API)",
+      "loaded": true,
+      "proof": "fixture"
+    }
+  ]
+}

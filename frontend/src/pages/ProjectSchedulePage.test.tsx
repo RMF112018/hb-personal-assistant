@@ -446,6 +446,37 @@ describe('ProjectSchedulePage', () => {
     downloadProjectScheduleExportMock.mockReset()
   })
 
+  it('renders baseline anchor helper text and comparison context in controls', async () => {
+    renderPage()
+
+    expect(
+      await screen.findByText(/Assign a prior schedule update to each of the three named comparison anchors/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Comparing against Prior Update/)).toBeInTheDocument()
+  })
+
+  it('humanizes missing named baseline controls state without raw reason codes', async () => {
+    renderPage()
+    getProjectScheduleControlsMock.mockImplementation((_projectKey: string, opts?: { comparisonBasis?: string }) => {
+      if (opts?.comparisonBasis === 'current_contract_baseline') {
+        return Promise.resolve({
+          available: false,
+          reason: 'baseline_not_selected',
+          baseline_context: { slot_label: 'Current Contract Baseline' },
+          comparison_basis: 'current_contract_baseline',
+        })
+      }
+      return Promise.resolve(controlsResponse())
+    })
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Current Contract Baseline' }))
+    expect(
+      await screen.findByText(/Select a prior schedule update for Current Contract Baseline in Baseline Anchors below/i),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/baseline_not_selected/)).not.toBeInTheDocument()
+  })
+
   it('renders a PM-facing above-fold schedule story and scoped project tab', async () => {
     renderPage()
 

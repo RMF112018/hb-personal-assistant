@@ -10,6 +10,10 @@ import { ReviewCueCard } from '../components/project-schedule/ReviewCueCard'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api, getLocalUiRole } from '../lib/api'
 import type { ReviewWorkbenchComparisonBasis } from '../lib/api'
+import {
+  formatNamedComparisonContextLine,
+  labelForComparisonBasis,
+} from '../lib/scheduleBaselineLabels'
 
 const NAMED_WORKBENCH_BASIS = new Set<ReviewWorkbenchComparisonBasis>([
   'current_contract_baseline',
@@ -212,6 +216,24 @@ export function ProjectScheduleWorkbenchPage() {
   const workbench = (envelope.workbench || {}) as Record<string, any>
   const items = Array.isArray(envelope.items) ? envelope.items : []
   const readOnlyNamedPreview = namedPreview || Boolean(workbench.read_only_baseline_preview)
+  const activeNamedSlot = useMemo(() => {
+    if (!namedPreview) return null
+    return (
+      selectedNamedSlots.find((slot: any) => String(slot.slot_key) === comparisonBasis) || {
+        slot_label: labelForComparisonBasis(comparisonBasis),
+        selection: null,
+        status: 'missing',
+      }
+    )
+  }, [comparisonBasis, namedPreview, selectedNamedSlots])
+  const namedComparisonLine = namedPreview
+    ? formatNamedComparisonContextLine({
+        slotLabel: activeNamedSlot?.slot_label || labelForComparisonBasis(comparisonBasis),
+        displayName: activeNamedSlot?.selection?.display_name,
+        dataDate: activeNamedSlot?.selection?.schedule_data_date,
+        asOf: asOfDate || null,
+      })
+    : null
 
   const sourceMetrics = useMemo(() => uniqueValues(items, 'source_metric_key'), [items])
   const phases = useMemo(() => uniqueValues(items, 'phase'), [items])
@@ -295,6 +317,22 @@ export function ProjectScheduleWorkbenchPage() {
           </div>
         </div>
 
+        {readOnlyNamedPreview && (
+          <div
+            className="rounded border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
+            role="status"
+          >
+            <div className="font-medium text-amber-200">Named baseline preview — read only</div>
+            <p className="mt-1 text-[var(--hb-muted)]">
+              This Workbench view compares against a named baseline anchor. Review signals are shown for PM
+              preview only — disposition sync and status updates are disabled until you switch to Prior Update.
+            </p>
+            {namedComparisonLine ? (
+              <p className="mt-2 text-xs text-[var(--hb-muted)]">{namedComparisonLine}</p>
+            ) : null}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           <button
             className={`badge ${comparisonBasis === 'prior_update' ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
@@ -308,7 +346,7 @@ export function ProjectScheduleWorkbenchPage() {
               className={`badge ${comparisonBasis === slot.slot_key ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
               onClick={() => selectComparisonBasis(slot.slot_key as ReviewWorkbenchComparisonBasis)}
             >
-              {String(slot.slot_label || slot.slot_key).replace(/_/g, ' ')}
+              {text(slot.slot_label, labelForComparisonBasis(String(slot.slot_key)))}
             </button>
           ))}
         </div>
