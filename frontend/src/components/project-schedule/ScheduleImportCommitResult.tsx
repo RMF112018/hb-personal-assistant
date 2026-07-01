@@ -92,8 +92,16 @@ export function ScheduleImportCommitResultPanel({
           CPM recompute: {cpmStatus || 'pending'}
           {committed.cpm_run_id ? ` · run ${String(committed.cpm_run_id).slice(0, 12)}…` : ''}
         </p>
-        {cpmFailed && committed.cpm_failure_reason ? (
-          <p className="text-red-600">CPM failure: {committed.cpm_failure_reason}</p>
+        {cpmFailed ? (
+          <p className="text-red-600">
+            CPM failure:{' '}
+            {String(
+              committed.failure_message_redacted ||
+                (committed.analytics_trust as Record<string, unknown> | undefined)?.failure_message_redacted ||
+                pipelineStatus?.cpm?.failure_message_redacted ||
+                'Computed CPM could not finish for this schedule version.',
+            )}
+          </p>
         ) : null}
         {needsAttention && !cpmFailed ? (
           <p className="text-amber-700">

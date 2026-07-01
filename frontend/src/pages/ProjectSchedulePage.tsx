@@ -247,12 +247,13 @@ function DriverEvidenceSection({
   const needsDriver = activeTab === 'impacted_successors'
 
   const { data, isFetching } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'drivers', activeTab, selectedDriverId, asOfDate],
+    queryKey: ['project', 'schedule', projectKey, 'drivers', activeTab, selectedDriverId, asOfDate, comparisonBasis],
     queryFn: () =>
       api.getProjectScheduleDrivers(projectKey, activeTab, {
         limit: 50,
         offset: 0,
         asOf: asOfDate,
+        comparisonBasis,
         driverActivityId: needsDriver ? selectedDriverId : undefined,
       }),
     enabled: Boolean(projectKey) && count > 0 && (!needsDriver || Boolean(selectedDriverId)),
@@ -447,9 +448,13 @@ export function ProjectSchedulePage() {
   const [importOpen, setImportOpen] = useState(false)
   const [newImportBanner, setNewImportBanner] = useState(false)
   const [controlsComparisonBasis, setControlsComparisonBasis] = useState<ScheduleControlsComparisonBasis>('prior_update')
-  const [workbenchComparisonBasis, setWorkbenchComparisonBasis] = useState<
-    ReviewWorkbenchComparisonBasis | 'baseline'
-  >('prior_update')
+
+  const driverComparisonBasis =
+    controlsComparisonBasis === 'baseline'
+      ? 'baseline'
+      : controlsComparisonBasis === 'prior_update'
+        ? 'prior_update'
+        : controlsComparisonBasis
 
   const { data: projectsData } = useQuery({
     queryKey: ['projects'],
@@ -840,8 +845,14 @@ export function ProjectSchedulePage() {
                 projectKey={projectKey}
                 driverHub={driverHub}
                 asOfDate={requestAsOf}
-                comparisonBasis={workbenchComparisonBasis}
-                onComparisonBasisChange={setWorkbenchComparisonBasis}
+                comparisonBasis={driverComparisonBasis}
+                onComparisonBasisChange={(basis) => {
+                  if (basis === 'baseline') {
+                    setControlsComparisonBasis('baseline')
+                  } else if (basis === 'prior_update') {
+                    setControlsComparisonBasis('prior_update')
+                  }
+                }}
               />
             </div>
           </div>
@@ -937,6 +948,7 @@ export function ProjectSchedulePage() {
                     drilldownType={key}
                     preview={reviewDrilldowns[key] || {}}
                     asOfDate={requestAsOf}
+                    comparisonBasis={driverComparisonBasis}
                   />
                 ))}
               </div>

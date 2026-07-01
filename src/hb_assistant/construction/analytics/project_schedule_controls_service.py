@@ -10,7 +10,9 @@ from urllib.parse import urlencode
 from hb_assistant.store.schedule_cpm_import_observability_repository import (
     ScheduleCpmImportObservabilityRepository,
 )
+from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
+from .project_schedule_analytics_trust_service import ledger_for_hub_version
 from .project_schedule_baseline_vocabulary import (
     comparison_label_for_basis,
     is_named_baseline_basis,
@@ -55,6 +57,7 @@ class ProjectScheduleControlsService:
         self._summary = ProjectScheduleSummaryService(db_path=db_path)
         self._review = ProjectScheduleReviewService(db_path=db_path)
         self._cpm_obs = ScheduleCpmImportObservabilityRepository(db_path=db_path)
+        self._quality_repo = ScheduleQualityRepository(db_path=db_path)
         self._named_baselines = ProjectScheduleNamedBaselineService(db_path=db_path)
 
     def build_controls(
@@ -185,6 +188,13 @@ class ProjectScheduleControlsService:
         if is_named_baseline_basis(basis) and named_resolution:
             baseline_context = self._baseline_context_from_resolution(basis=basis, resolution=named_resolution)
 
+        analytics_trust = context.get("analytics_trust") or self._controls_analytics_trust(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+            context=context,
+            cpm_obs_row=cpm_obs_row,
+        )
+
         as_of_str = as_of_date.isoformat() if isinstance(as_of_date, date) else str(as_of_date)
         payload: dict[str, Any] = {
             "available": True,
@@ -196,6 +206,7 @@ class ProjectScheduleControlsService:
             "comparison_basis": basis,
             "baseline_context": baseline_context,
             "advisory_posture": _ADVISORY_POSTURE,
+            "analytics_trust": analytics_trust,
             "summary": overall,
             "sections": sections,
             "top_controls": top_controls,
@@ -256,6 +267,50 @@ class ProjectScheduleControlsService:
                 include_workbench_link=include_workbench_link,
             ),
         }
+
+    def _controls_analytics_trust(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        context: dict[str, Any],
+        cpm_obs_row: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        from .project_schedule_analytics_trust_service import (
+            map_committed_cpm_status,
+            map_committed_identity_status,
+            normalize_quality_status,
+        )
+        from .schedule_cpm_read_service import ScheduleCpmReadService
+
+        quality_run = self._quality_repo.get_latest_run(schedule_version_key)
+        quality_status = normalize_quality_status(
+            str(quality_run.get("status")) if quality_run else None,
+            committed=True,
+        )
+        cpm_read = ScheduleCpmReadService(db_path=self._db_path).cpm_summary(schedule_version_key)
+        cpm_status = map_committed_cpm_status(cpm_read, observability=cpm_obs_row)
+        membership_status = (context.get("schedule_trust") or {}).get("membership_status")
+        if (context.get("identity_review") or {}).get("required"):
+            identity_status = "partial"
+        elif membership_status:
+            identity_status = map_committed_identity_status({"membership_status": membership_status})
+        else:
+            identity_status = "complete"
+        return ledger_for_hub_version(
+            quality_status=quality_status,
+            cpm_status=cpm_status,
+            identity_status=identity_status,
+            identity_membership_status=membership_status,
+            cpm_observability=cpm_obs_row,
+            canonical_activity_count=int((context.get("current_schedule") or {}).get("activity_count") or 0)
+            or None,
+            canonical_relationship_count=int(
+                (context.get("current_schedule") or {}).get("relationship_count") or 0
+            )
+            or None,
+            source_format=str((context.get("current_schedule") or {}).get("source_format") or "") or None,
+        )
 
     def _build_sections(
         self,

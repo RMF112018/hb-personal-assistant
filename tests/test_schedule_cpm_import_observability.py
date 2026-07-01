@@ -175,7 +175,12 @@ def test_import_status_exposes_cpm_failure(tmp_path: Path) -> None:
     cpm = body.get("cpm") or {}
     assert cpm.get("cpm_recompute_status") == "failed"
     assert cpm.get("failure_code") == "cpm_chain_failed"
-    assert "forward-pass" in str(cpm.get("failure_message") or "")
+    redacted = str(cpm.get("failure_message_redacted") or "")
+    assert redacted
+    assert "RuntimeError" not in redacted
+    assert "synthetic" not in redacted
+    assert "forward pass" in redacted.lower()
+    assert "failure_message" not in cpm
     assert cpm.get("failed_step") == "forward_pass"
     assert any(stage["stage"] == "cpm_recompute" and stage["status"] == "failed" for stage in body["stages"])
 

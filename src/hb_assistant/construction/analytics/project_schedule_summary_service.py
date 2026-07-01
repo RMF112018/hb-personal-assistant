@@ -20,6 +20,10 @@ from hb_assistant.store.project_schedule_hub_repository import ProjectScheduleHu
 from hb_assistant.store.schedule_identity_repository import ScheduleIdentityRepository
 from hb_assistant.store.schedule_mapping_repository import ScheduleMappingRepository
 from hb_assistant.store.schedule_import_repository import ScheduleImportRepository
+from hb_assistant.store.schedule_cpm_import_observability_repository import (
+    ScheduleCpmImportObservabilityRepository,
+)
+from hb_assistant.store.schedule_quality_repository import ScheduleQualityRepository
 
 from .project_schedule_comparison import (
     ProjectScheduleComparisonService,
@@ -34,7 +38,14 @@ from .project_schedule_drilldown_service import ProjectScheduleDrilldownService
 from .project_schedule_driver_analysis_service import ProjectScheduleDriverAnalysisService
 from .project_schedule_memo_service import ProjectScheduleMemoService
 from .project_schedule_narrative_qa import validate_summary as validate_schedule_narrative
+from .project_schedule_analytics_trust_service import (
+    ledger_for_hub_version,
+    map_committed_cpm_status,
+    map_committed_identity_status,
+    normalize_quality_status,
+)
 from .project_schedule_review_service import ProjectScheduleReviewService
+from .schedule_cpm_read_service import ScheduleCpmReadService
 from .schedule_trust_service import ScheduleTrustService
 from .schedule_import_service import ensure_schedule_schema
 
@@ -94,6 +105,8 @@ class ProjectScheduleSummaryService:
         self._review = ProjectScheduleReviewService(db_path=db_path)
         self._memo = ProjectScheduleMemoService()
         self._imports = ScheduleImportRepository(db_path=db_path)
+        self._quality_repo = ScheduleQualityRepository(db_path=db_path)
+        self._cpm_observability_repo = ScheduleCpmImportObservabilityRepository(db_path=db_path)
         self._canonical_metrics = ProjectScheduleCanonicalMetricService(db_path=db_path)
         self._stage_timings: list[dict[str, Any]] = []
         self._named_review: Any = None
@@ -376,6 +389,13 @@ class ProjectScheduleSummaryService:
             readiness=readiness,
         )
 
+        analytics_trust = self._hub_analytics_trust(
+            project_key=project_key,
+            schedule_version_key=current_key,
+            current=current,
+            cpm_summary=cpm_summary,
+        )
+
         hub_payload = {
             "surface": "project_schedule_hub",
             "project_key": project_key,
@@ -418,6 +438,7 @@ class ProjectScheduleSummaryService:
             "trend_summary": trends,
             "trend_series": trend_series,
             "schedule_trust": schedule_trust,
+            "analytics_trust": analytics_trust,
             "identity_review": identity_review,
             "baseline_summary": {k: v for k, v in baseline_summary.items() if not str(k).startswith("_")},
             "review_drilldowns": review_drilldowns,
@@ -450,6 +471,39 @@ class ProjectScheduleSummaryService:
         }
         hub_payload["narrative_qa"] = validate_schedule_narrative(hub_payload)
         return hub_payload
+
+    def _hub_analytics_trust(
+        self,
+        *,
+        project_key: str,
+        schedule_version_key: str,
+        current: dict[str, Any],
+        cpm_summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        del cpm_summary
+        quality_run = self._quality_repo.get_latest_run(schedule_version_key)
+        quality_status = normalize_quality_status(
+            str(quality_run.get("status")) if quality_run else None,
+            committed=True,
+        )
+        cpm_obs = self._cpm_observability_repo.get_latest_for_schedule_version(schedule_version_key)
+        cpm_read = ScheduleCpmReadService(db_path=self._db_path).cpm_summary(schedule_version_key)
+        cpm_status = map_committed_cpm_status(cpm_read, observability=cpm_obs)
+        membership = self._hub_repo.get_membership(
+            project_key=project_key,
+            schedule_version_key=schedule_version_key,
+        )
+        identity_status = map_committed_identity_status(membership)
+        return ledger_for_hub_version(
+            quality_status=quality_status,
+            cpm_status=cpm_status,
+            identity_status=identity_status,
+            identity_membership_status=(membership or {}).get("membership_status"),
+            cpm_observability=cpm_obs,
+            canonical_activity_count=int(current.get("activity_count") or 0) or None,
+            canonical_relationship_count=int(current.get("relationship_count") or 0) or None,
+            source_format=str(current.get("source_format") or "") or None,
+        )
 
     # ------------------------------------------------------------------ resolvers
 

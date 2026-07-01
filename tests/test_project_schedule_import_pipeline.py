@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -75,6 +77,34 @@ def test_project_import_preview_locks_route_project(tmp_path: Path) -> None:
     assert preview["pipeline_scope"] == "project_schedule_import"
     assert preview["activity_count"] == 2
     assert "trust_preview" in preview
+    assert preview["analytics_trust"]["analytics_trust_status"] in {"ready", "degraded", "blocked"}
+
+
+def test_zip_html_companion_is_ignored_not_parsed(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, mode="w") as zf:
+        zf.writestr("minimal.xer", XER.read_bytes())
+        zf.writestr(
+            "report.html",
+            b"<html><body><h1>Schedule report</h1></body></html>",
+        )
+    resp = client.post(
+        "/api/projects/tropical/schedule/import-preview",
+        headers=_op(),
+        files={"file": ("package-with-html.zip", buf.getvalue(), "application/zip")},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["package_mode"] == "zip_package"
+    assert any(w["code"] == "unsupported_package_file_ignored" for w in body["warnings"])
+    trust = body.get("analytics_trust") or {}
+    joined = " ".join(trust.get("trust_reasons") or [])
+    assert "report.html" in joined or any(
+        "report.html" in str(row.get("filename") or "")
+        for row in trust.get("ignored_companion_files") or []
+    )
+    assert body["activity_count"] == 2
 
 
 def test_project_body_project_mismatch_rejected(tmp_path: Path) -> None:
