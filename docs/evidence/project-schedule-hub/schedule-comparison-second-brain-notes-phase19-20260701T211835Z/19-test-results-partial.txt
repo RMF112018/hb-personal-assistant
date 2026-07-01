@@ -1,0 +1,8 @@
+.......F.......                                                          [100%]
+=================================== FAILURES ===================================
+_______________ test_assert_note_safe_rejects_forbidden_language _______________
+tests/test_obsidian_schedule_review_note_generator.py:73: in test_assert_note_safe_rejects_forbidden_language
+    assert raised
+E   assert False
+=========================== short test summary info ============================
+FAILED tests/test_obsidian_schedule_review_note_generator.py::test_assert_note_safe_rejects_forbidden_language

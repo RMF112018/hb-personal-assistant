@@ -1,0 +1,11 @@
+passed=True
+
+Tests:
+- test_validate_schedule_advisory_accepts_safe_output
+- test_validate_schedule_advisory_rejects_causation_language
+- test_validate_schedule_advisory_rejects_raw_ids
+- test_cli_summarize_requires_confirm_local_llm
+
+Failure handling:
+- advisory validation failure recorded in CLI JSON advisory_failures
+- failed advisory section is not written to vault note

@@ -1,0 +1,14 @@
+{
+  "project": {
+    "passed": true,
+    "violations": [],
+    "surface": "export",
+    "advisory_posture": "sequence_cues_not_causation"
+  },
+  "portfolio": {
+    "passed": true,
+    "violations": [],
+    "surface": "portfolio_export",
+    "advisory_posture": "sequence_cues_not_causation"
+  }
+}
