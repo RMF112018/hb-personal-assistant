@@ -758,6 +758,10 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     # live instruments): a "Change Order Template" must not be treated as a real change order.
     if _is_template_form(rel_path):
         document_type = "template_form"
+    # First-class email (Phase 10E): a saved `.eml` is always an email record, regardless of any
+    # subject/body keyword the generic classifier may have matched (wins over template/RFI/etc.).
+    if ext == "eml":
+        document_type = "email"
 
     sheet_title = _sheet_title_from_filename(rel_path, sheet_number)
     number, date, description = _revision(text)

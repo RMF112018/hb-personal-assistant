@@ -29,6 +29,7 @@ METADATA_ONLY_NO_AUTO_CARD = "metadata_only_no_auto_card"
 UNSUPPORTED_FILE_TYPE = "unsupported_file_type"
 TEMPORARY_FILE = "temporary_file"
 SOURCE_NOTES_SELF_INDEX_GUARD = "source_notes_self_index_guard"
+EMAIL_ARCHIVE_SELF_INDEX_GUARD = "email_archive_self_index_guard"
 DELETED_SOURCE = "deleted_source"
 NOT_ENABLED = "not_enabled"
 OUTSIDE_ROOT = "outside_root"
@@ -44,6 +45,7 @@ SKIP_CODES: frozenset[str] = frozenset({
     UNSUPPORTED_FILE_TYPE,
     TEMPORARY_FILE,
     SOURCE_NOTES_SELF_INDEX_GUARD,
+    EMAIL_ARCHIVE_SELF_INDEX_GUARD,
     DELETED_SOURCE,
     NOT_ENABLED,
     OUTSIDE_ROOT,

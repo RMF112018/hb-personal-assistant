@@ -1,0 +1,3 @@
+# Sensitive apply artifacts (full email bodies/addresses/message-ids, DB backup, card backups,
+# per-file detail rows) — never committed. Only count-only safe evidence in this dir is tracked.
+local-sensitive/

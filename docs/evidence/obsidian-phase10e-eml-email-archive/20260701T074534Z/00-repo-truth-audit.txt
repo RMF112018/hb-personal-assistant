@@ -1,0 +1,38 @@
+Phase 10E — repo-truth audit (count/name only; no addresses/subjects/message-ids/absolute paths)
+================================================================================================
+
+Branch:  feat/obsidian-phase10e-eml-email-archive-20260701T074534Z
+Base:    76a2eefa (origin/main; Phase 10D merged, ancestor verified)
+
+Changed source modules (7):
+  M source_analyzers.py      force document_type=email for .eml
+  M source_indexer.py        eml body extraction; EMAIL_ARCHIVE_FOLDER + is_email_archive_path
+                             guard wired into scan_vault_notes + drain_queue backstop
+  M source_note_graph.py     NoteFact email fields; hb-email parsing; strong/weak email signals
+  M source_notes.py          eml -> "Email message" label
+  M source_skip_codes.py     EMAIL_ARCHIVE_SELF_INDEX_GUARD skip code
+  M source_value.py          email added to HIGH_DOCUMENT_TYPES
+  M source_watch.py          _enqueue drops vault-root Email Archive/ events
+
+New files (5):
+  A source_email_archive.py                     deterministic stdlib .eml parser/renderer/facts/block
+  A scripts/obsidian_source_index_eml_archive.py  bounded .eml archive indexer (dry-run/apply/--update)
+  A tests/test_obsidian_source_email_archive.py
+  A tests/test_obsidian_source_email_graph_facts.py
+  A tests/test_obsidian_source_index_eml_archive.py
+
+Amendment #4 resolution:
+  Archive notes moved to a SEPARATE top-level root "Email Archive/Work/<Domain>/" (NOT under
+  Source Notes). Self-index protection is provided by is_email_archive_path (keyed on the
+  "Email Archive/" prefix), wired into scan_vault_notes, drain_queue, and the watcher so full
+  email bodies/addresses are never indexed into the note FTS.
+
+Validation (this session):
+  ruff check (12 touched files) ............ PASS ("All checks passed!")
+  new tests (3 files) ...................... PASS (24 tests)
+  regression 10A-10D (5 files) ............. PASS
+  self-index-guard + skip-codes + indexer + watch (8 files) ... PASS
+  backend + watch-ownership (2 files) ...... PASS
+
+Determinism/guardrails: no Ollama/network in module or script; ollama_calls attestation counter
+present and 0; wiki-links assembled via _WL_OPEN/_WL_CLOSE to keep the denylist clean.

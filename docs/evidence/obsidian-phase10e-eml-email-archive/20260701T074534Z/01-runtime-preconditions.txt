@@ -1,0 +1,32 @@
+Phase 10E — runtime preconditions (count/schema only; no absolute paths or email content)
+=========================================================================================
+
+Checked immediately before the bounded production apply.
+
+Backend (:8000) listening ................. NO (clear)
+
+Config (obsidian_mcp runtime config):
+  vault_root set .......................... yes
+  source_notes_folder ..................... "Source Notes"
+  writes_enabled .......................... True
+  vault_markdown_write_enabled ............ True
+  source_card_generation_enabled .......... True
+  Frozen flags (must be False):
+    external_source_watch_enabled ......... False
+    source_card_auto_generate_enabled ..... False
+    source_summary_auto_generate_enabled .. False
+    source_note_auto_refresh_enabled ...... False
+  external_sources: 6 total; "syn-work" enabled = True (Tropical corpus root lives under it)
+
+Live DB:
+  schema version .......................... (v-current)
+  source_intelligence_events queue ........ (queued=0, processing=0)
+  generated_notes baseline ................ generated=125, not_generated=67
+  indexed .eml source rows (not deleted) .. 15  (the Phase 10D --update upgrade set)
+
+Source tree:
+  Tropical source root exists ............. yes (under syn-work external root)
+  .eml files present under Tropical ....... 144
+  bounded apply cap (--max-eml) ........... 10
+
+All preconditions satisfied for a bounded, rollback-protected apply.

@@ -813,7 +813,7 @@ def _build_bid_package_prompt(detail: dict[str, Any], analysis: SourceAnalysis, 
 _FILE_TYPE_LABELS = {
     "md": "Markdown note", "markdown": "Markdown note", "txt": "Plain-text file",
     "pdf": "PDF document", "docx": "Word document", "xlsx": "Excel workbook",
-    "csv": "CSV table", "pptx": "PowerPoint deck",
+    "csv": "CSV table", "pptx": "PowerPoint deck", "eml": "Email message",
 }
 
 

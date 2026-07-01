@@ -49,6 +49,7 @@ HIGH_DOCUMENT_TYPES = frozenset({
     "closeout", "warranty", "operations_maintenance",
     "cost_report", "project_controls", "staffing_report",
     "safety", "quality", "inspection",
+    "email",  # Phase 10E: a parsed .eml is a high-value correspondence record
 })
 # NORMAL also covers unknown-but-real project documents (general_pdf/general_document): they still
 # get a card, just not prioritized ahead of recognized PM/control artifacts. METADATA_ONLY is reserved

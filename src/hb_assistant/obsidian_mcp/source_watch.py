@@ -24,6 +24,7 @@ from .source_index_repository import SourceIndexRepository
 from .source_indexer import (
     _VAULT_ROOT_KEY,
     drain_queue,
+    is_email_archive_path,
     is_source_notes_path,
     scan_source_root,
     scan_vault_notes,
@@ -204,9 +205,11 @@ class SourceWatcher:
                     return
                 if should_ignore(rel, Path(src_path).name):
                     return
-                # Vault watcher: ignore our own generated source cards (Source Notes/...) so card
-                # writes don't re-enter source processing. Scoped to the vault root only.
-                if self._root_key == _VAULT_ROOT_KEY and is_source_notes_path(rel, config):
+                # Vault watcher: ignore our own generated source cards (Source Notes/...) and
+                # full-email archive notes (Email Archive/...) so our own writes don't re-enter
+                # source processing (and archive bodies never reach the FTS). Vault root only.
+                if self._root_key == _VAULT_ROOT_KEY and (
+                        is_source_notes_path(rel, config) or is_email_archive_path(rel)):
                     return
                 repo.enqueue_event(event_type=event_type, rel_path=rel, source_root_key=self._root_key)
                 watcher._last_event_at = _now()
