@@ -1,0 +1,43 @@
+{
+  "backlinks": null,
+  "invariants": {
+    "created": 0,
+    "db_mutations": 0,
+    "deleted": 0,
+    "queue_delta": 0
+  },
+  "mode": "apply",
+  "model": "qwen2.5:14b",
+  "modes_run": [
+    "summaries"
+  ],
+  "observability": {
+    "failures": 0,
+    "latency_ms_avg": 38198,
+    "latency_ms_max": 40078,
+    "latency_ms_total": 114594,
+    "model": "qwen2.5:14b",
+    "model_match": null,
+    "ollama_calls": 3,
+    "successes": 3,
+    "timeouts": 0,
+    "tokens": null
+  },
+  "project_number": null,
+  "reject_reasons": {},
+  "review": null,
+  "summaries": {
+    "cards_attempted": 3,
+    "cards_available": 103,
+    "cards_eligible": 103,
+    "cards_left_pending": 0,
+    "cards_written": 3,
+    "classifier_conflicts": 3,
+    "marker_transitions_pending_to_generated": 3,
+    "reject_reasons": {},
+    "selection_truncated": false,
+    "summaries_generated": 3,
+    "summaries_rejected": 0
+  },
+  "tags": null
+}
