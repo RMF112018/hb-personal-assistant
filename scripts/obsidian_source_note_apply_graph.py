@@ -524,4 +524,7 @@ def main(argv: list[str] | None = None, *,
 
 
 if __name__ == "__main__":
+    print("NOTE: Phase 10J consolidated local enrichment into scripts/obsidian_source_enrich.py "
+          "(--backlinks); this standalone applier remains as the internal backlink engine.",
+          file=sys.stderr)
     raise SystemExit(main())

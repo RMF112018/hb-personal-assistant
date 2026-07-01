@@ -347,4 +347,7 @@ def main(argv: list[str] | None = None, *,
 
 
 if __name__ == "__main__":
+    print("NOTE: Phase 10J consolidated local enrichment into scripts/obsidian_source_enrich.py "
+          "(--summaries); this standalone appender remains as the internal summary engine.",
+          file=sys.stderr)
     raise SystemExit(main())
