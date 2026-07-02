@@ -33,7 +33,13 @@
     "cpm-relationship-formula-trace.jsonl",
     "cpm-validation-recompute-diff.json",
     "09-focused-tests.txt",
-    "10-regression-tests.txt"
+    "10-regression-tests.txt",
+    "03-cpm-formula-trace-fixture-command.txt",
+    "04-cpm-run-summary.json",
+    "05-cpm-activity-formula-trace.jsonl",
+    "06-cpm-relationship-formula-trace.jsonl",
+    "07-cpm-validation-recompute-diff.json",
+    "11-artifact-scan.json"
   ],
   "allow_raw_db_paths": [],
   "allow_raw_schedule_keys": []

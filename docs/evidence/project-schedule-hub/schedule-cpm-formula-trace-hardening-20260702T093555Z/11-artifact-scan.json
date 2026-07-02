@@ -1,7 +1,7 @@
 {
   "mode": "schedule_evidence_artifact_scan",
   "evidence_dir": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-cpm-formula-trace-20260702T093539Z/docs/evidence/project-schedule-hub/schedule-cpm-formula-trace-hardening-20260702T093555Z",
-  "files_scanned": 7,
+  "files_scanned": 16,
   "finding_count": 0,
   "passed": true,
   "findings": [],
@@ -40,7 +40,13 @@
       "cpm-relationship-formula-trace.jsonl",
       "cpm-validation-recompute-diff.json",
       "09-focused-tests.txt",
-      "10-regression-tests.txt"
+      "10-regression-tests.txt",
+      "03-cpm-formula-trace-fixture-command.txt",
+      "04-cpm-run-summary.json",
+      "05-cpm-activity-formula-trace.jsonl",
+      "06-cpm-relationship-formula-trace.jsonl",
+      "07-cpm-validation-recompute-diff.json",
+      "11-artifact-scan.json"
     ],
     "allow_raw_db_paths": [],
     "allow_raw_schedule_keys": []
