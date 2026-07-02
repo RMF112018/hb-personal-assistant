@@ -3,7 +3,7 @@
 **Stamp**: 20260702T154754Z  
 **Branch**: fix/schedule-ux-nav-polish-20260702T154747Z  
 **Base commit**: e5e5efe21489e0afaab2cf1ded0db74622f6fdf6  
-**Final commit**: ba0f9ebf fix(schedule): remediate schedule tool navigation and ux hierarchy  
+**Final commit**: 146d4d82 fix(schedule): remediate schedule tool navigation and ux hierarchy (amended to include final evidence polish)  
 **No backend / CPM / parser changes**: yes (frontend UX only).
 
 ## Changed Files (source + tests + evidence)
