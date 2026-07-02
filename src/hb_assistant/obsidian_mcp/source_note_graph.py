@@ -521,6 +521,91 @@ def vet_candidate(client: Any, cand: Candidate, *, threshold: float = _CONF_THRE
     return (approved, "ok") if approved else (None, "rejected")
 
 
+# --- Standalone tagging workflow (Phase 10J) ----------------------------------------------------
+# A card-level tagging pass: the local model may propose related/* + review/* tags ONLY from
+# APPROVED_QWEN_TAGS, and every proposed related/* tag must be supported by the card's deterministic
+# facts (never from body text alone). Deterministic source/type/* + source/disposition/* tags come
+# from content_tags_for() and are never model-chosen. Writes go through the existing apply_tags().
+TAGGING_SYSTEM_PROMPT = (
+    "You are proposing controlled tags for one existing Obsidian construction source card.\n"
+    "Use ONLY the provided structured facts. No note body, summary, title, path, address, or file name\n"
+    "is provided — do not ask for them and do not invent facts, projects, companies, or statuses.\n"
+    "Propose tags ONLY from allowed_tags. Do NOT invent tag namespaces or freeform tags.\n"
+    "Propose a related/* tag ONLY when the structured facts directly support it; when unsure, omit it.\n"
+    "Return VALID JSON only with a single key: tags (list of strings from allowed_tags).\n"
+)
+
+# Which deterministic content-type family (from _DOCTYPE_CONTENT) justifies each topical related/* tag.
+_RELATED_TAG_CONTENT = {
+    "schedule": "schedule", "cost": "cost", "contract": "contract", "scope": "scope-of-work",
+    "meeting": "meeting", "rfi": "rfi", "submittal": "submittal", "drawing": "drawing",
+    "reference": "reference",
+}
+
+
+def _related_tag_supported(tag: str, fact: NoteFact) -> bool:
+    """True iff the card's deterministic facts support this related/* tag (never body-derived)."""
+    slug = tag.split("/", 1)[1]
+    if slug == "project":
+        return bool(fact.project or fact.canonical_project_key or fact.procore_project_id)
+    if slug == "company":
+        return bool(fact.vendor)
+    if slug == "person":
+        return bool(fact.participant_hashes)
+    if slug == "email":
+        return bool(fact.thread_topic or fact.subject_norm)
+    if slug == "attachment":
+        return bool(fact.attachment_extension or fact.parent_email_hash)
+    fam = _RELATED_TAG_CONTENT.get(slug)
+    return fam is not None and _DOCTYPE_CONTENT.get(fact.document_type) == fam
+
+
+def build_tagging_prompt(fact: NoteFact) -> str:
+    return "\n".join([
+        "Propose controlled tags for this card from its structured facts only. No body is provided.",
+        "CARD FACTS: " + _vetting_fact_line(fact),
+        "allowed_tags: " + ", ".join(sorted(APPROVED_QWEN_TAGS)),
+        "Propose a related/* tag only when the facts support it. Return JSON only: {\"tags\": [...]}.",
+    ])
+
+
+def validate_proposed_tags(obj: Any, fact: NoteFact) -> tuple[list[str], str]:
+    """Gate model-proposed tags. Returns (approved_tags, reason).
+
+    Rejects (returns [], reason): non-dict / non-list ``tags`` -> ``invalid_format``; any tag outside
+    the approved related/* + review/* sets -> ``unknown_tag``; a related/* tag not supported by the
+    card's deterministic facts -> ``unsupported_claim``. review/* tags are meta-flags (no grounding).
+    """
+    if not isinstance(obj, dict) or not isinstance(obj.get("tags"), list):
+        return [], "invalid_format"
+    out: list[str] = []
+    for raw in obj["tags"]:
+        st = sanitize_tag(raw)
+        if st is None or not (st in RELATED_TAGS or st in REVIEW_TAGS):
+            return [], "unknown_tag"  # invented namespace / off-taxonomy / non-proposable
+        if st in RELATED_TAGS and not _related_tag_supported(st, fact):
+            return [], "unsupported_claim"  # related tag with no deterministic support
+        if st not in out:
+            out.append(st)
+    return out[:8], "ok"
+
+
+def propose_tags(client: Any, fact: NoteFact) -> tuple[list[str], str]:
+    """Call local Ollama JSON tagging; return (approved_tags, reason). Never raises."""
+    import json
+
+    from hb_assistant.construction.classification.client import OllamaUnavailable
+    try:
+        raw = client.generate_json(system=TAGGING_SYSTEM_PROMPT, prompt=build_tagging_prompt(fact))
+    except OllamaUnavailable as exc:
+        return [], f"ollama:{exc}"
+    try:
+        obj = json.loads(raw)
+    except (ValueError, TypeError):
+        return [], "invalid_json"
+    return validate_proposed_tags(obj, fact)
+
+
 # --- Deterministic writers (managed regions only) -----------------------------------------------
 def build_wiki_link(target: NoteFact) -> str:
     """Vault-relative, disambiguated wiki link; never an absolute path."""
