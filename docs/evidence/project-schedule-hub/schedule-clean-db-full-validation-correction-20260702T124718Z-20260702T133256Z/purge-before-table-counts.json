@@ -1,0 +1,12 @@
+{
+  "schedule_version_diffs": 17,
+  "schedule_version_diff_facts": 160,
+  "schedule_version_diff_detail_facts": 209437,
+  "schedule_version_diff_impact_rollups": 32728,
+  "schedule_baseline_projects": 10,
+  "schedule_baseline_activity_codes": 31242,
+  "schedule_baseline_udfs": 17693,
+  "schedule_baseline_wbs": 1641,
+  "schedule_baseline_activities": 12869,
+  "schedule_baseline_relationships": 31853
+}

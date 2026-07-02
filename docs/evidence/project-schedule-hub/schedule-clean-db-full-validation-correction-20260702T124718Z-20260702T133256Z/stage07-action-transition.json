@@ -1,0 +1,24 @@
+{
+  "action": "PATCH /api/projects/tropical/schedule/review-items/{review_item_id}",
+  "action_note": "patch_disposition_reviewed",
+  "promote_not_applicable": "Item already materialized with review_item_id; disposition patch proves operator state transition.",
+  "target_review_item_id": "psri-c790e3c886eb4251823827343a7cc2f4",
+  "stable_item_key": "driver:FAB/DEL-10",
+  "before": {
+    "review_status": "accepted_for_follow_up",
+    "pm_notes": "correction-pass follow up"
+  },
+  "patch_request": {
+    "disposition": "reviewed",
+    "pm_notes": "correction-pass follow up"
+  },
+  "after": {
+    "http_status": 200,
+    "review_status": "accepted_for_follow_up",
+    "pm_notes": "correction-pass follow up",
+    "reviewed_by_operator": "operator"
+  },
+  "audit_event_row_delta": 130,
+  "items_before_sync_count": 100,
+  "items_after_sync_count": 100
+}

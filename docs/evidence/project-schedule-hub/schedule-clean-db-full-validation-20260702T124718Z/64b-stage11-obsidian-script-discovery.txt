@@ -1,0 +1,3 @@
+scripts/obsidian_schedule_note_graph.py
+scripts/obsidian_schedule_note_graph.py
+scripts/obsidian_schedule_review_notes.py

@@ -1,0 +1,23 @@
+branch=validation/schedule-clean-db-full-20260702T124718Z
+head=e2313d9ee8d42ad56159451a5eda887fbe1c15a0
+?? docs/evidence/project-schedule-hub/schedule-clean-db-full-validation-20260702T124718Z/
+e2313d9e Merge pull request #266 from RMF112018/hardening/schedule-cpm-longest-path-shadow-20260702T115754Z
+bc726257 docs(schedule): add queried live cpm longest path proof
+225572db chore(schedule): remove duplicate evidence artifacts from longest-path commit
+91642b4c chore(schedule): validate cpm longest path formula trace
+4e8e28f7 docs(schedule): add sanitized live formula proof evidence
+984aa871 chore(schedule): prove schedule metric formulas
+420b486e Merge pull request #265 from RMF112018/fix/obsidian-phase10l-a-db-vault-reconcile-archive-routing-20260702T075957Z
+7dff8476 fix(obsidian): support direct-file source selection
+9ed1a159 Merge pull request #264 from RMF112018/hardening/schedule-cpm-formula-trace-20260702T093539Z
+317e595b chore(schedule): allowlist cpm formula trace evidence artifacts
+9bf2b4a2 chore(schedule): add cpm formula trace evidence export
+f456a83e fix(obsidian): support bounded subroot source traversal
+dd3baa9e test(obsidian): add tropical source availability probe
+6efa695b chore(schedule): harden clean-db validation preflight
+251f3e2e docs(obsidian): add regeneration dry-run evidence
+122c0b18 docs(obsidian): add live generated artifact reset evidence
+15c31de4 docs(obsidian): phase 10L evidence + D-H continuation plan
+3db3f612 fix(obsidian): repair archive routing and readme singleton upserts
+f250d8dd fix(obsidian): add generated artifact db reconciliation tools
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z

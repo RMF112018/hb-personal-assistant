@@ -1,0 +1,84 @@
+{
+  "available": true,
+  "project_key": "tropical",
+  "as_of_date": "2026-07-02",
+  "current_schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "current_schedule_data_date": "2026-06-23",
+  "slots": [
+    {
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline",
+      "selection": null,
+      "status": "missing"
+    },
+    {
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline",
+      "selection": null,
+      "status": "missing"
+    },
+    {
+      "slot_key": "secondary_progress_update_baseline",
+      "slot_label": "Secondary Progress Update Baseline",
+      "selection": null,
+      "status": "missing"
+    }
+  ],
+  "available_versions": [
+    {
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "schedule_data_date": "2026-06-23",
+      "display_name": "TWNU19.zip",
+      "source_label": "TWNU19.zip",
+      "import_id": "98ffa9458e95",
+      "package_id": null,
+      "is_current_as_of": true,
+      "eligible_baseline": false,
+      "ineligibility_reason": "cannot_select_current_schedule_version"
+    },
+    {
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "schedule_data_date": "2026-05-26",
+      "display_name": "TWNU18.zip",
+      "source_label": "TWNU18.zip",
+      "import_id": "f6f45754c193",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|957|2026-01-29 08:00",
+      "schedule_data_date": "2026-01-29",
+      "display_name": "TWNU16.zip",
+      "source_label": "TWNU16.zip",
+      "import_id": "c57a582e27ac",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "schedule_data_date": "2025-11-28",
+      "display_name": "TWNU14.zip",
+      "source_label": "TWNU14.zip",
+      "import_id": "5b0b34bbb81d",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "schedule_data_date": "2025-08-07",
+      "display_name": "TWNU07.zip",
+      "source_label": "TWNU07.zip",
+      "import_id": "6777ff132ec3",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    }
+  ]
+}

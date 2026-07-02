@@ -12,6 +12,7 @@ from hb_assistant.construction.schedule_clean_db.purge_dependency_map import (
 from hb_assistant.construction.schedule_clean_db.schema_audit import (
     CATALOG_PRESERVE_TABLES,
     build_schema_audit_report,
+    is_schedule_domain_table,
 )
 
 
@@ -41,6 +42,25 @@ def _project_version_keys(conn: sqlite3.Connection, project_key: str) -> list[st
         return []
 
 
+def _project_baseline_project_keys(conn: sqlite3.Connection, project_key: str) -> list[str]:
+    try:
+        return [
+            str(row[0])
+            for row in conn.execute(
+                """
+                SELECT baseline_project_key FROM schedule_baseline_projects
+                WHERE import_id IN (
+                  SELECT import_id FROM schedule_file_imports WHERE project_key=?
+                )
+                """,
+                (project_key,),
+            ).fetchall()
+            if row[0]
+        ]
+    except sqlite3.Error:
+        return []
+
+
 def _delete_for_project(
     conn: sqlite3.Connection,
     table: str,
@@ -50,8 +70,18 @@ def _delete_for_project(
     if table in CATALOG_PRESERVE_TABLES:
         return 0
     columns = [row[1] for row in conn.execute(f"PRAGMA table_info({table})")]
-    if strategy == "by_project_key" and "project_key" in columns:
+    if "project_key" in columns:
         cur = conn.execute(f"DELETE FROM {table} WHERE project_key=?", (project_key,))
+        return int(cur.rowcount)
+    if "baseline_project_key" in columns:
+        keys = _project_baseline_project_keys(conn, project_key)
+        if not keys:
+            return 0
+        placeholders = ", ".join("?" for _ in keys)
+        cur = conn.execute(
+            f"DELETE FROM {table} WHERE baseline_project_key IN ({placeholders})",
+            keys,
+        )
         return int(cur.rowcount)
     if "schedule_version_key" in columns:
         keys = _project_version_keys(conn, project_key)
@@ -60,6 +90,16 @@ def _delete_for_project(
         placeholders = ", ".join("?" for _ in keys)
         cur = conn.execute(
             f"DELETE FROM {table} WHERE schedule_version_key IN ({placeholders})",
+            keys,
+        )
+        return int(cur.rowcount)
+    if "current_schedule_version_key" in columns:
+        keys = _project_version_keys(conn, project_key)
+        if not keys:
+            return 0
+        placeholders = ", ".join("?" for _ in keys)
+        cur = conn.execute(
+            f"DELETE FROM {table} WHERE current_schedule_version_key IN ({placeholders})",
             keys,
         )
         return int(cur.rowcount)
@@ -110,6 +150,24 @@ def _delete_for_project(
             review_ids,
         )
         return int(cur.rowcount)
+    if "named_baseline_review_item_id" in columns and "project_schedule_named_baseline_review_items" in {
+        row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }:
+        item_ids = [
+            str(row[0])
+            for row in conn.execute(
+                "SELECT named_baseline_review_item_id FROM project_schedule_named_baseline_review_items WHERE project_key=?",
+                (project_key,),
+            ).fetchall()
+        ]
+        if not item_ids:
+            return 0
+        placeholders = ", ".join("?" for _ in item_ids)
+        cur = conn.execute(
+            f"DELETE FROM {table} WHERE named_baseline_review_item_id IN ({placeholders})",
+            item_ids,
+        )
+        return int(cur.rowcount)
     return 0
 
 
@@ -118,6 +176,8 @@ def _collect_purge_tables(audit: dict[str, Any]) -> tuple[set[str], list[dict[st
     manual_review: list[dict[str, Any]] = []
     for row in audit.get("discovered_by_heuristic", []):
         table = row["table"]
+        if not is_schedule_domain_table(table):
+            continue
         if row.get("preserve_catalog"):
             continue
         if row.get("purgeable_for_project") or row.get("count_strategy") != "preserve_catalog":
@@ -145,6 +205,8 @@ def _remaining_schedule_count(audit: dict[str, Any]) -> int:
     total = 0
     for row in audit.get("discovered_by_heuristic", []):
         if row.get("preserve_catalog"):
+            continue
+        if not is_schedule_domain_table(str(row["table"])):
             continue
         val = row.get("row_count_for_project")
         if isinstance(val, int) and val > 0:
@@ -201,7 +263,7 @@ def run_tropical_purge(
         delete_order = topological_delete_order(purge_tables, fk_edges)
         planned = [{"table": t, "strategy": PURGE_TABLE_STRATEGIES.get(t, "derived")} for t in delete_order]
         if apply and not dry_run:
-            conn.execute("PRAGMA foreign_keys=OFF")
+            conn.execute("PRAGMA foreign_keys=ON")
             for table in delete_order:
                 strategy = PURGE_TABLE_STRATEGIES.get(table, "derived")
                 deleted_counts[table] = _delete_for_project(conn, table, project_key, strategy)

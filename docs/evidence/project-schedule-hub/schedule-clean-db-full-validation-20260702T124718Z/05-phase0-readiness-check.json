@@ -1,0 +1,75 @@
+{
+  "ready_for_full_clean_db_validation": false,
+  "checks": [
+    {
+      "id": "gitignore_local_sensitive",
+      "ok": true,
+      "detail": "root local-sensitive gitignored"
+    },
+    {
+      "id": "script_dev_schedule_clean_db_backend.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_schedule_clean_db_schema_audit.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_clean_tropical_schedule_db.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_schedule_import_preview_mutation_probe.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_schedule_import_package_manifest.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_schedule_evidence_artifact_scan.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "script_dev_schedule_live_db_unchanged_probe.py",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "loaded_state_helper",
+      "ok": true,
+      "detail": "<LOCAL_REDACTED>"
+    },
+    {
+      "id": "schema_audit_fixture",
+      "ok": true,
+      "detail": "schema audit runs"
+    },
+    {
+      "id": "purge_dry_run",
+      "ok": true,
+      "detail": "purge dry-run supported"
+    },
+    {
+      "id": "backend_runner_proof",
+      "ok": true,
+      "detail": "{\n  \"mode\": \"schedule_clean_db_backend\",\n  \"db_path\": \"/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/tmpjnve81u0/fixture.db\",\n  \"db_path_is_live_db\": false,\n  \"clean_copy_guard_passed\": true,\n  \"sc"
+    },
+    {
+      "id": "evidence_00-repo-state.txt",
+      "ok": true,
+      "detail": "00-repo-state.txt"
+    },
+    {
+      "id": "evidence_27-phase0-summary.md",
+      "ok": false,
+      "detail": "27-phase0-summary.md"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "package": "TWNU07",
+    "preview_status": 200,
+    "commit_status": 200,
+    "import_status": "success",
+    "persisted_schedule_version_key": "tropical|815|2025-08-07 08:00",
+    "activity_count": 1177,
+    "relationship_count": null,
+    "import_id": "6777ff132ec3",
+    "cpm_recompute_status": "complete",
+    "duplicate_activity_code_count": 0,
+    "duplicate_relationship_identity_count": 0,
+    "canonical_package_merge_disposition": "unified_single_set"
+  },
+  {
+    "package": "TWNU14",
+    "preview_status": 200,
+    "commit_status": 200,
+    "import_status": "success",
+    "persisted_schedule_version_key": "tropical|851|2025-11-28 08:00",
+    "activity_count": 1404,
+    "relationship_count": null,
+    "import_id": "5b0b34bbb81d",
+    "cpm_recompute_status": "complete",
+    "duplicate_activity_code_count": 0,
+    "duplicate_relationship_identity_count": 0,
+    "canonical_package_merge_disposition": "unified_single_set"
+  },
+  {
+    "package": "TWNU16",
+    "preview_status": 200,
+    "commit_status": 200,
+    "import_status": "success",
+    "persisted_schedule_version_key": "tropical|957|2026-01-29 08:00",
+    "activity_count": 1420,
+    "relationship_count": null,
+    "import_id": "c57a582e27ac",
+    "cpm_recompute_status": "complete",
+    "duplicate_activity_code_count": 0,
+    "duplicate_relationship_identity_count": 0,
+    "canonical_package_merge_disposition": "unified_single_set"
+  },
+  {
+    "package": "TWNU18",
+    "preview_status": 200,
+    "commit_status": 200,
+    "import_status": "success",
+    "persisted_schedule_version_key": "tropical|1069|2026-05-26 08:00",
+    "activity_count": 1378,
+    "relationship_count": null,
+    "import_id": "f6f45754c193",
+    "cpm_recompute_status": "complete",
+    "duplicate_activity_code_count": 0,
+    "duplicate_relationship_identity_count": 0,
+    "canonical_package_merge_disposition": "unified_single_set"
+  },
+  {
+    "package": "TWNU19",
+    "preview_status": 200,
+    "commit_status": 200,
+    "import_status": "success",
+    "persisted_schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "activity_count": 1507,
+    "relationship_count": null,
+    "import_id": "98ffa9458e95",
+    "cpm_recompute_status": "complete",
+    "duplicate_activity_code_count": 0,
+    "duplicate_relationship_identity_count": 0,
+    "canonical_package_merge_disposition": "unified_single_set"
+  }
+]

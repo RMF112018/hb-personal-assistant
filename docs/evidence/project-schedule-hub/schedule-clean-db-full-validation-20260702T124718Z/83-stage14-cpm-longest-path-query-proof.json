@@ -1,0 +1,86 @@
+{
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "activity_count": 1507,
+  "relationship_count": 3921,
+  "longest_path": {
+    "path_count": 1,
+    "paths": [
+      {
+        "path_rank": 1,
+        "path_id_hash": "fe19935eb1e0831d",
+        "terminal_activity_id_hash": "5cca4c1f4f61afb2",
+        "activity_count_on_path": 45,
+        "relationship_count_on_path": 44,
+        "path_start_offset_days": 0.0,
+        "path_finish_offset_days": 429.0,
+        "path_duration_days": 429.0,
+        "path_duration_basis": "path_finish_offset_days - path_start_offset_days",
+        "basis": "max_forward_early_finish_backtrace"
+      }
+    ],
+    "query_status": "pass"
+  },
+  "cpm_lineage": {
+    "lineage_valid": true,
+    "resolution_mode": "latest_terminal_criticality",
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "chain_id_hash": "c94d8bc45f7c5c2c",
+    "stages": {
+      "forward_pass": {
+        "cpm_run_id_hash": "9657a6f645ebb29a",
+        "cpm_recalculation_status": "forward_pass_only",
+        "source_run_id_hash": null,
+        "import_id_hash": "f0c0cdb7232eee31",
+        "created_at": "2026-07-02 12:53:48",
+        "status": "completed"
+      },
+      "backward_pass": {
+        "cpm_run_id_hash": "12a73356e9efde0a",
+        "cpm_recalculation_status": "backward_pass_only",
+        "source_run_id_hash": null,
+        "import_id_hash": "f0c0cdb7232eee31",
+        "created_at": "2026-07-02 12:53:48",
+        "status": "completed"
+      },
+      "float": {
+        "cpm_run_id_hash": "2bda5a56ae0ef2ca",
+        "cpm_recalculation_status": "forward_backward_float_only",
+        "source_run_id_hash": "12a73356e9efde0a",
+        "import_id_hash": "f0c0cdb7232eee31",
+        "created_at": "2026-07-02 12:53:48",
+        "status": "completed"
+      },
+      "longest_path": {
+        "cpm_run_id_hash": "27335a737ee198a3",
+        "cpm_recalculation_status": "longest_path_only",
+        "source_run_id_hash": "2bda5a56ae0ef2ca",
+        "import_id_hash": "f0c0cdb7232eee31",
+        "created_at": "2026-07-02 12:53:48",
+        "status": "completed"
+      },
+      "criticality": {
+        "cpm_run_id_hash": "740b3ef836e62471",
+        "cpm_recalculation_status": "criticality_classification_only",
+        "source_run_id_hash": "27335a737ee198a3",
+        "import_id_hash": "f0c0cdb7232eee31",
+        "created_at": "2026-07-02 12:53:49",
+        "status": "completed"
+      }
+    },
+    "lineage_checks": {
+      "criticality_sources_longest_path": true,
+      "longest_path_sources_float": true,
+      "float_sources_backward": true,
+      "backward_sources_forward": true
+    },
+    "resolver_stage_run_id_hashes": {
+      "criticality": "740b3ef836e62471",
+      "longest_path": "27335a737ee198a3",
+      "float": "2bda5a56ae0ef2ca",
+      "backward_pass": "12a73356e9efde0a",
+      "forward_pass": "9657a6f645ebb29a"
+    },
+    "query_status": "pass"
+  },
+  "overall_status": "pass"
+}
