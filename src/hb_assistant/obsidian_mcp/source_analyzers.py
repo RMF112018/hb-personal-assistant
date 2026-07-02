@@ -16,6 +16,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .source_document_classifier import repair_document_type as _repair_document_type
+
 # Bounds — keep cards and prompts small and predictable.
 _MAX_ITEMS = 25
 _MAX_ITEM_CHARS = 200
@@ -762,6 +764,11 @@ def from_detail(detail: dict[str, Any]) -> SourceAnalysis:
     # subject/body keyword the generic classifier may have matched (wins over template/RFI/etc.).
     if ext == "eml":
         document_type = "email"
+
+    # Phase 10K: guarded deterministic repair — corrects only the three known-misclassified families
+    # (value-analysis logs, generic specification templates, clarification memos) when strong
+    # filename+text signals contradict/refine the base type. A no-op for every other document.
+    document_type = _repair_document_type(rel_path, ext, text, document_type)
 
     sheet_title = _sheet_title_from_filename(rel_path, sheet_number)
     number, date, description = _revision(text)

@@ -1,0 +1,26 @@
+{
+  "cards_modified": 0,
+  "cards_scanned": 1,
+  "cards_with_conflict": 1,
+  "db_mutations": 0,
+  "invariants": {
+    "created": 0,
+    "db_mutations": 0,
+    "deleted": 0,
+    "queue_delta": 0
+  },
+  "mode": "dry-run",
+  "ollama_calls": 0,
+  "project_number": "23-435-01",
+  "repairs_applicable": 1,
+  "repairs_by_existing_type": {
+    "scope_of_work": 1
+  },
+  "repairs_by_proposed_type": {
+    "clarification_memo": 1
+  },
+  "repairs_planned": 1,
+  "review_required": 0,
+  "skipped": 0,
+  "skips_by_reason": {}
+}

@@ -37,7 +37,9 @@ APPLY_TYPES = RELATIONSHIP_TYPES - _NON_APPLY
 CONTENT_TYPE_TAGS = frozenset(
     f"source/type/{t}" for t in
     ("drawing", "schedule", "submittal", "rfi", "meeting", "cost", "contract", "scope-of-work",
-     "reference", "template-form", "spreadsheet", "correspondence", "unknown"))
+     "reference", "template-form", "spreadsheet", "correspondence", "unknown",
+     # Phase 10K repaired families:
+     "value-analysis", "specification-template", "clarification-memo"))
 DISPOSITION_TAGS = frozenset(
     f"source/disposition/{t}" for t in ("auto-card-high", "metadata-only", "needs-review", "reference"))
 RELATED_TAGS = frozenset(
@@ -60,6 +62,9 @@ _DOCTYPE_CONTENT = {
     "communications_matrix": "spreadsheet", "coordination_matrix": "spreadsheet",
     "staffing_report": "spreadsheet", "general_pdf": "correspondence",
     "general_document": "correspondence", "email": "correspondence",
+    # Phase 10K repaired families — must map to their own slugs (never "unknown").
+    "value_analysis": "value-analysis", "specification_template": "specification-template",
+    "clarification_memo": "clarification-memo",
 }
 _DISP_TAG = {"auto_card_high": "auto-card-high", "metadata_only": "metadata-only"}
 _REL_TAG = {

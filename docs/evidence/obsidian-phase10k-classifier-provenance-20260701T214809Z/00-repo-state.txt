@@ -1,0 +1,13 @@
+branch=fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+head=d481a042e697f06bd0c878c3e019eb8956a43779
+base=d481a042 (10J branch tip; PR #257 OPEN, not on main)
+status:
+?? docs/evidence/obsidian-phase10k-classifier-provenance-20260701T214809Z/
+
+recent commits:
+d481a042 docs(obsidian): Phase 10J summary-quality hardening evidence
+dbddc488 docs(obsidian): Phase 10J local summarization correction evidence
+f766fa97 docs(obsidian): add Phase 10J live enrichment evidence
+66a8face feat(obsidian): add local enrichment workflow
+d4220fce Merge pull request #256 from RMF112018/feature/schedule-controls-quality-expansion-phase16-20260701T183645Z
+f519298a Add schedule quality controls expansion for PM-facing controls (Phase 16).

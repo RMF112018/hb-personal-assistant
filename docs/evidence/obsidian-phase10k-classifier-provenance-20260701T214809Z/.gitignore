@@ -1,0 +1,4 @@
+local-sensitive/
+*.bak
+*.before.md
+*.after.md

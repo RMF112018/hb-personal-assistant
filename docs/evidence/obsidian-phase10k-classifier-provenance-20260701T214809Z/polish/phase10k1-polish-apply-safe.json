@@ -1,0 +1,22 @@
+{
+  "cards_changed": 3,
+  "cards_modified": 3,
+  "cards_scanned": 3,
+  "db_mutations": 0,
+  "followup_updated": 3,
+  "invariants": {
+    "created": 0,
+    "db_mutations": 0,
+    "deleted": 0,
+    "queue_delta": 0
+  },
+  "mode": "apply",
+  "ollama_calls": 0,
+  "project_number": null,
+  "related_tags_pruned": 2,
+  "review_tags_added": 1,
+  "review_tags_removed": 1,
+  "review_tags_skipped": 4,
+  "skipped": 0,
+  "skips_by_reason": {}
+}
