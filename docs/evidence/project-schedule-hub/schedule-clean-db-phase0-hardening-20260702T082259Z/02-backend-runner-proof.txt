@@ -1,0 +1,11 @@
+{
+  "mode": "schedule_clean_db_backend",
+  "db_path": "docs/evidence/project-schedule-hub/schedule-clean-db-phase0-hardening-20260702T082259Z/fixture-phase0.db",
+  "db_path_is_live_db": false,
+  "clean_copy_guard_passed": true,
+  "schema_version": 98,
+  "repo_head": "53c5a977c5e2238d376ce800c88123286786374e",
+  "port": 18080,
+  "background_worker_mode": "enabled",
+  "background_workers_disabled_by_env": false
+}

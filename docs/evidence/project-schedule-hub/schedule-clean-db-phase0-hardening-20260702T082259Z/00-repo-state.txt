@@ -1,0 +1,71 @@
+branch=hardening/schedule-clean-db-phase0-20260702T081138Z
+head=53c5a977c5e2238d376ce800c88123286786374e
+status:
+ M .gitignore
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/construction/forecast/source_domain_engine.py
+?? docs/evidence/project-schedule-hub/schedule-clean-db-phase0-hardening-20260702T082259Z/
+?? frontend/e2e/
+?? scripts/dev_clean_tropical_schedule_db.py
+?? scripts/dev_schedule_clean_db_backend.py
+?? scripts/dev_schedule_clean_db_phase0_readiness.py
+?? scripts/dev_schedule_clean_db_schema_audit.py
+?? scripts/dev_schedule_evidence_artifact_scan.py
+?? scripts/dev_schedule_import_package_manifest.py
+?? scripts/dev_schedule_import_preview_mutation_probe.py
+?? scripts/dev_schedule_live_db_unchanged_probe.py
+?? src/hb_assistant/config/db_path_guard.py
+?? src/hb_assistant/construction/schedule_clean_db/
+?? tests/test_db_path_guard.py
+?? tests/test_schedule_clean_db_phase0_artifact_scan.py
+?? tests/test_schedule_clean_db_phase0_backend_runner.py
+?? tests/test_schedule_clean_db_phase0_background_workers.py
+?? tests/test_schedule_clean_db_phase0_import_preview_probe.py
+?? tests/test_schedule_clean_db_phase0_live_db_probe.py
+?? tests/test_schedule_clean_db_phase0_package_manifest.py
+?? tests/test_schedule_clean_db_phase0_purge.py
+?? tests/test_schedule_clean_db_phase0_readiness.py
+?? tests/test_schedule_clean_db_phase0_role_gates.py
+?? tests/test_schedule_clean_db_phase0_schema_audit.py
+
+recent commits:
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+899a35eb fix(obsidian): polish Follow-Up + stale related tags after classifier repair
+78d08073 Merge pull request #263 from RMF112018/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+91c9a399 feat(schedule): link second-brain schedule notes
+d8e431be Merge pull request #257 from RMF112018/feat/obsidian-phase10j-local-enrichment-workflow-20260701T183134Z
+ae297f3d fix(obsidian): repair deterministic source classification provenance
+004b28ab Merge pull request #261 from RMF112018/feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z
+cb914dfe Merge pull request #260 from RMF112018/fix/schedule-named-baseline-green-gate-phase18a-20260701T210726Z
+435057a4 feat(schedule): generate second-brain schedule comparison notes
+d481a042 docs(obsidian): Phase 10J summary-quality hardening evidence
+dbddc488 docs(obsidian): Phase 10J local summarization correction evidence
+f766fa97 docs(obsidian): add Phase 10J live enrichment evidence
+66a8face feat(obsidian): add local enrichment workflow
+1aa070bf fix(schedule): restore named-baseline regression gate
+ef00fc73 Merge pull request #259 from RMF112018/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z
+6a9857ba Add schedule review dashboard and portfolio rollup (Phase 18).
+19d37316 Merge pull request #258 from RMF112018/feature/schedule-review-workbench-action-loop-phase17-20260701T192327Z
+0430c321 Add schedule review workbench action loop for operator dispositions (Phase 17).
+d4220fce Merge pull request #256 from RMF112018/feature/schedule-controls-quality-expansion-phase16-20260701T183645Z
+f519298a Add schedule quality controls expansion for PM-facing controls (Phase 16).
+e332e25f Merge pull request #255 from RMF112018/feature/schedule-identity-review-trust-gating-phase15-20260701T165632Z
+7a02894e Merge pull request #254 from RMF112018/feat/obsidian-phase10i-graph-review-controls-20260701T164455Z
+a15998c8 Add schedule identity trust gating UX (Phase 15).
+c66a78f8 feat(obsidian): add graph review controls
+258e043b Merge pull request #253 from RMF112018/feature/schedule-import-observability-cpm-trust-phase14-20260701T163525Z
+6085e2e0 Add schedule import observability and CPM trust layer (Phase 14).
+d86d59de Merge pull request #252 from RMF112018/fix/obsidian-phase10h-tropical-identity-reconcile-20260701T155135Z
+96c785b3 fix(obsidian): reconcile tropical source card identity
+2d41bdd5 fix(tests): Phase 13D PM-field provenance allowlist + mainline closeout evidence (#251)
+476aa7a1 Merge pull request #250 from RMF112018/feat/obsidian-phase10g-bounded-graph-apply-20260701T110855Z
+5ca0f44d feat(obsidian): apply bounded note graph links
+c983b1f4 fix(schedule): complete named baseline export and driver disposition (#249)
+ac6b9441 fix(schedule): align named baseline comparisons with selected slot (#248)
+881c56a8 Merge pull request #247 from RMF112018/feat/obsidian-phase10f-email-attachments-20260701T090000Z
+e06bf6ed feat(obsidian): extract email attachments as source cards
+fae13113 Merge pull request #246 from RMF112018/feature/schedule-named-baseline-dispositions-phase13-20260701T090410Z
+1acbe324 feat(schedule): persist named baseline review dispositions
+bc240b38 Merge pull request #245 from RMF112018/fix/schedule-baseline-pm-readiness-phase12-20260701T081419Z
+85f6f169 docs(evidence): re-capture loaded-state PM browser sign-off
+c2d8a70c fix(schedule): polish named baseline PM workflow

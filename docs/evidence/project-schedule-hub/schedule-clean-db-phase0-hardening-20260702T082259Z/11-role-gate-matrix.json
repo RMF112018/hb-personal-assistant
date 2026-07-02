@@ -1,0 +1,158 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/tropical/schedule",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/tropical/schedule/controls",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/tropical/schedule/review-items",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/tropical/schedule/baseline",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/tropical/schedule/baselines",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/projects/schedule-review-dashboard",
+      "expected_viewer_status": 200,
+      "viewer_status": 200,
+      "viewer_body_code": null,
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "not_applicable"
+    },
+    {
+      "method": "POST",
+      "path": "/api/schedules/import-preview",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    },
+    {
+      "method": "POST",
+      "path": "/api/schedules/import-commit",
+      "expected_viewer_status": 403,
+      "viewer_status": 422,
+      "viewer_body_code": "missing",
+      "operator_status": 422,
+      "operator_body_code": "missing",
+      "operator_gate_passed": true,
+      "conclusion": "route_contract_changed"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/tropical/schedule/review-items",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 200,
+      "operator_body_code": null,
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/tropical/schedule/review-items/promote",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 400,
+      "operator_body_code": "stable_item_keys_required",
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/projects/tropical/schedule/review-items/{review_item_id}",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 404,
+      "operator_body_code": "review_item_not_found",
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/projects/tropical/schedule/baseline",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 400,
+      "operator_body_code": "baseline_selection_required",
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/projects/tropical/schedule/baselines",
+      "expected_viewer_status": 403,
+      "viewer_status": 403,
+      "viewer_body_code": "operator_role_required",
+      "operator_status": 400,
+      "operator_body_code": "invalid_selections_payload",
+      "operator_gate_passed": true,
+      "conclusion": "role_gate_passed"
+    }
+  ]
+}
