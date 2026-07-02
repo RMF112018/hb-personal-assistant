@@ -1,0 +1,17 @@
+{
+  "attachment_roots": {
+    "home": "Email Archive/Home/Attachments",
+    "shared": "Email Archive/Shared/Attachments",
+    "work": "Email Archive/Work/Attachments"
+  },
+  "legacy_double_domain_detected": {
+    "corrected_work_note_not_legacy": true,
+    "work_work": true
+  },
+  "note_routing": {
+    "home": "Email Archive/Home/<safe>__<id>.md",
+    "shared": "Email Archive/Shared/<safe>__<id>.md",
+    "work": "Email Archive/Work/<safe>__<id>.md"
+  },
+  "self_index_excludes_all_archive_roots": true
+}
