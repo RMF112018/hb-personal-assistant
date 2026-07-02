@@ -1,0 +1,6582 @@
+{
+  "mode": "schedule_clean_db_schema_audit",
+  "generated_at": "2026-07-02T12:48:06.461916+00:00",
+  "db_path": "<LOCAL_REDACTED>",
+  "project_key": "tropical",
+  "schema_version": 98,
+  "discovered_by_heuristic": [
+    {
+      "table": "accepted_commitments",
+      "primary_key_columns": [
+        "accepted_commitment_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "candidate_id",
+          "to_table": "commitment_candidates",
+          "to_column": "candidate_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "accepted_tasks",
+      "primary_key_columns": [
+        "accepted_task_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "candidate_id",
+          "to_table": "task_candidates",
+          "to_column": "candidate_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "aging_exposure_report_items",
+      "primary_key_columns": [
+        "aging_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1780
+    },
+    {
+      "table": "calendar_event_index",
+      "primary_key_columns": [
+        "event_index_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "source_id",
+          "to_table": "calendar_source_locations",
+          "to_column": "source_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_event_raw_content",
+      "primary_key_columns": [
+        "raw_calendar_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_project_match_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "event_index_id",
+          "to_table": "calendar_event_index",
+          "to_column": "event_index_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_raw_event_attendees_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_raw_event_locations_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_raw_event_recurrence_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "calendar_raw_event_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "candidate_review_events",
+      "primary_key_columns": [
+        "review_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "claude_context_packets",
+      "primary_key_columns": [
+        "packet_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "commitment_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_data_quality_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_document_cards",
+      "primary_key_columns": [
+        "card_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 283
+    },
+    {
+      "table": "construction_document_intelligence_previews",
+      "primary_key_columns": [
+        "preview_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "document_card_id",
+          "to_table": "construction_document_cards",
+          "to_column": "document_card_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "construction_document_project_match_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "document_card_id",
+          "to_table": "construction_document_cards",
+          "to_column": "document_card_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 283
+    },
+    {
+      "table": "construction_drive_items",
+      "primary_key_columns": [
+        "source_id",
+        "drive_item_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "source_id",
+          "to_table": "construction_source_locations",
+          "to_column": "source_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 475
+    },
+    {
+      "table": "construction_file_extraction_runs",
+      "primary_key_columns": [
+        "extraction_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_file_ingestion_decisions",
+      "primary_key_columns": [
+        "decision_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 12
+    },
+    {
+      "table": "construction_graph_download_receipts",
+      "primary_key_columns": [
+        "receipt_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_model_decisions",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_project_identity",
+      "primary_key_columns": [
+        "project_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_project_keyword_registry",
+      "primary_key_columns": [
+        "keyword_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "project_key",
+          "to_table": "construction_project_identity",
+          "to_column": "project_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_project_source_matches",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "source_id",
+          "to_table": "construction_source_locations",
+          "to_column": "source_id"
+        },
+        {
+          "from_column": "project_key",
+          "to_table": "construction_project_identity",
+          "to_column": "project_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_review_queue",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "construction_source_locations",
+      "primary_key_columns": [
+        "source_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "cross_domain_context_readiness_mart",
+      "primary_key_columns": [
+        "readiness_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "cross_source_intelligence_obsidian_runs",
+      "primary_key_columns": [
+        "obsidian_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "cross_source_relationship_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1880
+    },
+    {
+      "table": "cross_source_relationships",
+      "primary_key_columns": [
+        "relationship_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "candidate_id",
+          "to_table": "cross_source_relationship_candidates",
+          "to_column": "candidate_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1671
+    },
+    {
+      "table": "daily_brief_action_candidates",
+      "primary_key_columns": [
+        "daily_brief_action_candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "daily_brief_change_events",
+      "primary_key_columns": [
+        "change_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "daily_brief_item_outcome_events",
+      "primary_key_columns": [
+        "outcome_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "data_quality_gate_results",
+      "primary_key_columns": [
+        "gate_result_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 1320
+    },
+    {
+      "table": "email_crawl_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "source_id",
+          "to_table": "email_source_locations",
+          "to_column": "source_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 21
+    },
+    {
+      "table": "email_message_raw_content",
+      "primary_key_columns": [
+        "raw_email_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_model_classifications",
+      "primary_key_columns": [
+        "classification_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "message_id",
+          "to_table": "email_messages",
+          "to_column": "message_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 40
+    },
+    {
+      "table": "email_processing_receipts",
+      "primary_key_columns": [
+        "receipt_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 17
+    },
+    {
+      "table": "email_project_matches",
+      "primary_key_columns": [
+        "match_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "message_id",
+          "to_table": "email_messages",
+          "to_column": "message_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 291
+    },
+    {
+      "table": "email_raw_message_attachments_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_raw_message_recipients_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_raw_message_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_raw_thread_messages_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_raw_thread_structured",
+      "primary_key_columns": [
+        "projection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_relationship_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "message_id",
+          "to_table": "email_messages",
+          "to_column": "message_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "email_review_queue",
+      "primary_key_columns": [
+        "review_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "message_id",
+          "to_table": "email_messages",
+          "to_column": "message_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 48
+    },
+    {
+      "table": "email_thread_raw_context",
+      "primary_key_columns": [
+        "raw_thread_context_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_thread_summaries",
+      "primary_key_columns": [
+        "thread_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "email_thread_summary_materialization_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "follow_up_watch_items",
+      "primary_key_columns": [
+        "watch_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_accuracy_results",
+      "primary_key_columns": [
+        "accuracy_result_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_anomaly_findings",
+      "primary_key_columns": [
+        "anomaly_finding_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_budget_details",
+      "primary_key_columns": [
+        "project_key",
+        "budget_code_key",
+        "source_package"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 127
+    },
+    {
+      "table": "forecast_calibration_weights",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_comparison_results",
+      "primary_key_columns": [
+        "comparison_result_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_confidence_factors",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "scorecard_id",
+          "to_table": "forecast_confidence_scorecards",
+          "to_column": "scorecard_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 131
+    },
+    {
+      "table": "forecast_confidence_scorecards",
+      "primary_key_columns": [
+        "scorecard_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        },
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 128
+    },
+    {
+      "table": "forecast_config_items",
+      "primary_key_columns": [
+        "config_item_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "config_source_id",
+          "to_table": "forecast_config_sources",
+          "to_column": "config_source_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 195
+    },
+    {
+      "table": "forecast_config_snapshot_items",
+      "primary_key_columns": [
+        "config_snapshot_id",
+        "config_item_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "config_item_id",
+          "to_table": "forecast_config_items",
+          "to_column": "config_item_id"
+        },
+        {
+          "from_column": "config_snapshot_id",
+          "to_table": "forecast_config_snapshots",
+          "to_column": "config_snapshot_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 388
+    },
+    {
+      "table": "forecast_config_snapshots",
+      "primary_key_columns": [
+        "config_snapshot_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "forecast_config_sources",
+      "primary_key_columns": [
+        "config_source_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "forecast_cost_entries",
+      "primary_key_columns": [
+        "cost_entry_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 6324
+    },
+    {
+      "table": "forecast_cost_entry_staffing_actuals",
+      "primary_key_columns": [
+        "staffing_actual_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_data_availability_profiles",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "forecast_evidence_packages",
+      "primary_key_columns": [
+        "evidence_package_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_external_forecast_mappings",
+      "primary_key_columns": [
+        "external_forecast_mapping_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_external_forecast_rows",
+      "primary_key_columns": [
+        "external_forecast_row_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_external_forecasts",
+      "primary_key_columns": [
+        "external_forecast_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_generation_requests",
+      "primary_key_columns": [
+        "request_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 18
+    },
+    {
+      "table": "forecast_method_eligibility",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_model_selection_decisions",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_monthly_actuals_by_budget_code",
+      "primary_key_columns": [
+        "project_key",
+        "budget_code_key",
+        "month",
+        "type",
+        "source_package"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1081
+    },
+    {
+      "table": "forecast_operator_assumptions",
+      "primary_key_columns": [
+        "assumption_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "forecast_output_budget_codes",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 254
+    },
+    {
+      "table": "forecast_output_changes",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 49
+    },
+    {
+      "table": "forecast_output_commitment_exposure",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 127
+    },
+    {
+      "table": "forecast_output_monthly",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2932
+    },
+    {
+      "table": "forecast_output_monthly_table_rows",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 127
+    },
+    {
+      "table": "forecast_output_monthly_table_totals",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "forecast_output_narratives",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 127
+    },
+    {
+      "table": "forecast_output_probability",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 127
+    },
+    {
+      "table": "forecast_output_risks",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 155
+    },
+    {
+      "table": "forecast_output_schedule_phasing",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 58
+    },
+    {
+      "table": "forecast_output_staffing",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "output_id",
+          "to_table": "forecast_outputs",
+          "to_column": "output_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_outputs",
+      "primary_key_columns": [
+        "output_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "forecast_package_manifests",
+      "primary_key_columns": [
+        "package_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_maturity_snapshots",
+      "primary_key_columns": [
+        "snapshot_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "forecast_project_staffing_absence_overrides",
+      "primary_key_columns": [
+        "absence_override_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "staffing_config_id",
+          "to_table": "forecast_project_staffing_config",
+          "to_column": "staffing_config_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_assumptions",
+      "primary_key_columns": [
+        "project_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "holiday_calendar_id",
+          "to_table": "staffing_holiday_calendars",
+          "to_column": "holiday_calendar_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_attribution_review_items",
+      "primary_key_columns": [
+        "review_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_attribution_rules",
+      "primary_key_columns": [
+        "attribution_rule_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "staffing_config_id",
+          "to_table": "forecast_project_staffing_config",
+          "to_column": "staffing_config_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_config",
+      "primary_key_columns": [
+        "staffing_config_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_snapshot_rows",
+      "primary_key_columns": [
+        "snapshot_row_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "staffing_snapshot_id",
+          "to_table": "forecast_project_staffing_snapshots",
+          "to_column": "staffing_snapshot_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_project_staffing_snapshots",
+      "primary_key_columns": [
+        "staffing_snapshot_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_projects",
+      "primary_key_columns": [
+        "project_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_required_assumptions",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_review_items",
+      "primary_key_columns": [
+        "review_item_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "external_forecast_id",
+          "to_table": "forecast_external_forecasts",
+          "to_column": "external_forecast_id"
+        }
+      ],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_run_model_versions",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "model_version_id",
+          "to_table": "forecast_model_versions",
+          "to_column": "model_version_id"
+        },
+        {
+          "from_column": "run_id",
+          "to_table": "forecast_runs",
+          "to_column": "run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 10
+    },
+    {
+      "table": "forecast_source_ingestions",
+      "primary_key_columns": [
+        "ingestion_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_staffing_cost_codes",
+      "primary_key_columns": [
+        "staffing_cost_code_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "forecast_validation_events",
+      "primary_key_columns": [
+        "run_id",
+        "event_seq"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "interactive_chat_sessions",
+      "primary_key_columns": [
+        "session_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "launchd_schedule_previews",
+      "primary_key_columns": [
+        "launchd_preview_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "long_term_memory_items",
+      "primary_key_columns": [
+        "memory_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "long_term_memory_quality_signals",
+      "primary_key_columns": [
+        "signal_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "memory_id",
+          "to_table": "long_term_memory_items",
+          "to_column": "memory_id"
+        }
+      ],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "meeting_email_relationship_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "event_index_id",
+          "to_table": "calendar_event_index",
+          "to_column": "event_index_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 57
+    },
+    {
+      "table": "meeting_prep_brief_runs",
+      "primary_key_columns": [
+        "brief_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "memory_update_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "memory_update_reviews",
+      "primary_key_columns": [
+        "review_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "candidate_id",
+          "to_table": "memory_update_candidates",
+          "to_column": "candidate_id"
+        }
+      ],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "obsidian_index_entries",
+      "primary_key_columns": [
+        "entry_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "manifest_id",
+          "to_table": "obsidian_index_manifests",
+          "to_column": "manifest_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "phase10_relationship_candidates",
+      "primary_key_columns": [
+        "relationship_candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_action_signals",
+      "primary_key_columns": [
+        "action_signal_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 5458
+    },
+    {
+      "table": "procore_attachment_refs",
+      "primary_key_columns": [
+        "attachment_ref_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1211
+    },
+    {
+      "table": "procore_custom_field_values",
+      "primary_key_columns": [
+        "custom_field_value_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1735
+    },
+    {
+      "table": "procore_endpoint_capture_errors",
+      "primary_key_columns": [
+        "capture_error_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_endpoint_capture_pages",
+      "primary_key_columns": [
+        "capture_page_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "capture_run_id",
+          "to_table": "procore_endpoint_capture_runs",
+          "to_column": "capture_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_endpoint_capture_runs",
+      "primary_key_columns": [
+        "capture_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_endpoint_raw_payloads",
+      "primary_key_columns": [
+        "raw_payload_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 43760
+    },
+    {
+      "table": "procore_ep_billing_periods",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 20
+    },
+    {
+      "table": "procore_ep_budget_change_history",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 177
+    },
+    {
+      "table": "procore_ep_budget_detail_columns",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 69
+    },
+    {
+      "table": "procore_ep_budget_detail_row_cells",
+      "primary_key_columns": [
+        "cell_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "record_key",
+          "to_table": "procore_ep_budget_detail_rows",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 68515
+    },
+    {
+      "table": "procore_ep_budget_detail_rows",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 762
+    },
+    {
+      "table": "procore_ep_budget_modifications",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 148
+    },
+    {
+      "table": "procore_ep_budget_views",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 6
+    },
+    {
+      "table": "procore_ep_change_events",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 204
+    },
+    {
+      "table": "procore_ep_change_events_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_change_events",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 239
+    },
+    {
+      "table": "procore_ep_change_events_change_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_change_events",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 317
+    },
+    {
+      "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_change_events",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 951
+    },
+    {
+      "table": "procore_ep_change_events_markup_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_change_events",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 600
+    },
+    {
+      "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_change_events",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1800
+    },
+    {
+      "table": "procore_ep_commitment_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 17
+    },
+    {
+      "table": "procore_ep_commitment_change_orders",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 100
+    },
+    {
+      "table": "procore_ep_commitment_compliance",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_commitment_compliance",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 58
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_commitment_compliance",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 105
+    },
+    {
+      "table": "procore_ep_commitment_contracts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 63
+    },
+    {
+      "table": "procore_ep_commitment_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 65
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2573
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_daily_log_dcrs",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 563
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 59
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_daily_log_deliveries",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 18
+    },
+    {
+      "table": "procore_ep_daily_log_inspections",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 114
+    },
+    {
+      "table": "procore_ep_daily_log_inspections_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_daily_log_inspections",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 14
+    },
+    {
+      "table": "procore_ep_daily_log_manpower",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 883
+    },
+    {
+      "table": "procore_ep_daily_log_manpower_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_daily_log_manpower",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 771
+    },
+    {
+      "table": "procore_ep_daily_log_notes",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 92
+    },
+    {
+      "table": "procore_ep_daily_log_notes_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_daily_log_notes",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1188
+    },
+    {
+      "table": "procore_ep_daily_log_visitor",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "procore_ep_daily_log_weather",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 116
+    },
+    {
+      "table": "procore_ep_inspection_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3363
+    },
+    {
+      "table": "procore_ep_inspection_items_response_set_responses",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_inspection_items",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 10068
+    },
+    {
+      "table": "procore_ep_inspection_sections",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 139
+    },
+    {
+      "table": "procore_ep_inspections",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 74
+    },
+    {
+      "table": "procore_ep_inspections_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_inspections",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 363
+    },
+    {
+      "table": "procore_ep_inspections_distribution_members",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_inspections",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 213
+    },
+    {
+      "table": "procore_ep_inspections_inspectors",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_inspections",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 101
+    },
+    {
+      "table": "procore_ep_inspections_signature_requests",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_inspections",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 8
+    },
+    {
+      "table": "procore_ep_meetings",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 101
+    },
+    {
+      "table": "procore_ep_observations",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 215
+    },
+    {
+      "table": "procore_ep_observations_assignees",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_observations",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "procore_ep_prime_change_order_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_ep_prime_change_orders",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 65
+    },
+    {
+      "table": "procore_ep_prime_contract_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 47
+    },
+    {
+      "table": "procore_ep_prime_contracts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "procore_ep_projects",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": false,
+      "preserve_catalog": true,
+      "count_strategy": "preserve_catalog",
+      "row_count_for_project": 6
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163287_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163290_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163293_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163296_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163299_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163302_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163305_value",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_projects",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_ep_punch_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_ep_punch_items_assignees",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_punch_items",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_ep_punch_items_assignments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_punch_items",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_ep_punch_items_ball_in_court",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_punch_items",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 10
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_purchase_order_contracts",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 13
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_purchase_order_line_items",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 25
+    },
+    {
+      "table": "procore_ep_rfis",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 482
+    },
+    {
+      "table": "procore_ep_rfis_assignees",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfis",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 780
+    },
+    {
+      "table": "procore_ep_rfis_ball_in_courts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfis",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 24
+    },
+    {
+      "table": "procore_ep_rfis_questions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfis",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 482
+    },
+    {
+      "table": "procore_ep_rfqs",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "procore_ep_rfqs_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfqs",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 11
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfqs",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 31
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfqs",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 52
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_rfqs",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 57
+    },
+    {
+      "table": "procore_ep_schedule_activities",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 13875
+    },
+    {
+      "table": "procore_ep_schedule_activity_code_assignments",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 63943
+    },
+    {
+      "table": "procore_ep_schedule_calendars",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 31
+    },
+    {
+      "table": "procore_ep_schedule_relationships",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 35814
+    },
+    {
+      "table": "procore_ep_schedule_udf_values",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 39407
+    },
+    {
+      "table": "procore_ep_schedule_wbs_nodes",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "import_id",
+          "to_table": "schedule_file_imports",
+          "to_column": "import_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1871
+    },
+    {
+      "table": "procore_ep_schedules",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 24
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_change_order_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 90
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_contract_detail_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 703
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 237
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_subcontractor_invoices",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 226
+    },
+    {
+      "table": "procore_ep_submittals",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 347
+    },
+    {
+      "table": "procore_ep_submittals_approvers",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_submittals",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1119
+    },
+    {
+      "table": "procore_ep_submittals_approvers_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_submittals",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 949
+    },
+    {
+      "table": "procore_ep_submittals_ball_in_court",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        },
+        {
+          "from_column": "primary_record_key",
+          "to_table": "procore_ep_submittals",
+          "to_column": "record_key"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 14
+    },
+    {
+      "table": "procore_financial_amount_facts",
+      "primary_key_columns": [
+        "amount_fact_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 88049
+    },
+    {
+      "table": "procore_financial_billing_periods",
+      "primary_key_columns": [
+        "billing_period_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 21
+    },
+    {
+      "table": "procore_financial_budget_changes",
+      "primary_key_columns": [
+        "budget_change_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 325
+    },
+    {
+      "table": "procore_financial_budget_rows",
+      "primary_key_columns": [
+        "budget_row_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 762
+    },
+    {
+      "table": "procore_financial_budget_views",
+      "primary_key_columns": [
+        "budget_view_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 6
+    },
+    {
+      "table": "procore_financial_change_events",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 204
+    },
+    {
+      "table": "procore_financial_change_order_line_items",
+      "primary_key_columns": [
+        "line_item_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 272
+    },
+    {
+      "table": "procore_financial_change_orders",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 165
+    },
+    {
+      "table": "procore_financial_compliance_documents",
+      "primary_key_columns": [
+        "compliance_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 414
+    },
+    {
+      "table": "procore_financial_contracts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 74
+    },
+    {
+      "table": "procore_financial_invoice_items",
+      "primary_key_columns": [
+        "invoice_item_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 13882
+    },
+    {
+      "table": "procore_financial_line_items",
+      "primary_key_columns": [
+        "line_item_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 381
+    },
+    {
+      "table": "procore_financial_payment_applications",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_financial_rfqs",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "procore_financial_subcontractor_invoices",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 240
+    },
+    {
+      "table": "procore_inspection_evidence_rules",
+      "primary_key_columns": [
+        "evidence_rule_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3363
+    },
+    {
+      "table": "procore_inspection_items",
+      "primary_key_columns": [
+        "inspection_item_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3363
+    },
+    {
+      "table": "procore_inspection_records",
+      "primary_key_columns": [
+        "inspection_record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 74
+    },
+    {
+      "table": "procore_inspection_response_options",
+      "primary_key_columns": [
+        "response_option_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 12
+    },
+    {
+      "table": "procore_inspection_response_sets",
+      "primary_key_columns": [
+        "response_set_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_inspection_sections",
+      "primary_key_columns": [
+        "inspection_section_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 139
+    },
+    {
+      "table": "procore_live_record_change_events",
+      "primary_key_columns": [
+        "change_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 29268
+    },
+    {
+      "table": "procore_live_record_snapshots",
+      "primary_key_columns": [
+        "snapshot_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 27713
+    },
+    {
+      "table": "procore_live_record_state_index",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 27025
+    },
+    {
+      "table": "procore_live_records",
+      "primary_key_columns": [
+        "project_key",
+        "endpoint_id",
+        "parent_procore_id",
+        "procore_record_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "last_sync_run_id",
+          "to_table": "procore_live_sync_runs",
+          "to_column": "sync_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 28340
+    },
+    {
+      "table": "procore_live_sync_runs",
+      "primary_key_columns": [
+        "sync_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1120
+    },
+    {
+      "table": "procore_live_sync_watermarks",
+      "primary_key_columns": [
+        "company_id",
+        "project_key",
+        "procore_project_id",
+        "endpoint_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 54
+    },
+    {
+      "table": "procore_location_entities",
+      "primary_key_columns": [
+        "location_entity_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 108
+    },
+    {
+      "table": "procore_raw_attachments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 98
+    },
+    {
+      "table": "procore_raw_billing_periods",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 21
+    },
+    {
+      "table": "procore_raw_budget_change_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_budget_changes",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 177
+    },
+    {
+      "table": "procore_raw_budget_columns",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 69
+    },
+    {
+      "table": "procore_raw_budget_modifications",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 148
+    },
+    {
+      "table": "procore_raw_budget_rows",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 762
+    },
+    {
+      "table": "procore_raw_budget_views",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 6
+    },
+    {
+      "table": "procore_raw_change_event_comments",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_change_events",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 204
+    },
+    {
+      "table": "procore_raw_change_order_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 272
+    },
+    {
+      "table": "procore_raw_change_orders",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 165
+    },
+    {
+      "table": "procore_raw_company_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_contract_line_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 381
+    },
+    {
+      "table": "procore_raw_contracts",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 74
+    },
+    {
+      "table": "procore_raw_cost_code_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 182
+    },
+    {
+      "table": "procore_raw_daily_logs",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4023
+    },
+    {
+      "table": "procore_raw_date_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4531
+    },
+    {
+      "table": "procore_raw_inspection_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3363
+    },
+    {
+      "table": "procore_raw_inspection_sections",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 139
+    },
+    {
+      "table": "procore_raw_inspections",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 74
+    },
+    {
+      "table": "procore_raw_invoice_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 13882
+    },
+    {
+      "table": "procore_raw_invoices",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 240
+    },
+    {
+      "table": "procore_raw_location_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_meeting_details",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 101
+    },
+    {
+      "table": "procore_raw_meeting_topics",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1192
+    },
+    {
+      "table": "procore_raw_meetings",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 101
+    },
+    {
+      "table": "procore_raw_observations",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 215
+    },
+    {
+      "table": "procore_raw_payment_applications",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_person_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_project_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 8
+    },
+    {
+      "table": "procore_raw_punch_items",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "procore_raw_rfi_responses",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 123
+    },
+    {
+      "table": "procore_raw_rfis",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 482
+    },
+    {
+      "table": "procore_raw_rfq_responses",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_rfqs",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 7
+    },
+    {
+      "table": "procore_raw_schedule_activities",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1609
+    },
+    {
+      "table": "procore_raw_schedules",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "procore_raw_status_dimensions",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 53
+    },
+    {
+      "table": "procore_raw_submittal_packages",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_submittal_responses",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "procore_raw_submittals",
+      "primary_key_columns": [
+        "record_key"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "raw_payload_id",
+          "to_table": "procore_endpoint_raw_payloads",
+          "to_column": "raw_payload_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 347
+    },
+    {
+      "table": "procore_record_edges",
+      "primary_key_columns": [
+        "edge_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 26421
+    },
+    {
+      "table": "procore_record_timeline_events",
+      "primary_key_columns": [
+        "timeline_event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 27073
+    },
+    {
+      "table": "procore_sync_watermarks",
+      "primary_key_columns": [
+        "endpoint_id",
+        "project_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3
+    },
+    {
+      "table": "procore_text_intelligence",
+      "primary_key_columns": [
+        "text_intelligence_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2676
+    },
+    {
+      "table": "project_issue_history_items",
+      "primary_key_columns": [
+        "issue_family_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 598
+    },
+    {
+      "table": "project_risk_digest_items",
+      "primary_key_columns": [
+        "risk_digest_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 44
+    },
+    {
+      "table": "project_schedule_baseline_selections",
+      "primary_key_columns": [
+        "selection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "project_schedule_named_baseline_review_item_events",
+      "primary_key_columns": [
+        "event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key",
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1466
+    },
+    {
+      "table": "project_schedule_named_baseline_review_items",
+      "primary_key_columns": [
+        "review_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key",
+        "current_schedule_version_key",
+        "baseline_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 268
+    },
+    {
+      "table": "project_schedule_named_baseline_slots",
+      "primary_key_columns": [
+        "selection_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3
+    },
+    {
+      "table": "project_schedule_review_item_events",
+      "primary_key_columns": [
+        "event_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 417
+    },
+    {
+      "table": "project_schedule_review_items",
+      "primary_key_columns": [
+        "review_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id",
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 153
+    },
+    {
+      "table": "project_schedule_series_membership",
+      "primary_key_columns": [
+        "membership_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "project_source_coverage_mart",
+      "primary_key_columns": [
+        "coverage_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "query_tool_receipts",
+      "primary_key_columns": [
+        "tool_receipt_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "ranking_policy_eval_items",
+      "primary_key_columns": [
+        "eval_run_id",
+        "ranking_run_id",
+        "daily_brief_action_candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "raw_content_model_context_packets",
+      "primary_key_columns": [
+        "packet_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "raw_content_source_quality_snapshots",
+      "primary_key_columns": [
+        "snapshot_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "relationship_quality_mart",
+      "primary_key_columns": [
+        "quality_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "retrieval_query_receipts",
+      "primary_key_columns": [
+        "retrieval_receipt_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "schedule_baseline_activities",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "baseline_project_key",
+          "to_table": "schedule_baseline_projects",
+          "to_column": "baseline_project_key"
+        }
+      ],
+      "relevant_columns": [
+        "package_id",
+        "import_id",
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_import_id_via_imports",
+      "row_count_for_project": 12869
+    },
+    {
+      "table": "schedule_baseline_activity_codes",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 31250
+    },
+    {
+      "table": "schedule_baseline_activity_crosswalk",
+      "primary_key_columns": [
+        "crosswalk_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 15486
+    },
+    {
+      "table": "schedule_baseline_health_facts",
+      "primary_key_columns": [
+        "fact_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 99
+    },
+    {
+      "table": "schedule_baseline_projects",
+      "primary_key_columns": [
+        "baseline_project_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "import_id",
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_import_id_via_imports",
+      "row_count_for_project": 10
+    },
+    {
+      "table": "schedule_baseline_relationships",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "import_id",
+        "current_schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_import_id_via_imports",
+      "row_count_for_project": 31853
+    },
+    {
+      "table": "schedule_baseline_udfs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 17693
+    },
+    {
+      "table": "schedule_baseline_wbs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 1862
+    },
+    {
+      "table": "schedule_cost_distributions",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "mapping_run_id",
+          "to_table": "schedule_cost_mapping_runs",
+          "to_column": "mapping_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "schedule_cost_mapping_candidates",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "mapping_run_id",
+          "to_table": "schedule_cost_mapping_runs",
+          "to_column": "mapping_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 2607
+    },
+    {
+      "table": "schedule_cost_mapping_runs",
+      "primary_key_columns": [
+        "mapping_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3
+    },
+    {
+      "table": "schedule_cost_weighting_results",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "mapping_run_id",
+          "to_table": "schedule_cost_mapping_runs",
+          "to_column": "mapping_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 37
+    },
+    {
+      "table": "schedule_cpm_activity_results",
+      "primary_key_columns": [
+        "cpm_run_id",
+        "activity_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "cpm_run_id",
+          "to_table": "schedule_cpm_runs",
+          "to_column": "cpm_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "schedule_version_key",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 18084
+    },
+    {
+      "table": "schedule_cpm_diagnostics",
+      "primary_key_columns": [
+        "diagnostic_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "cpm_run_id",
+          "to_table": "schedule_cpm_runs",
+          "to_column": "cpm_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 24462
+    },
+    {
+      "table": "schedule_cpm_import_observability",
+      "primary_key_columns": [
+        "cpm_import_observability_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "import_id",
+        "package_id",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_schedule_version_key_via_imports",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "schedule_cpm_path_activities",
+      "primary_key_columns": [
+        "path_id",
+        "path_sequence"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "cpm_run_id",
+          "to_table": "schedule_cpm_runs",
+          "to_column": "cpm_run_id"
+        },
+        {
+          "from_column": "path_id",
+          "to_table": "schedule_cpm_paths",
+          "to_column": "path_id"
+        }
+      ],
+      "relevant_columns": [
+        "schedule_version_key",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 91
+    },
+    {
+      "table": "schedule_cpm_paths",
+      "primary_key_columns": [
+        "path_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "cpm_run_id",
+          "to_table": "schedule_cpm_runs",
+          "to_column": "cpm_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "schedule_version_key",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 3
+    },
+    {
+      "table": "schedule_cpm_relationship_results",
+      "primary_key_columns": [],
+      "foreign_keys": [
+        {
+          "from_column": "cpm_run_id",
+          "to_table": "schedule_cpm_runs",
+          "to_column": "cpm_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "schedule_version_key",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 35289
+    },
+    {
+      "table": "schedule_cpm_runs",
+      "primary_key_columns": [
+        "cpm_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 18
+    },
+    {
+      "table": "schedule_file_imports",
+      "primary_key_columns": [
+        "import_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "import_id",
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 22
+    },
+    {
+      "table": "schedule_identities",
+      "primary_key_columns": [
+        "schedule_identity_key"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 4
+    },
+    {
+      "table": "schedule_identity_manual_actions",
+      "primary_key_columns": [
+        "action_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1
+    },
+    {
+      "table": "schedule_import_package_files",
+      "primary_key_columns": [
+        "package_file_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "package_id",
+          "to_table": "schedule_import_packages",
+          "to_column": "package_id"
+        }
+      ],
+      "relevant_columns": [
+        "package_id",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_import_id_via_imports",
+      "row_count_for_project": 19
+    },
+    {
+      "table": "schedule_import_packages",
+      "primary_key_columns": [
+        "package_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "project_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 11
+    },
+    {
+      "table": "schedule_package_equivalence_facts",
+      "primary_key_columns": [
+        "equivalence_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "import_id",
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 8
+    },
+    {
+      "table": "schedule_package_field_lineage",
+      "primary_key_columns": [
+        "lineage_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "import_id",
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 144
+    },
+    {
+      "table": "schedule_quality_evaluation_runs",
+      "primary_key_columns": [
+        "evaluation_run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 39
+    },
+    {
+      "table": "schedule_quality_findings",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key",
+        "import_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 9475
+    },
+    {
+      "table": "schedule_quality_metric_results",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "evaluation_run_id",
+          "to_table": "schedule_quality_evaluation_runs",
+          "to_column": "evaluation_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 403
+    },
+    {
+      "table": "schedule_quality_metric_results_v66",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "evaluation_run_id",
+          "to_table": "schedule_quality_evaluation_runs",
+          "to_column": "evaluation_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 196
+    },
+    {
+      "table": "schedule_quality_scorecards",
+      "primary_key_columns": [
+        "evaluation_run_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "evaluation_run_id",
+          "to_table": "schedule_quality_evaluation_runs",
+          "to_column": "evaluation_run_id"
+        }
+      ],
+      "relevant_columns": [
+        "project_key",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 39
+    },
+    {
+      "table": "schedule_source_capabilities",
+      "primary_key_columns": [
+        "capability_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "package_id",
+        "schedule_version_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_schedule_version_key_via_imports",
+      "row_count_for_project": 139
+    },
+    {
+      "table": "schedule_version_diff_detail_facts",
+      "primary_key_columns": [
+        "detail_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 209437
+    },
+    {
+      "table": "schedule_version_diff_facts",
+      "primary_key_columns": [
+        "diff_fact_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 160
+    },
+    {
+      "table": "schedule_version_diff_impact_rollups",
+      "primary_key_columns": [
+        "rollup_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 32728
+    },
+    {
+      "table": "schedule_version_diffs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 17
+    },
+    {
+      "table": "schedule_version_identity_matches",
+      "primary_key_columns": [
+        "match_id"
+      ],
+      "foreign_keys": [
+        {
+          "from_column": "schedule_identity_key",
+          "to_table": "schedule_identities",
+          "to_column": "schedule_identity_key"
+        }
+      ],
+      "relevant_columns": [
+        "schedule_version_key",
+        "import_id",
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 10
+    },
+    {
+      "table": "second_brain_agent_performance_feedback_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_amount_facts_normalized",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_currency_completeness_snapshots",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 97
+    },
+    {
+      "table": "second_brain_financial_exposure_summary_items",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_fact_normalization_runs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_forecast_readiness_runs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_readiness_agent_runs",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_review_required_items",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 123134
+    },
+    {
+      "table": "second_brain_financial_source_coverage_snapshots",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_financial_wbs_cost_code_snapshots",
+      "primary_key_columns": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_mcp_claude_desktop_config_previews",
+      "primary_key_columns": [
+        "preview_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "global_or_skip",
+      "row_count_for_project": 2
+    },
+    {
+      "table": "second_brain_memory_consolidation_review_items",
+      "primary_key_columns": [
+        "review_item_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "review_item_id"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_review_item_via_project",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_memory_quality_review_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_research_packets",
+      "primary_key_columns": [
+        "packet_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_retrieval_context_budget_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_retrieval_hybrid_query_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_retrieval_source_linked_proof_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_retrieval_vector_index_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_review_burden_clusters",
+      "primary_key_columns": [
+        "cluster_id",
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_review_burden_policy_evals",
+      "primary_key_columns": [
+        "eval_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "second_brain_review_burden_runs",
+      "primary_key_columns": [
+        "run_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "source_evidence_trails",
+      "primary_key_columns": [
+        "evidence_trail_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1880
+    },
+    {
+      "table": "source_intelligence_sources",
+      "primary_key_columns": [
+        "source_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "source_record_summary_mart",
+      "primary_key_columns": [
+        "summary_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "source_system_record_map",
+      "primary_key_columns": [
+        "canonical_record_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "task_candidates",
+      "primary_key_columns": [
+        "candidate_id"
+      ],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 0
+    },
+    {
+      "table": "v_procore_inspection_unanswered_items",
+      "primary_key_columns": [],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 1265
+    },
+    {
+      "table": "v_procore_open_action_signals",
+      "primary_key_columns": [],
+      "foreign_keys": [],
+      "relevant_columns": [
+        "project_key"
+      ],
+      "purgeable_for_project": true,
+      "preserve_catalog": false,
+      "count_strategy": "by_project_key",
+      "row_count_for_project": 5458
+    }
+  ],
+  "required_expected_tables_missing_or_unclassified": [
+    {
+      "table": "project_schedule_review_events",
+      "status": "missing_optional",
+      "domain": "review"
+    },
+    {
+      "table": "project_schedule_named_baseline_review_events",
+      "status": "missing_optional",
+      "domain": "named_baseline_review"
+    }
+  ]
+}

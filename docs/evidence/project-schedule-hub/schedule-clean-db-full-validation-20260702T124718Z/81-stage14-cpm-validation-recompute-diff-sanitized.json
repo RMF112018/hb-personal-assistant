@@ -1,0 +1,91 @@
+{
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "cpm_run_id": "cpmrun_3e7488de94b5a190670574a5c2a3f709",
+  "formula_version": "2026-07-02.cpm-longest-path-shadow.v2",
+  "code_version": {
+    "formula_version": "2026-07-02.cpm-longest-path-shadow.v2",
+    "repo_head": "e2313d9ee8d42ad56159451a5eda887fbe1c15a0",
+    "module_hashes": {
+      "src/hb_assistant/construction/analytics/schedule_cpm_forward_pass.py": "611ad182b524d3b1",
+      "src/hb_assistant/construction/analytics/schedule_cpm_backward_pass.py": "9b670b67f38dd261",
+      "src/hb_assistant/construction/analytics/schedule_cpm_float.py": "a031bfc0de42c931",
+      "src/hb_assistant/construction/analytics/schedule_cpm_criticality.py": "36d47d416f860ccb",
+      "src/hb_assistant/construction/analytics/schedule_cpm_shadow_formula_evaluator.py": "02a03f3d56207501",
+      "src/hb_assistant/construction/analytics/schedule_cpm_longest_path.py": "c1b5c98001d2743c",
+      "src/hb_assistant/construction/analytics/schedule_cpm_formula_trace.py": "d81b0b24488ad583"
+    }
+  },
+  "activity_count": 1507,
+  "relationship_count": 3921,
+  "matched_activity_count": 1507,
+  "mismatched_activity_count": 0,
+  "matched_relationship_count": 3921,
+  "mismatched_relationship_count": 0,
+  "tolerance": 0.0,
+  "status": "pass",
+  "evaluated_stages": [
+    "forward_pass",
+    "backward_pass",
+    "float",
+    "criticality",
+    "longest_path",
+    "source_field_exclusion"
+  ],
+  "excluded_stages": [],
+  "stage_status": {
+    "forward_pass": "pass",
+    "backward_pass": "pass",
+    "float": "pass",
+    "criticality": "pass",
+    "longest_path": "pass",
+    "source_field_exclusion": "pass"
+  },
+  "longest_path": {
+    "shadow_recompute_supported": true,
+    "diff_status": "pass",
+    "algorithm_id": "repo_mirrored_shadow_dag_longest_path",
+    "path_duration_basis": "path_finish_offset_days minus path_start_offset_days on the backtraced path (not sum of activity durations)",
+    "path_count": 1,
+    "persisted_path_count": 1,
+    "shadow_path_count": 1,
+    "matched_path_count": 1,
+    "mismatched_path_count": 0,
+    "path_mismatches": [],
+    "shadow_summary": {
+      "start_activity_id": "DELAY-MSTPERMIT-10",
+      "end_activity_id": "FM-FINCOMP",
+      "activity_count": 45,
+      "relationship_count": 44,
+      "path_start_offset_days": 0.0,
+      "path_finish_offset_days": 429.0,
+      "path_duration": 429.0,
+      "path_duration_basis": "path_finish_offset_days minus path_start_offset_days on the backtraced path (not sum of activity durations)",
+      "path_basis": "max_forward_early_finish_backtrace",
+      "path_status": "computed",
+      "algorithm_id": "repo_mirrored_shadow_dag_longest_path",
+      "notes": {
+        "endpoint_tie_break": "multiple_activities_share_max_early_finish"
+      }
+    },
+    "persisted_summary": {
+      "path_rank": 1,
+      "end_activity_id": "FM-FINCOMP",
+      "path_duration": 429.0,
+      "path_start_offset_days": 0.0,
+      "path_finish_offset_days": 429.0
+    }
+  },
+  "source_field_exclusion": {
+    "status": "pass",
+    "source_fields_checked": [
+      "total_float",
+      "derived_total_float_days",
+      "explicit_total_float_days",
+      "is_critical"
+    ],
+    "violations": []
+  },
+  "activity_mismatches": [],
+  "relationship_mismatches": [],
+  "limitations": []
+}

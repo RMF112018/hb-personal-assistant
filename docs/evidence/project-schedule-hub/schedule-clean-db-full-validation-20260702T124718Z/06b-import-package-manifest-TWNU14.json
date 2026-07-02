@@ -1,0 +1,39 @@
+{
+  "mode": "schedule_import_package_manifest",
+  "absolute_path": "<LOCAL_REDACTED>",
+  "filename": "TWNU14.zip",
+  "file_size": 843433,
+  "sha256": "893fbd845aee9f5dfbf4f88fcb160b9227aad9b8d506cbcab5b916a20547c3a3",
+  "extension": "zip",
+  "detected_package_type": "zip",
+  "zip_members": [
+    {
+      "path": "TWNU14.xer",
+      "size": 1263934,
+      "extension": "xer",
+      "likely_schedule_format": "xer",
+      "role": "companion"
+    },
+    {
+      "path": "__MACOSX/._TWNU14.xer",
+      "size": 163,
+      "extension": "xer",
+      "likely_schedule_format": "xer",
+      "role": "companion"
+    },
+    {
+      "path": "TWNU14.xml",
+      "size": 21904286,
+      "extension": "xml",
+      "likely_schedule_format": "xml",
+      "role": "companion"
+    },
+    {
+      "path": "__MACOSX/._TWNU14.xml",
+      "size": 163,
+      "extension": "xml",
+      "likely_schedule_format": "xml",
+      "role": "companion"
+    }
+  ]
+}

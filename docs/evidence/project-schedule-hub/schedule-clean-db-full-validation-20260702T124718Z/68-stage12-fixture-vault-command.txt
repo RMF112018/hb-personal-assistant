@@ -1,0 +1,21 @@
+project_schedule_hub_slow_stage stage=review_queue elapsed_ms=692.109 project_key=tropical schedule_version_key=tropical|1071|2026-06-23 08:00 query_key=hub_review_workbench row_count=56 cap=None
+{
+  "mode": "write",
+  "notes_planned": 1,
+  "notes_written": 1,
+  "notes_updated": 0,
+  "conflicts": 0,
+  "ollama_calls": 0,
+  "db_mutations": 0,
+  "vault_root": "<LOCAL_REDACTED>/hb-personal-assistant-worktrees/validation/schedule-clean-db-full-20260702T124718Z/local-sensitive/fixture-vault/schedule-clean-db-full-validation",
+  "outputs": [
+    {
+      "note_type": "schedule_update",
+      "project_key": "tropical",
+      "relative_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-06-23 - 23-435-01 - Tropical World Nursery Senior Living Facility - Schedule Comparison - Compared against prior update.md",
+      "action": "created",
+      "idempotency_key": "schedule_update|tropical|2026-06-23|prior_update|Compared against prior update"
+    }
+  ],
+  "advisory_failures": []
+}

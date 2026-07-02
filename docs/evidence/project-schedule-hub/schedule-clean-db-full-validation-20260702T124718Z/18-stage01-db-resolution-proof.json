@@ -1,0 +1,11 @@
+{
+  "mode": "schedule_clean_db_backend",
+  "db_path": "local-sensitive/clean-db/tropical-full-validation-20260702T124726Z.sqlite",
+  "db_path_is_live_db": false,
+  "clean_copy_guard_passed": true,
+  "schema_version": 98,
+  "repo_head": "e2313d9ee8d42ad56159451a5eda887fbe1c15a0",
+  "port": 8000,
+  "background_worker_mode": "disabled",
+  "background_workers_disabled_by_env": true
+}

@@ -1,0 +1,20 @@
+{
+  "mode": "write",
+  "notes_planned": 1,
+  "notes_written": 0,
+  "notes_updated": 1,
+  "conflicts": 0,
+  "ollama_calls": 0,
+  "db_mutations": 0,
+  "vault_root": "<LOCAL_REDACTED>",
+  "outputs": [
+    {
+      "note_type": "schedule_update",
+      "project_key": "tropical",
+      "relative_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-06-23 - 23-435-01 - Tropical World Nursery Senior Living Facility - Schedule Comparison - Compared against prior update.md",
+      "action": "updated",
+      "idempotency_key": "schedule_update|tropical|2026-06-23|prior_update|Compared against prior update"
+    }
+  ],
+  "advisory_failures": []
+}

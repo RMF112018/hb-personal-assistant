@@ -1,0 +1,34 @@
+{
+  "apply": {
+    "dry_run": false,
+    "links_written": 0,
+    "notes_modified": 0,
+    "results": [],
+    "vault_apply_allowed": true,
+    "vault_apply_reason": "fixture_vault_path",
+    "write_attempts": 0
+  },
+  "candidates": [],
+  "candidates_recommended": 0,
+  "candidates_total": 0,
+  "llm_suggestions_report_only": {
+    "enabled": false
+  },
+  "notes": [
+    {
+      "note_rel_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-06-23 - 23-435-01 - Tropical World Nursery Senior Living Facility - Schedule Comparison - Compared against prior update.md",
+      "note_title": "Schedule Comparison \u2014 23-435-01 - Tropical World Nursery Senior Living Facility \u2014 2026-06-23 \u2014 Compared against prior update",
+      "note_type": "schedule_update",
+      "project_key": "tropical"
+    }
+  ],
+  "notes_discovered": 1,
+  "ollama_calls": 0,
+  "schedule_graph_phase": "20",
+  "tag_recommendations_report_only": {
+    "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-06-23 - 23-435-01 - Tropical World Nursery Senior Living Facility - Schedule Comparison - Compared against prior update.md": [
+      "#schedule-comparison",
+      "#schedule-review"
+    ]
+  }
+}
