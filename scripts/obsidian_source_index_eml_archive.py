@@ -30,6 +30,7 @@ for _p in (_REPO_ROOT / "src", _REPO_ROOT / "scripts"):
 
 import obsidian_source_first_indexing_dryrun as dryrun  # noqa: E402
 
+from hb_assistant.obsidian_mcp import source_archive_paths as sap  # noqa: E402
 from hb_assistant.obsidian_mcp import source_email_archive as sea  # noqa: E402
 from hb_assistant.obsidian_mcp import source_project_identity as spi  # noqa: E402
 from hb_assistant.obsidian_mcp.mutations import create_note, sha256_file  # noqa: E402
@@ -39,10 +40,7 @@ from hb_assistant.obsidian_mcp.source_indexer import (  # noqa: E402
     index_source_file,
 )
 from hb_assistant.obsidian_mcp.source_notes import (  # noqa: E402
-    _DOMAIN_FOLDER,
     _card_rel_path,
-    _domain_for,
-    _safe_basename,
     generate_source_card,
 )
 from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError  # noqa: E402
@@ -155,16 +153,17 @@ def _resolve_identity(source_root: Path, db_path: str, args: argparse.Namespace)
 
 
 def _archive_rel_path(detail: dict[str, Any]) -> str:
-    """Full-email archive note path: ``Email Archive/Work/<Domain>/<safe>__<id12>.md`` (Amendment #4).
+    """Full-email archive note path: ``Email Archive/<Domain>/<safe>__<id12>.md`` (Phase 10L-B).
 
-    Lives in a SEPARATE top-level ``Email Archive`` root (NOT under Source Notes), so it is never a
-    source-card path (``_card_rel_path`` never produces this) and never a generated note. Self-index
-    protection comes from ``is_email_archive_path`` (keyed on the ``Email Archive/`` prefix), which
-    excludes it from ``scan_vault_notes``/the watcher so full bodies/addresses never reach the FTS.
+    Delegates to the centralized :func:`source_archive_paths.archive_note_rel_path` — the single source
+    of truth for archive routing. Routes DIRECTLY under the domain folder (Phase 10L-B corrected the
+    pre-10L double-domain ``Email Archive/Work/<Domain>/`` layout). Lives in a SEPARATE top-level
+    ``Email Archive`` root (NOT under Source Notes), so it is never a source-card path
+    (``_card_rel_path`` never produces this) and never a generated note. Self-index protection comes
+    from ``is_email_archive_path`` (keyed on the ``Email Archive/`` prefix), which excludes it from
+    ``scan_vault_notes``/the watcher so full bodies/addresses never reach the FTS.
     """
-    domain_folder = _DOMAIN_FOLDER.get(_domain_for(detail), "Shared")
-    sid = str(detail["source_id"])[:12]
-    return f"{EMAIL_ARCHIVE_FOLDER}/Work/{domain_folder}/{_safe_basename(detail)}__{sid}.md"
+    return sap.archive_note_rel_path(detail)
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
