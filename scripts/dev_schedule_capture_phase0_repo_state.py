@@ -13,7 +13,7 @@ def _run(*args: str) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
-def capture_repo_state(evidence_dir: Path, outfile: str = "32-final-repo-state.txt") -> Path:
+def capture_repo_state(evidence_dir: Path, outfile: str = "32-final-repo-state.txt", *, base_commit: str = "53c5a977") -> Path:
     repo = Path(_run("git", "rev-parse", "--show-toplevel"))
     out = evidence_dir / outfile
     head = _run("git", "rev-parse", "HEAD")
@@ -24,7 +24,7 @@ def capture_repo_state(evidence_dir: Path, outfile: str = "32-final-repo-state.t
     content = (
         f"branch={branch}\n"
         f"head={head}\n"
-        f"base_commit=53c5a977\n\n"
+        f"base_commit={base_commit}\n\n"
         f"status:\n{status}\n\n"
         f"head stat:\n{stat}\n\n"
         f"recent commits:\n{log}\n"
@@ -46,8 +46,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Exit 1 when head= in the artifact does not match git rev-parse HEAD",
     )
+    parser.add_argument(
+        "--outfile",
+        default="32-final-repo-state.txt",
+        help="Output filename inside evidence directory",
+    )
+    parser.add_argument(
+        "--base-commit",
+        default="53c5a977",
+        help="Base commit hash recorded in the artifact",
+    )
     args = parser.parse_args(argv)
-    out = capture_repo_state(args.evidence_dir)
+    out = capture_repo_state(args.evidence_dir, outfile=args.outfile, base_commit=args.base_commit)
     if args.verify:
         head = _run("git", "rev-parse", "HEAD")
         for line in out.read_text(encoding="utf-8").splitlines():

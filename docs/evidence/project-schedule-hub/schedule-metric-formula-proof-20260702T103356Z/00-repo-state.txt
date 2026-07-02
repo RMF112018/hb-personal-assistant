@@ -1,0 +1,17 @@
+branch=hardening/schedule-metric-formula-proof-20260702T103317Z
+head=9ed1a1599b7a152dc53d3aa370954412217c28e7
+
+status:
+?? docs/evidence/project-schedule-hub/schedule-metric-formula-proof-20260702T103356Z/
+
+recent commits:
+9ed1a159 Merge pull request #264 from RMF112018/hardening/schedule-cpm-formula-trace-20260702T093539Z
+317e595b chore(schedule): allowlist cpm formula trace evidence artifacts
+9bf2b4a2 chore(schedule): add cpm formula trace evidence export
+6efa695b chore(schedule): harden clean-db validation preflight
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+899a35eb fix(obsidian): polish Follow-Up + stale related tags after classifier repair
+78d08073 Merge pull request #263 from RMF112018/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+91c9a399 feat(schedule): link second-brain schedule notes
+d8e431be Merge pull request #257 from RMF112018/feat/obsidian-phase10j-local-enrichment-workflow-20260701T183134Z
+ae297f3d fix(obsidian): repair deterministic source classification provenance

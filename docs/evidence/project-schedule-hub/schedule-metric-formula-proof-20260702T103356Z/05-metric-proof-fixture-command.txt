@@ -1,0 +1,1 @@
+python3 scripts/dev_schedule_metric_formula_proof_export.py --fixture --out-dir docs/evidence/.../metric-formula-proof

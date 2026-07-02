@@ -1,0 +1,72 @@
+branch=hardening/schedule-metric-formula-proof-20260702T103317Z
+head=27fa4372ab8b5fac01b5e2d920d3d411e00e9cf5
+base_commit=9ed1a159
+
+status:
+
+
+head stat:
+27fa4372 chore(schedule): prove schedule metric formulas
+ .../00-repo-state.txt                              |  17 +
+ .../01-repo-truth-audit.md                         |  27 +
+ .../02-formula-registry-design.md                  |  11 +
+ .../03-metric-service-design.md                    |  26 +
+ .../04-api-activation-design.md                    |  10 +
+ .../05-metric-proof-fixture-command.txt            |   1 +
+ .../06-metric-formula-registry.json                | 554 ++++++++++++++
+ .../07-metric-input-snapshot.json                  | 321 ++++++++
+ .../08-metric-computation-trace.jsonl              |   3 +
+ .../09-metric-api-activation-proof.json            | 327 +++++++++
+ .../10-metric-independent-recompute-diff.json      |  44 ++
+ .../11-metric-proof-audit.md                       |  15 +
+ .../12-focused-tests.txt                           |  35 +
+ .../13-regression-tests.txt                        |   8 +
+ .../14-artifact-scan.json                          |  67 ++
+ .../15-artifact-scan.md                            |   4 +
+ .../16-bug-gap-log.md                              |  10 +
+ .../17-phase-summary.md                            |  11 +
+ .../18-final-repo-state.txt                        |  72 ++
+ .../metric-api-activation-proof.json               | 327 +++++++++
+ .../metric-computation-trace.jsonl                 |   3 +
+ .../metric-api-activation-proof.json               | 327 +++++++++
+ .../metric-computation-trace.jsonl                 |   3 +
+ .../metric-formula-registry.json                   | 554 ++++++++++++++
+ .../metric-independent-recompute-diff.json         |  44 ++
+ .../metric-input-snapshot.json                     | 321 ++++++++
+ .../metric-formula-proof/metric-proof-audit.md     |  15 +
+ .../metric-formula-registry.json                   | 554 ++++++++++++++
+ .../metric-independent-recompute-diff.json         |  44 ++
+ .../metric-input-snapshot.json                     | 321 ++++++++
+ .../metric-proof-audit.md                          |  15 +
+ scripts/dev_schedule_capture_phase0_repo_state.py  |  16 +-
+ .../dev_schedule_metric_formula_proof_export.py    | 117 +++
+ src/hb_assistant/construction/analytics/api.py     |  39 +
+ .../analytics/schedule_metric_formula_proof.py     | 104 +++
+ .../analytics/schedule_metric_formula_registry.py  | 370 ++++++++++
+ .../analytics/schedule_metric_formula_service.py   | 803 +++++++++++++++++++++
+ .../analytics/schedule_metric_shadow_evaluator.py  | 140 ++++
+ .../schedule_clean_db/artifact_scan_allowlist.json |  15 +-
+ tests/test_schedule_metric_formula_proof.py        | 270 +++++++
+ 40 files changed, 5961 insertions(+), 4 deletions(-)
+
+recent commits:
+27fa4372 chore(schedule): prove schedule metric formulas
+9ed1a159 Merge pull request #264 from RMF112018/hardening/schedule-cpm-formula-trace-20260702T093539Z
+317e595b chore(schedule): allowlist cpm formula trace evidence artifacts
+9bf2b4a2 chore(schedule): add cpm formula trace evidence export
+6efa695b chore(schedule): harden clean-db validation preflight
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+899a35eb fix(obsidian): polish Follow-Up + stale related tags after classifier repair
+78d08073 Merge pull request #263 from RMF112018/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+91c9a399 feat(schedule): link second-brain schedule notes
+d8e431be Merge pull request #257 from RMF112018/feat/obsidian-phase10j-local-enrichment-workflow-20260701T183134Z
+ae297f3d fix(obsidian): repair deterministic source classification provenance
+004b28ab Merge pull request #261 from RMF112018/feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z
+cb914dfe Merge pull request #260 from RMF112018/fix/schedule-named-baseline-green-gate-phase18a-20260701T210726Z
+435057a4 feat(schedule): generate second-brain schedule comparison notes
+d481a042 docs(obsidian): Phase 10J summary-quality hardening evidence
+dbddc488 docs(obsidian): Phase 10J local summarization correction evidence
+f766fa97 docs(obsidian): add Phase 10J live enrichment evidence
+66a8face feat(obsidian): add local enrichment workflow
+1aa070bf fix(schedule): restore named-baseline regression gate
+ef00fc73 Merge pull request #259 from RMF112018/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z
