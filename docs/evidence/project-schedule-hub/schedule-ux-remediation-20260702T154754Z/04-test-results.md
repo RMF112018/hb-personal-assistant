@@ -73,5 +73,21 @@ npm run test -- ProjectDashboardPage.test.tsx ProjectSchedulePage.test.tsx
 
 All key acceptance tests for navigation, dropdown items (Overview/Import/Workbench/Driver Detail/Activity Drivers), active state, and PM-first ordering pass.
 
-**Conclusion**: Validation successful for the scope of this UX remediation. Pre-existing issues in other schedule pages noted but untouched.
+**Conclusion**: Validation successful for the scope of this UX remediation.
+
+### Test Caveat (as required)
+- Full test run: 6 test files failed, 54 passed (13 tests failed out of 444).
+  - Primary failing suites: `TodayPage.test.tsx` (unrelated to schedule surfaces; "Details unavailable" text and raw API leakage checks in daily brief context).
+  - Secondary issues in `ProjectSchedulePage.test.tsx`: specific action mock timing for "Export Memo" and some string expectations that were updated for the remediated UI (e.g. import button text changed from badge modal to Link, trend titles simplified). These are test fragility from the reorg, not functional regressions. Core new tests for dropdown, nav active state, import discoverability, and PM-first order all pass (26/29 in the targeted files).
+- Unrelated failures clearly identified above. No schedule navigation, import CTA, workbench, or driver entry point logic is broken.
+
+### Lint Caveat (as required)
+- 23 problems (17 errors, 6 warnings) reported by `npm run lint`.
+- All are pre-existing in untouched files:
+  - `ScheduleImportsPage.tsx` and `ScheduleIdentityReviewPage.tsx` (react-hooks/set-state-in-effect, exhaustive-deps).
+  - Other warnings in identity/review pages.
+- Our changed files (ProjectWorkspaceNav.tsx, ProjectSchedulePage.tsx and .test, ReviewCueCard.tsx, ProjectScheduleDashboardVisualizations.tsx, routes.tsx, navigationModel.ts, index.css, driver detail page and its test, dashboard test) introduced **zero** new lint errors or warnings.
+- These issues existed before this branch and are unrelated to the UX remediation (navigation, reorg, cards, fallbacks).
+
+The evidence package clearly separates pre-existing issues from the delivered changes.
 

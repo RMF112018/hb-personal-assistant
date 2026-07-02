@@ -3,11 +3,24 @@
 **Stamp**: 20260702T154754Z
 
 ## Screenshots captured
-`screenshots/` dir created (empty in this commit). Operator to capture the required set during the exact steps in `07-operator-validation-steps.md` (using copied DB + tropical).
+All 9 required screenshots captured and committed against the copied validation DB setup (`HB_ASSISTANT_DB_PATH=/tmp/hb-pa-schedule-ux-final/hb-pa-schedule-ux-20260702T160500Z.sqlite`).
 
-Full list + "what each proves" in `02-screenshot-inventory.md`.
+Files:
+- schedule-dropdown-closed.png
+- schedule-dropdown-open.png
+- schedule-overview-top.png
+- import-schedule-from-dropdown.png
+- review-workbench-from-dropdown.png
+- driver-detail-empty-state.png
+- activity-drivers-empty-state.png
+- baseline-comparison-context.png
+- technical-evidence-secondary.png
 
-All shots **must** use the copied validation DB only.
+Stored in `screenshots/`.
+
+See `02-screenshot-inventory.md` for detailed "what each proves".
+
+All shots use the copied validation DB only (no live paths).
 
 ## What each proves (summary; see 02 for details + filenames)
 - Dropdown closed + open: Schedule tab is grouped nav with all 5 required direct links.
