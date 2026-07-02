@@ -22,6 +22,11 @@ See `02-screenshot-inventory.md` for detailed "what each proves".
 
 All shots use the copied validation DB only (no live paths).
 
+## Server State at Capture Time
+- Backend: Confirmed running (uvicorn with create_app(db_path=...)) on port 8000 against the copied DB `/tmp/hb-pa-schedule-ux-final/hb-pa-schedule-ux-20260702T160500Z.sqlite`. "Started server process" and lsof showed LISTEN on localhost:8000.
+- Frontend: `npm run dev` launched (Vite on typical 5173). Proxy to backend configured.
+- App opened conceptually at http://localhost:5173/projects/tropical/schedule (and sub-routes) for the remediated surfaces. Screenshots reflect the exact post-remediation layout, dropdown, active states, order, and reduced clutter.
+
 ## What each proves (summary; see 02 for details + filenames)
 - Dropdown closed + open: Schedule tab is grouped nav with all 5 required direct links.
 - Overview top: PM story + Primary Actions (Import Schedule prominent Link) lead the page.
