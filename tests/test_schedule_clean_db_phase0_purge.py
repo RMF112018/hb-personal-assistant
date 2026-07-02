@@ -16,6 +16,19 @@ from hb_assistant.store.migrator import SQLiteMigrator
 from tests.schedule_project_test_helpers import seed_procore_ep_project
 from tests.test_project_schedule_hub_api import _seed_comparable_versions
 
+PURGE_TRACKED_TABLES = (
+    "schedule_version_diffs",
+    "schedule_version_diff_facts",
+    "schedule_version_diff_detail_facts",
+    "schedule_version_diff_impact_rollups",
+    "schedule_baseline_projects",
+    "schedule_baseline_activity_codes",
+    "schedule_baseline_udfs",
+    "schedule_baseline_wbs",
+    "schedule_baseline_activities",
+    "schedule_baseline_relationships",
+)
+
 
 def _db(tmp_path: Path) -> Path:
     db = tmp_path / "purge.db"
@@ -87,3 +100,98 @@ def test_live_db_path_rejected_by_guard_script(tmp_path: Path) -> None:
         from hb_assistant.construction.schedule_clean_db.guards import assert_clean_copy_path
 
         assert_clean_copy_path(live, allow_custom_copy_path=True)
+
+
+def _table_counts(db: Path, tables: tuple[str, ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    with sqlite3.connect(db) as conn:
+        for table in tables:
+            try:
+                counts[table] = int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+            except sqlite3.Error:
+                counts[table] = -1
+    return counts
+
+
+def _seed_diff_and_baseline_orphans(db: Path) -> None:
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            """
+            INSERT INTO schedule_version_diffs (
+              project_key, from_schedule_version_key, to_schedule_version_key,
+              diff_type, created_at
+            ) VALUES ('tropical', 'tropical|S1|2026-06-01', 'tropical|S2|2026-06-02', 'manual', '2026-07-01')
+            """
+        )
+        diff_id = int(conn.execute("SELECT last_insert_rowid()").fetchone()[0])
+        conn.execute(
+            """
+            INSERT INTO schedule_version_diff_detail_facts (
+              detail_id, diff_id, project_key, from_schedule_version_key, to_schedule_version_key,
+              identity_safe, comparison_type, change_domain, change_type
+            ) VALUES ('det-1', ?, 'tropical', 'tropical|S1|2026-06-01', 'tropical|S2|2026-06-02',
+              1, 'manual', 'activity', 'changed')
+            """,
+            (diff_id,),
+        )
+        import_row = conn.execute(
+            "SELECT import_id, schedule_version_key FROM schedule_file_imports WHERE project_key='tropical' LIMIT 1"
+        ).fetchone()
+        assert import_row is not None
+        import_id, svk = import_row
+        conn.execute(
+            """
+            INSERT INTO schedule_baseline_projects (
+              baseline_project_key, package_id, import_id, current_schedule_version_key,
+              baseline_project_id, baseline_project_name, created_at
+            ) VALUES ('bp-tropical-1', 'pkg-test', ?, ?, '815', 'TWNU07', '2026-07-01')
+            """,
+            (import_id, svk),
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_baseline_activity_codes (
+              baseline_project_key, activity_id, code_type, code_value
+            ) VALUES ('bp-tropical-1', 'ac-1', 'Resp', 'GC')
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_baseline_activity_crosswalk (
+              crosswalk_id, current_schedule_version_key, baseline_project_key,
+              match_method, match_confidence, review_required, review_status
+            ) VALUES ('xw-1', ?, 'bp-tropical-1', 'exact', 'high', 0, 'not_reviewed')
+            """,
+            (svk,),
+        )
+        conn.execute(
+            """
+            INSERT INTO schedule_baseline_health_facts (
+              fact_id, current_schedule_version_key, baseline_project_key,
+              metric_key, status
+            ) VALUES ('hf-1', ?, 'bp-tropical-1', 'activity_count', 'ok')
+            """,
+            (svk,),
+        )
+        conn.commit()
+
+
+def test_apply_purge_clears_diff_and_baseline_orphans_with_fk_on(tmp_path: Path) -> None:
+    db = _db(tmp_path)
+    _seed_diff_and_baseline_orphans(db)
+    before = _table_counts(db, PURGE_TRACKED_TABLES)
+    assert before["schedule_version_diff_detail_facts"] >= 1
+    assert before["schedule_baseline_activity_codes"] >= 1
+
+    result = run_tropical_purge(str(db), project_key="tropical", dry_run=False, apply=True)
+    after = _table_counts(db, PURGE_TRACKED_TABLES)
+
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        fk_rows = conn.execute("PRAGMA foreign_key_check").fetchall()
+
+    assert fk_rows == []
+    assert result["remaining_tropical_schedule_records"] == 0
+    for table in PURGE_TRACKED_TABLES:
+        if before.get(table, 0) > 0:
+            assert after.get(table) == 0, table

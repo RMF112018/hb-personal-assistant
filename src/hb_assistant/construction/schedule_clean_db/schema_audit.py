@@ -17,6 +17,7 @@ COLUMN_TERMS = (
     "project_key",
     "schedule_version_key",
     "current_schedule_version_key",
+    "baseline_project_key",
     "baseline_schedule_version_key",
     "import_id",
     "package_id",
@@ -65,9 +66,60 @@ REQUIRED_EXPECTED_TABLES: dict[str, dict[str, str]] = {
     "procore_ep_schedule_activity_code_assignments": {"domain": "graph", "optional": "true"},
     "procore_ep_schedule_udf_values": {"domain": "graph", "optional": "true"},
     "schedule_version_diffs": {"domain": "diffs", "optional": "true"},
+    "schedule_version_diff_facts": {"domain": "diffs", "optional": "true"},
     "schedule_version_diff_detail_facts": {"domain": "diffs", "optional": "true"},
     "schedule_version_diff_impact_rollups": {"domain": "diffs", "optional": "true"},
+    "schedule_identities": {"domain": "imports", "optional": "false"},
+    "schedule_baseline_activities": {"domain": "baseline", "optional": "true"},
+    "schedule_baseline_relationships": {"domain": "baseline", "optional": "true"},
+    "schedule_baseline_activity_codes": {"domain": "baseline", "optional": "true"},
+    "schedule_baseline_udfs": {"domain": "baseline", "optional": "true"},
+    "schedule_baseline_wbs": {"domain": "baseline", "optional": "true"},
 }
+
+SCHEDULE_DOMAIN_PREFIXES = (
+    "schedule_",
+    "project_schedule_",
+    "procore_ep_schedule_",
+    "procore_raw_schedule_",
+)
+
+
+def is_schedule_domain_table(table: str) -> bool:
+    if table in REQUIRED_EXPECTED_TABLES:
+        return True
+    return table.startswith(SCHEDULE_DOMAIN_PREFIXES)
+
+
+def build_schedule_domain_inventory(audit: dict[str, Any]) -> dict[str, Any]:
+    included: list[str] = []
+    excluded_heuristic: list[dict[str, str]] = []
+    excluded_project_key: list[dict[str, str]] = []
+    for row in audit.get("discovered_by_heuristic", []):
+        table = str(row["table"])
+        count = row.get("row_count_for_project")
+        if not isinstance(count, int) or count <= 0:
+            continue
+        if is_schedule_domain_table(table):
+            included.append(table)
+            continue
+        if row.get("count_strategy") == "by_project_key":
+            excluded_project_key.append(
+                {"table": table, "row_count_for_project": str(count), "reason": "not_schedule_domain"}
+            )
+        else:
+            excluded_heuristic.append(
+                {"table": table, "row_count_for_project": str(count), "reason": "heuristic_non_schedule"}
+            )
+    return {
+        "schedule_domain_included_tables": sorted(included),
+        "non_schedule_excluded_heuristic_tables": sorted(
+            excluded_heuristic, key=lambda item: item["table"]
+        ),
+        "project_key_excluded_not_schedule_domain": sorted(
+            excluded_project_key, key=lambda item: item["table"]
+        ),
+    }
 
 
 def _now() -> str:
@@ -120,8 +172,12 @@ def _count_strategy(table: str, columns: list[str]) -> str:
         return "preserve_catalog"
     if "project_key" in columns:
         return "by_project_key"
+    if "baseline_project_key" in columns:
+        return "by_baseline_project_key_via_imports"
     if "schedule_version_key" in columns:
         return "by_schedule_version_key_via_imports"
+    if "current_schedule_version_key" in columns:
+        return "by_current_schedule_version_key_via_imports"
     if "import_id" in columns:
         return "by_import_id_via_imports"
     if "package_id" in columns:
@@ -156,6 +212,33 @@ def _count_for_project(
                     WHERE EXISTS (
                       SELECT 1 FROM schedule_file_imports i
                       WHERE i.project_key=? AND i.schedule_version_key=t.schedule_version_key
+                    )
+                    """,
+                    (project_key,),
+                ).fetchone()[0]
+            )
+        if strategy == "by_current_schedule_version_key_via_imports":
+            return int(
+                conn.execute(
+                    f"""
+                    SELECT COUNT(*) FROM {table} t
+                    WHERE EXISTS (
+                      SELECT 1 FROM schedule_file_imports i
+                      WHERE i.project_key=? AND i.schedule_version_key=t.current_schedule_version_key
+                    )
+                    """,
+                    (project_key,),
+                ).fetchone()[0]
+            )
+        if strategy == "by_baseline_project_key_via_imports":
+            return int(
+                conn.execute(
+                    f"""
+                    SELECT COUNT(*) FROM {table} t
+                    WHERE EXISTS (
+                      SELECT 1 FROM schedule_baseline_projects p
+                      JOIN schedule_file_imports i ON i.import_id=p.import_id
+                      WHERE i.project_key=? AND p.baseline_project_key=t.baseline_project_key
                     )
                     """,
                     (project_key,),
