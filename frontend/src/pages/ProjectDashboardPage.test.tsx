@@ -124,7 +124,8 @@ describe('Project workspace shell', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/projects/tropical')
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Forecasting' })).toHaveAttribute('href', '/projects/tropical/forecasting')
-    expect(screen.getByRole('link', { name: 'Schedule' })).toHaveAttribute('href', '/projects/tropical/schedule')
+    // Schedule is now a dropdown trigger (button) in the project subnav; the old flat link is gone.
+    expect(screen.getByRole('button', { name: /Schedule/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Staffing' })).toHaveAttribute('href', '/projects/tropical/staffing')
     expect(screen.getByRole('link', { name: 'Exposures' })).toHaveAttribute('href', '/projects/tropical/exposures')
 
@@ -153,6 +154,27 @@ describe('Project workspace shell', () => {
         'Review forecast status, latest forecast output, and project-specific forecasting tools.',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('renders Schedule as dropdown nav group with correct child links and active state on nested routes', () => {
+    // Render the schedule overview (defined in the test router) to verify group active + discoverability of child menu items.
+    // (The startsWith active logic + menu links are component-owned and do not depend on child route elements being mounted.)
+    renderProjectRoutes('/projects/tropical/schedule')
+
+    // Trigger button is present and marked active for the Schedule group.
+    const scheduleTrigger = screen.getByRole('button', { name: /Schedule/i })
+    expect(scheduleTrigger).toBeInTheDocument()
+    expect(scheduleTrigger.className.includes('active') || scheduleTrigger.getAttribute('aria-current') === 'page').toBeTruthy()
+
+    // The menu items' href targets are always present in the component tree (menu is conditional on local state but Links are authored).
+    // We assert via the rendered anchors that the 5 required children are reachable from the shell nav.
+    const allLinks = screen.getAllByRole('link')
+    const hrefs = allLinks.map((l) => (l as HTMLAnchorElement).getAttribute('href') || '')
+    expect(hrefs.some((h) => h === '/projects/tropical/schedule')).toBe(true)
+    expect(hrefs.some((h) => h === '/projects/tropical/schedule/import')).toBe(true)
+    expect(hrefs.some((h) => h === '/projects/tropical/schedule/workbench')).toBe(true)
+    expect(hrefs.some((h) => h === '/projects/tropical/schedule/driver-detail')).toBe(true)
+    expect(hrefs.some((h) => h === '/projects/tropical/schedule/drivers')).toBe(true)
   })
 
   it('renders staffing and exposures placeholders under the same shell', () => {

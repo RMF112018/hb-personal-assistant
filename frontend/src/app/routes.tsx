@@ -188,6 +188,12 @@ const router = createBrowserRouter([
         path: 'projects/:projectKey/schedule/driver-detail',
         element: <ProjectScheduleDriverDetailPage />,
       },
+      // Activity Drivers index entry point (user-friendly; required so dropdown can link without requiring :activityId).
+      // The component renders a helpful empty/index state when no activityId is supplied (via path or ?activity_id=).
+      {
+        path: 'projects/:projectKey/schedule/drivers',
+        element: <ProjectScheduleDriverDetailPage />,
+      },
       {
         path: 'projects/:projectKey/schedule/drivers/:activityId',
         element: <ProjectScheduleDriverDetailPage />,
