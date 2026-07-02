@@ -1,0 +1,1 @@
+fixture apply only: use evidence fixture vault or --allow-live-vault --confirm-live-vault-apply

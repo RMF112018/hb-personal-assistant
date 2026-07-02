@@ -1,0 +1,8 @@
+Phase 20 report path QA (assert_report_paths_safe)
+
+PASS: vault-relative candidate paths in 04-graph-dry-run.json (no /Users/, no ../)
+PASS: test_report_path_qa_rejects_absolute_paths
+PASS: test_validate_rejects_path_leak_in_rationale
+PASS: review markdown uses note titles + vault-relative paths only
+
+FAIL (expected): payload with /Users/bobbyfetting/secret.md raises report_path_leak_detected

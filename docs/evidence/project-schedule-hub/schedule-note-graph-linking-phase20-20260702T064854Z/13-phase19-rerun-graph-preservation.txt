@@ -1,0 +1,16 @@
+GRAPH_BEFORE:
+<!-- hb-schedule-graph:begin managed -->
+## Schedule Graph Links
+
+- [[Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update|Schedule Comparison — Tropical Wind — 2026-07-01 — Compared against prior update]] — baseline_comparison_related · deterministic · confidence 0.87
+- [[Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update|Schedule Comparison — Tropical Wind — 2026-07-01 — Compared against prior update]] — same_project_schedule_note · deterministic · confidence 0.90
+<!-- hb-schedule-graph:end managed -->
+
+GRAPH_AFTER:
+<!-- hb-schedule-graph:begin managed -->
+## Schedule Graph Links
+
+- [[Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update|Schedule Comparison — Tropical Wind — 2026-07-01 — Compared against prior update]] — baseline_comparison_related · deterministic · confidence 0.87
+- [[Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update|Schedule Comparison — Tropical Wind — 2026-07-01 — Compared against prior update]] — same_project_schedule_note · deterministic · confidence 0.90
+<!-- hb-schedule-graph:end managed -->
+graph preserved: yes

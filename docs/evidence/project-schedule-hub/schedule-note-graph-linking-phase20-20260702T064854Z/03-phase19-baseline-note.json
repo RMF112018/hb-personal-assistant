@@ -1,0 +1,20 @@
+{
+  "mode": "write",
+  "notes_planned": 1,
+  "notes_written": 1,
+  "notes_updated": 0,
+  "conflicts": 0,
+  "ollama_calls": 0,
+  "db_mutations": 0,
+  "vault_root": "fixture-vault",
+  "outputs": [
+    {
+      "note_type": "baseline_comparison",
+      "project_key": "tropical",
+      "relative_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md",
+      "action": "created",
+      "idempotency_key": "baseline_comparison|tropical|2026-07-03|current_contract_baseline|"
+    }
+  ],
+  "advisory_failures": []
+}

@@ -1,0 +1,6 @@
+branch: feature/schedule-note-graph-linking-phase20-20260702T064854Z
+base: origin/main @ d8e431be927efd89428848fc2b8fa2c05ec9811e
+worktree: /Users/bobbyfetting/hb-personal-assistant-worktrees/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+phase: 20 schedule-note-graph-linking
+stamp: 20260702T064854Z
+includes: Phase 18A (#260), Phase 19 (#261), Phase 10J (#257)

@@ -1,0 +1,81 @@
+{
+  "apply": {
+    "dry_run": true,
+    "links_written": 0,
+    "notes_modified": 0,
+    "results": [
+      {
+        "action": "planned_insert",
+        "conflict": false,
+        "links_written": 2,
+        "message": null,
+        "relative_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md"
+      }
+    ],
+    "vault_apply_allowed": true,
+    "vault_apply_reason": "fixture_evidence_dir",
+    "write_attempts": 0
+  },
+  "candidates": [
+    {
+      "basis": [
+        "same_project_key",
+        "distinct_schedule_note"
+      ],
+      "candidate_key": "c595afce4a48717a",
+      "confidence": 0.9,
+      "pm_safe_label": "Related schedule note for tropical",
+      "recommended": true,
+      "relationship_type": "same_project_schedule_note",
+      "requires_human_review": true,
+      "source_note": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md",
+      "target_note": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update.md"
+    },
+    {
+      "basis": [
+        "same_project_key",
+        "baseline_and_update"
+      ],
+      "candidate_key": "f0b435eadaee4533",
+      "confidence": 0.87,
+      "pm_safe_label": "Baseline comparison related to schedule update",
+      "recommended": true,
+      "relationship_type": "baseline_comparison_related",
+      "requires_human_review": true,
+      "source_note": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md",
+      "target_note": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update.md"
+    }
+  ],
+  "candidates_recommended": 2,
+  "candidates_total": 2,
+  "llm_suggestions_report_only": {
+    "enabled": false
+  },
+  "notes": [
+    {
+      "note_rel_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update.md",
+      "note_title": "Schedule Comparison \u2014 Tropical Wind \u2014 2026-07-01 \u2014 Compared against prior update",
+      "note_type": "schedule_update",
+      "project_key": "tropical"
+    },
+    {
+      "note_rel_path": "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md",
+      "note_title": "Schedule Comparison \u2014 tropical \u2014 2026-07-03 \u2014 current_contract_baseline",
+      "note_type": "baseline_comparison",
+      "project_key": "tropical"
+    }
+  ],
+  "notes_discovered": 2,
+  "ollama_calls": 0,
+  "schedule_graph_phase": "20",
+  "tag_recommendations_report_only": {
+    "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-01 - Tropical Wind - Schedule Comparison - Compared against prior update.md": [
+      "#schedule-comparison",
+      "#schedule-review"
+    ],
+    "Work/HB Personal Assistant/Schedule Review/Projects/tropical/2026-07-03 - tropical - Schedule Comparison - current_contract_baseline.md": [
+      "#schedule-comparison",
+      "#schedule-review"
+    ]
+  }
+}
