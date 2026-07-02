@@ -24,6 +24,9 @@ cp "$HOME/Library/Application Support/HB Personal Assistant/db/hb-personal-assis
 
 export HB_ASSISTANT_DB_PATH="/tmp/hb-personal-assistant-schedule-ux/hb-personal-assistant-schedule-ux-$(date -u +%Y%m%dT%H%M%SZ).sqlite"
 
+# Example actual copied DB from validation run (for reference):
+# /tmp/hb-personal-assistant-schedule-ux/hb-personal-assistant-schedule-ux-20260702T155832Z.sqlite (3.9G, safety verified)
+
 echo "Using copied DB: $HB_ASSISTANT_DB_PATH"
 # Verify it is not the live path
 python -c "
