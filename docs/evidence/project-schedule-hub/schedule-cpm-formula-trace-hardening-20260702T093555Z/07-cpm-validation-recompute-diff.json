@@ -1,0 +1,56 @@
+{
+  "schedule_version_key": "tropical|1|2026-06-01 08:00",
+  "cpm_run_id": "cpmrun_9b9e7671b5ddeb9d7b3dc68cb4d31653",
+  "formula_version": "2026-07-02.phase0-cpm-formula-trace.v1",
+  "code_version": {
+    "formula_version": "2026-07-02.phase0-cpm-formula-trace.v1",
+    "repo_head": "6efa695ba72fb6ab33cc97e5bc084df94282f942",
+    "module_hashes": {
+      "src/hb_assistant/construction/analytics/schedule_cpm_forward_pass.py": "611ad182b524d3b1",
+      "src/hb_assistant/construction/analytics/schedule_cpm_backward_pass.py": "9b670b67f38dd261",
+      "src/hb_assistant/construction/analytics/schedule_cpm_float.py": "a031bfc0de42c931",
+      "src/hb_assistant/construction/analytics/schedule_cpm_criticality.py": "36d47d416f860ccb",
+      "src/hb_assistant/construction/analytics/schedule_cpm_shadow_formula_evaluator.py": "bb0ac2596b771e76",
+      "src/hb_assistant/construction/analytics/schedule_cpm_formula_trace.py": "a1c4b5a23ec4287b"
+    }
+  },
+  "activity_count": 2,
+  "relationship_count": 1,
+  "matched_activity_count": 2,
+  "mismatched_activity_count": 0,
+  "matched_relationship_count": 1,
+  "mismatched_relationship_count": 0,
+  "tolerance": 0.0,
+  "status": "pass_with_exclusions",
+  "evaluated_stages": [
+    "forward_pass",
+    "backward_pass",
+    "float",
+    "criticality"
+  ],
+  "excluded_stages": [
+    "longest_path"
+  ],
+  "longest_path": {
+    "persisted_path_exported": true,
+    "shadow_recompute_supported": false,
+    "diff_status": "not_evaluated",
+    "limitation": "Longest-path independent replay not implemented in this hardening pass.",
+    "path_count": 1
+  },
+  "source_field_exclusion": {
+    "status": "pass",
+    "source_fields_checked": [
+      "total_float",
+      "derived_total_float_days",
+      "explicit_total_float_days",
+      "is_critical"
+    ],
+    "violations": []
+  },
+  "activity_mismatches": [],
+  "relationship_mismatches": [],
+  "limitations": [
+    "Longest-path independent replay not implemented in this hardening pass."
+  ]
+}

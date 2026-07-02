@@ -27,7 +27,13 @@
     "32-final-repo-state.txt",
     "33-background-worker-warning-disposition.md",
     "34-fixture-db-artifact-disposition.md",
-    "schedule-test-manifest.txt"
+    "schedule-test-manifest.txt",
+    "cpm-run-summary.json",
+    "cpm-activity-formula-trace.jsonl",
+    "cpm-relationship-formula-trace.jsonl",
+    "cpm-validation-recompute-diff.json",
+    "09-focused-tests.txt",
+    "10-regression-tests.txt"
   ],
   "allow_raw_db_paths": [],
   "allow_raw_schedule_keys": []
