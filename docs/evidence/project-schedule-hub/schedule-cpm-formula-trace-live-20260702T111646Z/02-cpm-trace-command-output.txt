@@ -1,0 +1,8 @@
+python3 scripts/dev_schedule_cpm_formula_trace_export.py \
+  --db-path local-sensitive/clean-db/tropical-metric-proof-live-copy.sqlite \
+  --schedule-version-key 'tropical|1071|2026-06-23 08:00' \
+  --latest \
+  --out-dir docs/evidence/project-schedule-hub/schedule-cpm-formula-trace-live-20260702T111646Z/cpm-formula-trace-live \
+  --confirm-clean-copy
+
+exit_code=0
