@@ -385,8 +385,9 @@ _PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
         "cues": ["Confirm status of pending or conditional items.",
                  "Verify cost impacts against the current budget/change log.",
                  "Confirm accepted items are reflected in current project documents."],
-        "followup": ["Confirm the disposition of pending/conditional items.",
-                     "Reconcile cost impacts against the budget/change log."],
+        "followup": ["Confirm pending/conditional VA items.",
+                     "Verify #REF / value issues.",
+                     "Confirm accepted items are reflected in budget/change documentation."],
     },
     "specification_template": {
         "why": ["A specification template may inform project requirements, but it must be confirmed "
@@ -394,7 +395,8 @@ _PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
         "cues": ["Confirm whether this template was adopted for the project.",
                  "Identify applicable sections and any project-specific edits.",
                  "Do not treat template language as approved project direction without confirmation."],
-        "followup": ["Confirm whether the template was adopted and which sections apply.",
+        "followup": ["Confirm whether this template was adopted, edited, or superseded by "
+                     "project-specific requirements.",
                      "Do not record template language as approved project direction."],
     },
     "clarification_memo": {
@@ -403,7 +405,7 @@ _PM_GUIDANCE: dict[str, dict[str, list[str]]] = {
         "cues": ["Identify which questions remain open.",
                  "Confirm responses, decisions, or follow-up owners.",
                  "Tie resolved clarifications back to governing project documents."],
-        "followup": ["Track open questions to a documented response/decision owner.",
+        "followup": ["Confirm responses / decision owners for the open clarification items.",
                      "Tie resolved clarifications back to governing project documents."],
     },
 }

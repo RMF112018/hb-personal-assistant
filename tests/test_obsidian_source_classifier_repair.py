@@ -252,3 +252,170 @@ def test_apply_without_confirm_refuses(env, monkeypatch, tmp_path):
     args.backup_dir = str(tmp_path / "bk")
     with pytest.raises(km.RepairError):
         km.run(args)  # missing --confirm-classifier-repair / confirm paths
+
+
+# =========================================================================== Phase 10K.1 polish
+_SUMMARY = ('\n<!-- hb-local-summary:start model="qwen2.5:14b" status="generated" -->\n'
+            "### Summary\nA value-analysis tracking log for the project.\n<!-- hb-local-summary:end -->")
+
+
+def _pcard(document_type, tags, *, followup="- [ ] stale follow-up", graph_links=False, summary=True):
+    tag_lines = "\n".join(f"  - {t}" for t in tags)
+    gl = ("\n<!-- gc-graph-links:start -->\n- [[Other Card]]\n<!-- gc-graph-links:end -->\n"
+          if graph_links else "")
+    adv = _SUMMARY if summary else ""
+    return f"""---
+note_type: source_card
+source_id: "abc123def456"
+source_kind: "external_file"
+source_path: "NAS/Projects/23-435-01/x.pdf"
+source_sha256: "deadbeefcafe"
+source_mtime_ns: 1758534756783500432
+indexed_at: "2026-07-01T07:15:25.922492+00:00"
+generated_at: "2026-07-01T07:15:25+00:00"
+project_number: "23-435-01"
+document_type: "{document_type}"
+review_status: "unreviewed"
+card_version: "phase10a-v1"
+tags:
+{tag_lines}
+---
+
+# Source Card: x
+
+## Related Project
+- Project: 23-435-01
+{gl}
+{_IDENTITY}
+
+## Advisory Summary{adv}
+
+## Follow-Up
+{followup}
+"""
+
+
+def _tags(card):
+    ok, tags, _f, _l = cr.ng.parse_frontmatter_tags(card)
+    assert ok
+    return tags
+
+
+def test_polish_value_analysis_regenerates_followup_keeps_grounded_and_gates_review():
+    card = _pcard("value_analysis", ["source/type/value-analysis", "related/project",
+                                     "review/project-context"])
+    p = cr.plan_card_polish(card, {}, add_review=("review/project-context",),
+                            remove_review=("review/metadata-only",))
+    assert p.action == "polish" and p.followup_changed is True
+    # VA-log Follow-Up regenerated from guidance (checkboxes), warranty language gone
+    assert "- [ ] Confirm pending/conditional VA items." in p.new_text
+    assert "#REF" in p.new_text and "stale follow-up" not in p.new_text
+    # grounded related/project kept; no prune
+    assert p.related_pruned == () and "related/project" in _tags(p.new_text)
+    # review change NOT justified for value_analysis -> skipped, not applied; existing tag untouched
+    assert p.review_added == () and p.review_removed == ()
+    assert set(p.review_skipped) == {"review/project-context", "review/metadata-only"}
+    assert "review/project-context" in _tags(p.new_text)
+
+
+def test_polish_specification_template_prunes_submittal_and_swaps_review():
+    card = _pcard("specification_template", ["source/type/specification-template", "related/submittal",
+                                             "review/metadata-only"])
+    p = cr.plan_card_polish(card, {}, add_review=("review/project-context",),
+                            remove_review=("review/metadata-only",))
+    assert p.action == "polish"
+    assert p.related_pruned == ("related/submittal",)
+    tags = _tags(p.new_text)
+    assert "related/submittal" not in tags
+    assert "review/metadata-only" not in tags and "review/project-context" in tags
+    assert p.review_added == ("review/project-context",) and p.review_removed == ("review/metadata-only",)
+    assert "- [ ] Confirm whether this template was adopted, edited, or superseded" in p.new_text
+
+
+def test_polish_clarification_memo_prunes_scope_keeps_review():
+    card = _pcard("clarification_memo", ["source/type/clarification-memo", "related/project",
+                                         "related/scope", "review/project-context"])
+    p = cr.plan_card_polish(card, {}, add_review=("review/project-context",),
+                            remove_review=("review/metadata-only",))
+    assert p.action == "polish" and p.related_pruned == ("related/scope",)
+    tags = _tags(p.new_text)
+    assert "related/scope" not in tags
+    assert "related/project" in tags and "review/project-context" in tags  # both kept
+    assert p.review_added == () and p.review_removed == ()  # not justified for memo
+    fu = p.new_text.lower()
+    assert "responses" in fu or "owners" in fu
+    assert "scope inclusions" not in fu and "addenda" not in fu
+
+
+def test_polish_does_not_prune_when_graph_links_present():
+    card = _pcard("specification_template", ["source/type/specification-template", "related/submittal"],
+                  graph_links=True)
+    p = cr.plan_card_polish(card, {})
+    # ungrounded related/submittal is NOT pruned because a gc-graph-links block justifies it
+    assert p.related_pruned == () and "related/submittal" in _tags(p.new_text)
+    assert cr.ng.REL_BLOCK_BEGIN in p.new_text  # graph block preserved
+
+
+def test_polish_preserves_managed_blocks_and_identifiers():
+    card = _pcard("specification_template", ["source/type/specification-template", "related/submittal",
+                                             "review/metadata-only"])
+    p = cr.plan_card_polish(card, {}, add_review=("review/project-context",),
+                            remove_review=("review/metadata-only",))
+    new = p.new_text
+    assert _block(card, "<!-- hb-project-identity:start") == _block(new, "<!-- hb-project-identity:start")
+    assert _block(card, "<!-- hb-local-summary:start") == _block(new, "<!-- hb-local-summary:start")
+    for k in ("source_id", "source_sha256", "source_path", "generated_at", "indexed_at",
+              "source_mtime_ns", "document_type"):
+        assert cr._frontmatter_value(card, k) == cr._frontmatter_value(new, k)
+    assert "source/type/specification-template" in _tags(new)  # source-type tag untouched
+
+
+def test_polish_is_idempotent():
+    card = _pcard("specification_template", ["source/type/specification-template", "related/submittal",
+                                             "review/metadata-only"])
+    first = cr.plan_card_polish(card, {}, add_review=("review/project-context",),
+                               remove_review=("review/metadata-only",))
+    assert first.action == "polish"
+    second = cr.plan_card_polish(first.new_text, {}, add_review=("review/project-context",),
+                                remove_review=("review/metadata-only",))
+    assert second.action == "noop" and second.new_text is None
+    assert second.followup_changed is False and second.related_pruned == ()
+    assert second.review_added == () and second.review_removed == ()
+
+
+def test_polish_fails_safe_on_marker_in_followup():
+    card = _pcard("value_analysis", ["source/type/value-analysis", "related/project"],
+                  followup="<!-- gc-graph-links:start -->\n- x\n<!-- gc-graph-links:end -->")
+    p = cr.plan_card_polish(card, {})
+    assert p.action == "skip" and p.skip_reason == "Follow-Up:managed_marker_in_section"
+    assert p.new_text is None
+
+
+def test_polish_dryrun_writes_nothing_and_counts(env, monkeypatch):
+    # seed a value_analysis card (already repaired) — polish regenerates its Follow-Up only
+    p = env["vault"] / "Source Notes/Work/VA.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(_card("value_analysis", "value-analysis"), encoding="utf-8")
+    f = _nf("1", "Source Notes/Work/VA.md", document_type="value_analysis")
+    monkeypatch.setattr(km.cg, "_select", lambda repo, vr, args: ({f.note_id: f}, {f.note_id: p.read_text()}))
+    monkeypatch.setattr(km.SourceIndexRepository, "get_source_detail", lambda self, sid, **k: _VA_DETAIL)
+    before = p.read_text()
+    args = _args(env)
+    args.polish = True
+    args.add_review = ["review/project-context"]
+    args.drop_review = ["review/metadata-only"]
+    s = km.run(args)["safe"]
+    assert s["cards_scanned"] == 1 and s["cards_changed"] == 1 and s["followup_updated"] == 1
+    assert s["related_tags_pruned"] == 0  # related/project grounded, kept
+    assert s["review_tags_added"] == 0 and s["review_tags_removed"] == 0  # gated: not justified for VA
+    assert s["cards_modified"] == 0 and s["invariants"]["db_mutations"] == 0 and s["ollama_calls"] == 0
+    assert p.read_text() == before  # dry-run wrote nothing
+
+
+def test_polish_rejects_non_review_tag(env, monkeypatch):
+    _seed(env, monkeypatch, [("Source Notes/Work/VA.md", "value_analysis", _VA_DETAIL)])
+    args = _args(env)
+    args.polish = True
+    args.add_review = ["related/project"]  # not a review/* tag
+    with pytest.raises(km.RepairError):
+        km.run(args)

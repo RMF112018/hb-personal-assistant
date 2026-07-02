@@ -30,18 +30,29 @@ def test_value_analysis_guidance_wording():
     g = sn._pm_guidance("value_analysis")
     assert "value-analysis log" in g["why"][0].lower()
     assert any("pending" in c.lower() or "budget" in c.lower() for c in g["cues"])
+    # Phase 10K.1 Follow-Up: VA-log language (pending/conditional items, #REF/value issues, budget)
+    fu = " ".join(g["followup"]).lower()
+    assert "#ref" in fu and "pending" in fu and "budget" in fu
+    assert "o&m" not in fu and "coverage term" not in fu  # no warranty carry-over
 
 
 def test_specification_template_guidance_wording():
     g = sn._pm_guidance("specification_template")
     assert "template" in g["why"][0].lower()
     assert any("adopted" in c.lower() for c in g["cues"])
+    # Phase 10K.1 Follow-Up: adopted / edited / superseded template question
+    fu = " ".join(g["followup"]).lower()
+    assert "adopted" in fu and "edited" in fu and "superseded" in fu
 
 
 def test_clarification_memo_guidance_wording():
     g = sn._pm_guidance("clarification_memo")
     assert "clarification memo" in g["why"][0].lower()
     assert any("open" in c.lower() or "question" in c.lower() for c in g["cues"])
+    # Phase 10K.1 Follow-Up: responses / owners on open items (not scope/addenda language)
+    fu = " ".join(g["followup"]).lower()
+    assert ("responses" in fu or "owners" in fu) and "clarification" in fu
+    assert "scope inclusions" not in fu and "addenda" not in fu
 
 
 def test_content_tags_map_to_own_slug_not_unknown():

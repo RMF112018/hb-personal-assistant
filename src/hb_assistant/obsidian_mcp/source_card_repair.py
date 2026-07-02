@@ -266,3 +266,132 @@ def plan_card_classification_repair(card_text: str, detail: dict) -> CardRepairP
     return CardRepairPlan("repair", existing, new_type, c.confidence, c.review_required,
                           c.classification_conflict, c.classification_signals, None,
                           tuple(changed), txt)
+
+
+# ===========================================================================================
+# Phase 10K.1 — post-repair polish (Follow-Up + stale related/review tags only)
+# ===========================================================================================
+# The classifier repair (above) corrects document_type / source-type tag / Why / Cues / Source Basis
+# but deliberately does NOT touch the ``## Follow-Up`` section or the topical ``related/*`` tags, so a
+# repaired card can still carry pre-repair Follow-Up prose and a related tag justified only by the old
+# type. This polish regenerates Follow-Up from the (already-repaired) type's deterministic guidance,
+# prunes topical related tags no longer justified, and applies review-tag changes ONLY when justified by
+# the repaired type. Every managed block + identity + source id/sha/path/timestamps + document_type +
+# source/type tag stay untouched. Fail-safe + idempotent, same as the repair planner.
+
+# Review-tag changes are gated on the repaired document_type so ``--add-review``/``--drop-review`` can
+# never become a broad, untyped mutation path when the script is reused (amendment 1).
+_REVIEW_ADD_JUSTIFIED: dict[str, frozenset[str]] = {
+    "specification_template": frozenset({"review/project-context"}),
+}
+_REVIEW_DROP_JUSTIFIED: dict[str, frozenset[str]] = {
+    "specification_template": frozenset({"review/metadata-only"}),
+}
+_RELATED_PREFIX = "related/"
+
+
+def _has_graph_links(card_text: str) -> bool:
+    return ng.REL_BLOCK_BEGIN in card_text
+
+
+def _related_tag_grounded(slug: str, document_type: str, card_text: str) -> bool:
+    """Deterministic grounding for one ``related/*`` tag from the card's own facts (never body-derived)."""
+    if slug == "project":
+        return any(_frontmatter_value(card_text, k) for k in
+                   ("project_number", "project_key", "canonical_project_key", "procore_project_id"))
+    fam = ng._RELATED_TAG_CONTENT.get(slug)
+    if fam is not None:  # topical: grounded iff the repaired type's content family matches
+        return ng._DOCTYPE_CONTENT.get(document_type) == fam
+    return True  # company/person/email/attachment: not disprovable from the card → never prune
+
+
+def prune_ungrounded_related_tags(card_text: str, document_type: str) -> tuple[str, list[str]]:
+    """Drop topical ``related/*`` tags no longer justified by the repaired type.
+
+    No-op (returns the input unchanged) when a ``gc-graph-links`` block is present: those related tags
+    are justified by real relationship links and must not be pruned in this pass (amendment 2).
+    """
+    if _has_graph_links(card_text):
+        return card_text, []
+    ok, tags, _f, _l = ng.parse_frontmatter_tags(card_text)
+    if not ok:
+        return card_text, []
+    ungrounded = [t for t in tags if t.startswith(_RELATED_PREFIX)
+                  and not _related_tag_grounded(t.split("/", 1)[1], document_type, card_text)]
+    if not ungrounded:
+        return card_text, []
+    txt, _r = ng.remove_frontmatter_tags(card_text, ungrounded)
+    return (txt, ungrounded) if txt is not None else (card_text, [])
+
+
+def _justified_review_changes(document_type: str, add: tuple[str, ...],
+                              remove: tuple[str, ...]) -> tuple[list[str], list[str], list[str]]:
+    """Filter requested review-tag add/drop to the subset justified by the repaired type (amendment 1)."""
+    add_j = _REVIEW_ADD_JUSTIFIED.get(document_type, frozenset())
+    drop_j = _REVIEW_DROP_JUSTIFIED.get(document_type, frozenset())
+    add_ok = [t for t in add if t in add_j]
+    drop_ok = [t for t in remove if t in drop_j]
+    skipped = [t for t in add if t not in add_j] + [t for t in remove if t not in drop_j]
+    return add_ok, drop_ok, skipped
+
+
+def adjust_review_tags(card_text: str, add_tags: list[str],
+                       remove_tags: list[str]) -> tuple[str, list[str], list[str]]:
+    """Remove then add review tags (already type-filtered). Idempotent; preserves everything else."""
+    txt, added, removed = card_text, [], []
+    if remove_tags:
+        _ok, existing, _f, _l = ng.parse_frontmatter_tags(txt)
+        present = [t for t in remove_tags if t in existing]
+        if present:
+            nxt, _r = ng.remove_frontmatter_tags(txt, present)
+            if nxt is not None:
+                txt, removed = nxt, present
+    if add_tags:
+        _ok, existing, _f, _l = ng.parse_frontmatter_tags(txt)
+        to_add = [t for t in add_tags if t not in existing]
+        if to_add:
+            nxt, _r = ng.apply_tags(txt, to_add)
+            if nxt is not None:
+                txt, added = nxt, to_add
+    return txt, added, removed
+
+
+@dataclass(frozen=True)
+class CardPolishPlan:
+    action: str  # "polish" | "noop" | "skip"
+    document_type: str
+    skip_reason: str | None
+    followup_changed: bool
+    related_pruned: tuple[str, ...]
+    review_added: tuple[str, ...]
+    review_removed: tuple[str, ...]
+    review_skipped: tuple[str, ...]
+    new_text: str | None
+
+
+def plan_card_polish(card_text: str, detail: dict, *, add_review: tuple[str, ...] = (),
+                     remove_review: tuple[str, ...] = ()) -> CardPolishPlan:
+    """Plan the post-repair polish for one card (Follow-Up + stale related/review tags only)."""
+    document_type = str(_frontmatter_value(card_text, "document_type") or "").strip()
+    guidance = _pm_guidance(document_type)
+
+    # 1. Regenerate Follow-Up from the (already-repaired) type's deterministic guidance.
+    txt, reason = replace_section_body(
+        card_text, "## Follow-Up", [f"- [ ] {f}" for f in guidance["followup"]])
+    if txt is None:
+        return CardPolishPlan("skip", document_type, f"Follow-Up:{reason}", False, (), (), (), (), None)
+    followup_changed = txt != card_text
+
+    # 2. Prune topical related tags no longer justified (skipped entirely when graph links exist).
+    txt, pruned = prune_ungrounded_related_tags(txt, document_type)
+
+    # 3. Apply only the review-tag changes justified by the repaired type.
+    add_ok, drop_ok, review_skipped = _justified_review_changes(
+        document_type, tuple(add_review), tuple(remove_review))
+    txt, added, removed = adjust_review_tags(txt, add_ok, drop_ok)
+
+    if txt == card_text:
+        return CardPolishPlan("noop", document_type, None, False, (), (), (),
+                              tuple(review_skipped), None)
+    return CardPolishPlan("polish", document_type, None, followup_changed, tuple(pruned),
+                          tuple(added), tuple(removed), tuple(review_skipped), txt)

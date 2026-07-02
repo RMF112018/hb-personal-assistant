@@ -38,10 +38,16 @@ import obsidian_source_note_correct_graph as cg  # noqa: E402  (reuse bounded _s
 from hb_assistant.obsidian_mcp import source_card_repair as cr  # noqa: E402
 from hb_assistant.obsidian_mcp.mutations import create_note, sha256_file  # noqa: E402
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository  # noqa: E402
+from hb_assistant.obsidian_mcp.source_note_graph import REVIEW_TAGS  # noqa: E402
 
 _SAFE_COUNT_KEYS = (
     "cards_scanned", "cards_with_conflict", "repairs_planned", "repairs_applicable",
     "review_required", "skipped", "cards_modified", "db_mutations", "ollama_calls",
+)
+_POLISH_SAFE_KEYS = (
+    "cards_scanned", "cards_changed", "followup_updated", "related_tags_pruned",
+    "review_tags_added", "review_tags_removed", "review_tags_skipped", "skipped",
+    "cards_modified", "db_mutations", "ollama_calls",
 )
 
 
@@ -71,6 +77,43 @@ def _select_targets(repo: SourceIndexRepository, vault_root: Path, args: argpars
 def _plan_all(targets: list[tuple[str, str, dict[str, Any]]],
               ) -> list[tuple[str, cr.CardRepairPlan]]:
     return [(rel, cr.plan_card_classification_repair(text, detail)) for rel, text, detail in targets]
+
+
+def _plan_all_polish(targets: list[tuple[str, str, dict[str, Any]]], add_review: tuple[str, ...],
+                     remove_review: tuple[str, ...]) -> list[tuple[str, cr.CardPolishPlan]]:
+    return [(rel, cr.plan_card_polish(text, detail, add_review=add_review, remove_review=remove_review))
+            for rel, text, detail in targets]
+
+
+def _summarize_polish(plans: list[tuple[str, cr.CardPolishPlan]],
+                      ) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
+    skips: Counter[str] = Counter()
+    changed = followup = pruned = added = removed = skipped_rev = 0
+    applicable: list[str] = []
+    rows: list[dict[str, Any]] = []
+    for rel, p in plans:
+        if p.action == "polish":
+            changed += 1
+            applicable.append(rel)
+            followup += 1 if p.followup_changed else 0
+            pruned += len(p.related_pruned)
+            added += len(p.review_added)
+            removed += len(p.review_removed)
+        elif p.action == "skip":
+            skips[p.skip_reason or "unknown"] += 1
+        skipped_rev += len(p.review_skipped)
+        rows.append({"note_rel": rel, "action": p.action, "document_type": p.document_type,
+                     "followup_changed": p.followup_changed, "related_pruned": list(p.related_pruned),
+                     "review_added": list(p.review_added), "review_removed": list(p.review_removed),
+                     "review_skipped": list(p.review_skipped), "skip_reason": p.skip_reason})
+    safe = {
+        "cards_scanned": len(plans), "cards_changed": changed, "followup_updated": followup,
+        "related_tags_pruned": pruned, "review_tags_added": added, "review_tags_removed": removed,
+        "review_tags_skipped": skipped_rev, "skipped": sum(skips.values()),
+        "skips_by_reason": dict(sorted(skips.items())),
+        "cards_modified": 0, "db_mutations": 0, "ollama_calls": 0,
+    }
+    return safe, rows, applicable
 
 
 def _summarize(plans: list[tuple[str, cr.CardRepairPlan]], *, include_review: bool,
@@ -133,6 +176,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise RepairError("config vault_root does not match --vault-path")
     if not (args.project_number or args.project_key or args.procore_project_id):
         raise RepairError("classifier repair requires bounded project selection")
+    if args.polish:
+        bad = [t for t in (args.add_review or []) + (args.drop_review or []) if t not in REVIEW_TAGS]
+        if bad:
+            raise RepairError("--add-review/--drop-review accept review/* tags only")
     if args.apply:
         _apply_preflight(args, config)
 
@@ -141,9 +188,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     q0, p0 = ag._queue_counts(args.db_path)
 
     targets = _select_targets(repo, vault_root, args)
-    plans = _plan_all(targets)
+    if args.polish:
+        plans = _plan_all_polish(targets, tuple(args.add_review or ()), tuple(args.drop_review or ()))
+        safe, rows, applicable = _summarize_polish(plans)
+    else:
+        plans = _plan_all(targets)
+        safe, rows, applicable = _summarize(plans, include_review=args.include_review_required)
     plan_by_rel = dict(plans)
-    safe, rows, applicable = _summarize(plans, include_review=args.include_review_required)
 
     if args.apply and applicable:
         backup_root = Path(args.backup_dir) / "classifier_repair"
@@ -221,10 +272,40 @@ def render_repair_report(safe: dict[str, Any]) -> str:
     ])
 
 
+def render_polish_report(safe: dict[str, Any]) -> str:
+    """Whitelist renderer for the polish pass — ONLY count/enum keys (no Follow-Up text can leak)."""
+    def g(k: str) -> Any:
+        return safe.get(k, "n/a")
+
+    inv = safe.get("invariants") if isinstance(safe.get("invariants"), dict) else {}
+    skips = safe.get("skips_by_reason") or {}
+    return "\n".join([
+        "# Phase 10K.1 — Post-Repair Polish — Review Report (safe / count-only)",
+        "",
+        f"- mode: {g('mode')}",
+        f"- project_number: {g('project_number')}",
+        "",
+        "## Counts",
+        f"- cards_scanned: {g('cards_scanned')}, cards_changed: {g('cards_changed')}",
+        f"- followup_updated: {g('followup_updated')}, related_tags_pruned: {g('related_tags_pruned')}",
+        f"- review_tags_added: {g('review_tags_added')}, review_tags_removed: {g('review_tags_removed')}, "
+        f"review_tags_skipped: {g('review_tags_skipped')}",
+        f"- skipped: {g('skipped')}, cards_modified: {g('cards_modified')}, "
+        f"db_mutations: {g('db_mutations')}, ollama_calls: {g('ollama_calls')}",
+        f"- skips: {', '.join(f'{k}: {v}' for k, v in sorted(skips.items())) if skips else 'none'}",
+        "",
+        "## Invariants",
+        f"- db_mutations: {inv.get('db_mutations', 'n/a')}, queue_delta: {inv.get('queue_delta', 'n/a')}, "
+        f"created: {inv.get('created', 'n/a')}, deleted: {inv.get('deleted', 'n/a')}",
+        "",
+    ])
+
+
 def _safe_only(safe: dict[str, Any]) -> dict[str, Any]:
     """Project to count/enum keys only — a belt-and-braces guard against leaking into safe JSON."""
-    allow = set(_SAFE_COUNT_KEYS) | {"mode", "project_number", "invariants", "repairs_by_existing_type",
-                                     "repairs_by_proposed_type", "skips_by_reason"}
+    allow = (set(_SAFE_COUNT_KEYS) | set(_POLISH_SAFE_KEYS)
+             | {"mode", "project_number", "invariants", "repairs_by_existing_type",
+                "repairs_by_proposed_type", "skips_by_reason"})
     return {k: v for k, v in safe.items() if k in allow}
 
 
@@ -233,15 +314,18 @@ def _write_outputs(args: argparse.Namespace, out: dict[str, Any]) -> None:
     if args.json_output:
         Path(args.json_output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.json_output).write_text(json.dumps(safe, indent=2, sort_keys=True), encoding="utf-8")
+    renderer = render_polish_report if args.polish else render_repair_report
     if args.markdown_report:
         Path(args.markdown_report).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.markdown_report).write_text(render_repair_report(out["safe"]), encoding="utf-8")
+        Path(args.markdown_report).write_text(renderer(out["safe"]), encoding="utf-8")
     ls = args.local_sensitive_dir
     if not ls and args.json_output:
         ls = str(Path(args.json_output).parent / "local-sensitive")
     if ls:
         Path(ls).mkdir(parents=True, exist_ok=True)
-        (Path(ls) / "phase10k-classifier-repair-detail-local-sensitive.json").write_text(
+        detail_name = ("phase10k1-polish-detail-local-sensitive.json" if args.polish
+                       else "phase10k-classifier-repair-detail-local-sensitive.json")
+        (Path(ls) / detail_name).write_text(
             json.dumps({"rows": out["detail_rows"]}, indent=2, sort_keys=True), encoding="utf-8")
 
 
@@ -261,6 +345,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-notes", type=int, default=100000)  # cg._select/_matches_project compatibility
     p.add_argument("--include-review-required", action="store_true",
                    help="also apply medium-confidence (weak-base) repairs (default: high-confidence only)")
+    p.add_argument("--polish", action="store_true",
+                   help="post-repair polish: regenerate Follow-Up + prune stale related/review tags")
+    p.add_argument("--add-review", action="append", default=None,
+                   help="review/* tag to add where justified by the repaired type (repeatable)")
+    p.add_argument("--drop-review", action="append", default=None,
+                   help="review/* tag to drop where justified by the repaired type (repeatable)")
     p.add_argument("--json-output", default=None)
     p.add_argument("--markdown-report", default=None)
     p.add_argument("--local-sensitive-dir", default=None)
