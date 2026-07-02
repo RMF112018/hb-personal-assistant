@@ -1,0 +1,11 @@
+{
+  "persisted_path_count": 1,
+  "shadow_path_count": 1,
+  "matched_path_count": 1,
+  "mismatched_path_count": 0,
+  "path_rank": 1,
+  "activity_count_on_path": 45,
+  "relationship_count_on_path": 44,
+  "terminal_activity_id_hash_or_redacted": "5cca4c1f4f61afb2",
+  "diff_status": "pass"
+}

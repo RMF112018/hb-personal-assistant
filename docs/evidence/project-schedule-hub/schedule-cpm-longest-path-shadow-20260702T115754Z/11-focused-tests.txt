@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0 -- /Users/bobbyfetting/hb-personal-assistant/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-metric-formula-proof-20260702T103317Z
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collecting ... collected 15 items
+
+tests/test_schedule_cpm_shadow_longest_path.py::test_linear_abc_hand_calculated PASSED [  6%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_parallel_branches_hand_calculated PASSED [ 13%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_equal_duration_tie_break_hand_calculated PASSED [ 20%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_zero_duration_milestone_hand_calculated PASSED [ 26%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_lag_driven_controlling_predecessor_hand_calculated PASSED [ 33%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_ss_relationship_hand_calculated PASSED [ 40%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_empty_graph_not_computable PASSED [ 46%]
+tests/test_schedule_cpm_shadow_longest_path.py::test_shadow_matches_production_parity_secondary PASSED [ 53%]
+tests/test_schedule_cpm_formula_trace_export.py::test_export_writes_six_files_and_is_mutation_proof PASSED [ 60%]
+tests/test_schedule_cpm_formula_trace_export.py::test_latest_resolves_lineage_not_per_stage_mix PASSED [ 66%]
+tests/test_schedule_cpm_formula_trace_export.py::test_incomplete_chain_exit_code_3 PASSED [ 73%]
+tests/test_schedule_cpm_formula_trace_export.py::test_live_db_rejected_exit_code_2 PASSED [ 80%]
+tests/test_schedule_cpm_formula_trace_export.py::test_perturbed_persisted_value_reports_mismatch PASSED [ 86%]
+tests/test_schedule_cpm_formula_trace_export.py::test_allow_mismatches_returns_zero PASSED [ 93%]
+tests/test_schedule_cpm_formula_trace_export.py::test_technical_flag_adds_repo_head_only_in_summary PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 15 passed, 1 warning in 23.90s ========================

@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--cpm-run-id")
     parser.add_argument("--allow-partial-chain", action="store_true")
     parser.add_argument("--allow-mismatches", action="store_true")
+    parser.add_argument("--allow-missing-longest-path", action="store_true")
     parser.add_argument("--tolerance", type=float, default=0.0)
     parser.add_argument("--confirm-clean-copy", action="store_true")
     parser.add_argument("--allow-custom-copy-path", action="store_true")
@@ -54,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
             latest=args.latest,
             cpm_run_id=args.cpm_run_id,
             allow_partial_chain=args.allow_partial_chain,
+            allow_missing_longest_path=args.allow_missing_longest_path,
             tolerance=args.tolerance,
             technical=args.technical,
         )
