@@ -1,0 +1,11 @@
+# obsidian_source_root_availability_probe options (sanitized)
+                                                  --source-root SOURCE_ROOT
+  --source-root SOURCE_ROOT
+  --include-subroot INCLUDE_SUBROOT
+  --max-files MAX_FILES
+  --max-dirs MAX_DIRS
+  --read-probe-limit READ_PROBE_LIMIT
+  --confirm-read-probe-local-files
+  --json-output JSON_OUTPUT
+  --markdown-report MARKDOWN_REPORT
+  --local-sensitive-dir LOCAL_SENSITIVE_DIR

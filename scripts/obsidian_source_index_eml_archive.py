@@ -33,6 +33,7 @@ import obsidian_source_first_indexing_dryrun as dryrun  # noqa: E402
 from hb_assistant.obsidian_mcp import source_archive_paths as sap  # noqa: E402
 from hb_assistant.obsidian_mcp import source_email_archive as sea  # noqa: E402
 from hb_assistant.obsidian_mcp import source_project_identity as spi  # noqa: E402
+from hb_assistant.obsidian_mcp import source_subroot as ss  # noqa: E402
 from hb_assistant.obsidian_mcp.mutations import create_note, sha256_file  # noqa: E402
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository  # noqa: E402
 from hb_assistant.obsidian_mcp.source_indexer import (  # noqa: E402
@@ -100,11 +101,31 @@ def _is_temp(name: str) -> bool:
     return name.startswith(("~$", ".")) or low.endswith(_SKIP_SUFFIX) or low == "icon\r"
 
 
-def _select_eml(root: Path, *, max_files: int) -> dict[str, Any]:
-    """Deterministic selection of readable `.eml` files under ``root`` only (bounded)."""
+def _select_eml(root: Path, *, max_files: int,
+                include_subroots: list[Path] | None = None) -> dict[str, Any]:
+    """Deterministic selection of readable `.eml` files under ``root`` only (bounded).
+
+    When ``include_subroots`` is given, traversal starts AT each bounded subroot (symlink-safe,
+    containment-checked) instead of the project root.
+    """
     seen = evicted = skipped_temp = skipped_nondoc = walked = 0
+    inc_listable = inc_failed = inc_containment_rejected = 0
     found: list[Path] = []
-    for p in sorted(root.rglob("*"), key=lambda x: str(x)):
+    if include_subroots is not None:
+        candidates: list[Path] = []
+        for base in include_subroots:
+            if base.is_symlink():
+                inc_failed += 1
+                continue
+            files, st = ss.walk_files(base, root, max_files=_MAX_WALK)
+            inc_listable += 1 if st["listable"] else 0
+            inc_failed += 0 if st["listable"] else 1
+            inc_containment_rejected += st["containment_rejected"]
+            candidates.extend(files)
+        walk_iter: list[Path] = sorted(set(candidates), key=str)
+    else:
+        walk_iter = sorted(root.rglob("*"), key=lambda x: str(x))
+    for p in walk_iter:
         if walked >= _MAX_WALK:
             break
         if p.is_dir():
@@ -123,7 +144,9 @@ def _select_eml(root: Path, *, max_files: int) -> dict[str, Any]:
         found.append(p)
     selected = found[:max_files]
     return {"readable_seen": seen, "cloud_evicted": evicted, "skipped_temp": skipped_temp,
-            "skipped_nondoc": skipped_nondoc, "selected": selected}
+            "skipped_nondoc": skipped_nondoc, "selected": selected,
+            "include_subroots_listable": inc_listable, "include_subroots_failed": inc_failed,
+            "include_subroots_containment_rejected": inc_containment_rejected}
 
 
 def _folder_bucket(rel: str) -> str:
@@ -184,9 +207,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if not (source_root == base or base in source_root.parents):
         raise EmlArchiveError("source root is not under the configured external root")
 
+    try:
+        subroots = [ss.validate_subroot(source_root, s) for s in (args.include_subroot or [])]
+    except ss.SubrootError as exc:
+        raise EmlArchiveError(f"invalid --include-subroot: {exc}") from None
+
     ident = _resolve_identity(source_root, args.db_path, args)
     repo = SourceIndexRepository(args.db_path)
-    sel = _select_eml(source_root, max_files=args.max_eml)
+    sel = _select_eml(source_root, max_files=args.max_eml, include_subroots=subroots or None)
     selected = sel["selected"]
 
     by_bucket: dict[str, int] = {}
@@ -200,6 +228,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "project_number": ident.project_number, "project_key": ident.project_key,
         "procore_project_id": ident.procore_project_id,
         "project_match_basis": list(ident.match_basis),
+        "include_subroots_requested": len(subroots),
+        "include_subroots_listable": sel["include_subroots_listable"],
+        "include_subroots_failed": sel["include_subroots_failed"],
+        "include_subroots_containment_rejected": sel["include_subroots_containment_rejected"],
         "eml_found": sel["readable_seen"], "cloud_evicted": sel["cloud_evicted"],
         "skipped_temp": sel["skipped_temp"], "skipped_non_eml": sel["skipped_nondoc"],
         "eml_selected": len(selected), "by_folder_bucket": dict(sorted(by_bucket.items())),
@@ -371,6 +403,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vault-path", required=True)
     p.add_argument("--source-root", required=True)
     p.add_argument("--root-key", default="syn-work")
+    p.add_argument("--include-subroot", action="append", default=[],
+                   help="bounded relative subroot under --source-root (repeatable); starts traversal "
+                        "at the subroot so locally-available descendants are selectable even when the "
+                        "project root fails root-level enumeration")
     p.add_argument("--max-eml", type=int, default=10)
     p.add_argument("--backup-dir", default=None)
     p.add_argument("--evidence-dir", default=None)

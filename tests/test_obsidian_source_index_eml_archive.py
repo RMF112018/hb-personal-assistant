@@ -249,3 +249,19 @@ def test_module_has_no_ollama_or_scan_calls():
     for forbidden in ("OllamaChatClient", "generate_json", "generate_text", "list_ollama_models",
                       "scan_source_root", "drain_queue", "enqueue_event", "claim_queued"):
         assert forbidden not in src, forbidden
+
+
+def test_include_subroot_selects_eml_under_subroot(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    rc, out = _run(_args(env, include_subroot="20_Construction"), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_subroots_requested"] == 1 and out["include_subroots_listable"] == 1
+    assert out["include_subroots_failed"] == 0
+    assert out["project_number"] == "23-435-01"  # identity still from source-root
+    assert out["eml_selected"] >= 1              # .eml live under 20_Construction
+    assert out["archive_notes_created"] == 0 and out["ollama_calls"] == 0  # dry-run writes nothing
+
+
+def test_include_subroot_escape_refused(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    assert _run(_args(env, include_subroot="../../escape"), capsys)[0] == 3

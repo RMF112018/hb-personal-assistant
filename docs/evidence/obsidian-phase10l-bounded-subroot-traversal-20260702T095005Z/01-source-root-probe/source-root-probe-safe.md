@@ -1,0 +1,31 @@
+# Source-root availability probe (count-only)
+
+- candidate_doc_ext_count: 0
+- candidate_doc_ext_count_under_include_subroots: 0
+- candidate_eml_count: 0
+- candidate_eml_count_under_include_subroots: 0
+- cloud_placeholder_or_unavailable_count: 0
+- containment_rejected: 0
+- directories_seen: 0
+- files_read_probe_failed: 0
+- files_read_probe_ok: 0
+- files_seen: 0
+- files_seen_under_include_subroots: 0
+- files_stat_failed: 0
+- files_stat_ok: 0
+- include_subroots_failed: 1
+- include_subroots_listable: 0
+- include_subroots_requested: 1
+- interrupted_system_call_count: 2
+- other_error_count: 0
+- permission_error_count: 0
+- read_probe_mode: stat_only
+- root_exists: True
+- root_is_dir: True
+- root_listable: False
+- source_root_exists: True
+- source_root_listable: False
+- symlink_dirs_skipped: 0
+- temp_skipped_count: 0
+- unavailable_or_placeholder_count: 0
+- unsupported_ext_count: 0

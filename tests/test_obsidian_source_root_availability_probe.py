@@ -114,3 +114,36 @@ def test_read_probe_requires_confirm_flag(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     rc = mod.main(["--source-root", str(root), "--read-probe-limit", "5"])  # no confirm flag
     assert rc == 3
+
+
+def test_include_subroot_traversed_when_root_not_listable(tmp_path: Path,
+                                                          monkeypatch: pytest.MonkeyPatch) -> None:
+    mod = _load()
+    root = tmp_path / "proj"
+    sub = root / "20_Construction" / "Permits"
+    sub.mkdir(parents=True)
+    (sub / "a.pdf").write_text("a", encoding="utf-8")
+    real = mod._scandir
+
+    def _fake(path):  # root won't enumerate, but the subroot still does
+        if os.path.abspath(os.fspath(path)) == os.path.abspath(str(root)):
+            return None, OSError(errno.EINTR, "Interrupted system call")
+        return real(path)
+
+    monkeypatch.setattr(mod, "_scandir", _fake)
+    base = mod.validate_subroot(Path(str(root)), "20_Construction/Permits")
+    out = mod.probe(str(root), max_files=100, max_dirs=1000, read_probe_limit=0,
+                    allow_read_probe=False, include_subroots=[base])
+    s = out["safe"]
+    assert s["source_root_listable"] is False
+    assert s["include_subroots_requested"] == 1 and s["include_subroots_listable"] == 1
+    assert s["candidate_doc_ext_count_under_include_subroots"] >= 1
+    assert s["files_seen_under_include_subroots"] >= 1
+
+
+def test_include_subroot_absolute_or_dotdot_refused(tmp_path: Path) -> None:
+    mod = _load()
+    root = tmp_path / "proj"
+    root.mkdir()
+    assert mod.main(["--source-root", str(root), "--include-subroot", "/etc"]) == 3
+    assert mod.main(["--source-root", str(root), "--include-subroot", "../escape"]) == 3

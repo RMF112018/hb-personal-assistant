@@ -1,0 +1,23 @@
+## Branch
+fix/obsidian-phase10l-a-db-vault-reconcile-archive-routing-20260702T075957Z
+
+## HEAD
+dd3baa9e0085a958969d89c68a50d77d56d1aad5
+
+## Status
+ M scripts/obsidian_source_index_eml_archive.py
+ M scripts/obsidian_source_index_project_corpus.py
+ M scripts/obsidian_source_root_availability_probe.py
+ M tests/test_obsidian_source_index_eml_archive.py
+ M tests/test_obsidian_source_project_corpus.py
+ M tests/test_obsidian_source_root_availability_probe.py
+?? .10l_stamp
+?? docs/evidence/obsidian-phase10l-bounded-subroot-traversal-20260702T095005Z/
+?? src/hb_assistant/obsidian_mcp/source_subroot.py
+?? tests/test_obsidian_source_subroot.py
+
+## Python
+Python 3.14.5
+
+## Posture
+Read-only bounded-subroot audit. Stat-only probe (no byte reads, no hydration). No DB apply. No vault write. No source mutation.

@@ -42,3 +42,16 @@ directory listing materializes locally, then re-run — with no code change — 
    placeholders are never opened).
 3. Re-run the project-corpus and email-archive dry-runs to obtain nonzero candidate counts **before** any
    authorized apply.
+
+## CORRECTION (2026-07-02, superseded by the bounded-subroot pass)
+
+The "availability blocker" conclusion above is **too strong** and is corrected here (original text
+preserved above for the record). Root-level EINTR only means the **root** will not enumerate — it does
+**not** prove every descendant is unavailable. Path-targeted `lstat` (no hydration) subsequently
+confirmed that a **named construction descendant exists** under the dormant root, and Bobby's Finder
+evidence shows locally-available descendant files. The correct remedy is **bounded subroot traversal**
+(start the walk at an explicit, contained, symlink-safe descendant, bypassing the failing root scandir),
+which has now been implemented (`--include-subroot` on the probe and both indexers, plus
+`src/hb_assistant/obsidian_mcp/source_subroot.py`). See the superseding evidence bundle
+`docs/evidence/obsidian-phase10l-bounded-subroot-traversal-*/` for the corrected finding and live
+count-only results.

@@ -28,6 +28,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT / "src"))
+
+from hb_assistant.obsidian_mcp.source_subroot import (  # noqa: E402
+    SubrootError,
+    is_contained,
+    validate_subroot,
+)
+
 # Mirrors scripts/obsidian_source_index_project_corpus.py::_DOC_EXTS and _EML_EXTS (kept in sync).
 _DOC_EXTS = frozenset({
     ".pdf", ".doc", ".docx", ".rtf", ".txt", ".md", ".xls", ".xlsx", ".xlsm", ".xlsb", ".csv",
@@ -84,17 +94,24 @@ def _bump_error(counts: dict[str, int], exc: OSError) -> None:
 
 
 def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: int,
-          allow_read_probe: bool) -> dict[str, Any]:
-    """Resilient read-only walk. Returns {'safe': count-only, 'detail': samples/errors}."""
+          allow_read_probe: bool, include_subroots: list[Path] | None = None) -> dict[str, Any]:
+    """Resilient read-only walk. Returns {'safe': count-only, 'detail': samples/errors}.
+
+    When ``include_subroots`` is given, the file walk starts AT each bounded subroot (never the failing
+    root), so locally-available descendants are seen even when the root won't enumerate. Symlink dirs are
+    never followed; every candidate file is re-checked to stay lexically inside ``source_root``.
+    """
     counts: dict[str, int] = {
         "directories_seen": 0, "files_seen": 0, "files_stat_ok": 0, "files_stat_failed": 0,
         "files_read_probe_ok": 0, "files_read_probe_failed": 0, "candidate_doc_ext_count": 0,
         "candidate_eml_count": 0, "unsupported_ext_count": 0, "temp_skipped_count": 0,
         "cloud_placeholder_or_unavailable_count": 0, "interrupted_system_call_count": 0,
         "permission_error_count": 0, "other_error_count": 0,
+        "symlink_dirs_skipped": 0, "containment_rejected": 0,
     }
     detail: dict[str, list[str]] = {"error_dirs": [], "placeholder_samples": [],
                                     "candidate_samples": [], "read_probe_failures": []}
+    root_path = Path(source_root)
 
     root_exists = os.path.lexists(source_root)
     try:
@@ -107,8 +124,24 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
         _bump_error(counts, root_err)
         detail["error_dirs"].append(f"<root>: errno={root_err.errno}")
 
+    subroot_mode = include_subroots is not None
+    inc_requested = len(include_subroots) if include_subroots else 0
+    inc_listable = inc_failed = 0
     stack: list[tuple[str, list[os.DirEntry[str]]]] = []
-    if root_listable and root_entries is not None:
+    if subroot_mode:
+        for base in include_subroots or []:
+            if base.is_symlink():  # symlink subroot is unusable/unsafe → report, skip
+                inc_failed += 1
+                continue
+            entries, err = _scandir(os.fspath(base))
+            if err is not None or entries is None:
+                if err is not None:
+                    _bump_error(counts, err)
+                inc_failed += 1
+                continue
+            inc_listable += 1
+            stack.append((os.fspath(base), entries))
+    elif root_listable and root_entries is not None:
         stack.append((source_root, root_entries))
 
     while stack and counts["files_seen"] < max_files and counts["directories_seen"] <= max_dirs:
@@ -117,6 +150,13 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
             if counts["files_seen"] >= max_files:
                 break
             try:
+                if entry.is_symlink():  # never follow symlinks (dir or file)
+                    try:
+                        if entry.is_dir(follow_symlinks=True):
+                            counts["symlink_dirs_skipped"] += 1
+                    except OSError:
+                        pass
+                    continue
                 is_dir = entry.is_dir(follow_symlinks=False)
             except OSError as exc:
                 _bump_error(counts, exc)
@@ -137,6 +177,9 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
 
             # regular file
             counts["files_seen"] += 1
+            if not is_contained(root_path, Path(entry.path)):
+                counts["containment_rejected"] += 1
+                continue
             if _is_temp(entry.name):
                 counts["temp_skipped_count"] += 1
                 continue
@@ -176,8 +219,19 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
                         detail["read_probe_failures"].append(f"{entry.name}: errno={exc.errno}")
 
     safe = {
+        # legacy field names (back-compat) reflect whatever was walked (root OR subroots)
         "root_exists": bool(root_exists), "root_is_dir": bool(root_is_dir),
         "root_listable": bool(root_listable),
+        # spec field names (Phase 10L bounded-subroot audit)
+        "source_root_exists": bool(root_exists), "source_root_listable": bool(root_listable),
+        "include_subroots_requested": inc_requested,
+        "include_subroots_listable": inc_listable, "include_subroots_failed": inc_failed,
+        "files_seen_under_include_subroots": counts["files_seen"] if subroot_mode else 0,
+        "candidate_doc_ext_count_under_include_subroots":
+            counts["candidate_doc_ext_count"] if subroot_mode else 0,
+        "candidate_eml_count_under_include_subroots":
+            counts["candidate_eml_count"] if subroot_mode else 0,
+        "unavailable_or_placeholder_count": counts["cloud_placeholder_or_unavailable_count"],
         "read_probe_mode": "byte_read" if allow_read_probe else "stat_only",
         **counts,
     }
@@ -187,6 +241,9 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Read-only source-root availability probe (stat-only default).")
     p.add_argument("--source-root", required=True)
+    p.add_argument("--include-subroot", action="append", default=[],
+                   help="bounded relative subroot under --source-root (repeatable); walk starts at the "
+                        "subroot so locally-available descendants are seen even when the root won't list")
     p.add_argument("--max-files", type=int, default=500)
     p.add_argument("--max-dirs", type=int, default=20000)
     p.add_argument("--read-probe-limit", type=int, default=0)
@@ -202,8 +259,14 @@ def main(argv: list[str] | None = None) -> int:
             raise ProbeError(
                 "--read-probe-limit>0 requires --confirm-read-probe-local-files (byte-read is opt-in; "
                 "stat-only is the default and only fully-local files are ever opened).")
+        try:
+            subroots = [validate_subroot(Path(args.source_root), s)
+                        for s in (args.include_subroot or [])]
+        except SubrootError as exc:
+            raise ProbeError(f"invalid --include-subroot: {exc}") from None
         out = probe(args.source_root, max_files=args.max_files, max_dirs=args.max_dirs,
-                    read_probe_limit=args.read_probe_limit, allow_read_probe=allow_read_probe)
+                    read_probe_limit=args.read_probe_limit, allow_read_probe=allow_read_probe,
+                    include_subroots=subroots or None)
     except ProbeError as exc:
         print(json.dumps({"refused": True, "reason": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
         return 3

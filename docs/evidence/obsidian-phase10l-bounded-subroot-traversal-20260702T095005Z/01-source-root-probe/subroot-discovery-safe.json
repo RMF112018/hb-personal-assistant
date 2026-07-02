@@ -1,0 +1,8 @@
+{
+  "candidate_subroots_probed": 7,
+  "existing_but_dormant_eintr": 1,
+  "listable": 0,
+  "missing": 6,
+  "note": "lstat resolves names without hydration; scandir of dormant dirs returns EINTR; children of a dormant dir are unreachable (ENOENT)",
+  "other_error": 0
+}

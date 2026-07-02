@@ -1,0 +1,43 @@
+{
+  "already_indexed": 0,
+  "archive_notes_created": 0,
+  "archive_notes_updated": 0,
+  "attachments_total": 0,
+  "by_folder_bucket": {},
+  "cloud_evicted": 0,
+  "emails_with_attachments": 0,
+  "eml_found": 0,
+  "eml_parse_failed": 0,
+  "eml_parsed": 0,
+  "eml_selected": 0,
+  "generated_before": {
+    "not_generated": 195
+  },
+  "generated_note_delta": 0,
+  "graph_facts_written": 0,
+  "html_body_present": 0,
+  "include_subroots_containment_rejected": 0,
+  "include_subroots_failed": 1,
+  "include_subroots_listable": 0,
+  "include_subroots_requested": 1,
+  "mode": "dry-run",
+  "ollama_calls": 0,
+  "plain_body_present": 0,
+  "procore_project_id": "2525840",
+  "project_key": "tropical",
+  "project_match_basis": [
+    "folder_project_number",
+    "procore_project_number",
+    "procore_project_key"
+  ],
+  "project_number": "23-435-01",
+  "project_number_derived": 0,
+  "queue_delta": 0,
+  "skipped_non_eml": 0,
+  "skipped_temp": 0,
+  "skipped_unavailable": 0,
+  "source_cards_generated": 0,
+  "source_cards_updated": 0,
+  "source_root_confirmed": true,
+  "vault_markdown_delta": 0
+}
