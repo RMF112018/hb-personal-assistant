@@ -1,0 +1,34 @@
+{
+  "status": "pass",
+  "stage_status": {
+    "forward_pass": "pass",
+    "backward_pass": "pass",
+    "float": "pass",
+    "criticality": "pass",
+    "longest_path": "pass",
+    "source_field_exclusion": "pass"
+  },
+  "activity_match_summary": {
+    "matched": 1507,
+    "total": 1507,
+    "mismatched": 0
+  },
+  "relationship_match_summary": {
+    "matched": 3921,
+    "total": 3921,
+    "mismatched": 0
+  },
+  "longest_path": {
+    "diff_status": "pass",
+    "persisted_path_count": 1,
+    "shadow_path_count": 1,
+    "matched_path_count": 1,
+    "mismatched_path_count": 0,
+    "path_mismatches": [],
+    "path_duration_basis": "path_finish_offset_days minus path_start_offset_days on the backtraced path (not sum of activity durations)"
+  },
+  "source_field_exclusion": {
+    "status": "pass",
+    "violations": []
+  }
+}

@@ -1,0 +1,38 @@
+branch=hardening/schedule-cpm-longest-path-shadow-20260702T115754Z
+head=225572dbf9d89535170cf00d42ed3d644a2502a0
+
+status:
+?? docs/evidence/project-schedule-hub/schedule-cpm-longest-path-shadow-live-query-20260702T121705Z/
+?? scripts/dev_schedule_cpm_longest_path_query_evidence.py
+
+recent commits:
+225572db chore(schedule): remove duplicate evidence artifacts from longest-path commit
+91642b4c chore(schedule): validate cpm longest path formula trace
+4e8e28f7 docs(schedule): add sanitized live formula proof evidence
+984aa871 chore(schedule): prove schedule metric formulas
+9ed1a159 Merge pull request #264 from RMF112018/hardening/schedule-cpm-formula-trace-20260702T093539Z
+317e595b chore(schedule): allowlist cpm formula trace evidence artifacts
+9bf2b4a2 chore(schedule): add cpm formula trace evidence export
+6efa695b chore(schedule): harden clean-db validation preflight
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+899a35eb fix(obsidian): polish Follow-Up + stale related tags after classifier repair
+78d08073 Merge pull request #263 from RMF112018/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+91c9a399 feat(schedule): link second-brain schedule notes
+d8e431be Merge pull request #257 from RMF112018/feat/obsidian-phase10j-local-enrichment-workflow-20260701T183134Z
+ae297f3d fix(obsidian): repair deterministic source classification provenance
+004b28ab Merge pull request #261 from RMF112018/feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z
+cb914dfe Merge pull request #260 from RMF112018/fix/schedule-named-baseline-green-gate-phase18a-20260701T210726Z
+435057a4 feat(schedule): generate second-brain schedule comparison notes
+d481a042 docs(obsidian): Phase 10J summary-quality hardening evidence
+dbddc488 docs(obsidian): Phase 10J local summarization correction evidence
+f766fa97 docs(obsidian): add Phase 10J live enrichment evidence
+66a8face feat(obsidian): add local enrichment workflow
+1aa070bf fix(schedule): restore named-baseline regression gate
+ef00fc73 Merge pull request #259 from RMF112018/feature/schedule-review-dashboard-portfolio-rollup-phase18-20260701T202019Z
+6a9857ba Add schedule review dashboard and portfolio rollup (Phase 18).
+19d37316 Merge pull request #258 from RMF112018/feature/schedule-review-workbench-action-loop-phase17-20260701T192327Z
+0430c321 Add schedule review workbench action loop for operator dispositions (Phase 17).
+d4220fce Merge pull request #256 from RMF112018/feature/schedule-controls-quality-expansion-phase16-20260701T183645Z
+f519298a Add schedule quality controls expansion for PM-facing controls (Phase 16).
+e332e25f Merge pull request #255 from RMF112018/feature/schedule-identity-review-trust-gating-phase15-20260701T165632Z
+7a02894e Merge pull request #254 from RMF112018/feat/obsidian-phase10i-graph-review-controls-20260701T164455Z

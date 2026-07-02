@@ -1,0 +1,14 @@
+{
+  "mode": "schedule_cpm_formula_trace",
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "formula_version": "2026-07-02.cpm-longest-path-shadow.v2",
+  "diff_status": "pass",
+  "activity_count": 1507,
+  "relationship_count": 3921,
+  "chain_resolution": {
+    "chain_id_hash": "1e0c21b394efb7f2",
+    "resolution_mode": "latest_terminal_criticality",
+    "status": "complete",
+    "lineage_valid": true
+  }
+}

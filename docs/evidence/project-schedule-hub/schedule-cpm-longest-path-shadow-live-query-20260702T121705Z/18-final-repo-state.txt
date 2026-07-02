@@ -1,0 +1,42 @@
+branch=hardening/schedule-cpm-longest-path-shadow-20260702T115754Z
+head=225572dbf9d89535170cf00d42ed3d644a2502a0
+
+status:
+ M src/hb_assistant/construction/schedule_clean_db/artifact_scan_allowlist.json
+?? docs/evidence/project-schedule-hub/schedule-cpm-longest-path-shadow-live-query-20260702T121705Z/
+?? scripts/dev_schedule_cpm_longest_path_query_evidence.py
+
+head stat:
+225572db chore(schedule): remove duplicate evidence artifacts from longest-path commit
+ .../cpm-activity-formula-trace.jsonl               |   2 -
+ .../cpm-formula-trace/cpm-formula-audit.md         |  43 ---------
+ .../cpm-longest-path-formula-trace.jsonl           |   1 -
+ .../cpm-relationship-formula-trace.jsonl           |   1 -
+ .../cpm-formula-trace/cpm-run-summary.json         |  51 -----------
+ .../cpm-validation-recompute-diff.json             |  89 ------------------
+ .../scan-out.json                                  | 102 ---------------------
+ .../13-artifact-scan.md                            |   0
+ .../scan-out.json                                  | 102 ---------------------
+ 9 files changed, 391 deletions(-)
+
+recent commits:
+225572db chore(schedule): remove duplicate evidence artifacts from longest-path commit
+91642b4c chore(schedule): validate cpm longest path formula trace
+4e8e28f7 docs(schedule): add sanitized live formula proof evidence
+984aa871 chore(schedule): prove schedule metric formulas
+9ed1a159 Merge pull request #264 from RMF112018/hardening/schedule-cpm-formula-trace-20260702T093539Z
+317e595b chore(schedule): allowlist cpm formula trace evidence artifacts
+9bf2b4a2 chore(schedule): add cpm formula trace evidence export
+6efa695b chore(schedule): harden clean-db validation preflight
+53c5a977 Merge pull request #262 from RMF112018/fix/obsidian-phase10k-classifier-provenance-20260701T214809Z
+899a35eb fix(obsidian): polish Follow-Up + stale related tags after classifier repair
+78d08073 Merge pull request #263 from RMF112018/feature/schedule-note-graph-linking-phase20-20260702T064854Z
+91c9a399 feat(schedule): link second-brain schedule notes
+d8e431be Merge pull request #257 from RMF112018/feat/obsidian-phase10j-local-enrichment-workflow-20260701T183134Z
+ae297f3d fix(obsidian): repair deterministic source classification provenance
+004b28ab Merge pull request #261 from RMF112018/feature/schedule-comparison-second-brain-notes-phase19-20260701T211835Z
+cb914dfe Merge pull request #260 from RMF112018/fix/schedule-named-baseline-green-gate-phase18a-20260701T210726Z
+435057a4 feat(schedule): generate second-brain schedule comparison notes
+d481a042 docs(obsidian): Phase 10J summary-quality hardening evidence
+dbddc488 docs(obsidian): Phase 10J local summarization correction evidence
+f766fa97 docs(obsidian): add Phase 10J live enrichment evidence

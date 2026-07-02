@@ -1,0 +1,15 @@
+{
+  "db_path_redacted": true,
+  "db_path_hint": "local-sensitive/clean-db/<redacted-copy>",
+  "db_open_mode": "read_only",
+  "schema_version": 98,
+  "project_key": "tropical",
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "schedule_version_exists": true,
+  "activity_count": 1507,
+  "relationship_count": 3921,
+  "data_date": "2026-06-23 08:00",
+  "source_label_or_schedule_id": "1071",
+  "query_status": "pass",
+  "queried_at_utc": "2026-07-02T12:17:06.172312+00:00"
+}
