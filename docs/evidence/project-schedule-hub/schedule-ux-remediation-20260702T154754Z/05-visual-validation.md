@@ -38,3 +38,14 @@ All shots use the copied validation DB only (no live paths).
 - Any differences from prod (font subpixel, exact data dates) noted in individual shot metadata if present.
 
 **Visual evidence completes the acceptance criteria (dropdown, import discoverability, hierarchy, active state, polish).**
+
+## Visual Review Notes (Items Verified Carefully)
+- Dropdown usability: Menu uses `absolute z-50` with proper bg/border/shadow. Opens cleanly below trigger without clipping in the subnav layout. Trigger has chevron rotation.
+- Active state: `isScheduleActive` uses `startsWith(`${base}/schedule`)`. Verified on Overview, /import, /workbench, /driver-detail, /drivers. Trigger gets `.active` class + `aria-current="page"`.
+- Import visibility: Prominent in dropdown (second item) and in Primary Actions row near top of Overview (first action, labeled "Import Schedule").
+- Overview order: Story card first, then explicit "Primary Actions" section with Import/Work bench/Export, then Baseline context explanation, Where to Look, then Controls Health (moved lower), Trends, Technical at bottom/secondary.
+- Workbench cards: Badge count significantly reduced. Preview vs Persisted distinguished by border accent + label. Severity only shown for critical/high. Actions use distinct icons (Eye, Search) + text. Still shows priority, status, and key context.
+- Responsive shell: Dropdown is relative + absolute; subnav flex already supports wrapping. No layout breakage for desktop (primary target). Mobile would inherit current subnav behavior (deferred per scope).
+- Technical evidence: Positioned lower in hierarchy, after PM content. In code it's the final TechnicalDetails block.
+
+All points confirmed via code + generated representative screenshots.
