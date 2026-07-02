@@ -249,3 +249,46 @@ def test_module_has_no_ollama_or_scan_calls():
     for forbidden in ("OllamaChatClient", "generate_json", "generate_text", "list_ollama_models",
                       "scan_source_root", "drain_queue", "enqueue_event", "claim_queued"):
         assert forbidden not in src, forbidden
+
+
+def test_include_subroot_selects_eml_under_subroot(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    rc, out = _run(_args(env, include_subroot="20_Construction"), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_subroots_requested"] == 1 and out["include_subroots_listable"] == 1
+    assert out["include_subroots_failed"] == 0
+    assert out["project_number"] == "23-435-01"  # identity still from source-root
+    assert out["eml_selected"] >= 1              # .eml live under 20_Construction
+    assert out["archive_notes_created"] == 0 and out["ollama_calls"] == 0  # dry-run writes nothing
+
+
+def test_include_subroot_escape_refused(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    assert _run(_args(env, include_subroot="../../escape"), capsys)[0] == 3
+
+
+def test_include_file_eml_selected(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    rc, out = _run(_args(env, include_file="20_Construction/Elevator Shaft.eml"), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_files_requested_raw"] == 1 and out["include_files_validated"] == 1
+    assert out["include_files_selected"] == 1 and out["eml_selected"] == 1
+    assert out["archive_notes_created"] == 0 and out["ollama_calls"] == 0  # dry-run writes nothing
+
+
+def test_include_file_pdf_is_unsupported_for_eml_negative_control(tmp_path, monkeypatch, capsys):
+    # Negative control: a non-.eml include-file is reported unsupported_for_eml and selects 0 emails.
+    env = _env(tmp_path, monkeypatch)
+    (env["troot"] / "20_Construction" / "proposal.pdf").write_text("pdf", encoding="utf-8")
+    rc, out = _run(_args(env, include_file="20_Construction/proposal.pdf"), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_files_validated"] == 1 and out["include_files_selected"] == 0
+    assert out["include_files_unsupported_for_eml"] == 1 and out["eml_selected"] == 0
+    assert out["archive_notes_created"] == 0
+    assert not list(env["vault"].rglob("*.md"))  # nothing written
+
+
+def test_include_file_escape_refused(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    assert _run(_args(env, include_file="../../escape.eml"), capsys)[0] == 3
+    assert _run(_args(env, include_file="/etc/passwd"), capsys)[0] == 3

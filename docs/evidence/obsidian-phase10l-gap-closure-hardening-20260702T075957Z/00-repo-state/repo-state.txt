@@ -1,0 +1,4 @@
+branch: fix/obsidian-phase10l-a-db-vault-reconcile-archive-routing-20260702T075957Z
+base_commit: 53c5a977
+phase: 10L-A/B/C (reconcile+reset, archive routing, README singleton)
+posture: tooling + tests + dry-run evidence only; no live DB/vault/source mutation

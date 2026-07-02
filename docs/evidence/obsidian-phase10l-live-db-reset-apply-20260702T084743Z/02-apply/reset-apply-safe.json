@@ -1,0 +1,32 @@
+{
+  "ambiguous_summaries_left": 0,
+  "candidate_rows": 128,
+  "counts_after": {
+    "generated_generated": 0,
+    "generated_not_generated": 195,
+    "generated_stale": 0,
+    "queue_processing": 0,
+    "queue_queued": 0,
+    "source_rows": 9128,
+    "summary_rows": 7
+  },
+  "counts_before": {
+    "generated_generated": 128,
+    "generated_not_generated": 67,
+    "generated_stale": 0,
+    "queue_processing": 0,
+    "queue_queued": 0,
+    "source_rows": 9128,
+    "summary_rows": 7
+  },
+  "fully_orphaned_sources": 128,
+  "generated_note_rows_reset": 128,
+  "mode": "apply",
+  "queue_unchanged": true,
+  "skipped_file_present": 0,
+  "skipped_invalid_path": 0,
+  "skipped_not_approved": 0,
+  "source_rows_unchanged": true,
+  "summary_rows_reset": 0,
+  "transition": "generated|stale -> not_generated"
+}

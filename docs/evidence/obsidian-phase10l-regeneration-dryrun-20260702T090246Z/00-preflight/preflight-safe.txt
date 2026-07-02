@@ -1,0 +1,15 @@
+## branch
+fix/obsidian-phase10l-a-db-vault-reconcile-archive-routing-20260702T075957Z
+
+## head
+122c0b184531e72a874e7444420ca3aa92e1e6cc
+
+## status
+?? .10l_stamp
+?? docs/evidence/obsidian-phase10l-regeneration-dryrun-20260702T090246Z/
+
+## python
+Python 3.14.5
+
+## dry-run posture
+No apply authorized. No vault write authorized. No live DB mutation authorized.

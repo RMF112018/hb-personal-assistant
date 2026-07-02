@@ -1,0 +1,4 @@
+DB=<live_hb_personal_assistant_sqlite>
+VAULT=<obsidian_vault>
+SRC=<tropical_synology_source_root>
+SUBROOT=<cited_construction_subroot>

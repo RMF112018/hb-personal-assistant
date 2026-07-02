@@ -1,0 +1,24 @@
+# obsidian_source_index_project_corpus options (sanitized)
+                                               --vault-path VAULT_PATH
+                                               --source-root SOURCE_ROOT
+  --db-path DB_PATH
+  --config-path CONFIG_PATH
+  --vault-path VAULT_PATH
+  --source-root SOURCE_ROOT
+  --root-key ROOT_KEY
+  --include-subroot INCLUDE_SUBROOT
+  --max-files MAX_FILES
+  --backup-dir BACKUP_DIR
+  --evidence-dir EVIDENCE_DIR
+  --json-output
+  --dry-run
+  --apply
+  --enrich
+  --update
+  --confirm-source-root CONFIRM_SOURCE_ROOT
+  --confirm-project-number CONFIRM_PROJECT_NUMBER
+  --confirm-project-key CONFIRM_PROJECT_KEY
+  --confirm-vault-path CONFIRM_VAULT_PATH
+  --confirm-db-path CONFIRM_DB_PATH
+  --require-empty-queue
+  --no-require-empty-queue

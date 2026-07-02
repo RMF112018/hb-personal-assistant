@@ -30,8 +30,10 @@ for _p in (_REPO_ROOT / "src", _REPO_ROOT / "scripts"):
 
 import obsidian_source_first_indexing_dryrun as dryrun  # noqa: E402
 
+from hb_assistant.obsidian_mcp import source_archive_paths as sap  # noqa: E402
 from hb_assistant.obsidian_mcp import source_email_archive as sea  # noqa: E402
 from hb_assistant.obsidian_mcp import source_project_identity as spi  # noqa: E402
+from hb_assistant.obsidian_mcp import source_subroot as ss  # noqa: E402
 from hb_assistant.obsidian_mcp.mutations import create_note, sha256_file  # noqa: E402
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository  # noqa: E402
 from hb_assistant.obsidian_mcp.source_indexer import (  # noqa: E402
@@ -39,10 +41,7 @@ from hb_assistant.obsidian_mcp.source_indexer import (  # noqa: E402
     index_source_file,
 )
 from hb_assistant.obsidian_mcp.source_notes import (  # noqa: E402
-    _DOMAIN_FOLDER,
     _card_rel_path,
-    _domain_for,
-    _safe_basename,
     generate_source_card,
 )
 from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError  # noqa: E402
@@ -102,11 +101,57 @@ def _is_temp(name: str) -> bool:
     return name.startswith(("~$", ".")) or low.endswith(_SKIP_SUFFIX) or low == "icon\r"
 
 
-def _select_eml(root: Path, *, max_files: int) -> dict[str, Any]:
-    """Deterministic selection of readable `.eml` files under ``root`` only (bounded)."""
+def _select_eml(root: Path, *, max_files: int,
+                include_subroots: list[Path] | None = None,
+                include_files: list[Path] | None = None) -> dict[str, Any]:
+    """Deterministic selection of readable `.eml` files under ``root`` only (bounded).
+
+    When ``include_subroots`` is given, traversal starts AT each bounded subroot (symlink-safe,
+    containment-checked) instead of the project root.
+
+    When ``include_files`` is given, each EXACT file is resolved by ``lstat`` only (no parent
+    ``scandir``/``rglob``/``resolve``); a readable non-``.eml`` file is counted
+    ``include_files_unsupported_for_eml`` (not selected). Placeholders are never opened (no hydration).
+    Selection order is include-files first, then include-subroots, then the root walk.
+    """
     seen = evicted = skipped_temp = skipped_nondoc = walked = 0
+    inc_listable = inc_failed = inc_containment_rejected = 0
+    inc_f_selected = inc_f_missing = inc_f_not_files = inc_f_placeholder = inc_f_unsupported = 0
     found: list[Path] = []
-    for p in sorted(root.rglob("*"), key=lambda x: str(x)):
+    if include_files:
+        for fp in include_files:
+            cls = ss.classify_include_file(fp)
+            if cls == "missing":
+                inc_f_missing += 1
+                continue
+            if cls == "not_file":
+                inc_f_not_files += 1
+                continue
+            if cls == "placeholder":
+                inc_f_placeholder += 1
+                continue
+            if _is_temp(fp.name) or fp.suffix.lower() not in _EML_EXTS:
+                inc_f_unsupported += 1  # readable but not a .eml → unsupported_for_eml
+                continue
+            found.append(fp)
+            inc_f_selected += 1
+    if include_subroots is not None:
+        candidates: list[Path] = []
+        for base in include_subroots:
+            if base.is_symlink():
+                inc_failed += 1
+                continue
+            files, st = ss.walk_files(base, root, max_files=_MAX_WALK)
+            inc_listable += 1 if st["listable"] else 0
+            inc_failed += 0 if st["listable"] else 1
+            inc_containment_rejected += st["containment_rejected"]
+            candidates.extend(files)
+        walk_iter: list[Path] = sorted(set(candidates), key=str)
+    elif include_files:
+        walk_iter = []  # files-only mode: no directory walk (no scandir / rglob)
+    else:
+        walk_iter = sorted(root.rglob("*"), key=lambda x: str(x))
+    for p in walk_iter:
         if walked >= _MAX_WALK:
             break
         if p.is_dir():
@@ -125,7 +170,13 @@ def _select_eml(root: Path, *, max_files: int) -> dict[str, Any]:
         found.append(p)
     selected = found[:max_files]
     return {"readable_seen": seen, "cloud_evicted": evicted, "skipped_temp": skipped_temp,
-            "skipped_nondoc": skipped_nondoc, "selected": selected}
+            "skipped_nondoc": skipped_nondoc, "selected": selected,
+            "include_subroots_listable": inc_listable, "include_subroots_failed": inc_failed,
+            "include_subroots_containment_rejected": inc_containment_rejected,
+            "include_files_selected": inc_f_selected, "include_files_missing": inc_f_missing,
+            "include_files_not_files": inc_f_not_files,
+            "include_files_unavailable_or_placeholder": inc_f_placeholder,
+            "include_files_unsupported_for_eml": inc_f_unsupported}
 
 
 def _folder_bucket(rel: str) -> str:
@@ -155,16 +206,17 @@ def _resolve_identity(source_root: Path, db_path: str, args: argparse.Namespace)
 
 
 def _archive_rel_path(detail: dict[str, Any]) -> str:
-    """Full-email archive note path: ``Email Archive/Work/<Domain>/<safe>__<id12>.md`` (Amendment #4).
+    """Full-email archive note path: ``Email Archive/<Domain>/<safe>__<id12>.md`` (Phase 10L-B).
 
-    Lives in a SEPARATE top-level ``Email Archive`` root (NOT under Source Notes), so it is never a
-    source-card path (``_card_rel_path`` never produces this) and never a generated note. Self-index
-    protection comes from ``is_email_archive_path`` (keyed on the ``Email Archive/`` prefix), which
-    excludes it from ``scan_vault_notes``/the watcher so full bodies/addresses never reach the FTS.
+    Delegates to the centralized :func:`source_archive_paths.archive_note_rel_path` — the single source
+    of truth for archive routing. Routes DIRECTLY under the domain folder (Phase 10L-B corrected the
+    pre-10L double-domain ``Email Archive/Work/<Domain>/`` layout). Lives in a SEPARATE top-level
+    ``Email Archive`` root (NOT under Source Notes), so it is never a source-card path
+    (``_card_rel_path`` never produces this) and never a generated note. Self-index protection comes
+    from ``is_email_archive_path`` (keyed on the ``Email Archive/`` prefix), which excludes it from
+    ``scan_vault_notes``/the watcher so full bodies/addresses never reach the FTS.
     """
-    domain_folder = _DOMAIN_FOLDER.get(_domain_for(detail), "Shared")
-    sid = str(detail["source_id"])[:12]
-    return f"{EMAIL_ARCHIVE_FOLDER}/Work/{domain_folder}/{_safe_basename(detail)}__{sid}.md"
+    return sap.archive_note_rel_path(detail)
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
@@ -185,14 +237,46 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if not (source_root == base or base in source_root.parents):
         raise EmlArchiveError("source root is not under the configured external root")
 
+    # Bounded subroot + exact-file + manifest selectors. Flag typos are hard refusals (exit 3);
+    # manifest entries are batch input → a bad entry is skipped and counted (never a refusal).
+    try:
+        subroots = [ss.validate_subroot(source_root, s) for s in (args.include_subroot or [])]
+    except ss.SubrootError as exc:
+        raise EmlArchiveError(f"invalid --include-subroot: {exc}") from None
+    try:
+        include_files = [ss.validate_include_file(source_root, s) for s in (args.include_file or [])]
+    except ss.SubrootError as exc:
+        raise EmlArchiveError(f"invalid --include-file: {exc}") from None
+    include_files_requested_raw = len(args.include_file or [])
+    include_files_containment_rejected = 0
+    subroots_manifest_rejected = 0
+    if args.source_manifest:
+        try:
+            entries = ss.load_source_manifest(args.source_manifest)
+        except OSError as exc:
+            raise EmlArchiveError(f"cannot read --source-manifest: {exc}") from None
+        for entry in entries:
+            if ss.classify_manifest_entry(entry) == "subroot":
+                try:
+                    subroots.append(ss.validate_subroot(source_root, entry))
+                except ss.SubrootError:
+                    subroots_manifest_rejected += 1
+            else:
+                include_files_requested_raw += 1
+                try:
+                    include_files.append(ss.validate_include_file(source_root, entry))
+                except ss.SubrootError:
+                    include_files_containment_rejected += 1
+
     ident = _resolve_identity(source_root, args.db_path, args)
     repo = SourceIndexRepository(args.db_path)
-    sel = _select_eml(source_root, max_files=args.max_eml)
+    sel = _select_eml(source_root, max_files=args.max_eml, include_subroots=subroots or None,
+                      include_files=include_files or None)
     selected = sel["selected"]
 
     by_bucket: dict[str, int] = {}
     for p in selected:
-        rel = str(p.resolve().relative_to(base))
+        rel = str(p.relative_to(base))  # lexical only — never resolve() a (possibly dormant) cloud path
         by_bucket[_folder_bucket(rel)] = by_bucket.get(_folder_bucket(rel), 0) + 1
 
     result: dict[str, Any] = {
@@ -201,6 +285,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "project_number": ident.project_number, "project_key": ident.project_key,
         "procore_project_id": ident.procore_project_id,
         "project_match_basis": list(ident.match_basis),
+        "include_subroots_requested": len(subroots),
+        "include_subroots_listable": sel["include_subroots_listable"],
+        "include_subroots_failed": sel["include_subroots_failed"] + subroots_manifest_rejected,
+        "include_subroots_containment_rejected": sel["include_subroots_containment_rejected"],
+        "include_files_requested_raw": include_files_requested_raw,
+        "include_files_validated": len(include_files),
+        "include_files_selected": sel["include_files_selected"],
+        "include_files_containment_rejected": include_files_containment_rejected,
+        "include_files_missing": sel["include_files_missing"],
+        "include_files_not_files": sel["include_files_not_files"],
+        "include_files_unavailable_or_placeholder": sel["include_files_unavailable_or_placeholder"],
+        "include_files_unsupported_for_eml": sel["include_files_unsupported_for_eml"],
         "eml_found": sel["readable_seen"], "cloud_evicted": sel["cloud_evicted"],
         "skipped_temp": sel["skipped_temp"], "skipped_non_eml": sel["skipped_nondoc"],
         "eml_selected": len(selected), "by_folder_bucket": dict(sorted(by_bucket.items())),
@@ -251,7 +347,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }, indent=2), encoding="utf-8")
 
     for p in selected:
-        abs_p = p.resolve()
+        abs_p = p  # already absolute (source_root.joinpath / real scandir path); never resolve() a cloud path
         rel = str(abs_p.relative_to(base))
         bucket = _folder_bucket(rel)
         existing = repo.lookup_by_path("external_file", rel)
@@ -372,6 +468,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vault-path", required=True)
     p.add_argument("--source-root", required=True)
     p.add_argument("--root-key", default="syn-work")
+    p.add_argument("--include-subroot", action="append", default=[],
+                   help="bounded relative subroot under --source-root (repeatable); starts traversal "
+                        "at the subroot so locally-available descendants are selectable even when the "
+                        "project root fails root-level enumeration")
+    p.add_argument("--include-file", action="append", default=[],
+                   help="exact relative file under --source-root (repeatable); resolved by lstat only "
+                        "(no parent directory listing). A non-.eml file is counted unsupported_for_eml "
+                        "and not selected")
+    p.add_argument("--source-manifest", default=None,
+                   help="path to a newline-delimited manifest of relative selectors under --source-root "
+                        "(a line ending in '/' is a subroot, else an exact file; '#' comments and blank "
+                        "lines ignored). The manifest path and its entries are operator-local and never "
+                        "appear in safe evidence.")
     p.add_argument("--max-eml", type=int, default=10)
     p.add_argument("--backup-dir", default=None)
     p.add_argument("--evidence-dir", default=None)

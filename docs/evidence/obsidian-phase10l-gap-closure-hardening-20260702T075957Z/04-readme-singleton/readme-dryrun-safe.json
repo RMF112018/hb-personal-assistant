@@ -1,0 +1,16 @@
+{
+  "action_counts": {
+    "create": 6
+  },
+  "applied": {
+    "created": 0,
+    "noop": 0,
+    "protected_skipped": 0,
+    "updated": 0
+  },
+  "duplicate_variant_folder_count": 1,
+  "duplicate_variant_total": 1,
+  "mode": "dry_run",
+  "note": "duplicate README variants are REPORTED only; deletion requires explicit operator auth",
+  "target_count": 6
+}

@@ -34,12 +34,19 @@ from typing import Any
 import yaml
 
 from . import mdutil, pathsafe
-from .source_indexer import EMAIL_ARCHIVE_FOLDER, is_email_archive_path
+from .source_archive_paths import (
+    attachments_root_for_rel,
+    attachments_subdir,
+    is_attachments_path,
+)
+from .source_indexer import is_email_archive_path
 
 _INHERITED_PROJECT_PREFIX = "- Project (inherited from parent email):"
 
-# Attachment binaries live in a dedicated subtree of the (self-index-guarded) Email Archive root.
-ATTACHMENTS_SUBDIR = f"{EMAIL_ARCHIVE_FOLDER}/Work/Attachments"
+# Attachment binaries live in a dedicated per-domain subtree of the (self-index-guarded) Email Archive
+# root: ``Email Archive/<Domain>/Attachments``. The default work root is byte-identical to the pre-10L
+# layout; ``source_archive_paths`` is the single source of truth for the per-domain roots (Phase 10L-B).
+ATTACHMENTS_SUBDIR = attachments_subdir("Work")
 # Default size cap (bytes); overridable at the call site. Oversize attachments are skipped, not written.
 DEFAULT_MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
@@ -114,18 +121,20 @@ def _safe_stem(filename: str | None, ext: str, sha256: str, index: int) -> str:
     return raw
 
 
-def attachment_rel_path(parent_source_id: str, extracted: ExtractedAttachment) -> str:
-    """Deterministic vault-relative binary path under the guarded attachments root.
+def attachment_rel_path(parent_source_id: str, extracted: ExtractedAttachment, *,
+                        domain_folder: str = "Work") -> str:
+    """Deterministic vault-relative binary path under the guarded per-domain attachments root.
 
-    ``Email Archive/Work/Attachments/<parent_sid12>/<safe_stem>__<sha12>.<ext>`` — the sha12 suffix makes
-    the path unique per content, so identical content re-runs land on the same path (idempotent) and two
-    different attachments never collide on one path.
+    ``Email Archive/<Domain>/Attachments/<parent_sid12>/<safe_stem>__<sha12>.<ext>`` — the sha12 suffix
+    makes the path unique per content, so identical content re-runs land on the same path (idempotent)
+    and two different attachments never collide on one path. ``domain_folder`` defaults to ``"Work"`` so
+    the pre-10L work layout is byte-identical; ``source_archive_paths`` owns the per-domain roots.
     """
     sid12 = str(parent_source_id)[:12]
     sha12 = (extracted.sha256 or "nohash")[:12]
     stem = _safe_stem(extracted.filename, extracted.ext, extracted.sha256 or "", extracted.index)
     ext = f".{extracted.ext}" if extracted.ext else ""
-    return f"{ATTACHMENTS_SUBDIR}/{sid12}/{stem}__{sha12}{ext}"
+    return f"{attachments_subdir(domain_folder)}/{sid12}/{stem}__{sha12}{ext}"
 
 
 def extract_attachments(eml_path: Path, *, max_bytes: int = DEFAULT_MAX_ATTACHMENT_BYTES,
@@ -193,16 +202,17 @@ def extract_attachments(eml_path: Path, *, max_bytes: int = DEFAULT_MAX_ATTACHME
 
 
 def _resolve_attachment_path(vault_root: Path, rel: str) -> tuple[Path, Path]:
-    """Validate ``rel`` is under the guarded attachments root; return (resolved, attach_root).
+    """Validate ``rel`` is under a guarded per-domain attachments root; return (resolved, attach_root).
 
-    Refuses (raises ValueError) any path not under ``Email Archive/Work/Attachments/`` or that escapes
-    that root via traversal/symlink.
+    Refuses (raises ValueError) any path not under ``Email Archive/<Domain>/Attachments/`` (Work/Home/
+    Shared) or that escapes that root via traversal/symlink.
     """
     norm = str(rel).replace("\\", "/").strip("/")
-    if not (is_email_archive_path(norm) and norm.lower().startswith(ATTACHMENTS_SUBDIR.lower() + "/")):
-        raise ValueError(f"attachment path not under {ATTACHMENTS_SUBDIR}/: {norm}")
+    owning_root = attachments_root_for_rel(norm)
+    if not (is_email_archive_path(norm) and is_attachments_path(norm) and owning_root):
+        raise ValueError(f"attachment path not under an Email Archive/<Domain>/Attachments/ root: {norm}")
     vault_root = Path(vault_root).resolve()
-    attach_root = (vault_root / ATTACHMENTS_SUBDIR).resolve()
+    attach_root = (vault_root / owning_root).resolve()
     resolved = (vault_root / norm).resolve()
     if not resolved.is_relative_to(attach_root):
         raise ValueError("attachment path escapes the attachments root")
