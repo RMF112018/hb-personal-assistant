@@ -1,0 +1,32 @@
+{
+  "already_indexed": 0,
+  "by_extension": {},
+  "by_folder_bucket": {},
+  "cards_enriched_existing": 0,
+  "cards_generated": 0,
+  "cards_skipped_existing": 0,
+  "cloud_evicted": 0,
+  "files_indexed_new": 0,
+  "files_readable_seen": 0,
+  "files_selected": 0,
+  "generated_before": {
+    "not_generated": 195
+  },
+  "metadata_only": 0,
+  "mode": "dry-run",
+  "ollama_calls": 0,
+  "procore_project_id": "2525840",
+  "project_key": "tropical",
+  "project_match_basis": [
+    "folder_project_number",
+    "procore_project_number",
+    "procore_project_key"
+  ],
+  "project_number": "23-435-01",
+  "project_number_derived": 0,
+  "queue_delta": 0,
+  "skipped_nondoc": 0,
+  "skipped_temp": 0,
+  "skipped_unavailable": 0,
+  "source_root_confirmed": true
+}

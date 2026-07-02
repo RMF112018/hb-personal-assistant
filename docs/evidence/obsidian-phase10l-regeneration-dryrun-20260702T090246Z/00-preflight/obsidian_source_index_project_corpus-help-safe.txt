@@ -1,0 +1,50 @@
+usage: obsidian_source_index_project_corpus.py [-h] --db-path DB_PATH
+                                               [--config-path CONFIG_PATH]
+                                               --vault-path VAULT_PATH
+                                               --source-root SOURCE_ROOT
+                                               [--root-key ROOT_KEY]
+                                               [--max-files MAX_FILES]
+                                               [--backup-dir BACKUP_DIR]
+                                               [--evidence-dir EVIDENCE_DIR]
+                                               [--json-output] [--dry-run]
+                                               [--apply] [--enrich] [--update]
+                                               [--confirm-source-root CONFIRM_SOURCE_ROOT]
+                                               [--confirm-project-number CONFIRM_PROJECT_NUMBER]
+                                               [--confirm-project-key CONFIRM_PROJECT_KEY]
+                                               [--confirm-vault-path CONFIRM_VAULT_PATH]
+                                               [--confirm-db-path CONFIRM_DB_PATH]
+                                               [--require-empty-queue]
+                                               [--no-require-empty-queue]
+
+Bounded project-corpus indexer (Phase 10D): index ≤N files from ONE
+allowlisted project folder, generate deterministic source cards, and enrich
+them with the canonical Procore project identity. Reads ONLY the explicit
+``--source-root`` (must be the allowlisted project folder and resolve UNDER a
+configured external root so the path-derived project number is retained).
+Deterministic — NO Ollama, NO queue/watcher, NO scan outside the root, NO
+runtime-JSON mutation, NO DB-project-row mutation. This DOES create source
+rows + generated cards (the authorized, bounded, count-proven growth). Default
+is dry-run; ``--apply`` requires exact confirm flags + a rollback bundle.
+
+options:
+  -h, --help            show this help message and exit
+  --db-path DB_PATH
+  --config-path CONFIG_PATH
+  --vault-path VAULT_PATH
+  --source-root SOURCE_ROOT
+  --root-key ROOT_KEY
+  --max-files MAX_FILES
+  --backup-dir BACKUP_DIR
+  --evidence-dir EVIDENCE_DIR
+  --json-output
+  --dry-run
+  --apply
+  --enrich
+  --update
+  --confirm-source-root CONFIRM_SOURCE_ROOT
+  --confirm-project-number CONFIRM_PROJECT_NUMBER
+  --confirm-project-key CONFIRM_PROJECT_KEY
+  --confirm-vault-path CONFIRM_VAULT_PATH
+  --confirm-db-path CONFIRM_DB_PATH
+  --require-empty-queue
+  --no-require-empty-queue

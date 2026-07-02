@@ -1,0 +1,4 @@
+DB=<live_hb_personal_assistant_sqlite>
+VAULT=<obsidian_vault_root_from_live_config>
+SRC=<tropical_source_root_23-435-01>
+CONFIG=<live_obsidian_mcp_config_json>
