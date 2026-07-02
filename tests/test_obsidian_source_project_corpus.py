@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import errno
 import importlib.util
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -196,3 +198,62 @@ def test_include_subroot_escape_refused(tmp_path, monkeypatch, capsys):
     env = _env(tmp_path, monkeypatch)
     assert _run(_args(env, include_subroot="../../escape"), capsys)[0] == 3
     assert _run(_args(env, include_subroot="/etc"), capsys)[0] == 3
+
+
+def test_include_file_selected_even_when_scandir_fails(tmp_path, monkeypatch, capsys):
+    # Prove exact-file selection needs NO directory listing: break every os.scandir and confirm the
+    # directly-addressable file is still selected, with identity still derived from --source-root.
+    env = _env(tmp_path, monkeypatch)
+    nested = env["troot"] / "00_Admin" / "Permits"
+    nested.mkdir(parents=True)
+    (nested / "Doc.pdf").write_text("pdf", encoding="utf-8")
+
+    def _boom(*a, **k):
+        raise OSError(errno.EINTR, "Interrupted system call")
+
+    monkeypatch.setattr(os, "scandir", _boom)
+    rc, out = _run(_args(env, include_file="00_Admin/Permits/Doc.pdf"), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_files_requested_raw"] == 1 and out["include_files_validated"] == 1
+    assert out["include_files_selected"] == 1 and out["files_selected"] == 1
+    assert out["project_number"] == "23-435-01" and out["project_key"] == "tropical"
+    assert out["cards_generated"] == 0 and out["ollama_calls"] == 0  # dry-run writes nothing
+
+
+def test_include_file_unsupported_ext_counted_not_selected(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    (env["troot"] / "20_Construction" / "archive.zip").write_text("zip", encoding="utf-8")
+    rc, out = _run(_args(env, include_file="20_Construction/archive.zip"), capsys)
+    assert rc == 0
+    assert out["include_files_validated"] == 1 and out["include_files_selected"] == 0
+    assert out["include_files_unsupported_ext"] == 1 and out["files_selected"] == 0
+
+
+def test_include_file_missing_counted(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    rc, out = _run(_args(env, include_file="20_Construction/nope.pdf"), capsys)
+    assert rc == 0
+    assert out["include_files_missing"] == 1 and out["include_files_selected"] == 0
+
+
+def test_include_file_escape_refused(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    assert _run(_args(env, include_file="../../escape.pdf"), capsys)[0] == 3
+    assert _run(_args(env, include_file="/etc/passwd"), capsys)[0] == 3
+
+
+def test_source_manifest_mixes_file_and_subroot(tmp_path, monkeypatch, capsys):
+    env = _env(tmp_path, monkeypatch)
+    monkeypatch.setattr(mod, "_readability", lambda p: "readable")
+    (env["troot"] / "00_Admin").mkdir(parents=True, exist_ok=True)
+    (env["troot"] / "00_Admin" / "Doc.pdf").write_text("pdf", encoding="utf-8")
+    manifest = env["tmp"] / "manifest.txt"
+    manifest.write_text("# operator-local manifest\n00_Admin/Doc.pdf\n20_Construction/\n"
+                        "../escape.pdf\n", encoding="utf-8")
+    rc, out = _run(_args(env, source_manifest=str(manifest)), capsys)
+    assert rc == 0 and out["mode"] == "dry-run"
+    assert out["include_files_requested_raw"] == 2         # Doc.pdf + escape.pdf
+    assert out["include_files_validated"] == 1             # escape rejected
+    assert out["include_files_containment_rejected"] == 1
+    assert out["include_subroots_requested"] == 1          # 20_Construction/
+    assert out["files_selected"] >= 2                      # Doc.pdf + files under 20_Construction

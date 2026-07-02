@@ -34,7 +34,11 @@ if str(_REPO_ROOT / "src") not in sys.path:
 
 from hb_assistant.obsidian_mcp.source_subroot import (  # noqa: E402
     SubrootError,
+    classify_include_file,
+    classify_manifest_entry,
     is_contained,
+    load_source_manifest,
+    validate_include_file,
     validate_subroot,
 )
 
@@ -94,12 +98,19 @@ def _bump_error(counts: dict[str, int], exc: OSError) -> None:
 
 
 def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: int,
-          allow_read_probe: bool, include_subroots: list[Path] | None = None) -> dict[str, Any]:
+          allow_read_probe: bool, include_subroots: list[Path] | None = None,
+          include_files: list[Path] | None = None, include_files_requested_raw: int = 0,
+          include_files_containment_rejected: int = 0,
+          include_subroots_manifest_rejected: int = 0) -> dict[str, Any]:
     """Resilient read-only walk. Returns {'safe': count-only, 'detail': samples/errors}.
 
     When ``include_subroots`` is given, the file walk starts AT each bounded subroot (never the failing
     root), so locally-available descendants are seen even when the root won't enumerate. Symlink dirs are
     never followed; every candidate file is re-checked to stay lexically inside ``source_root``.
+
+    When ``include_files`` is given, each EXACT file is classified by ``lstat`` only (no scandir, no
+    open) — so a directly-addressable local file is confirmed even when its parent won't enumerate, and
+    a placeholder is never opened (no hydration).
     """
     counts: dict[str, int] = {
         "directories_seen": 0, "files_seen": 0, "files_stat_ok": 0, "files_stat_failed": 0,
@@ -218,6 +229,27 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
                     if len(detail["read_probe_failures"]) < 50:
                         detail["read_probe_failures"].append(f"{entry.name}: errno={exc.errno}")
 
+    # Exact-file classification pass: lstat only — no scandir, no open (never hydrates).
+    inc_f_lstat_ok = inc_f_selected = inc_f_missing = inc_f_not_files = inc_f_placeholder = 0
+    inc_f_unsupported = 0
+    for fp in include_files or []:
+        cls = classify_include_file(fp)
+        if cls != "missing":
+            inc_f_lstat_ok += 1
+        if cls == "missing":
+            inc_f_missing += 1
+            continue
+        if cls == "not_file":
+            inc_f_not_files += 1
+            continue
+        if cls == "placeholder":
+            inc_f_placeholder += 1
+            continue
+        if Path(fp).suffix.lower() not in _DOC_EXTS:
+            inc_f_unsupported += 1
+            continue
+        inc_f_selected += 1
+
     safe = {
         # legacy field names (back-compat) reflect whatever was walked (root OR subroots)
         "root_exists": bool(root_exists), "root_is_dir": bool(root_is_dir),
@@ -225,7 +257,17 @@ def probe(source_root: str, *, max_files: int, max_dirs: int, read_probe_limit: 
         # spec field names (Phase 10L bounded-subroot audit)
         "source_root_exists": bool(root_exists), "source_root_listable": bool(root_listable),
         "include_subroots_requested": inc_requested,
-        "include_subroots_listable": inc_listable, "include_subroots_failed": inc_failed,
+        "include_subroots_listable": inc_listable,
+        "include_subroots_failed": inc_failed + include_subroots_manifest_rejected,
+        "include_files_requested_raw": include_files_requested_raw,
+        "include_files_validated": len(include_files or []),
+        "include_files_lstat_ok": inc_f_lstat_ok,
+        "include_files_selected_readable": inc_f_selected,
+        "include_files_missing": inc_f_missing,
+        "include_files_not_files": inc_f_not_files,
+        "include_files_unavailable_or_placeholder": inc_f_placeholder,
+        "include_files_unsupported_ext": inc_f_unsupported,
+        "include_files_containment_rejected": include_files_containment_rejected,
         "files_seen_under_include_subroots": counts["files_seen"] if subroot_mode else 0,
         "candidate_doc_ext_count_under_include_subroots":
             counts["candidate_doc_ext_count"] if subroot_mode else 0,
@@ -244,6 +286,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--include-subroot", action="append", default=[],
                    help="bounded relative subroot under --source-root (repeatable); walk starts at the "
                         "subroot so locally-available descendants are seen even when the root won't list")
+    p.add_argument("--include-file", action="append", default=[],
+                   help="exact relative file under --source-root (repeatable); classified by lstat only "
+                        "(no parent listing, no open) to confirm a directly-addressable local file even "
+                        "when its parent won't enumerate")
+    p.add_argument("--source-manifest", default=None,
+                   help="path to a newline-delimited manifest of relative selectors under --source-root "
+                        "(a line ending in '/' is a subroot, else an exact file; '#' comments and blank "
+                        "lines ignored). The manifest path and its entries are operator-local and never "
+                        "appear in safe evidence.")
     p.add_argument("--max-files", type=int, default=500)
     p.add_argument("--max-dirs", type=int, default=20000)
     p.add_argument("--read-probe-limit", type=int, default=0)
@@ -259,14 +310,42 @@ def main(argv: list[str] | None = None) -> int:
             raise ProbeError(
                 "--read-probe-limit>0 requires --confirm-read-probe-local-files (byte-read is opt-in; "
                 "stat-only is the default and only fully-local files are ever opened).")
+        src = Path(args.source_root)
         try:
-            subroots = [validate_subroot(Path(args.source_root), s)
-                        for s in (args.include_subroot or [])]
+            subroots = [validate_subroot(src, s) for s in (args.include_subroot or [])]
         except SubrootError as exc:
             raise ProbeError(f"invalid --include-subroot: {exc}") from None
+        try:
+            include_files = [validate_include_file(src, s) for s in (args.include_file or [])]
+        except SubrootError as exc:
+            raise ProbeError(f"invalid --include-file: {exc}") from None
+        inc_files_raw = len(args.include_file or [])
+        inc_files_rejected = 0
+        subroots_manifest_rejected = 0
+        if args.source_manifest:
+            try:
+                entries = load_source_manifest(args.source_manifest)
+            except OSError as exc:
+                raise ProbeError(f"cannot read --source-manifest: {exc}") from None
+            for entry in entries:
+                if classify_manifest_entry(entry) == "subroot":
+                    try:
+                        subroots.append(validate_subroot(src, entry))
+                    except SubrootError:
+                        subroots_manifest_rejected += 1
+                else:
+                    inc_files_raw += 1
+                    try:
+                        include_files.append(validate_include_file(src, entry))
+                    except SubrootError:
+                        inc_files_rejected += 1
+        # No subroots (empty) → normal root-walk mode + exact-file classification (no dir listing needed).
         out = probe(args.source_root, max_files=args.max_files, max_dirs=args.max_dirs,
                     read_probe_limit=args.read_probe_limit, allow_read_probe=allow_read_probe,
-                    include_subroots=subroots or None)
+                    include_subroots=subroots or None, include_files=include_files or None,
+                    include_files_requested_raw=inc_files_raw,
+                    include_files_containment_rejected=inc_files_rejected,
+                    include_subroots_manifest_rejected=subroots_manifest_rejected)
     except ProbeError as exc:
         print(json.dumps({"refused": True, "reason": str(exc)}, indent=2, sort_keys=True), file=sys.stderr)
         return 3

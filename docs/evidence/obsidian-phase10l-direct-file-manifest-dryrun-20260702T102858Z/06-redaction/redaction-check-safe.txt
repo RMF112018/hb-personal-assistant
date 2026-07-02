@@ -1,0 +1,2 @@
+redaction-check: PASS — no sensitive material in safe evidence (local-sensitive/ excluded).
+TOKEN-GREP: PASS — no source path tokens in safe evidence

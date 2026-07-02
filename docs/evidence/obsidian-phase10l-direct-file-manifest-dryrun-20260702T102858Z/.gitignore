@@ -1,0 +1,6 @@
+local-sensitive/
+*.bak
+*.sqlite
+*.sqlite-*
+.DS_Store
+*-detail-local-sensitive.json

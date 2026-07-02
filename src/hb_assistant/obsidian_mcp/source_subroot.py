@@ -6,24 +6,28 @@ lexical or ``lstat``-based — no ``resolve()``/``realpath()``/open, so a dorman
 dereferenced or hydrated.
 
 Safety model:
-- ``validate_subroot`` rejects absolute paths, ``..`` traversal, and source-root escape (lexical). These
-  are operator errors → callers raise a refusal (exit 3).
+- ``validate_subroot`` / ``validate_include_file`` reject absolute paths, ``..`` traversal, and
+  source-root escape (lexical). These are operator errors → callers raise a refusal (exit 3).
 - ``walk_files`` is symlink-safe: it never recurses into symlink directories, and every emitted file is
   re-checked to remain lexically inside ``source_root`` (else counted ``containment_rejected``). A
   subroot that is itself a symlink is the caller's responsibility to reject (``os.path.islink``).
+- ``classify_include_file`` resolves an EXACT file by ``lstat`` only — never ``scandir``/``resolve``/open
+  — so a directly-addressable file is processable even when its parent directory fails enumeration
+  (EINTR), and a dormant/on-demand placeholder is never dereferenced or hydrated.
 """
 
 from __future__ import annotations
 
 import errno
 import os
+import stat
 from pathlib import Path
 
 _SCANDIR_RETRIES = 3
 
 
 class SubrootError(Exception):
-    """Invalid include-subroot (absolute / '..' / escapes source-root) — a refusal."""
+    """Invalid include-subroot / include-file (absolute / '..' / escapes source-root) — a refusal."""
 
 
 def is_contained(source_root: Path, candidate: Path) -> bool:
@@ -33,24 +37,82 @@ def is_contained(source_root: Path, candidate: Path) -> bool:
     return cand_n == root_n or cand_n.startswith(root_n + os.sep)
 
 
-def validate_subroot(source_root: Path, rel: str) -> Path:
-    """Lexically validate a relative include-subroot; return the (unresolved) joined Path.
+def validate_relative_under_root(source_root: Path, rel: str, *, kind: str = "path") -> Path:
+    """Lexically validate a relative selector; return the (unresolved) joined Path.
 
-    Raises SubrootError for empty, absolute, ``..``-bearing, or escaping values.
+    Shared core for both include-subroot and include-file. Raises SubrootError for empty, absolute,
+    ``..``-bearing, or escaping values. ``kind`` only shapes the error message.
     """
     raw = str(rel).strip().replace("\\", "/")
     if not raw:
-        raise SubrootError("empty include-subroot")
+        raise SubrootError(f"empty include-{kind}")
     p = Path(raw)
     if p.is_absolute():
-        raise SubrootError("absolute include-subroot rejected (must be relative to --source-root)")
+        raise SubrootError(f"absolute include-{kind} rejected (must be relative to --source-root)")
     parts = [seg for seg in p.parts if seg not in ("", ".")]
     if any(seg == ".." for seg in parts):
-        raise SubrootError("'..' traversal in include-subroot rejected")
+        raise SubrootError(f"'..' traversal in include-{kind} rejected")
     joined = source_root.joinpath(*parts) if parts else source_root
     if not is_contained(source_root, joined):
-        raise SubrootError("include-subroot escapes source-root")
+        raise SubrootError(f"include-{kind} escapes source-root")
     return joined
+
+
+def validate_subroot(source_root: Path, rel: str) -> Path:
+    """Lexically validate a relative include-subroot; return the (unresolved) joined Path."""
+    return validate_relative_under_root(source_root, rel, kind="subroot")
+
+
+def validate_include_file(source_root: Path, rel: str) -> Path:
+    """Lexically validate a relative include-file; return the (unresolved) joined Path.
+
+    Same lexical safety as ``validate_subroot`` plus a refusal if the value names the source-root
+    itself (an include-file must address a file, not the root directory). File existence / type /
+    availability are classified later by :func:`classify_include_file` (lstat only).
+    """
+    joined = validate_relative_under_root(source_root, rel, kind="file")
+    if os.path.normpath(str(joined)) == os.path.normpath(str(source_root)):
+        raise SubrootError("include-file must name a file under source-root, not the root itself")
+    return joined
+
+
+def classify_include_file(path: os.PathLike[str] | str) -> str:
+    """Classify an EXACT file path by ``lstat`` only (no scandir/resolve/open).
+
+    Returns ``"missing"`` (cannot stat), ``"not_file"`` (directory / symlink / non-regular),
+    ``"placeholder"`` (dataless on-demand: ``st_size>0`` and ``st_blocks==0``), or ``"readable"``
+    (a genuinely-local regular file). Never opens the file, so nothing is hydrated/downloaded.
+    """
+    try:
+        st = os.lstat(os.fspath(path))
+    except OSError:
+        return "missing"
+    if stat.S_ISLNK(st.st_mode) or stat.S_ISDIR(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        return "not_file"
+    if st.st_size > 0 and getattr(st, "st_blocks", 1) == 0:
+        return "placeholder"
+    return "readable"
+
+
+def load_source_manifest(path: os.PathLike[str] | str) -> list[str]:
+    """Read a newline-delimited manifest; strip lines, drop blanks and ``#`` comments.
+
+    Entries are raw relative selectors (validated by the caller against ``--source-root``). The manifest
+    path and its entries are operator-local and must never appear in safe evidence.
+    """
+    text = Path(path).read_text(encoding="utf-8")
+    out: list[str] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        out.append(s)
+    return out
+
+
+def classify_manifest_entry(entry: str) -> str:
+    """``"subroot"`` if the (stripped) entry ends with ``/``, else ``"file"``."""
+    return "subroot" if entry.rstrip().endswith("/") else "file"
 
 
 def _scandir_retry(path: os.PathLike[str] | str) -> tuple[list[os.DirEntry[str]] | None, OSError | None]:
