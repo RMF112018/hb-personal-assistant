@@ -1,0 +1,992 @@
+{
+  "schedule_domain_included_tables": [],
+  "non_schedule_excluded_heuristic_tables": [
+    {
+      "table": "data_quality_gate_results",
+      "row_count_for_project": "1320",
+      "reason": "heuristic_non_schedule"
+    },
+    {
+      "table": "long_term_memory_quality_signals",
+      "row_count_for_project": "2",
+      "reason": "heuristic_non_schedule"
+    },
+    {
+      "table": "memory_update_reviews",
+      "row_count_for_project": "1",
+      "reason": "heuristic_non_schedule"
+    },
+    {
+      "table": "procore_ep_projects",
+      "row_count_for_project": "6",
+      "reason": "heuristic_non_schedule"
+    },
+    {
+      "table": "second_brain_mcp_claude_desktop_config_previews",
+      "row_count_for_project": "2",
+      "reason": "heuristic_non_schedule"
+    }
+  ],
+  "project_key_excluded_not_schedule_domain": [
+    {
+      "table": "aging_exposure_report_items",
+      "row_count_for_project": "1780",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_document_cards",
+      "row_count_for_project": "283",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_document_intelligence_previews",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_document_project_match_candidates",
+      "row_count_for_project": "283",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_drive_items",
+      "row_count_for_project": "475",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_file_ingestion_decisions",
+      "row_count_for_project": "12",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "construction_source_locations",
+      "row_count_for_project": "2",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "cross_source_relationship_candidates",
+      "row_count_for_project": "1880",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "cross_source_relationships",
+      "row_count_for_project": "1671",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_crawl_runs",
+      "row_count_for_project": "21",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_model_classifications",
+      "row_count_for_project": "40",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_processing_receipts",
+      "row_count_for_project": "17",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_project_matches",
+      "row_count_for_project": "291",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_relationship_candidates",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_review_queue",
+      "row_count_for_project": "48",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "email_thread_summary_materialization_runs",
+      "row_count_for_project": "2",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_budget_details",
+      "row_count_for_project": "127",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_confidence_factors",
+      "row_count_for_project": "131",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_confidence_scorecards",
+      "row_count_for_project": "128",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_config_items",
+      "row_count_for_project": "195",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_config_snapshot_items",
+      "row_count_for_project": "388",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_config_snapshots",
+      "row_count_for_project": "2",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_config_sources",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_cost_entries",
+      "row_count_for_project": "6324",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_data_availability_profiles",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_generation_requests",
+      "row_count_for_project": "18",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_monthly_actuals_by_budget_code",
+      "row_count_for_project": "1081",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_operator_assumptions",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_budget_codes",
+      "row_count_for_project": "254",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_changes",
+      "row_count_for_project": "49",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_commitment_exposure",
+      "row_count_for_project": "127",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_monthly",
+      "row_count_for_project": "2932",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_monthly_table_rows",
+      "row_count_for_project": "127",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_monthly_table_totals",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_narratives",
+      "row_count_for_project": "127",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_probability",
+      "row_count_for_project": "127",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_risks",
+      "row_count_for_project": "155",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_output_schedule_phasing",
+      "row_count_for_project": "58",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_outputs",
+      "row_count_for_project": "2",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_project_maturity_snapshots",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "forecast_runs",
+      "row_count_for_project": "10",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "meeting_email_relationship_candidates",
+      "row_count_for_project": "57",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "meeting_prep_brief_runs",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_action_signals",
+      "row_count_for_project": "5458",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_attachment_refs",
+      "row_count_for_project": "1211",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_custom_field_values",
+      "row_count_for_project": "1735",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_endpoint_raw_payloads",
+      "row_count_for_project": "43760",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_billing_periods",
+      "row_count_for_project": "20",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_change_history",
+      "row_count_for_project": "177",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_detail_columns",
+      "row_count_for_project": "69",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_detail_row_cells",
+      "row_count_for_project": "68515",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_detail_rows",
+      "row_count_for_project": "762",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_modifications",
+      "row_count_for_project": "148",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_budget_views",
+      "row_count_for_project": "6",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events",
+      "row_count_for_project": "204",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events_attachments",
+      "row_count_for_project": "239",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events_change_items",
+      "row_count_for_project": "317",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+      "row_count_for_project": "951",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events_markup_items",
+      "row_count_for_project": "600",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+      "row_count_for_project": "1800",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_attachments",
+      "row_count_for_project": "17",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_change_orders",
+      "row_count_for_project": "100",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_compliance",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents",
+      "row_count_for_project": "58",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf",
+      "row_count_for_project": "105",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_contracts",
+      "row_count_for_project": "63",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_commitment_line_items",
+      "row_count_for_project": "65",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs",
+      "row_count_for_project": "2573",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs_attachments",
+      "row_count_for_project": "563",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries",
+      "row_count_for_project": "59",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries_attachments",
+      "row_count_for_project": "18",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_inspections",
+      "row_count_for_project": "114",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_inspections_attachments",
+      "row_count_for_project": "14",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_manpower",
+      "row_count_for_project": "883",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_manpower_attachments",
+      "row_count_for_project": "771",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_notes",
+      "row_count_for_project": "92",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_notes_attachments",
+      "row_count_for_project": "1188",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_visitor",
+      "row_count_for_project": "2",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_daily_log_weather",
+      "row_count_for_project": "116",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspection_items",
+      "row_count_for_project": "3363",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspection_items_response_set_responses",
+      "row_count_for_project": "10068",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspection_sections",
+      "row_count_for_project": "139",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspections",
+      "row_count_for_project": "74",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspections_attachments",
+      "row_count_for_project": "363",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspections_distribution_members",
+      "row_count_for_project": "213",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspections_inspectors",
+      "row_count_for_project": "101",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_inspections_signature_requests",
+      "row_count_for_project": "8",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_meetings",
+      "row_count_for_project": "101",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_observations",
+      "row_count_for_project": "215",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_observations_assignees",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_prime_change_order_line_items",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_prime_change_orders",
+      "row_count_for_project": "65",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_prime_contract_line_items",
+      "row_count_for_project": "47",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_prime_contracts",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163287_value",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163290_value",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_punch_items",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_punch_items_assignees",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_punch_items_assignments",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_punch_items_ball_in_court",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts",
+      "row_count_for_project": "10",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items",
+      "row_count_for_project": "13",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd",
+      "row_count_for_project": "25",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfis",
+      "row_count_for_project": "482",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfis_assignees",
+      "row_count_for_project": "780",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfis_ball_in_courts",
+      "row_count_for_project": "24",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfis_questions",
+      "row_count_for_project": "482",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfqs",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfqs_attachments",
+      "row_count_for_project": "11",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_attachments",
+      "row_count_for_project": "31",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items",
+      "row_count_for_project": "52",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d",
+      "row_count_for_project": "57",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_schedules",
+      "row_count_for_project": "24",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_change_order_items",
+      "row_count_for_project": "90",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_contract_detail_items",
+      "row_count_for_project": "703",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices",
+      "row_count_for_project": "237",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices_attachments",
+      "row_count_for_project": "226",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_submittals",
+      "row_count_for_project": "347",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_submittals_approvers",
+      "row_count_for_project": "1119",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_submittals_approvers_attachments",
+      "row_count_for_project": "949",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_ep_submittals_ball_in_court",
+      "row_count_for_project": "14",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_amount_facts",
+      "row_count_for_project": "88049",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_billing_periods",
+      "row_count_for_project": "21",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_budget_changes",
+      "row_count_for_project": "325",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_budget_rows",
+      "row_count_for_project": "762",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_budget_views",
+      "row_count_for_project": "6",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_change_events",
+      "row_count_for_project": "204",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_change_order_line_items",
+      "row_count_for_project": "272",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_change_orders",
+      "row_count_for_project": "165",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_compliance_documents",
+      "row_count_for_project": "414",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_contracts",
+      "row_count_for_project": "74",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_invoice_items",
+      "row_count_for_project": "13882",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_line_items",
+      "row_count_for_project": "381",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_rfqs",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_financial_subcontractor_invoices",
+      "row_count_for_project": "240",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_evidence_rules",
+      "row_count_for_project": "3363",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_items",
+      "row_count_for_project": "3363",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_records",
+      "row_count_for_project": "74",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_response_options",
+      "row_count_for_project": "12",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_response_sets",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_inspection_sections",
+      "row_count_for_project": "139",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_record_change_events",
+      "row_count_for_project": "29268",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_record_snapshots",
+      "row_count_for_project": "27713",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_record_state_index",
+      "row_count_for_project": "27025",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_records",
+      "row_count_for_project": "28340",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_sync_runs",
+      "row_count_for_project": "1120",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_live_sync_watermarks",
+      "row_count_for_project": "54",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_location_entities",
+      "row_count_for_project": "108",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_attachments",
+      "row_count_for_project": "98",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_billing_periods",
+      "row_count_for_project": "21",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_budget_changes",
+      "row_count_for_project": "177",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_budget_columns",
+      "row_count_for_project": "69",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_budget_modifications",
+      "row_count_for_project": "148",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_budget_rows",
+      "row_count_for_project": "762",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_budget_views",
+      "row_count_for_project": "6",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_change_events",
+      "row_count_for_project": "204",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_change_order_line_items",
+      "row_count_for_project": "272",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_change_orders",
+      "row_count_for_project": "165",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_contract_line_items",
+      "row_count_for_project": "381",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_contracts",
+      "row_count_for_project": "74",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_cost_code_dimensions",
+      "row_count_for_project": "182",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_daily_logs",
+      "row_count_for_project": "4023",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_date_dimensions",
+      "row_count_for_project": "4531",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_inspection_items",
+      "row_count_for_project": "3363",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_inspection_sections",
+      "row_count_for_project": "139",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_inspections",
+      "row_count_for_project": "74",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_invoice_items",
+      "row_count_for_project": "13882",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_invoices",
+      "row_count_for_project": "240",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_meeting_details",
+      "row_count_for_project": "101",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_meeting_topics",
+      "row_count_for_project": "1192",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_meetings",
+      "row_count_for_project": "101",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_observations",
+      "row_count_for_project": "215",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_project_dimensions",
+      "row_count_for_project": "8",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_punch_items",
+      "row_count_for_project": "4",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_rfi_responses",
+      "row_count_for_project": "123",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_rfis",
+      "row_count_for_project": "482",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_rfqs",
+      "row_count_for_project": "7",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_schedules",
+      "row_count_for_project": "1",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_status_dimensions",
+      "row_count_for_project": "53",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_raw_submittals",
+      "row_count_for_project": "347",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_record_edges",
+      "row_count_for_project": "26421",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_record_timeline_events",
+      "row_count_for_project": "27073",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_sync_watermarks",
+      "row_count_for_project": "3",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "procore_text_intelligence",
+      "row_count_for_project": "2676",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "project_issue_history_items",
+      "row_count_for_project": "598",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "project_risk_digest_items",
+      "row_count_for_project": "44",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "second_brain_financial_currency_completeness_snapshots",
+      "row_count_for_project": "97",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "second_brain_financial_review_required_items",
+      "row_count_for_project": "123134",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "source_evidence_trails",
+      "row_count_for_project": "1880",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "v_procore_inspection_unanswered_items",
+      "row_count_for_project": "1265",
+      "reason": "not_schedule_domain"
+    },
+    {
+      "table": "v_procore_open_action_signals",
+      "row_count_for_project": "5458",
+      "reason": "not_schedule_domain"
+    }
+  ]
+}

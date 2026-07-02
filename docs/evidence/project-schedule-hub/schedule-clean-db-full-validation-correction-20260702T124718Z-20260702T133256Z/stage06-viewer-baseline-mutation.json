@@ -1,0 +1,11 @@
+{
+  "method": "PUT",
+  "url": "/api/projects/tropical/schedule/baselines",
+  "headers": {
+    "X-HB-UI-Role": "viewer"
+  },
+  "status": 403,
+  "body": {
+    "detail": "operator_role_required"
+  }
+}

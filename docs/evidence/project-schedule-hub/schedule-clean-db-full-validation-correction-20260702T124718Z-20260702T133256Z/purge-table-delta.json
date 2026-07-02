@@ -1,0 +1,52 @@
+{
+  "schedule_version_diffs": {
+    "before": 17,
+    "after": 0,
+    "delta": -17
+  },
+  "schedule_version_diff_facts": {
+    "before": 160,
+    "after": 0,
+    "delta": -160
+  },
+  "schedule_version_diff_detail_facts": {
+    "before": 209437,
+    "after": 0,
+    "delta": -209437
+  },
+  "schedule_version_diff_impact_rollups": {
+    "before": 32728,
+    "after": 0,
+    "delta": -32728
+  },
+  "schedule_baseline_projects": {
+    "before": 10,
+    "after": 0,
+    "delta": -10
+  },
+  "schedule_baseline_activity_codes": {
+    "before": 31242,
+    "after": 0,
+    "delta": -31242
+  },
+  "schedule_baseline_udfs": {
+    "before": 17693,
+    "after": 0,
+    "delta": -17693
+  },
+  "schedule_baseline_wbs": {
+    "before": 1641,
+    "after": 0,
+    "delta": -1641
+  },
+  "schedule_baseline_activities": {
+    "before": 12869,
+    "after": 0,
+    "delta": -12869
+  },
+  "schedule_baseline_relationships": {
+    "before": 31853,
+    "after": 0,
+    "delta": -31853
+  }
+}

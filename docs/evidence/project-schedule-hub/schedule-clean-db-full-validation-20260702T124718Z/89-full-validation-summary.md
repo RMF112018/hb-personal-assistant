@@ -1,5 +1,10 @@
 # Full validation summary
 
+> **Superseded:** Final classification and summary live in the correction package  
+> `docs/evidence/project-schedule-hub/schedule-clean-db-full-validation-correction-20260702T124718Z-20260702T133256Z/`  
+> (see `89-full-validation-summary.md` and `correction-final-verdict.md` there).  
+> This original package remains as-run at commit `2802faa0`.
+
 - branch: `validation/schedule-clean-db-full-20260702T124718Z`
 - base commit: `e2313d9e`
 - validation scope: `full` (5/5 packages imported)

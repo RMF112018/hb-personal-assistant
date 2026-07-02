@@ -1,0 +1,8 @@
+{
+  "purge_gate": "pass",
+  "stage05_hub_api": "pass",
+  "stage06_controls_baseline_api": "pass",
+  "stage07_review_workbench_api": "pass",
+  "core_import_cpm_metric_chain": "prior_pass_not_rerun",
+  "full_14_stage_classification": "pass"
+}

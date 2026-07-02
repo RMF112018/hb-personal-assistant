@@ -1,0 +1,600 @@
+{
+  "method": "PATCH",
+  "url": "/api/projects/tropical/schedule/review-items/psri-c790e3c886eb4251823827343a7cc2f4",
+  "headers": {
+    "X-HB-UI-Role": "operator"
+  },
+  "status": 200,
+  "body": {
+    "item": {
+      "review_item_id": "psri-c790e3c886eb4251823827343a7cc2f4",
+      "stable_item_key": "driver:FAB/DEL-10",
+      "item_type": "driver",
+      "item_title": "Review driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "priority": 100,
+      "review_status": "accepted_for_follow_up",
+      "disposition_reason": null,
+      "pm_notes": "correction-pass follow up",
+      "source_activity_id": "FAB/DEL-10",
+      "reviewed_by_operator": "operator",
+      "reviewed_at": "2026-07-02T13:34:33.258862+00:00",
+      "created_at": "2026-07-02T13:30:25.379547+00:00",
+      "updated_at": "2026-07-02T13:34:33.258862+00:00",
+      "evidence": {
+        "activity_name": "FAB/DEL EXTERIOR LIGHT FIXTURES",
+        "as_of": "2026-07-02",
+        "caveats": [
+          "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination."
+        ],
+        "comparison_basis": "prior_update",
+        "confidence": "production_backed",
+        "cost_code": null,
+        "cue_category": "change_driver",
+        "cue_label": "Candidate change driver",
+        "cue_summary": "Candidate driver sequence cue for PM review.",
+        "data_date": "2026-06-23",
+        "data_quality_notes": [],
+        "evidence_summary": "Canonical activity merged from TWNU19.xer, TWNU19.xml. Latest committed CPM import status: complete.",
+        "field_lineage_available": true,
+        "floor": null,
+        "materializable": true,
+        "partial_dimension_support": false,
+        "phase": null,
+        "recommended_review_action": "Review the linked activity sequence and downstream movement before disposition.",
+        "review_cue_only": true,
+        "schedule_data_date": "2026-06-23",
+        "sector_area": null,
+        "severity": "high",
+        "source_file_names": [
+          "TWNU19.xer",
+          "TWNU19.xml"
+        ],
+        "source_formats": [
+          "primavera_pmxml",
+          "primavera_xer"
+        ],
+        "source_metric_key": "change_driver_analysis",
+        "source_signal_type": "driver",
+        "subcontractor": null,
+        "technical_evidence": {
+          "cpm_observability": {
+            "canonical_input_activity_count": 1507,
+            "canonical_input_relationship_count": 3921,
+            "error_count": 0,
+            "graph_edge_count": 3921,
+            "graph_node_count": 1507,
+            "trigger_source": "import_commit",
+            "warning_count": 0
+          },
+          "cpm_run_id": "cpmrun_3e7488de94b5a190670574a5c2a3f709",
+          "cpm_status": "complete",
+          "field_conflicts": [
+            {
+              "conflicting_value": "Task Dependent",
+              "field": "activity_type",
+              "selected_value": "TT_Task",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "In Progress",
+              "field": "activity_status",
+              "selected_value": "TK_Active",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-07-29T08:00:00",
+              "field": "planned_start",
+              "selected_value": "2026-06-23 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-08-18T16:00:00",
+              "field": "planned_finish",
+              "selected_value": "2026-07-10 16:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-07-29T08:00:00",
+              "field": "start_date",
+              "selected_value": "2025-07-29 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2026-07-10T16:00:00",
+              "field": "finish_date",
+              "selected_value": "2026-07-10 16:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2025-07-29T08:00:00",
+              "field": "actual_start",
+              "selected_value": "2025-07-29 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2026-03-19T08:00:00",
+              "field": "remaining_late_start",
+              "selected_value": "2026-03-19 08:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "2026-04-06T16:00:00",
+              "field": "remaining_late_finish",
+              "selected_value": "2026-04-06 16:00",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "Fixed Duration and Units",
+              "field": "duration_unit",
+              "selected_value": "hour",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "0.133333333333333",
+              "field": "percent_complete",
+              "selected_value": "0",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_longest_path",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": 0,
+              "field": "is_milestone",
+              "selected_value": false,
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "missing",
+              "field": "float_source",
+              "selected_value": "xer_explicit",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            },
+            {
+              "conflicting_value": "missing",
+              "field": "critical_path_source",
+              "selected_value": "xer_total_float_threshold",
+              "source": {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            }
+          ],
+          "field_lineage": [
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            },
+            {
+              "canonical_value": null,
+              "field_name": null,
+              "source_format": null,
+              "source_value": null
+            }
+          ],
+          "import_id": "98ffa9458e95",
+          "merged_from_files": [
+            {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_file_id": "pf-8e3a72e76338-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          ],
+          "package_id": "pkg-8e3a72e76338",
+          "raw_merged": {
+            "field_conflicts": [
+              {
+                "conflicting_value": "Task Dependent",
+                "field": "activity_type",
+                "selected_value": "TT_Task",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "In Progress",
+                "field": "activity_status",
+                "selected_value": "TK_Active",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2025-07-29T08:00:00",
+                "field": "planned_start",
+                "selected_value": "2026-06-23 08:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2025-08-18T16:00:00",
+                "field": "planned_finish",
+                "selected_value": "2026-07-10 16:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2025-07-29T08:00:00",
+                "field": "start_date",
+                "selected_value": "2025-07-29 08:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2026-07-10T16:00:00",
+                "field": "finish_date",
+                "selected_value": "2026-07-10 16:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2025-07-29T08:00:00",
+                "field": "actual_start",
+                "selected_value": "2025-07-29 08:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2026-03-19T08:00:00",
+                "field": "remaining_late_start",
+                "selected_value": "2026-03-19 08:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "2026-04-06T16:00:00",
+                "field": "remaining_late_finish",
+                "selected_value": "2026-04-06 16:00",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "Fixed Duration and Units",
+                "field": "duration_unit",
+                "selected_value": "hour",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "0.133333333333333",
+                "field": "percent_complete",
+                "selected_value": "0",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": 0,
+                "field": "is_longest_path",
+                "selected_value": false,
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": 0,
+                "field": "is_milestone",
+                "selected_value": false,
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "missing",
+                "field": "float_source",
+                "selected_value": "xer_explicit",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              },
+              {
+                "conflicting_value": "missing",
+                "field": "critical_path_source",
+                "selected_value": "xer_total_float_threshold",
+                "source": {
+                  "filename": "TWNU19.xml",
+                  "parser_name": "schedule_xml_parser",
+                  "parser_version": "1.2.0",
+                  "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                  "source_format": "primavera_pmxml"
+                }
+              }
+            ],
+            "merged_from_files": [
+              {
+                "filename": "TWNU19.xer",
+                "parser_name": "schedule_xer_parser",
+                "parser_version": "1.0.0",
+                "source_file_id": "pf-8e3a72e76338-1-38cc20da",
+                "source_format": "primavera_xer"
+              },
+              {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            ],
+            "source_object_ids": [
+              {
+                "filename": "TWNU19.xer",
+                "parser_name": "schedule_xer_parser",
+                "parser_version": "1.0.0",
+                "source_activity_object_id": "106737",
+                "source_file_id": "pf-8e3a72e76338-1-38cc20da",
+                "source_format": "primavera_xer"
+              },
+              {
+                "filename": "TWNU19.xml",
+                "parser_name": "schedule_xml_parser",
+                "parser_version": "1.2.0",
+                "source_activity_object_id": "106737",
+                "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+                "source_format": "primavera_pmxml"
+              }
+            ]
+          },
+          "source_activity_object_id": "106737",
+          "source_object_ids": [
+            {
+              "filename": "TWNU19.xer",
+              "parser_name": "schedule_xer_parser",
+              "parser_version": "1.0.0",
+              "source_activity_object_id": "106737",
+              "source_file_id": "pf-8e3a72e76338-1-38cc20da",
+              "source_format": "primavera_xer"
+            },
+            {
+              "filename": "TWNU19.xml",
+              "parser_name": "schedule_xml_parser",
+              "parser_version": "1.2.0",
+              "source_activity_object_id": "106737",
+              "source_file_id": "pf-8e3a72e76338-2-edc78b88",
+              "source_format": "primavera_pmxml"
+            }
+          ]
+        },
+        "technical_evidence_available": true,
+        "wbs_code": "5"
+      },
+      "lineage": "existing",
+      "new_since_last_review": true,
+      "still_open_from_prior": false,
+      "source_metric_key": "change_driver_analysis",
+      "source_signal_type": "driver",
+      "confidence": "production_backed",
+      "severity": "high",
+      "cue_summary": "Candidate driver sequence cue for PM review.",
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination."
+      ],
+      "partial_dimension_support": false,
+      "comparison_basis": "prior_update",
+      "as_of": "2026-07-02",
+      "schedule_data_date": "2026-06-23",
+      "data_date": "2026-06-23",
+      "activity_name": "FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "wbs_code": "5",
+      "cue_category": "change_driver",
+      "cue_label": "Candidate change driver",
+      "recommended_review_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "evidence_summary": "Canonical activity merged from TWNU19.xer, TWNU19.xml. Latest committed CPM import status: complete.",
+      "source_file_names": [
+        "TWNU19.xer",
+        "TWNU19.xml"
+      ],
+      "source_formats": [
+        "primavera_pmxml",
+        "primavera_xer"
+      ],
+      "field_lineage_available": true,
+      "technical_evidence_available": true,
+      "disposition_label": "Accepted for PM follow-up",
+      "disposition_pm_description": "An operator marked this item for project-team review.",
+      "is_preview": false,
+      "is_persisted": true
+    }
+  }
+}
