@@ -1,0 +1,20 @@
+{
+  "schedule_cpm_activity_results": {
+    "forward_pass": 1507,
+    "backward_pass": 1507,
+    "float": 1507,
+    "criticality": 1507
+  },
+  "schedule_cpm_relationship_results": {
+    "forward_pass": 3921,
+    "backward_pass": 3921,
+    "float": 3921
+  },
+  "schedule_cpm_paths": {
+    "longest_path": 1
+  },
+  "schedule_cpm_path_activities": {
+    "longest_path": 45
+  },
+  "query_status": "pass"
+}

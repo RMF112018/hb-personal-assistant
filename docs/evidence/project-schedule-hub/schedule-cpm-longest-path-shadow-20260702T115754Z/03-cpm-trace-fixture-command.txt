@@ -1,0 +1,21 @@
+# Fixture command — CPM longest-path shadow export
+
+```bash
+cd <repo-root>
+source .venv/bin/activate
+unset PYTHONPATH
+export PYTHONPATH="$PWD/src:$PWD/subrepos/construction-financial-review/src"
+
+FIXTURE_DB="local-sensitive/clean-db/cpm-longest-path-shadow-fixture.sqlite"
+EVID="docs/evidence/project-schedule-hub/schedule-cpm-longest-path-shadow-20260702T115754Z/cpm-formula-trace"
+VERSION="tropical|1|2026-06-01 08:00"
+
+python3 scripts/dev_schedule_cpm_formula_trace_export.py \
+  --db-path "$FIXTURE_DB" \
+  --schedule-version-key "$VERSION" \
+  --latest \
+  --out-dir "$EVID" \
+  --allow-custom-copy-path
+```
+
+Fixture DB seeded via minimal XER import. Export produces six artifacts including `cpm-longest-path-formula-trace.jsonl`.

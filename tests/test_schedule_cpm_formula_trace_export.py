@@ -82,7 +82,7 @@ def _run_cli(
     return subprocess.run(cmd, capture_output=True, text=True, cwd=REPO)
 
 
-def test_export_writes_five_files_and_is_mutation_proof(tmp_path: Path) -> None:
+def test_export_writes_six_files_and_is_mutation_proof(tmp_path: Path) -> None:
     db, version_key = _seed_imported_db(tmp_path)
     out_dir = tmp_path / "export"
     before = snapshot_db_row_counts(db)
@@ -94,10 +94,17 @@ def test_export_writes_five_files_and_is_mutation_proof(tmp_path: Path) -> None:
         "cpm-run-summary.json",
         "cpm-activity-formula-trace.jsonl",
         "cpm-relationship-formula-trace.jsonl",
+        "cpm-longest-path-formula-trace.jsonl",
         "cpm-validation-recompute-diff.json",
         "cpm-formula-audit.md",
     ):
         assert (out_dir / name).is_file(), name
+
+    lp_lines = (out_dir / "cpm-longest-path-formula-trace.jsonl").read_text().strip().splitlines()
+    assert lp_lines
+    lp_trace = json.loads(lp_lines[0])
+    assert lp_trace["trace_type"] == "longest_path"
+    assert lp_trace["path_duration_basis"]
 
     summary = json.loads((out_dir / "cpm-run-summary.json").read_text())
     assert summary["mode"] == "schedule_cpm_formula_trace"
@@ -105,8 +112,9 @@ def test_export_writes_five_files_and_is_mutation_proof(tmp_path: Path) -> None:
     assert summary["chain_resolution"]["lineage_valid"] is True
 
     diff = json.loads((out_dir / "cpm-validation-recompute-diff.json").read_text())
-    assert diff["status"] in {"pass", "pass_with_exclusions", "fail"}
-    assert diff["longest_path"]["diff_status"] == "not_evaluated"
+    assert diff["status"] == "pass"
+    assert diff["longest_path"]["diff_status"] == "pass"
+    assert diff["excluded_stages"] == []
     assert diff["source_field_exclusion"]["status"] == "pass"
 
     audit = (out_dir / "cpm-formula-audit.md").read_text()

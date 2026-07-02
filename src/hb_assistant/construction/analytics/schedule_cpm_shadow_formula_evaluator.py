@@ -488,11 +488,481 @@ class CpmShadowFormulaEvaluator:
 
         return activity_results, rel_results
 
+    def evaluate_longest_path(
+        self,
+        *,
+        graph_result: Any,
+        float_activities: list[dict[str, Any]],
+        float_relationships: list[dict[str, Any]],
+    ) -> "ShadowLongestPathResult":
+        """Repo-mirrored longest path (does not call production compute_longest_path)."""
+        return _shadow_compute_longest_path(graph_result, float_activities, float_relationships)
+
+
+PATH_BASIS = "max_forward_early_finish_backtrace"
+PATH_DURATION_DEFINITION = (
+    "path_finish_offset_days minus path_start_offset_days on the backtraced path "
+    "(not sum of activity durations)"
+)
+_LP_TOL = 1e-6
+_LP_ANCHOR = 0.0
+_LP_ALGORITHM_ID = "repo_mirrored_shadow_dag_longest_path"
+PATH_COMPUTED = "computed"
+PATH_DEGRADED_PARTIAL = "degraded_partial_backtrace"
+PATH_UNSUPPORTED_TYPE = "unsupported_relationship_type"
+
+
+@dataclass
+class ShadowRelationshipIdentity:
+    relationship_ref: str
+    relationship_id: str
+    predecessor_activity_id: str
+    successor_activity_id: str
+    relationship_type: str
+    lag: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "relationship_ref": self.relationship_ref,
+            "relationship_id": self.relationship_id,
+            "predecessor_activity_id": self.predecessor_activity_id,
+            "successor_activity_id": self.successor_activity_id,
+            "relationship_type": self.relationship_type,
+            "lag": self.lag,
+        }
+
+
+@dataclass
+class ShadowLongestPathActivity:
+    path_sequence: int
+    activity_id: str
+    relationship_from_previous: ShadowRelationshipIdentity | None
+    early_start_offset_days: float | None
+    early_finish_offset_days: float | None
+    duration_value: float | None
+    topological_index: int | None
+    selection_basis: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "path_sequence": self.path_sequence,
+            "activity_id": self.activity_id,
+            "relationship_from_previous": (
+                self.relationship_from_previous.to_dict()
+                if self.relationship_from_previous
+                else None
+            ),
+            "early_start_offset_days": self.early_start_offset_days,
+            "early_finish_offset_days": self.early_finish_offset_days,
+            "duration_value": self.duration_value,
+            "topological_index": self.topological_index,
+            "selection_basis": self.selection_basis,
+        }
+
+
+@dataclass
+class ShadowLongestPathSummary:
+    start_activity_id: str | None
+    end_activity_id: str | None
+    activity_count: int
+    relationship_count: int
+    path_start_offset_days: float | None
+    path_finish_offset_days: float | None
+    path_duration: float | None
+    path_duration_basis: str
+    path_basis: str
+    path_status: str
+    algorithm_id: str
+    notes: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "start_activity_id": self.start_activity_id,
+            "end_activity_id": self.end_activity_id,
+            "activity_count": self.activity_count,
+            "relationship_count": self.relationship_count,
+            "path_start_offset_days": self.path_start_offset_days,
+            "path_finish_offset_days": self.path_finish_offset_days,
+            "path_duration": self.path_duration,
+            "path_duration_basis": self.path_duration_basis,
+            "path_basis": self.path_basis,
+            "path_status": self.path_status,
+            "algorithm_id": self.algorithm_id,
+            "notes": self.notes,
+        }
+
+
+@dataclass
+class ShadowLongestPathResult:
+    path_status: str
+    summary: ShadowLongestPathSummary | None
+    activities: list[ShadowLongestPathActivity] = field(default_factory=list)
+    block_reason: str | None = None
+
+    @property
+    def activity_ids(self) -> list[str]:
+        return [a.activity_id for a in self.activities]
+
+    @property
+    def relationship_identities(self) -> list[ShadowRelationshipIdentity]:
+        return [
+            a.relationship_from_previous
+            for a in self.activities
+            if a.relationship_from_previous is not None
+        ]
+
+
+def relationship_identity_from_row(rel: dict[str, Any] | None) -> ShadowRelationshipIdentity | None:
+    if not rel:
+        return None
+    ref = str(rel.get("relationship_ref") or "")
+    rel_id = str(rel.get("relationship_row_id") or rel.get("relationship_id") or "")
+    return ShadowRelationshipIdentity(
+        relationship_ref=ref,
+        relationship_id=rel_id,
+        predecessor_activity_id=str(rel.get("predecessor_activity_id") or ""),
+        successor_activity_id=str(rel.get("successor_activity_id") or ""),
+        relationship_type=str(rel.get("relationship_type") or ""),
+        lag=_as_float(rel.get("normalized_lag_days")) or 0.0,
+    )
+
+
+def relationship_identity_from_persisted_path(
+    *,
+    relationship_from_previous_ref: Any,
+    relationship_from_previous_id: Any,
+    predecessor_activity_id: str,
+    successor_activity_id: str,
+    relationship_type: str = "",
+    lag: float = 0.0,
+) -> ShadowRelationshipIdentity:
+    return ShadowRelationshipIdentity(
+        relationship_ref=str(relationship_from_previous_ref or ""),
+        relationship_id=str(relationship_from_previous_id or ""),
+        predecessor_activity_id=predecessor_activity_id,
+        successor_activity_id=successor_activity_id,
+        relationship_type=relationship_type,
+        lag=lag,
+    )
+
+
+def identities_match(
+    a: ShadowRelationshipIdentity | None,
+    b: ShadowRelationshipIdentity | None,
+) -> bool:
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+
+    def core_match(x: ShadowRelationshipIdentity, y: ShadowRelationshipIdentity) -> bool:
+        return (
+            x.predecessor_activity_id == y.predecessor_activity_id
+            and x.successor_activity_id == y.successor_activity_id
+            and x.relationship_type == y.relationship_type
+            and abs(x.lag - y.lag) <= _LP_TOL
+            and (
+                x.relationship_ref == y.relationship_ref
+                or (not x.relationship_ref and not y.relationship_ref)
+            )
+        )
+
+    if a.relationship_id and b.relationship_id and a.relationship_id == b.relationship_id:
+        return core_match(a, b)
+    if a.relationship_ref and b.relationship_ref and a.relationship_ref == b.relationship_ref:
+        return core_match(a, b)
+    return core_match(a, b)
+
+
+def _shadow_lp_candidate(
+    rel: dict[str, Any], by_id: dict[str, dict[str, Any]]
+) -> tuple[float | None, bool, str | None]:
+    rtype_raw = rel.get("relationship_type")
+    rtype = str(rtype_raw) if rtype_raw not in (None, "") else None
+    if rtype not in _SUPPORTED:
+        return None, False, "unsupported_relationship_type"
+
+    persisted = _as_float(rel.get("candidate_successor_early_start_offset"))
+    if persisted is not None:
+        return persisted, True, None
+
+    pred = str(rel.get("predecessor_activity_id", ""))
+    succ = str(rel.get("successor_activity_id", ""))
+    prow = by_id.get(pred, {})
+    srow = by_id.get(succ, {})
+    pe_es = _as_float(prow.get("early_start_offset_days"))
+    pe_ef = _as_float(prow.get("early_finish_offset_days"))
+    lag = _as_float(rel.get("normalized_lag_days")) or 0.0
+    succ_dur = _as_float(srow.get("duration_value"))
+
+    if rtype == "FS":
+        cand = pe_ef + lag if pe_ef is not None else None
+    elif rtype == "SS":
+        cand = pe_es + lag if pe_es is not None else None
+    elif rtype == "FF":
+        cand = pe_ef + lag - succ_dur if (pe_ef is not None and succ_dur is not None) else None
+    else:
+        cand = pe_es + lag - succ_dur if (pe_es is not None and succ_dur is not None) else None
+
+    if cand is None:
+        return None, False, "unreconstructable_candidate"
+    return cand, True, "reconstructed_candidate"
+
+
+def _shadow_lp_tie_break(
+    matches: list[dict[str, Any]], by_id: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    def key(rel: dict[str, Any]):
+        pred = str(rel.get("predecessor_activity_id", ""))
+        prow = by_id.get(pred, {})
+        ef = _as_float(prow.get("early_finish_offset_days"))
+        es = _as_float(prow.get("early_start_offset_days"))
+        topo = prow.get("topological_index")
+        topo_val = topo if isinstance(topo, int) else 1_000_000_000
+        return (
+            -(ef if ef is not None else float("-inf")),
+            -(es if es is not None else float("-inf")),
+            topo_val,
+            pred,
+            str(rel.get("relationship_ref") or ""),
+        )
+
+    return sorted(matches, key=key)[0]
+
+
+def _shadow_lp_select_end(by_id: dict[str, dict[str, Any]]) -> tuple[str | None, dict[str, Any]]:
+    def sort_key(item: tuple[str, dict[str, Any]]):
+        aid, row = item
+        ef = _as_float(row.get("early_finish_offset_days"))
+        es = _as_float(row.get("early_start_offset_days"))
+        topo = row.get("topological_index")
+        topo_val = topo if isinstance(topo, int) else 1_000_000_000
+        ef_key = ef if ef is not None else float("-inf")
+        es_key = es if es is not None else float("-inf")
+        return (-ef_key, -es_key, topo_val, aid)
+
+    items = sorted(by_id.items(), key=sort_key)
+    if not items:
+        return None, {}
+    best_id = items[0][0]
+    notes: dict[str, Any] = {}
+    if len(items) > 1:
+        best_ef = _as_float(items[0][1].get("early_finish_offset_days"))
+        second_ef = _as_float(items[1][1].get("early_finish_offset_days"))
+        if best_ef is not None and second_ef is not None and abs(best_ef - second_ef) <= _LP_TOL:
+            notes["endpoint_tie_break"] = "multiple_activities_share_max_early_finish"
+    return best_id, notes
+
+
+def _shadow_lp_backtrace(
+    end_id: str,
+    by_id: dict[str, dict[str, Any]],
+    incoming: dict[str, list[dict[str, Any]]],
+) -> tuple[list[str], dict[str, dict[str, Any]], str, dict[str, Any]]:
+    nodes: list[str] = [end_id]
+    rel_into: dict[str, dict[str, Any]] = {}
+    status = PATH_COMPUTED
+    notes: dict[str, Any] = {}
+    caveats: list[dict[str, Any]] = []
+    visited: set[str] = set()
+    cur = end_id
+
+    while True:
+        if cur in visited:
+            status = PATH_DEGRADED_PARTIAL
+            notes["cycle_guard"] = f"revisited:{cur}"
+            break
+        visited.add(cur)
+
+        rels = sorted(
+            incoming.get(cur, []),
+            key=lambda r: (
+                str(r.get("predecessor_activity_id", "")),
+                str(r.get("relationship_type") or ""),
+                str(r.get("relationship_ref") or ""),
+                str(r.get("relationship_row_id") or ""),
+            ),
+        )
+        if not rels:
+            break
+
+        cur_es = _as_float(by_id.get(cur, {}).get("early_start_offset_days"))
+        matches: list[dict[str, Any]] = []
+        unsupported_type = False
+        unreconstructable = False
+        for rel in rels:
+            cand, supported, note = _shadow_lp_candidate(rel, by_id)
+            if not supported:
+                if note == "unsupported_relationship_type":
+                    unsupported_type = True
+                else:
+                    unreconstructable = True
+                caveats.append(
+                    {
+                        "activity_id": cur,
+                        "relationship_ref": rel.get("relationship_ref"),
+                        "relationship_type": rel.get("relationship_type"),
+                        "reason": note,
+                    }
+                )
+                continue
+            if cand is not None and cur_es is not None and abs(cand - cur_es) <= _LP_TOL:
+                matches.append(rel)
+
+        if matches:
+            controlling = _shadow_lp_tie_break(matches, by_id)
+            rel_into[cur] = controlling
+            pred = str(controlling.get("predecessor_activity_id", ""))
+            nodes.append(pred)
+            cur = pred
+            continue
+
+        if cur_es is not None and abs(cur_es - _LP_ANCHOR) <= _LP_TOL:
+            if unsupported_type or unreconstructable:
+                notes["non_controlling_caveats"] = caveats
+            break
+        if unsupported_type:
+            status = PATH_UNSUPPORTED_TYPE
+        else:
+            status = PATH_DEGRADED_PARTIAL
+        notes["stopped_at"] = cur
+        notes["stop_reason"] = status
+        break
+
+    if caveats and "non_controlling_caveats" not in notes:
+        notes["caveats"] = caveats
+    return nodes, rel_into, status, notes
+
+
+def _shadow_compute_longest_path(
+    graph_result: Any,
+    float_activities: list[dict[str, Any]],
+    float_relationships: list[dict[str, Any]],
+) -> ShadowLongestPathResult:
+    from .schedule_cpm_forward_pass import FATAL_GRAPH_DIAGNOSTICS
+
+    if not float_activities:
+        return ShadowLongestPathResult(
+            path_status="empty_graph",
+            summary=None,
+            block_reason="empty_graph",
+        )
+
+    fatal = [
+        d
+        for d in getattr(graph_result, "diagnostics", [])
+        if d.diagnostic_type in FATAL_GRAPH_DIAGNOSTICS
+    ]
+    if getattr(graph_result, "topological_order", None) is None or fatal:
+        return ShadowLongestPathResult(
+            path_status="blocked_graph",
+            summary=None,
+            block_reason="blocked_by_graph_diagnostic",
+        )
+
+    by_id = {str(a.get("activity_id")): a for a in float_activities}
+    incoming: dict[str, list[dict[str, Any]]] = {}
+    for rel in float_relationships:
+        pred = str(rel.get("predecessor_activity_id", ""))
+        succ = str(rel.get("successor_activity_id", ""))
+        if pred == succ or pred not in by_id or succ not in by_id:
+            continue
+        incoming.setdefault(succ, []).append(rel)
+
+    end_id, endpoint_notes = _shadow_lp_select_end(by_id)
+    if end_id is None:
+        return ShadowLongestPathResult(
+            path_status="no_terminal",
+            summary=None,
+            block_reason="no_terminal_activity",
+        )
+
+    nodes, rel_into, path_status, path_notes = _shadow_lp_backtrace(end_id, by_id, incoming)
+    path_notes.update(endpoint_notes)
+
+    ordered = list(reversed(nodes))
+    activities: list[ShadowLongestPathActivity] = []
+    for seq, activity_id in enumerate(ordered, start=1):
+        row = by_id.get(activity_id, {})
+        rel = rel_into.get(activity_id)
+        activities.append(
+            ShadowLongestPathActivity(
+                path_sequence=seq,
+                activity_id=activity_id,
+                relationship_from_previous=relationship_identity_from_row(rel),
+                early_start_offset_days=_as_float(row.get("early_start_offset_days")),
+                early_finish_offset_days=_as_float(row.get("early_finish_offset_days")),
+                duration_value=_as_float(row.get("duration_value")),
+                topological_index=(
+                    row.get("topological_index")
+                    if isinstance(row.get("topological_index"), int)
+                    else None
+                ),
+                selection_basis="controlling_predecessor" if rel else "path_start",
+            )
+        )
+
+    rel_count = sum(1 for a in activities if a.relationship_from_previous is not None)
+    if not activities:
+        summary = ShadowLongestPathSummary(
+            start_activity_id=None,
+            end_activity_id=None,
+            activity_count=0,
+            relationship_count=0,
+            path_start_offset_days=None,
+            path_finish_offset_days=None,
+            path_duration=None,
+            path_duration_basis=PATH_DURATION_DEFINITION,
+            path_basis=PATH_BASIS,
+            path_status=path_status,
+            algorithm_id=_LP_ALGORITHM_ID,
+            notes=path_notes,
+        )
+    else:
+        start = activities[0]
+        end = activities[-1]
+        p_start = start.early_start_offset_days
+        p_finish = end.early_finish_offset_days
+        duration = (
+            _round(p_finish - p_start)
+            if (p_start is not None and p_finish is not None)
+            else None
+        )
+        summary = ShadowLongestPathSummary(
+            start_activity_id=start.activity_id,
+            end_activity_id=end.activity_id,
+            activity_count=len(activities),
+            relationship_count=rel_count,
+            path_start_offset_days=_round(p_start),
+            path_finish_offset_days=_round(p_finish),
+            path_duration=duration,
+            path_duration_basis=PATH_DURATION_DEFINITION,
+            path_basis=PATH_BASIS,
+            path_status=path_status,
+            algorithm_id=_LP_ALGORITHM_ID,
+            notes=path_notes,
+        )
+
+    return ShadowLongestPathResult(
+        path_status=path_status,
+        summary=summary,
+        activities=activities,
+    )
+
 
 __all__ = [
     "CpmShadowFormulaEvaluator",
     "FORMULA_EXPRESSIONS",
+    "PATH_BASIS",
+    "PATH_DURATION_DEFINITION",
     "ShadowActivityResult",
     "ShadowCandidateEvaluation",
+    "ShadowLongestPathActivity",
+    "ShadowLongestPathResult",
+    "ShadowLongestPathSummary",
+    "ShadowRelationshipIdentity",
     "ShadowRelationshipResult",
+    "identities_match",
+    "relationship_identity_from_persisted_path",
+    "relationship_identity_from_row",
 ]

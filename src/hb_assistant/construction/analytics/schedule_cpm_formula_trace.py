@@ -22,6 +22,10 @@ from hb_assistant.construction.analytics.schedule_cpm_graph import build_graph
 from hb_assistant.construction.analytics.schedule_cpm_shadow_formula_evaluator import (
     CpmShadowFormulaEvaluator,
     FORMULA_EXPRESSIONS,
+    PATH_DURATION_DEFINITION,
+    ShadowLongestPathResult,
+    identities_match,
+    relationship_identity_from_persisted_path,
 )
 from hb_assistant.construction.analytics.schedule_quality_normalization import (
     calendar_hours_per_day,
@@ -31,7 +35,7 @@ from hb_assistant.construction.analytics.schedule_quality_normalization import (
 from hb_assistant.store.schedule_activity_repository import ScheduleActivityRepository
 from hb_assistant.store.schedule_cpm_repository import ScheduleCpmDiagnosticsRepository
 
-CPM_FORMULA_TRACE_VERSION = "2026-07-02.phase0-cpm-formula-trace.v1"
+CPM_FORMULA_TRACE_VERSION = "2026-07-02.cpm-longest-path-shadow.v2"
 
 _OFFSET_TOL = 1e-6
 
@@ -140,6 +144,7 @@ def build_code_version_metadata(*, repo_root: Path | None = None) -> dict[str, A
         root / "src/hb_assistant/construction/analytics/schedule_cpm_float.py",
         root / "src/hb_assistant/construction/analytics/schedule_cpm_criticality.py",
         root / "src/hb_assistant/construction/analytics/schedule_cpm_shadow_formula_evaluator.py",
+        root / "src/hb_assistant/construction/analytics/schedule_cpm_longest_path.py",
         root / "src/hb_assistant/construction/analytics/schedule_cpm_formula_trace.py",
     ]
     hashes: dict[str, str] = {}
@@ -406,6 +411,7 @@ class ScheduleCpmFormulaTraceBuilder:
         chain: CpmRunChain,
         *,
         tolerance: float = 0.0,
+        allow_missing_longest_path: bool = False,
     ) -> dict[str, Any]:
         version = chain.schedule_version_key
         canonical_activities = self._load_activities(version)
@@ -502,7 +508,18 @@ class ScheduleCpmFormulaTraceBuilder:
         source_exclusion = self._source_field_exclusion(
             canonical_activities, persisted_activities, engine["activities"]
         )
-        longest_path = self._longest_path_block(chain, lp_run)
+        shadow_float_acts, shadow_float_rels = self._shadow_float_rows(
+            shadow_acts, shadow_rels, graph, canonical_activities, canonical_relationships
+        )
+        longest_path, longest_path_traces = self._longest_path_diff(
+            chain,
+            lp_run,
+            graph,
+            shadow_float_acts,
+            shadow_float_rels,
+            allow_missing_longest_path=allow_missing_longest_path,
+            tolerance=tolerance,
+        )
         diff = self._build_diff(
             chain=chain,
             activity_traces=activity_traces,
@@ -543,6 +560,7 @@ class ScheduleCpmFormulaTraceBuilder:
             "diff": diff,
             "code_version": code_version,
             "longest_path": longest_path,
+            "longest_path_traces": longest_path_traces,
         }
 
     def _load_activities(self, schedule_version_key: str) -> list[dict[str, Any]]:
@@ -731,6 +749,271 @@ class ScheduleCpmFormulaTraceBuilder:
             near_critical_threshold=near_t,
         )
         return shadow_acts, shadow_rels
+
+    def _shadow_float_rows(
+        self,
+        shadow_acts: dict[str, Any],
+        shadow_rels: list[Any],
+        graph: Any,
+        canonical_activities: list[dict[str, Any]],
+        canonical_relationships: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        topo_by_id = {
+            str(a.get("activity_id")): a.get("topological_index")
+            for a in canonical_activities
+            if isinstance(a.get("topological_index"), int)
+        }
+        float_acts: list[dict[str, Any]] = []
+        for aid in graph.topological_order or []:
+            sh = shadow_acts.get(aid)
+            if not sh:
+                continue
+            canon = next((a for a in canonical_activities if str(a.get("activity_id")) == aid), {})
+            duration = _as_float(canon.get("duration_value"))
+            if duration is None and canon.get("is_milestone"):
+                duration = 0.0
+            if duration is None and sh.early_start is not None and sh.early_finish is not None:
+                duration = sh.early_finish - sh.early_start
+            float_acts.append(
+                {
+                    "activity_id": aid,
+                    "activity_name": canon.get("activity_name"),
+                    "topological_index": topo_by_id.get(aid),
+                    "early_start_offset_days": sh.early_start,
+                    "early_finish_offset_days": sh.early_finish,
+                    "duration_value": duration,
+                    "computed_total_float": sh.total_float,
+                    "computed_free_float": sh.free_float,
+                }
+            )
+        float_rels: list[dict[str, Any]] = []
+        canon_rel_by_pair = {
+            (str(r.get("predecessor_activity_id")), str(r.get("successor_activity_id"))): r
+            for r in canonical_relationships
+        }
+        for rel in shadow_rels:
+            pair = (rel.predecessor_activity_id, rel.successor_activity_id)
+            canon = canon_rel_by_pair.get(pair, {})
+            row_id = str(canon.get("relationship_row_id") or rel.relationship_id)
+            float_rels.append(
+                {
+                    "predecessor_activity_id": rel.predecessor_activity_id,
+                    "successor_activity_id": rel.successor_activity_id,
+                    "relationship_type": rel.relationship_type,
+                    "normalized_lag_days": rel.lag_days,
+                    "candidate_successor_early_start_offset": rel.forward_candidate_es,
+                    "relationship_ref": rel.relationship_id,
+                    "relationship_row_id": row_id,
+                }
+            )
+        return float_acts, float_rels
+
+    def _longest_path_diff(
+        self,
+        chain: CpmRunChain,
+        lp_run: dict[str, Any],
+        graph: Any,
+        shadow_float_acts: list[dict[str, Any]],
+        shadow_float_rels: list[dict[str, Any]],
+        *,
+        allow_missing_longest_path: bool,
+        tolerance: float,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        shadow_result = self._shadow.evaluate_longest_path(
+            graph_result=graph,
+            float_activities=shadow_float_acts,
+            float_relationships=shadow_float_rels,
+        )
+        traces = self._longest_path_traces(chain, shadow_result)
+
+        if not shadow_float_acts:
+            block = {
+                "shadow_recompute_supported": True,
+                "diff_status": "not_computable_empty_graph",
+                "algorithm_id": shadow_result.summary.algorithm_id if shadow_result.summary else None,
+                "path_duration_basis": PATH_DURATION_DEFINITION,
+                "path_count": 0,
+                "shadow_path_count": 0,
+                "persisted_path_count": 0,
+            }
+            return block, traces
+
+        if shadow_result.block_reason == "no_terminal_activity":
+            block = {
+                "shadow_recompute_supported": True,
+                "diff_status": "not_computable_no_terminal_activity",
+                "path_duration_basis": PATH_DURATION_DEFINITION,
+                "path_count": 0,
+                "shadow_path_count": 0,
+                "persisted_path_count": 0,
+            }
+            return block, traces
+
+        persisted_paths: list[dict[str, Any]] = []
+        persisted_activities_by_path: dict[str, list[dict[str, Any]]] = {}
+        if lp_run:
+            persisted_paths = self._cpm_repo.list_paths(str(lp_run.get("cpm_run_id")))
+            for path in persisted_paths:
+                persisted_activities_by_path[str(path["path_id"])] = self._cpm_repo.list_path_activities(
+                    str(path["path_id"])
+                )
+
+        lp_expected = chain.stages.get("longest_path") is not None
+        if lp_expected and not persisted_paths:
+            diff_status = (
+                "allowed_missing_longest_path"
+                if allow_missing_longest_path
+                else "missing_required_longest_path_rows"
+            )
+            block = {
+                "shadow_recompute_supported": True,
+                "diff_status": diff_status,
+                "path_duration_basis": PATH_DURATION_DEFINITION,
+                "path_count": 0,
+                "shadow_path_count": 1 if shadow_result.activities else 0,
+                "persisted_path_count": 0,
+                "shadow_summary": shadow_result.summary.to_dict() if shadow_result.summary else None,
+            }
+            return block, traces
+
+        primary = next((p for p in persisted_paths if int(p.get("path_rank") or 0) == 1), None)
+        if not primary and persisted_paths:
+            primary = persisted_paths[0]
+
+        path_mismatches: list[dict[str, Any]] = []
+        matched_path_count = 0
+        if primary and shadow_result.summary:
+            persisted_acts = persisted_activities_by_path.get(str(primary["path_id"]), [])
+            persisted_ids = [str(a["activity_id"]) for a in sorted(persisted_acts, key=lambda r: r["path_sequence"])]
+            shadow_ids = shadow_result.activity_ids
+
+            if persisted_ids != shadow_ids:
+                path_mismatches.append(
+                    {
+                        "field": "activity_ids",
+                        "persisted": persisted_ids,
+                        "shadow": shadow_ids,
+                    }
+                )
+
+            shadow_rel_map = {
+                (str(r.get("predecessor_activity_id")), str(r.get("successor_activity_id"))): r
+                for r in shadow_float_rels
+            }
+            for i, pact in enumerate(sorted(persisted_acts, key=lambda r: r["path_sequence"])):
+                if i == 0:
+                    continue
+                pred_id = persisted_ids[i - 1]
+                succ_id = persisted_ids[i]
+                shadow_rel_row = shadow_rel_map.get((pred_id, succ_id), {})
+                persisted_identity = relationship_identity_from_persisted_path(
+                    relationship_from_previous_ref=pact.get("relationship_from_previous_ref"),
+                    relationship_from_previous_id=pact.get("relationship_from_previous_id"),
+                    predecessor_activity_id=pred_id,
+                    successor_activity_id=succ_id,
+                    relationship_type=str(shadow_rel_row.get("relationship_type") or ""),
+                    lag=_as_float(shadow_rel_row.get("normalized_lag_days")) or 0.0,
+                )
+                shadow_act = next(
+                    (a for a in shadow_result.activities if a.activity_id == succ_id),
+                    None,
+                )
+                shadow_identity = shadow_act.relationship_from_previous if shadow_act else None
+                if not identities_match(persisted_identity, shadow_identity):
+                    path_mismatches.append(
+                        {
+                            "field": "relationship_identity",
+                            "activity_id": succ_id,
+                            "persisted": persisted_identity.to_dict(),
+                            "shadow": shadow_identity.to_dict() if shadow_identity else None,
+                        }
+                    )
+
+            for field, persist_key in (
+                ("path_duration", "path_duration"),
+                ("path_start_offset_days", "path_start_offset_days"),
+                ("path_finish_offset_days", "path_finish_offset_days"),
+            ):
+                persisted_val = primary.get(persist_key)
+                shadow_val = getattr(shadow_result.summary, persist_key, None)
+                if not _values_match(persisted_val, shadow_val, tolerance=tolerance):
+                    path_mismatches.append(
+                        {
+                            "field": field,
+                            "persisted": persisted_val,
+                            "shadow": shadow_val,
+                        }
+                    )
+
+            if str(primary.get("end_activity_id") or "") != str(shadow_result.summary.end_activity_id or ""):
+                path_mismatches.append(
+                    {
+                        "field": "end_activity_id",
+                        "persisted": primary.get("end_activity_id"),
+                        "shadow": shadow_result.summary.end_activity_id,
+                    }
+                )
+
+            if not path_mismatches:
+                matched_path_count = 1
+
+        diff_status = "pass" if matched_path_count == 1 else "fail"
+        if not primary and shadow_result.activities and lp_expected:
+            diff_status = (
+                "allowed_missing_longest_path"
+                if allow_missing_longest_path
+                else "missing_required_longest_path_rows"
+            )
+
+        block = {
+            "shadow_recompute_supported": True,
+            "diff_status": diff_status,
+            "algorithm_id": shadow_result.summary.algorithm_id if shadow_result.summary else None,
+            "path_duration_basis": PATH_DURATION_DEFINITION,
+            "path_count": len(persisted_paths),
+            "persisted_path_count": len(persisted_paths),
+            "shadow_path_count": 1 if shadow_result.activities else 0,
+            "matched_path_count": matched_path_count,
+            "mismatched_path_count": 0 if matched_path_count else (1 if primary else 0),
+            "path_mismatches": path_mismatches[:50],
+            "shadow_summary": shadow_result.summary.to_dict() if shadow_result.summary else None,
+            "persisted_summary": (
+                {
+                    "path_rank": primary.get("path_rank"),
+                    "end_activity_id": primary.get("end_activity_id"),
+                    "path_duration": primary.get("path_duration"),
+                    "path_start_offset_days": primary.get("path_start_offset_days"),
+                    "path_finish_offset_days": primary.get("path_finish_offset_days"),
+                }
+                if primary
+                else None
+            ),
+        }
+        return block, traces
+
+    def _longest_path_traces(
+        self,
+        chain: CpmRunChain,
+        shadow_result: ShadowLongestPathResult,
+    ) -> list[dict[str, Any]]:
+        if not shadow_result.summary:
+            return []
+        code_version = build_code_version_metadata()
+        return [
+            {
+                "trace_type": "longest_path",
+                "schedule_version_key": chain.schedule_version_key,
+                "cpm_run_id": chain.stages.get("longest_path", {}).get("cpm_run_id"),
+                "formula_version": CPM_FORMULA_TRACE_VERSION,
+                "code_version": code_version,
+                "algorithm_id": shadow_result.summary.algorithm_id,
+                "path_basis": shadow_result.summary.path_basis,
+                "path_duration_basis": PATH_DURATION_DEFINITION,
+                "path_status": shadow_result.summary.path_status,
+                "summary": shadow_result.summary.to_dict(),
+                "activities": [a.to_dict() for a in shadow_result.activities],
+            }
+        ]
 
     @staticmethod
     def _fwd_act_dict(a: Any) -> dict[str, Any]:
@@ -994,18 +1277,6 @@ class ScheduleCpmFormulaTraceBuilder:
             "violations": violations,
         }
 
-    def _longest_path_block(self, chain: CpmRunChain, lp_run: dict[str, Any]) -> dict[str, Any]:
-        paths = []
-        if lp_run:
-            paths = self._cpm_repo.list_paths(str(lp_run.get("cpm_run_id")))
-        return {
-            "persisted_path_exported": bool(paths),
-            "shadow_recompute_supported": False,
-            "diff_status": "not_evaluated",
-            "limitation": "Longest-path independent replay not implemented in this hardening pass.",
-            "path_count": len(paths),
-        }
-
     def _build_diff(
         self,
         *,
@@ -1024,14 +1295,30 @@ class ScheduleCpmFormulaTraceBuilder:
         mismatched_relationships = sum(1 for t in relationship_traces if t.get("_mismatches"))
         matched_a = len(activity_traces) - mismatched_activities
         matched_r = len(relationship_traces) - mismatched_relationships
-        excluded = ["longest_path"] if longest_path.get("diff_status") == "not_evaluated" else []
-        evaluated = ["forward_pass", "backward_pass", "float", "criticality"]
-        if act_mm or rel_mm or source_exclusion.get("status") != "pass":
+        lp_status = longest_path.get("diff_status", "fail")
+        stage_status = {
+            "forward_pass": "pass" if not act_mm else "fail",
+            "backward_pass": "pass" if not act_mm else "fail",
+            "float": "pass" if not act_mm else "fail",
+            "criticality": "pass" if not act_mm else "fail",
+            "longest_path": lp_status,
+            "source_field_exclusion": source_exclusion.get("status", "pass"),
+        }
+        evaluated = [
+            "forward_pass",
+            "backward_pass",
+            "float",
+            "criticality",
+            "longest_path",
+            "source_field_exclusion",
+        ]
+        fail_lp = lp_status in {"fail", "missing_required_longest_path_rows"}
+        if act_mm or rel_mm or source_exclusion.get("status") != "pass" or fail_lp:
             status = "fail"
-        elif excluded:
-            status = "pass_with_exclusions"
-        else:
+        elif lp_status == "pass":
             status = "pass"
+        else:
+            status = "fail"
         return {
             "schedule_version_key": chain.schedule_version_key,
             "cpm_run_id": chain.stages.get("criticality", {}).get("cpm_run_id"),
@@ -1046,12 +1333,13 @@ class ScheduleCpmFormulaTraceBuilder:
             "tolerance": tolerance,
             "status": status,
             "evaluated_stages": evaluated,
-            "excluded_stages": excluded,
+            "excluded_stages": [],
+            "stage_status": stage_status,
             "longest_path": longest_path,
             "source_field_exclusion": source_exclusion,
             "activity_mismatches": act_mm[:50],
             "relationship_mismatches": rel_mm[:50],
-            "limitations": chain.limitations + [longest_path.get("limitation", "")],
+            "limitations": [lim for lim in chain.limitations if lim],
         }
 
 
@@ -1069,6 +1357,7 @@ class ScheduleCpmFormulaTraceExporter:
         latest: bool = False,
         cpm_run_id: str | None = None,
         allow_partial_chain: bool = False,
+        allow_missing_longest_path: bool = False,
         tolerance: float = 0.0,
         technical: bool = False,
     ) -> tuple[dict[str, Any], int]:
@@ -1079,7 +1368,11 @@ class ScheduleCpmFormulaTraceExporter:
             latest=latest,
             allow_partial_chain=allow_partial_chain,
         )
-        package = self._builder.build(chain, tolerance=tolerance)
+        package = self._builder.build(
+            chain,
+            tolerance=tolerance,
+            allow_missing_longest_path=allow_missing_longest_path,
+        )
         summary = package["summary"]
         if technical:
             summary["db_path"] = str(Path(self._db_path).resolve())
@@ -1095,6 +1388,9 @@ class ScheduleCpmFormulaTraceExporter:
             for row in package["relationship_traces"]:
                 clean = {k: v for k, v in row.items() if not k.startswith("_")}
                 fh.write(json.dumps(clean) + "\n")
+        with (out_dir / "cpm-longest-path-formula-trace.jsonl").open("w", encoding="utf-8") as fh:
+            for row in package.get("longest_path_traces", []):
+                fh.write(json.dumps(row) + "\n")
         (out_dir / "cpm-validation-recompute-diff.json").write_text(
             json.dumps(package["diff"], indent=2) + "\n", encoding="utf-8"
         )
@@ -1106,9 +1402,12 @@ class ScheduleCpmFormulaTraceExporter:
 
     @staticmethod
     def _exit_code(diff: dict[str, Any]) -> int:
+        lp_status = diff.get("longest_path", {}).get("diff_status")
         if diff.get("status") == "fail":
             return 1
         if diff.get("source_field_exclusion", {}).get("status") == "fail":
+            return 1
+        if lp_status in {"fail", "missing_required_longest_path_rows"}:
             return 1
         return 0
 
@@ -1116,6 +1415,7 @@ class ScheduleCpmFormulaTraceExporter:
     def _render_audit(package: dict[str, Any], *, technical: bool) -> str:
         diff = package["diff"]
         summary = package["summary"]
+        lp = package.get("longest_path", {})
         lines = [
             "# CPM formula audit",
             "",
@@ -1134,7 +1434,18 @@ class ScheduleCpmFormulaTraceExporter:
             "",
             "## Longest path",
             "",
-            f"- {package.get('longest_path', {}).get('limitation')}",
+            f"- algorithm: `{lp.get('algorithm_id')}`",
+            f"- path duration basis: {lp.get('path_duration_basis')}",
+            f"- diff status: **{lp.get('diff_status')}**",
+            f"- persisted paths: {lp.get('persisted_path_count')}",
+            f"- shadow paths: {lp.get('shadow_path_count')}",
+            f"- matched paths: {lp.get('matched_path_count')}",
+            f"- mismatched paths: {lp.get('mismatched_path_count')}",
+            "",
+            "## Version compatibility",
+            "",
+            "- v1 exports may show `longest_path.diff_status = not_evaluated` and overall `pass_with_exclusions`.",
+            "- v2 requires `longest_path.diff_status = pass` or `fail` unless `--allow-missing-longest-path` is supplied.",
             "",
             "## Conclusion",
             "",

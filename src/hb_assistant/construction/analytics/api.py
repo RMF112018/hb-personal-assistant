@@ -1855,6 +1855,45 @@ def create_app(*, db_path: str | None = None) -> Any:
             as_of=as_of_date,
         )
 
+    @app.get("/api/projects/{project_key}/schedule/metric-proof")
+    def project_schedule_metric_proof(
+        project_key: str,
+        schedule_version_key: str,
+        as_of: str | None = None,
+        comparison_basis: str = "prior_update",
+        weighting_basis: str = "duration_weighted",
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        from datetime import date as date_type
+
+        from fastapi import HTTPException
+
+        from hb_assistant.construction.analytics.schedule_metric_formula_service import (
+            ScheduleMetricFormulaService,
+            build_activation_proof,
+        )
+
+        as_of_date: date_type | None = None
+        if as_of:
+            try:
+                as_of_date = date_type.fromisoformat(as_of)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="invalid_as_of_date") from exc
+        if comparison_basis not in {"prior_update", "selected_baseline"}:
+            raise HTTPException(status_code=400, detail="invalid_comparison_basis")
+        svc = ScheduleMetricFormulaService(db_path=_schedule_db_path())
+        body = svc.compute_all(
+            project_key,
+            schedule_version_key,
+            comparison_basis=comparison_basis,
+            weighting_basis=weighting_basis,
+            as_of=as_of_date,
+        )
+        body["activation_proof"] = build_activation_proof(project_key=project_key)
+        body["activation_cross_check"] = body["activation_proof"]["cross_check_findings"]
+        return body
+
     @app.get("/api/projects/{project_key}/schedule/export")
     def project_schedule_export(
         project_key: str,

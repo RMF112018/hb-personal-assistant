@@ -1,0 +1,62 @@
+{
+  "lineage_valid": true,
+  "resolution_mode": "latest_terminal_criticality",
+  "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "chain_id_hash": "1e0c21b394efb7f2",
+  "stages": {
+    "forward_pass": {
+      "cpm_run_id_hash": "2e6ac050f80c9bbd",
+      "cpm_recalculation_status": "forward_pass_only",
+      "source_run_id_hash": null,
+      "import_id_hash": "bd01c8d4be98d636",
+      "created_at": "2026-06-28 12:15:35",
+      "status": "completed"
+    },
+    "backward_pass": {
+      "cpm_run_id_hash": "b77647ad69f2d4b7",
+      "cpm_recalculation_status": "backward_pass_only",
+      "source_run_id_hash": null,
+      "import_id_hash": "bd01c8d4be98d636",
+      "created_at": "2026-06-28 12:15:35",
+      "status": "completed"
+    },
+    "float": {
+      "cpm_run_id_hash": "bfd6d8ac59cae6a2",
+      "cpm_recalculation_status": "forward_backward_float_only",
+      "source_run_id_hash": "b77647ad69f2d4b7",
+      "import_id_hash": "bd01c8d4be98d636",
+      "created_at": "2026-06-28 12:15:35",
+      "status": "completed"
+    },
+    "longest_path": {
+      "cpm_run_id_hash": "770a972744c77dcb",
+      "cpm_recalculation_status": "longest_path_only",
+      "source_run_id_hash": "bfd6d8ac59cae6a2",
+      "import_id_hash": "bd01c8d4be98d636",
+      "created_at": "2026-06-28 12:15:35",
+      "status": "completed"
+    },
+    "criticality": {
+      "cpm_run_id_hash": "cd8f2738ef21a9d7",
+      "cpm_recalculation_status": "criticality_classification_only",
+      "source_run_id_hash": "770a972744c77dcb",
+      "import_id_hash": "bd01c8d4be98d636",
+      "created_at": "2026-06-28 12:15:35",
+      "status": "completed"
+    }
+  },
+  "lineage_checks": {
+    "criticality_sources_longest_path": true,
+    "longest_path_sources_float": true,
+    "float_sources_backward": true,
+    "backward_sources_forward": true
+  },
+  "resolver_stage_run_id_hashes": {
+    "criticality": "cd8f2738ef21a9d7",
+    "longest_path": "770a972744c77dcb",
+    "float": "bfd6d8ac59cae6a2",
+    "backward_pass": "b77647ad69f2d4b7",
+    "forward_pass": "2e6ac050f80c9bbd"
+  },
+  "query_status": "pass"
+}

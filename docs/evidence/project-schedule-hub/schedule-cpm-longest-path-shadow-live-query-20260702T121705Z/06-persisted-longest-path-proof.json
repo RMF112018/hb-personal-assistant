@@ -1,0 +1,18 @@
+{
+  "path_count": 1,
+  "paths": [
+    {
+      "path_rank": 1,
+      "path_id_hash": "bf1f63879784ee29",
+      "terminal_activity_id_hash": "5cca4c1f4f61afb2",
+      "activity_count_on_path": 45,
+      "relationship_count_on_path": 44,
+      "path_start_offset_days": 0.0,
+      "path_finish_offset_days": 429.0,
+      "path_duration_days": 429.0,
+      "path_duration_basis": "path_finish_offset_days - path_start_offset_days",
+      "basis": "max_forward_early_finish_backtrace"
+    }
+  ],
+  "query_status": "pass"
+}
