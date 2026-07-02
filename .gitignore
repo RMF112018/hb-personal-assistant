@@ -193,6 +193,7 @@ config/config.yml
 
 # Local-only read-only audit/evidence outputs and scratch (never committed).
 /local_audit_outputs/
+/local-sensitive/
 /tmp/
 
 # Local-sensitive evidence (per-note detail, rollback bundles, logs) — never committed.

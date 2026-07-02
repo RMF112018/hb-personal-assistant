@@ -675,6 +675,26 @@ async def _forecast_lifespan(app: Any) -> Any:
     mirroring the optional-surface degrade posture).
     """
     import asyncio
+    import logging
+    import os
+
+    from hb_assistant.construction.schedule_clean_db.diagnostics import evidence_disable_background_workers
+
+    _logger = logging.getLogger(__name__)
+    disable_workers = evidence_disable_background_workers()
+    if os.environ.get("HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS", "").strip() not in {"", "1"}:
+        _logger.warning(
+            "HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS has unexpected value; treating as unset"
+        )
+        disable_workers = False
+
+    app.state.background_worker_mode = "disabled" if disable_workers else "enabled"
+    app.state.background_workers_disabled_by_env = disable_workers
+    app.state.background_workers = {
+        "quality_poll_started": False,
+        "source_watcher_initialized": False,
+        "source_watcher_started": False,
+    }
 
     poll_task: asyncio.Task[None] | None = None
     try:
@@ -699,33 +719,41 @@ async def _forecast_lifespan(app: Any) -> Any:
                 pass
             await asyncio.sleep(60)
 
-    try:
-        poll_task = asyncio.create_task(_quality_poll_loop())
-    except Exception:
-        poll_task = None
+    if not disable_workers:
+        try:
+            poll_task = asyncio.create_task(_quality_poll_loop())
+            app.state.background_workers["quality_poll_started"] = poll_task is not None
+        except Exception:
+            poll_task = None
 
     # Source-intelligence: register configured roots (indexing ON by default) and start the
     # external-source watcher only when enabled. Fail-closed — never blocks app startup.
     source_watcher: Any = None
-    try:
-        from hb_assistant.config.path_policy import PathPolicy
-        from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
-        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
-        from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+    if not disable_workers:
+        try:
+            from hb_assistant.config.path_policy import PathPolicy
+            from hb_assistant.obsidian_mcp.config import load_config as _load_obsidian_config
+            from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+            from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
 
-        _configured = getattr(app.state, "db_path", None)
-        _watch_db = str(_configured) if _configured else str(PathPolicy().get_db_path())
-        _watch_config = _load_obsidian_config()
-        if getattr(_watch_config, "external_source_index_enabled", True):
-            SourceIndexRepository(_watch_db).register_source_roots(
-                [{"source_root_key": r.source_root_key, "enabled": r.enabled}
-                 for r in _watch_config.external_sources]
-            )
-        source_watcher = SourceWatcher(_watch_db, _watch_config)
-        if getattr(_watch_config, "external_source_watch_enabled", False):
-            await asyncio.to_thread(source_watcher.start)
-        app.state.source_watcher = source_watcher
-    except Exception:
+            _configured = getattr(app.state, "db_path", None)
+            _watch_db = str(_configured) if _configured else str(PathPolicy().get_db_path())
+            _watch_config = _load_obsidian_config()
+            if getattr(_watch_config, "external_source_index_enabled", True):
+                SourceIndexRepository(_watch_db).register_source_roots(
+                    [{"source_root_key": r.source_root_key, "enabled": r.enabled}
+                     for r in _watch_config.external_sources]
+                )
+            source_watcher = SourceWatcher(_watch_db, _watch_config)
+            app.state.background_workers["source_watcher_initialized"] = source_watcher is not None
+            if getattr(_watch_config, "external_source_watch_enabled", False):
+                await asyncio.to_thread(source_watcher.start)
+                app.state.background_workers["source_watcher_started"] = True
+            app.state.source_watcher = source_watcher
+        except Exception:
+            app.state.source_watcher = None
+            source_watcher = None
+    else:
         app.state.source_watcher = None
         source_watcher = None
 
@@ -795,8 +823,12 @@ def create_app(*, db_path: str | None = None) -> Any:
 
     @app.get("/health")
     def health(role: dict[str, str] = role_dep) -> dict[str, Any]:
-        schema_version = _schema_version(db_path)
-        return {
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.construction.schedule_clean_db.diagnostics import build_db_diagnostics
+
+        resolved = db_path or str(PathPolicy().get_db_path())
+        schema_version = _schema_version(resolved)
+        payload: dict[str, Any] = {
             "status": "ok",
             "surface": "analytics.fastapi_shell",
             "role": role,
@@ -805,7 +837,24 @@ def create_app(*, db_path: str | None = None) -> Any:
             "schema_ready": schema_version >= LATEST_SCHEMA_VERSION,
             "chat_enabled": False,
             "guardrails": _guardrails(),
+            "background_worker_mode": getattr(app.state, "background_worker_mode", "enabled"),
+            "background_workers_disabled_by_env": getattr(
+                app.state, "background_workers_disabled_by_env", False
+            ),
         }
+        workers = getattr(app.state, "background_workers", None)
+        if workers is not None:
+            payload["background_workers"] = workers
+        payload.update(
+            build_db_diagnostics(
+                db_path,
+                role=role,
+                background_worker_mode=payload["background_worker_mode"],
+                background_workers_disabled_by_env=payload["background_workers_disabled_by_env"],
+                background_workers=workers,
+            )
+        )
+        return payload
 
     @app.get("/chat/status")
     def chat_status(role: dict[str, str] = role_dep) -> dict[str, Any]:

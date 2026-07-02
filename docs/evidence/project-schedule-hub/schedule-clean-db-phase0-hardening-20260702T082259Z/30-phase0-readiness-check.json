@@ -1,0 +1,75 @@
+{
+  "ready_for_full_clean_db_validation": true,
+  "checks": [
+    {
+      "id": "gitignore_local_sensitive",
+      "ok": true,
+      "detail": "root local-sensitive gitignored"
+    },
+    {
+      "id": "script_dev_schedule_clean_db_backend.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_clean_db_backend.py"
+    },
+    {
+      "id": "script_dev_schedule_clean_db_schema_audit.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_clean_db_schema_audit.py"
+    },
+    {
+      "id": "script_dev_clean_tropical_schedule_db.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_clean_tropical_schedule_db.py"
+    },
+    {
+      "id": "script_dev_schedule_import_preview_mutation_probe.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_import_preview_mutation_probe.py"
+    },
+    {
+      "id": "script_dev_schedule_import_package_manifest.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_import_package_manifest.py"
+    },
+    {
+      "id": "script_dev_schedule_evidence_artifact_scan.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_evidence_artifact_scan.py"
+    },
+    {
+      "id": "script_dev_schedule_live_db_unchanged_probe.py",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/scripts/dev_schedule_live_db_unchanged_probe.py"
+    },
+    {
+      "id": "loaded_state_helper",
+      "ok": true,
+      "detail": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/frontend/e2e/helpers/scheduleLoadedState.ts"
+    },
+    {
+      "id": "schema_audit_fixture",
+      "ok": true,
+      "detail": "schema audit runs"
+    },
+    {
+      "id": "purge_dry_run",
+      "ok": true,
+      "detail": "purge dry-run supported"
+    },
+    {
+      "id": "backend_runner_proof",
+      "ok": true,
+      "detail": "{\n  \"mode\": \"schedule_clean_db_backend\",\n  \"db_path\": \"/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/tmpycxz_ix2/fixture.db\",\n  \"db_path_is_live_db\": false,\n  \"clean_copy_guard_passed\": true,\n  \"sc"
+    },
+    {
+      "id": "evidence_00-repo-state.txt",
+      "ok": true,
+      "detail": "00-repo-state.txt"
+    },
+    {
+      "id": "evidence_27-phase0-summary.md",
+      "ok": true,
+      "detail": "27-phase0-summary.md"
+    }
+  ]
+}

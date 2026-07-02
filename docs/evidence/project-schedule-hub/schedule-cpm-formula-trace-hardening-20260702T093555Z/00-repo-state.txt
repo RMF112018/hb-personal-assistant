@@ -1,0 +1,6 @@
+branch=hardening/schedule-cpm-formula-trace-20260702T093539Z
+base_commit=6efa695ba72fb6ab33cc97e5bc084df94282f942
+worktree=/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-cpm-formula-trace-20260702T093539Z
+evidence_stamp=schedule-cpm-formula-trace-hardening-20260702T093555Z
+formula_trace_version=2026-07-02.phase0-cpm-formula-trace.v1
+fixture_db=local-sensitive/clean-db/cpm-formula-trace-fixture.sqlite (not committed)

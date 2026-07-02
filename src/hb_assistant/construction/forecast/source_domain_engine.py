@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hb_assistant.config.db_path_guard import is_live_db_path as _is_live_db_path
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import open_connection, transaction
 
@@ -59,11 +60,7 @@ def is_live_db_path(db_path: Path) -> bool:
 
     Fails closed: an unresolvable path is treated as live so ``apply`` refuses it.
     """
-    try:
-        live = PathPolicy().get_db_path().resolve()
-        return Path(db_path).resolve() == live
-    except Exception:
-        return True
+    return _is_live_db_path(db_path)
 
 
 def plan_source_domain_projection(

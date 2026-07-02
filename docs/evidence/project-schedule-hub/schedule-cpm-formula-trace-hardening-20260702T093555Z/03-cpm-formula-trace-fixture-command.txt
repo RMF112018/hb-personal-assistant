@@ -1,0 +1,22 @@
+# Fixture command — CPM formula trace export
+
+```bash
+cd <repo-root>
+source .venv/bin/activate
+unset PYTHONPATH
+export PYTHONPATH="$PWD/src:$PWD/subrepos/construction-financial-review/src"
+
+# Fixture DB (local-sensitive copy only; not committed)
+FIXTURE_DB="local-sensitive/clean-db/cpm-formula-trace-fixture.sqlite"
+EVID="docs/evidence/project-schedule-hub/schedule-cpm-formula-trace-hardening-20260702T093555Z/cpm-formula-trace"
+VERSION="tropical|1|2026-06-01 08:00"
+
+python3 scripts/dev_schedule_cpm_formula_trace_export.py \
+  --db-path "$FIXTURE_DB" \
+  --schedule-version-key "$VERSION" \
+  --latest \
+  --out-dir "$EVID" \
+  --confirm-clean-copy
+```
+
+Fixture DB seeded via minimal XER import (`tests/fixtures/schedules/xer/minimal.xer`) with full CPM recompute chain.

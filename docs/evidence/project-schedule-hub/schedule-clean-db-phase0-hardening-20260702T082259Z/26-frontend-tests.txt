@@ -1,0 +1,14 @@
+
+> frontend@0.0.0 test
+> vitest run e2e/helpers/scheduleLoadedState.test.ts
+
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/frontend
+
+ ✓ e2e/helpers/scheduleLoadedState.test.ts  (3 tests) 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  05:15:12
+   Duration  545ms (transform 19ms, setup 53ms, collect 11ms, tests 1ms, environment 270ms, prepare 96ms)
+

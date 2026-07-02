@@ -1,0 +1,1413 @@
+{
+  "mode": "schedule_clean_db_purge",
+  "db_path": "/Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z/docs/evidence/project-schedule-hub/schedule-clean-db-phase0-hardening-20260702T082259Z/fixture-phase0.db",
+  "project_key": "tropical",
+  "dry_run": true,
+  "apply": false,
+  "before_counts": {
+    "procore_ep_schedule_activities": 5,
+    "procore_ep_schedule_relationships": 3,
+    "schedule_file_imports": 2,
+    "schedule_identities": 1,
+    "schedule_version_identity_matches": 2
+  },
+  "planned_delete_order": [
+    {
+      "table": "accepted_commitments",
+      "strategy": "derived"
+    },
+    {
+      "table": "accepted_tasks",
+      "strategy": "derived"
+    },
+    {
+      "table": "aging_exposure_report_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_event_raw_content",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_project_match_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_raw_event_attendees_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_raw_event_locations_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_raw_event_recurrence_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_raw_event_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "claude_context_packets",
+      "strategy": "derived"
+    },
+    {
+      "table": "commitment_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_document_intelligence_previews",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_document_project_match_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_document_cards",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_drive_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_file_extraction_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_file_ingestion_decisions",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_graph_download_receipts",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_model_decisions",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_project_keyword_registry",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_project_source_matches",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_project_identity",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_review_queue",
+      "strategy": "derived"
+    },
+    {
+      "table": "construction_source_locations",
+      "strategy": "derived"
+    },
+    {
+      "table": "cross_domain_context_readiness_mart",
+      "strategy": "derived"
+    },
+    {
+      "table": "cross_source_intelligence_obsidian_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "cross_source_relationships",
+      "strategy": "derived"
+    },
+    {
+      "table": "cross_source_relationship_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "daily_brief_action_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "daily_brief_change_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "daily_brief_item_outcome_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_crawl_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_message_raw_content",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_model_classifications",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_processing_receipts",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_project_matches",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_raw_message_attachments_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_raw_message_recipients_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_raw_message_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_raw_thread_messages_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_raw_thread_structured",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_relationship_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_review_queue",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_thread_raw_context",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_thread_summaries",
+      "strategy": "derived"
+    },
+    {
+      "table": "email_thread_summary_materialization_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "follow_up_watch_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_accuracy_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_anomaly_findings",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_budget_details",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_calibration_weights",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_comparison_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_confidence_factors",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_confidence_scorecards",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_config_snapshot_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_config_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_config_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_config_sources",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_cost_entries",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_cost_entry_staffing_actuals",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_data_availability_profiles",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_evidence_packages",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_external_forecast_mappings",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_external_forecast_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_generation_requests",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_method_eligibility",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_model_selection_decisions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_monthly_actuals_by_budget_code",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_operator_assumptions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_budget_codes",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_changes",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_commitment_exposure",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_monthly",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_monthly_table_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_monthly_table_totals",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_narratives",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_probability",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_risks",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_schedule_phasing",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_output_staffing",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_outputs",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_package_manifests",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_maturity_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_absence_overrides",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_assumptions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_attribution_review_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_attribution_rules",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_config",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_snapshot_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_project_staffing_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_projects",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_required_assumptions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_review_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_external_forecasts",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_run_model_versions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_source_ingestions",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_staffing_cost_codes",
+      "strategy": "derived"
+    },
+    {
+      "table": "forecast_validation_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "interactive_chat_sessions",
+      "strategy": "derived"
+    },
+    {
+      "table": "long_term_memory_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "meeting_email_relationship_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "calendar_event_index",
+      "strategy": "derived"
+    },
+    {
+      "table": "meeting_prep_brief_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "memory_update_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "obsidian_index_entries",
+      "strategy": "derived"
+    },
+    {
+      "table": "phase10_relationship_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_action_signals",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_attachment_refs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_custom_field_values",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_endpoint_capture_errors",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_endpoint_capture_pages",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_endpoint_capture_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_billing_periods",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_change_history",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_detail_columns",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_detail_row_cells",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_detail_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_modifications",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_budget_views",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events_change_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events_change_items_budget_code_seg_2dff22",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events_markup_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events_markup_items_wbs_code_segment_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_change_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_change_orders",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_compliance_insurance_documents__52b7bf",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_compliance",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_contracts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_commitment_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_dcrs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_deliveries",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_inspections_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_inspections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_manpower_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_manpower",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_notes_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_notes",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_visitor",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_daily_log_weather",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspection_items_response_set_responses",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspection_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspection_sections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspections_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspections_distribution_members",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspections_inspectors",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspections_signature_requests",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_inspections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_meetings",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_observations_assignees",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_observations",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_prime_change_order_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_prime_change_orders",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_prime_contract_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_prime_contracts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163287_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163290_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163293_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163296_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163299_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163302_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_projects_custom_fields_custom_field_163305_value",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_punch_items_assignees",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_punch_items_assignments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_punch_items_ball_in_court",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_punch_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts_custom_fields_cus_a0fe65",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_purchase_order_contracts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items_cost_code_line_i_779dbd",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_purchase_order_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfis_assignees",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfis_ball_in_courts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfis_questions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfis",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfqs_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfqs_change_event_change_event_line_items__0a3e8d",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_rfqs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_activities",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_activity_code_assignments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_calendars",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_relationships",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_udf_values",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedule_wbs_nodes",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_schedules",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_change_order_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoice_contract_detail_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_subcontractor_invoices",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_submittals_approvers",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_submittals_approvers_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_submittals_ball_in_court",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_ep_submittals",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_amount_facts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_billing_periods",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_budget_changes",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_budget_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_budget_views",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_change_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_change_order_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_change_orders",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_compliance_documents",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_contracts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_invoice_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_payment_applications",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_rfqs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_financial_subcontractor_invoices",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_evidence_rules",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_records",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_response_options",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_response_sets",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_inspection_sections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_record_change_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_record_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_record_state_index",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_records",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_sync_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_live_sync_watermarks",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_location_entities",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_attachments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_billing_periods",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_change_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_changes",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_columns",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_modifications",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_rows",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_budget_views",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_change_event_comments",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_change_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_change_order_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_change_orders",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_company_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_contract_line_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_contracts",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_cost_code_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_daily_logs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_date_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_inspection_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_inspection_sections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_inspections",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_invoice_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_invoices",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_location_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_meeting_details",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_meeting_topics",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_meetings",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_observations",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_payment_applications",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_person_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_project_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_punch_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_rfi_responses",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_rfis",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_rfq_responses",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_rfqs",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_schedule_activities",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_schedules",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_status_dimensions",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_submittal_packages",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_submittal_responses",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_raw_submittals",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_endpoint_raw_payloads",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_record_edges",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_record_timeline_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "procore_text_intelligence",
+      "strategy": "derived"
+    },
+    {
+      "table": "project_issue_history_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "project_risk_digest_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "project_schedule_baseline_selections",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "project_schedule_named_baseline_review_item_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "project_schedule_named_baseline_review_items",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "project_schedule_named_baseline_slots",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "project_schedule_review_item_events",
+      "strategy": "derived"
+    },
+    {
+      "table": "project_schedule_review_items",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "project_schedule_series_membership",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "project_source_coverage_mart",
+      "strategy": "derived"
+    },
+    {
+      "table": "query_tool_receipts",
+      "strategy": "derived"
+    },
+    {
+      "table": "ranking_policy_eval_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "raw_content_model_context_packets",
+      "strategy": "derived"
+    },
+    {
+      "table": "relationship_quality_mart",
+      "strategy": "derived"
+    },
+    {
+      "table": "retrieval_query_receipts",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_baseline_activities",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_baseline_projects",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "schedule_baseline_relationships",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cost_distributions",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cost_mapping_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cost_weighting_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cost_mapping_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_activity_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_diagnostics",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_import_observability",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_path_activities",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_paths",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_relationship_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_cpm_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_identity_manual_actions",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_import_package_files",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_package_equivalence_facts",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_package_field_lineage",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_import_packages",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "schedule_quality_findings",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_quality_metric_results",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_quality_scorecards",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_quality_evaluation_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_source_capabilities",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_version_diff_detail_facts",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_version_diff_facts",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_version_diff_impact_rollups",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_version_diffs",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_version_identity_matches",
+      "strategy": "derived"
+    },
+    {
+      "table": "schedule_identities",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "schedule_file_imports",
+      "strategy": "by_project_key"
+    },
+    {
+      "table": "second_brain_agent_performance_feedback_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_amount_facts_normalized",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_currency_completeness_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_exposure_summary_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_fact_normalization_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_forecast_readiness_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_readiness_agent_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_review_required_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_source_coverage_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_financial_wbs_cost_code_snapshots",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_memory_consolidation_review_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_memory_quality_review_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_research_packets",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_retrieval_context_budget_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_retrieval_hybrid_query_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_retrieval_source_linked_proof_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_retrieval_vector_index_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_review_burden_clusters",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_review_burden_policy_evals",
+      "strategy": "derived"
+    },
+    {
+      "table": "second_brain_review_burden_runs",
+      "strategy": "derived"
+    },
+    {
+      "table": "source_evidence_trails",
+      "strategy": "derived"
+    },
+    {
+      "table": "source_intelligence_sources",
+      "strategy": "derived"
+    },
+    {
+      "table": "source_record_summary_mart",
+      "strategy": "derived"
+    },
+    {
+      "table": "source_system_record_map",
+      "strategy": "derived"
+    },
+    {
+      "table": "task_candidates",
+      "strategy": "derived"
+    },
+    {
+      "table": "v_procore_inspection_unanswered_items",
+      "strategy": "derived"
+    },
+    {
+      "table": "v_procore_open_action_signals",
+      "strategy": "derived"
+    }
+  ],
+  "deleted_counts": {},
+  "after_counts": {
+    "procore_ep_schedule_activities": 5,
+    "procore_ep_schedule_relationships": 3,
+    "schedule_file_imports": 2,
+    "schedule_identities": 1,
+    "schedule_version_identity_matches": 2
+  },
+  "remaining_tropical_schedule_records": 13,
+  "project_catalog_preserved": true,
+  "live_db_protection": true,
+  "manual_review_required": [],
+  "warnings": []
+}

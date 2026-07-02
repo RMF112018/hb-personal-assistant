@@ -1,0 +1,10 @@
+
+ RUN  v1.6.1 /Users/bobbyfetting/hb-personal-assistant-worktrees/hardening/schedule-clean-db-phase0-20260702T081138Z
+
+ ✓ frontend/e2e/helpers/scheduleLoadedState.test.ts  (3 tests) 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  04:33:01
+   Duration  249ms (transform 53ms, setup 0ms, collect 47ms, tests 1ms, environment 0ms, prepare 50ms)
+
