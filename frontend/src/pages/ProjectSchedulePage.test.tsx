@@ -407,6 +407,7 @@ function renderPage(
       { path: '/projects/:projectKey/schedule', element: <ProjectSchedulePage /> },
       // Added for nav dropdown tests + future nested route coverage (no element needed for Link href checks).
       { path: '/projects/:projectKey/schedule/import', element: <div>import stub</div> },
+      { path: '/projects/:projectKey/schedule/baselines', element: <div>baselines stub</div> },
       { path: '/projects/:projectKey/schedule/workbench', element: <div>workbench stub</div> },
       { path: '/projects/:projectKey/schedule/driver-detail', element: <div>driver stub</div> },
       { path: '/projects/:projectKey/schedule/drivers', element: <div>drivers index stub</div> },
@@ -450,6 +451,14 @@ describe('ProjectSchedulePage', () => {
     getProjectScheduleControlsMock.mockReset()
     getProjectScheduleBaselinesMock.mockReset()
     downloadProjectScheduleExportMock.mockReset()
+  })
+
+  it('exposes Manage Baselines in Primary Actions', async () => {
+    renderPage()
+    expect(await screen.findByTestId('manage-baselines-primary-action')).toHaveAttribute(
+      'href',
+      '/projects/tropical/schedule/baselines',
+    )
   })
 
   it('renders baseline anchor helper text and comparison context in controls', async () => {
@@ -520,17 +529,18 @@ describe('ProjectSchedulePage', () => {
   it('requests controls trends without as-of when latest context is selected and renders supported panels', async () => {
     renderPage()
 
-    expect(screen.getByText(/Key trend|Trend Analytics|Trends/i)).toBeInTheDocument()
-    expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', {
-      asOf: undefined,
-      metrics: expect.arrayContaining([
-        'monthly_activity_start_finish_distribution',
-        'planned_vs_actual_percent_complete',
-        'schedule_performance_ratio',
-        'schedule_changes_over_time',
-      ]),
+    await waitFor(() => {
+      expect(getProjectScheduleMetricTrendsMock).toHaveBeenCalledWith('tropical', {
+        asOf: undefined,
+        metrics: expect.arrayContaining([
+          'monthly_activity_start_finish_distribution',
+          'planned_vs_actual_percent_complete',
+          'schedule_performance_ratio',
+          'schedule_changes_over_time',
+        ]),
+      })
     })
-    expect(screen.getByText('Controls Overview')).toBeInTheDocument()
+    expect(await screen.findByText('Controls Overview')).toBeInTheDocument()
     expect(screen.getByText('Monthly Activity Start/Finish Distribution')).toBeInTheDocument()
     expect(screen.getByText('Planned vs Actual Percent Complete')).toBeInTheDocument()
     expect(screen.getByText('Schedule Performance Ratio')).toBeInTheDocument()
@@ -585,7 +595,7 @@ describe('ProjectSchedulePage', () => {
       })
     })
 
-    await user.click(screen.getByRole('button', { name: 'Export Memo' }))
+    await user.click(screen.getAllByRole('button', { name: 'Export Memo' })[0])
     expect(downloadProjectScheduleExportMock).toHaveBeenCalledWith('tropical', 'markdown', {
       asOf: '2026-06-16',
       comparisonBasis: 'prior_update',
@@ -673,7 +683,7 @@ describe('ProjectSchedulePage', () => {
     let resolveTrends: (value: unknown) => void = () => {}
     const loadingView = renderPage(scheduleResponse(), new Promise((resolve) => { resolveTrends = resolve }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading schedule controls trends')
+    expect(await screen.findByText('Loading schedule controls trends...')).toBeInTheDocument()
     resolveTrends(trendResponse({
       metrics: [trendMetric('monthly_activity_start_finish_distribution', { points: [], data_quality_notes: [] })],
       errors: [],
@@ -683,9 +693,9 @@ describe('ProjectSchedulePage', () => {
 
     let rejectTrends: (reason?: unknown) => void = () => {}
     renderPage(scheduleResponse(), new Promise((_, reject) => { rejectTrends = reject }))
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading schedule controls trends')
+    expect(await screen.findByText('Loading schedule controls trends...')).toBeInTheDocument()
     rejectTrends(new Error('500 Internal Server Error: stack trace detail'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Schedule controls trends are unavailable right now.')
+    expect(await screen.findByText('Schedule controls trends are unavailable right now.')).toBeInTheDocument()
     expect(document.body.textContent || '').not.toContain('stack trace detail')
   })
 

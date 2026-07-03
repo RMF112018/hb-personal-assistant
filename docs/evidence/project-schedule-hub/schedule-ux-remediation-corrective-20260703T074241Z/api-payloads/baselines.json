@@ -1,0 +1,160 @@
+{
+  "available": true,
+  "project_key": "tropical",
+  "as_of_date": "2026-07-03",
+  "current_schedule_version_key": "tropical|1071|2026-06-23 08:00",
+  "current_schedule_data_date": "2026-06-23",
+  "slots": [
+    {
+      "slot_key": "current_contract_baseline",
+      "slot_label": "Current Contract Baseline",
+      "selection": {
+        "schedule_version_key": "tropical|815|2025-08-07 08:00",
+        "schedule_data_date": "2025-08-07",
+        "display_name": "TWNU07.zip",
+        "selected_at": "2026-07-01T07:32:42.252272+00:00",
+        "selected_by": "operator",
+        "notes": null
+      },
+      "status": "selected"
+    },
+    {
+      "slot_key": "previous_progress_update_baseline",
+      "slot_label": "Previous Progress Update Baseline",
+      "selection": {
+        "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+        "schedule_data_date": "2026-05-26",
+        "display_name": "TWNU18.zip",
+        "selected_at": "2026-07-01T07:32:42.270421+00:00",
+        "selected_by": "operator",
+        "notes": null
+      },
+      "status": "selected"
+    },
+    {
+      "slot_key": "secondary_progress_update_baseline",
+      "slot_label": "Secondary Progress Update Baseline",
+      "selection": {
+        "schedule_version_key": "tropical|851|2025-11-28 08:00",
+        "schedule_data_date": "2025-11-28",
+        "display_name": "TWNU14.zip",
+        "selected_at": "2026-07-01T07:32:42.287270+00:00",
+        "selected_by": "operator",
+        "notes": null
+      },
+      "status": "selected"
+    }
+  ],
+  "available_versions": [
+    {
+      "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+      "schedule_data_date": "2026-06-23",
+      "display_name": "TWNU19.zip",
+      "source_label": "TWNU19.zip",
+      "import_id": "beeb6dea0360",
+      "package_id": null,
+      "is_current_as_of": true,
+      "eligible_baseline": false,
+      "ineligibility_reason": "cannot_select_current_schedule_version"
+    },
+    {
+      "schedule_version_key": "tropical|TWNU19|2026-06-23T08:00:00",
+      "schedule_data_date": "2026-06-23",
+      "display_name": "TWNU19.xml",
+      "source_label": "TWNU19.xml",
+      "import_id": "d99fec1afb5a",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": false,
+      "ineligibility_reason": "not_hub_eligible"
+    },
+    {
+      "schedule_version_key": "tropical|24836|2026-06-23 08:00",
+      "schedule_data_date": "2026-06-23",
+      "display_name": "TWNU19.xer",
+      "source_label": "TWNU19.xer",
+      "import_id": "a2778cdf208b",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": false,
+      "ineligibility_reason": "not_hub_eligible"
+    },
+    {
+      "schedule_version_key": "tropical|1069|2026-05-26 08:00",
+      "schedule_data_date": "2026-05-26",
+      "display_name": "TWNU18.zip",
+      "source_label": "TWNU18.zip",
+      "import_id": "9a20e3de7c74",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|TWNU18|2026-05-26T08:00:00",
+      "schedule_data_date": "2026-05-26",
+      "display_name": "TWNU18.xml",
+      "source_label": "TWNU18.xml",
+      "import_id": "7898325a1aca",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": false,
+      "ineligibility_reason": "not_hub_eligible"
+    },
+    {
+      "schedule_version_key": "tropical|957|2026-01-29 08:00",
+      "schedule_data_date": "2026-01-29",
+      "display_name": "TWNU16.zip",
+      "source_label": "TWNU16.zip",
+      "import_id": "1aba677fcf98",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|TWNU16|2026-01-29T08:00:00",
+      "schedule_data_date": "2026-01-29",
+      "display_name": "TWNU16.xml",
+      "source_label": "TWNU16.xml",
+      "import_id": "508129b6843b",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": false,
+      "ineligibility_reason": "not_hub_eligible"
+    },
+    {
+      "schedule_version_key": "tropical|851|2025-11-28 08:00",
+      "schedule_data_date": "2025-11-28",
+      "display_name": "TWNU14.zip",
+      "source_label": "TWNU14.zip",
+      "import_id": "0f4bc830b623",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|815|2025-08-07 08:00",
+      "schedule_data_date": "2025-08-07",
+      "display_name": "TWNU07.zip",
+      "source_label": "TWNU07.zip",
+      "import_id": "55b57c7ea49f",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": true,
+      "ineligibility_reason": null
+    },
+    {
+      "schedule_version_key": "tropical|TWNU07|2025-08-07T08:00:00",
+      "schedule_data_date": "2025-08-07",
+      "display_name": "TWNU07.xml",
+      "source_label": "TWNU07.xml",
+      "import_id": "b5b87f9190ce",
+      "package_id": null,
+      "is_current_as_of": false,
+      "eligible_baseline": false,
+      "ineligibility_reason": "not_hub_eligible"
+    }
+  ]
+}

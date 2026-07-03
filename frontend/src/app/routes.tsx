@@ -23,6 +23,7 @@ import { ProjectScheduleReviewDashboardPage } from '../pages/ProjectScheduleRevi
 import { ProjectSchedulePage } from '../pages/ProjectSchedulePage'
 import { ProjectScheduleImportPage } from '../pages/ProjectScheduleImportPage'
 import { ProjectScheduleWorkbenchPage } from '../pages/ProjectScheduleWorkbenchPage'
+import { ProjectScheduleBaselinesPage } from '../pages/ProjectScheduleBaselinesPage'
 import { ProjectScheduleDriverDetailPage } from '../pages/ProjectScheduleDriverDetailPage'
 import { MyItemsPage } from '../pages/MyItemsPage'
 import { ForecastingPage } from '../pages/ForecastingPage'
@@ -179,6 +180,10 @@ const router = createBrowserRouter([
       {
         path: 'projects/:projectKey/schedule/import',
         element: <ProjectScheduleImportPage />,
+      },
+      {
+        path: 'projects/:projectKey/schedule/baselines',
+        element: <ProjectScheduleBaselinesPage />,
       },
       {
         path: 'projects/:projectKey/schedule/workbench',

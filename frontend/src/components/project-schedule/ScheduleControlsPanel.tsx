@@ -93,6 +93,7 @@ const QUALITY_GROUP_KEYS = [
 export type ScheduleControlsPanelProps = {
   controls?: Record<string, any>
   loading?: boolean
+  fetching?: boolean
   error?: unknown
   comparisonBasis: ScheduleControlsComparisonBasis
   onComparisonBasisChange: (basis: ScheduleControlsComparisonBasis) => void
@@ -101,6 +102,7 @@ export type ScheduleControlsPanelProps = {
 export function ScheduleControlsPanel({
   controls,
   loading = false,
+  fetching = false,
   error,
   comparisonBasis,
   onComparisonBasisChange,
@@ -120,6 +122,16 @@ export function ScheduleControlsPanel({
       <SectionCard title="Schedule Controls">
         <p className="text-sm text-amber-400" role="alert">
           Schedule controls are unavailable right now.
+        </p>
+      </SectionCard>
+    )
+  }
+
+  if (fetching && !controls) {
+    return (
+      <SectionCard title="Schedule Controls">
+        <p className="text-sm text-[var(--hb-muted)]" role="status">
+          Refreshing schedule controls for the selected as-of date…
         </p>
       </SectionCard>
     )

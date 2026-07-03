@@ -130,7 +130,8 @@ function ReviewItemEvents({
 export function ProjectScheduleWorkbenchPage() {
   const { projectKey = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const asOfDate = searchParams.get('as_of') || undefined
+  const rawAsOf = searchParams.get('as_of') || ''
+  const asOfDate = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : undefined
   const focusReview = searchParams.get('review') || undefined
   const urlComparisonBasis = searchParams.get('comparison_basis')
   const focusRef = useRef<HTMLDivElement | null>(null)
@@ -153,7 +154,7 @@ export function ProjectScheduleWorkbenchPage() {
   const namedPreview = isNamedWorkbenchBasis(comparisonBasis)
 
   const baselinesQuery = useQuery({
-    queryKey: ['project', 'schedule', 'baselines', projectKey, asOfDate],
+    queryKey: ['project', 'schedule', projectKey, 'baselines', asOfDate || 'latest'],
     queryFn: () => api.getProjectScheduleBaselines(projectKey, { asOf: asOfDate }),
     enabled: Boolean(projectKey),
   })
