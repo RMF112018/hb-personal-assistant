@@ -7,12 +7,9 @@ import { EmptyState } from '../components/common/EmptyState'
 import { ErrorState } from '../components/common/ErrorState'
 import { LoadingState } from '../components/common/LoadingState'
 import { TechnicalDetails } from '../components/common/TechnicalDetails'
-import { ForecastDialog } from '../components/forecast/ForecastDialog'
 import { ScheduleBaselineSelector } from '../components/project-schedule/ScheduleBaselineSelector'
 import { ScheduleControlsPanel } from '../components/project-schedule/ScheduleControlsPanel'
 import { TrustBanner } from '../components/project-schedule/TrustBanner'
-import { ScheduleImportFlow } from '../components/project-schedule/ScheduleImportFlow'
-import type { ProjectScheduleImportCommitResult } from '../components/project-schedule/scheduleImportTypes'
 import { ProjectScheduleDashboardVisualizations } from '../components/projects/ProjectScheduleDashboardVisualizations'
 import { ProjectWorkspaceShell } from '../components/projects/ProjectWorkspaceShell'
 import { api } from '../lib/api'
@@ -32,9 +29,11 @@ function formatWbs(item: Record<string, unknown>) {
   const display = item.display_wbs ?? item.wbs_code
   if (display === null || display === undefined || display === '' || display === '—') {
     const reason = item.wbs_context_reason
-    return reason ? `WBS not in source (${String(reason)})` : 'WBS not in comparison row'
+    // Concise PM-facing display; full reason preserved in title/caveat for operators (see SOW 5).
+    const title = reason ? `WBS not in source (${String(reason)})` : 'WBS not in comparison row'
+    return { display: 'Not provided', title }
   }
-  return String(display)
+  return { display: String(display), title: undefined as string | undefined }
 }
 
 function num(value: unknown, fallback = '0') {
@@ -332,7 +331,7 @@ function DriverEvidenceSection({
                         {text(item.activity_name) || 'Unnamed activity'}
                       </Link>
                     </td>
-                    <td className="px-3 py-2">{formatWbs(item)}</td>
+                    <td className="px-3 py-2" title={formatWbs(item).title || undefined}>{formatWbs(item).display}</td>
                     <td className="px-3 py-2">{item.finish_delta_days != null ? `${item.finish_delta_days}d` : '—'}</td>
                     <td className="px-3 py-2">{num(item.downstream_moved_later_count)}</td>
                     <td className="px-3 py-2">P{num(item.review_priority)}</td>
@@ -402,39 +401,23 @@ export function ProjectSchedulePage() {
   const asOf = /^\d{4}-\d{2}-\d{2}$/.test(rawAsOf) ? rawAsOf : ''
   const requestAsOf = asOf || undefined
   const [showAllActions, setShowAllActions] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
   const [newImportBanner, setNewImportBanner] = useState(false)
   const [controlsComparisonBasis, setControlsComparisonBasis] = useState<ScheduleControlsComparisonBasis>('prior_update')
 
   const driverComparisonBasis =
-    controlsComparisonBasis === 'baseline'
+    (controlsComparisonBasis as any) === 'baseline'
       ? 'baseline'
       : controlsComparisonBasis === 'prior_update'
         ? 'prior_update'
         : controlsComparisonBasis
 
-  const { data: projectsData } = useQuery({
-    queryKey: ['projects'],
-    queryFn: api.getProjects,
-  })
-  const projectDisplayName = projectsData?.projects.find((p) => p.project_key === projectKey)?.display_name
+  // projects query removed (was only for displayName used by removed modal import dialog).
 
   const invalidateScheduleQueries = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['project', 'schedule', projectKey] })
   }, [queryClient, projectKey])
 
-  const handleImportCommitSuccess = useCallback(
-    (_result: ProjectScheduleImportCommitResult) => {
-      if (asOf) {
-        setNewImportBanner(true)
-      } else {
-        invalidateScheduleQueries()
-        setNewImportBanner(false)
-      }
-    },
-    [asOf, invalidateScheduleQueries],
-  )
-
+  // handleImportCommitSuccess removed (import now route-based; modal gone).
   const handleViewLatestAfterImport = useCallback(() => {
     const next = new URLSearchParams(searchParams)
     next.delete('as_of')
@@ -564,32 +547,18 @@ export function ProjectSchedulePage() {
             title={text(story.headline)}
             hint={text(story.synopsis)}
             actions={
-              <button className="badge" type="button" onClick={() => setImportOpen(true)}>
-                Import schedule package
-              </button>
+              <Link className="badge" to={`/projects/${projectKey}/schedule/import`}>
+                Import Schedule
+              </Link>
             }
           />
         </section>
-        <ForecastDialog
-          open={importOpen}
-          onClose={() => setImportOpen(false)}
-          title="Import schedule package"
-          description={`Upload a schedule update for ${projectDisplayName || projectKey}.`}
-        >
-          <ScheduleImportFlow
-            projectKey={projectKey}
-            projectDisplayName={projectDisplayName}
-            variant="modal"
-            onCommitSuccess={handleImportCommitSuccess}
-            onClose={() => {
-              setImportOpen(false)
-              if (!asOf) invalidateScheduleQueries()
-            }}
-          />
-        </ForecastDialog>
       </ProjectWorkspaceShell>
     )
   }
+
+  // Import is now exclusively via the dedicated route (promoted in Primary Actions + dropdown).
+  // Modal + related state removed for discoverability + simplicity.
 
   return (
     <ProjectWorkspaceShell>
@@ -628,9 +597,9 @@ export function ProjectSchedulePage() {
                 }}
               />
             </label>
-            <button className="badge" type="button" onClick={() => setImportOpen(true)}>
-              Import schedule package
-            </button>
+            <Link className="badge" to={`/projects/${projectKey}/schedule/import`}>
+              Import Schedule
+            </Link>
             <Link
               className="badge"
               to={workbenchHref(projectKey, { asOf: requestAsOf, comparisonBasis: controlsComparisonBasis })}
@@ -689,26 +658,7 @@ export function ProjectSchedulePage() {
           </div>
         )}
 
-        <TrustBanner
-          scheduleTrust={scheduleTrust}
-          identityReview={identityReview}
-          analyticsTrust={analyticsTrust}
-        />
-
-        <ScheduleControlsPanel
-          controls={controlsPayload}
-          loading={controlsLoading}
-          error={controlsError}
-          comparisonBasis={controlsComparisonBasis}
-          onComparisonBasisChange={setControlsComparisonBasis}
-        />
-
-        <ScheduleBaselineSelector
-          projectKey={projectKey}
-          baselines={baselinesPayload as Record<string, any> | undefined}
-          loading={baselinesLoading}
-          asOf={requestAsOf}
-        />
+        {/* TrustBanner, Controls, and Baseline moved lower per PM-first hierarchy (see sections below) */}
 
         <div className={`card ${toneFor(health.status)}`}>
           <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -747,11 +697,55 @@ export function ProjectSchedulePage() {
               <MetricTile label="Forecast Finish" value={command.forecast_finish} helper={`${num(command.forecast_finish_delta_days, '—')} days vs prior`} />
               <MetricTile label="Remaining Work" value={command.remaining_activity_count} helper={`${num(command.remaining_milestone_count)} milestones`} />
               <MetricTile label="Critical / Near" value={`${num(command.critical_remaining_count)} / ${num(command.near_critical_remaining_count)}`} />
-              <MetricTile label="Float Pressure" value={num(command.negative_float_remaining_count)} helper="source-export negative float" />
+              <MetricTile label="Float Pressure" value={num(command.negative_float_remaining_count)} helper="negative float remaining" />
             </div>
           </div>
         </div>
 
+        {/* 1. Schedule Status / Story (kept early, PM-facing) */}
+        {/* (the preceding card is the story) */}
+
+        {/* 2. Primary Actions — persistent, first-class workflows */}
+        <div className="card">
+          <div className="text-xs uppercase tracking-wide text-[var(--hb-muted)] mb-2">Primary Actions</div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="badge"
+              to={`/projects/${projectKey}/schedule/import`}
+            >
+              Import Schedule
+            </Link>
+            <Link
+              className="badge"
+              to={workbenchHref(projectKey, { asOf: requestAsOf, comparisonBasis: controlsComparisonBasis })}
+            >
+              Open Review Workbench
+            </Link>
+            {links.schedule_export_url && (
+              <button
+                className="badge"
+                type="button"
+                onClick={() => {
+                  void api.downloadProjectScheduleExport(projectKey, 'markdown', {
+                    asOf: requestAsOf,
+                    comparisonBasis: controlsComparisonBasis,
+                  })
+                }}
+              >
+                Export Memo
+              </button>
+            )}
+            {/* Manage Baselines is exposed via the context section below + global /schedules if needed */}
+            <Link className="badge" to={`/projects/${projectKey}/schedule`}>
+              Manage Baselines (below)
+            </Link>
+          </div>
+          <p className="mt-2 text-xs text-[var(--hb-muted)]">
+            Import is the primary way to bring new schedule data. Workbench is for systematic review and disposition.
+          </p>
+        </div>
+
+        {/* 3. Baseline / Comparison Context + 6. Trends/Charts (order adjusted in subsequent edits; see final structure) */}
         <div className="card">
           <ProjectScheduleDashboardVisualizations
             schedule={schedule}
@@ -812,7 +806,7 @@ export function ProjectSchedulePage() {
                 comparisonBasis={driverComparisonBasis}
                 onComparisonBasisChange={(basis) => {
                   if (basis === 'baseline') {
-                    setControlsComparisonBasis('baseline')
+                    setControlsComparisonBasis('baseline' as any)
                   } else if (basis === 'prior_update') {
                     setControlsComparisonBasis('prior_update')
                   }
@@ -821,6 +815,29 @@ export function ProjectSchedulePage() {
             </div>
           </div>
         )}
+
+        {/* 5. Controls Health (technical / operator content, now after story + actions + where-to-look) */}
+        <TrustBanner
+          scheduleTrust={scheduleTrust}
+          identityReview={identityReview}
+          analyticsTrust={analyticsTrust}
+        />
+
+        <ScheduleControlsPanel
+          controls={controlsPayload}
+          loading={controlsLoading}
+          error={controlsError}
+          comparisonBasis={controlsComparisonBasis}
+          onComparisonBasisChange={setControlsComparisonBasis}
+        />
+
+        {/* Baseline anchors also appear in Primary Actions context above; this is the full management surface */}
+        <ScheduleBaselineSelector
+          projectKey={projectKey}
+          baselines={baselinesPayload as Record<string, any> | undefined}
+          loading={baselinesLoading}
+          asOf={requestAsOf}
+        />
 
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="card">
@@ -1019,23 +1036,6 @@ export function ProjectSchedulePage() {
           }
         />
       </section>
-      <ForecastDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        title="Import schedule package"
-        description={`Upload a schedule update for ${projectDisplayName || projectKey}.`}
-      >
-        <ScheduleImportFlow
-          projectKey={projectKey}
-          projectDisplayName={projectDisplayName}
-          variant="modal"
-          onCommitSuccess={handleImportCommitSuccess}
-          onClose={() => {
-            setImportOpen(false)
-            if (!asOf) invalidateScheduleQueries()
-          }}
-        />
-      </ForecastDialog>
     </ProjectWorkspaceShell>
   )
 }

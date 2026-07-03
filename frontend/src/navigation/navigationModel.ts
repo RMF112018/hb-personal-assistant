@@ -49,7 +49,13 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/projects/all/field-operations')) return 'All Projects • Field Operations'
   if (path.startsWith('/projects/all/cost-time')) return 'All Projects • Cost & Time'
   if (path.startsWith('/projects/all')) return 'All Projects'
-  if (path.includes('/schedule') && path.startsWith('/projects/')) return 'Project • Schedule'
+  if (path.includes('/schedule') && path.startsWith('/projects/')) {
+    if (path.includes('/schedule/import')) return 'Project • Schedule • Import'
+    if (path.includes('/schedule/workbench')) return 'Project • Schedule • Review Workbench'
+    if (path.includes('/schedule/drivers')) return 'Project • Schedule • Activity Drivers'
+    if (path.includes('/schedule/driver')) return 'Project • Schedule • Driver Detail'
+    return 'Project • Schedule'
+  }
   if (path.startsWith('/projects/')) return 'Project'
   if (path.startsWith('/projects')) return 'Projects'
   // My Dashboard is the canonical route for the former My Items work queue; legacy /my-items aliases here.

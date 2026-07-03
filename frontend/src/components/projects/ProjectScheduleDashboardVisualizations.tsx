@@ -47,11 +47,11 @@ export function ProjectScheduleDashboardVisualizations({
 
   return (
     <section className="space-y-4">
-      <h4 className="text-sm font-semibold">Controls Trend Analytics</h4>
+      <h4 className="text-sm font-semibold">Trends</h4>
       <ControlsOverview schedule={schedule} />
 
       <div className="space-y-4">
-        <h5 className="text-sm font-semibold">Trend Analytics</h5>
+        <h5 className="text-sm font-semibold">Key trend metrics</h5>
         {trendLoading && (
           <div role="status" className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">
             Loading schedule controls trends...
@@ -275,12 +275,12 @@ function MetricPanel({
     <SectionCard title={title}>
       {!metric ? (
         <div className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">
-          Not yet available from schedule controls trend API.
+          Trend data not available from schedule controls (no metric payload for this basis/as-of).
         </div>
       ) : unavailable ? (
         <div className="rounded border border-amber-800/70 p-3 text-sm">
-          <div className="font-medium">Not yet available</div>
-          <div className="mt-1 text-[var(--hb-muted)]">{readable(metric.reason || metric.readiness_status || 'blocked')}</div>
+          <div className="font-medium">Trend not available</div>
+          <div className="mt-1 text-[var(--hb-muted)]">{readable(metric.reason || metric.readiness_status || 'blocked or not computed for current comparison')}</div>
         </div>
       ) : points.length === 0 ? (
         <div className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">

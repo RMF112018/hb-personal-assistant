@@ -74,6 +74,41 @@ export function ProjectScheduleDriverDetailPage() {
   const comparisonBasis = basisResolution.ok ? basisResolution.comparisonBasis : 'prior_update'
   const workbenchLink = buildWorkbenchHref(projectKey, { asOf: asOfDate, comparisonBasis })
 
+  const scheduleHref = asOfDate
+    ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
+    : `/projects/${projectKey}/schedule`
+
+  // Friendly index / entry-point state for bare /drivers and /driver-detail (no activityId).
+  // This makes the dropdown "Activity Drivers" and "Driver Detail" items safe and useful.
+  if (!activityId) {
+    return (
+      <ProjectWorkspaceShell>
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--hb-muted)]">Schedule</p>
+            <h3 className="section-title mb-0 mt-1">Activity Drivers</h3>
+          </div>
+          <div className="card">
+            <p className="text-sm">
+              Detailed driver analysis (downstream impacts, logic changes, candidate sequences) is shown for a specific activity.
+            </p>
+            <p className="mt-2 text-sm text-[var(--hb-muted)]">
+              Select a candidate from "Where to Look First" or the Review Workbench on the Schedule Overview, or open a review item that links here.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link className="badge" to={scheduleHref}>
+              Back to Schedule Overview
+            </Link>
+            <Link className="badge" to={workbenchLink}>
+              Open Review Workbench
+            </Link>
+          </div>
+        </section>
+      </ProjectWorkspaceShell>
+    )
+  }
+
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['project', 'schedule', 'driver-detail', projectKey, activityId, asOfDate, comparisonBasis],
     queryFn: () =>
@@ -140,9 +175,7 @@ export function ProjectScheduleDriverDetailPage() {
     )
   }
 
-  const scheduleHref = asOfDate
-    ? `/projects/${projectKey}/schedule?as_of=${encodeURIComponent(asOfDate)}`
-    : `/projects/${projectKey}/schedule`
+  // scheduleHref declared earlier (supports no-ID index state + these links)
 
   const activity = detail.activity || {}
   const baselineCtx = normalizeBaselineContext(detail.baseline_context)

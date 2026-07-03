@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Eye, Search } from 'lucide-react'
 
 import type { ReviewWorkbenchComparisonBasis } from '../../lib/api'
 import { driverDetailHref } from '../../lib/scheduleBaselineLabels'
@@ -118,6 +119,7 @@ export function ReviewCueCard({
   eventsSlot,
 }: ReviewCueCardProps) {
   const evidence = (item.evidence || {}) as Record<string, any>
+  void reasonRequiredDispositions // prop kept for API compat with callers; unused in this render after polish
   const caveats = Array.isArray(item.caveats) ? item.caveats : evidence.caveats || []
   const dataQualityNotes = Array.isArray(item.data_quality_notes)
     ? item.data_quality_notes
@@ -137,7 +139,7 @@ export function ReviewCueCard({
           ? focusRef
           : undefined
       }
-      className={`card ${focusReview && String(item.stable_item_key) === focusReview ? 'ring-1 ring-[var(--hb-border)]' : ''}`}
+      className={`card ${focusReview && String(item.stable_item_key) === focusReview ? 'ring-1 ring-[var(--hb-border)]' : ''} ${isPreview ? 'border-amber-500/40' : ''}`}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
@@ -152,17 +154,21 @@ export function ReviewCueCard({
                 Select
               </label>
             ) : null}
+            {/* Reduced badge set: primary status + priority + severity (if critical) + preview/persisted distinction */}
             <span className="badge">{text(item.disposition_label || item.review_status)}</span>
-            {isPreview ? <span className="badge">Preview cue</span> : item.review_item_id ? <span className="badge">Persisted</span> : null}
+            {isPreview ? <span className="badge">Preview</span> : item.review_item_id ? <span className="badge">Persisted</span> : null}
             <span className="badge">P{text(item.priority)}</span>
-            {item.severity ? <span className="badge capitalize">{text(item.severity)}</span> : null}
-            {item.confidence ? (
-              <span className="badge">{text(item.confidence).replace(/_/g, ' ')}</span>
+            {item.severity && ['critical', 'high'].includes(String(item.severity)) ? (
+              <span className="badge capitalize">{text(item.severity)}</span>
             ) : null}
-            {evidence.cue_category ? <span className="badge">{text(evidence.cue_category).replace(/_/g, ' ')}</span> : null}
-            {item.new_since_last_review ? <span className="badge">New</span> : null}
-            {item.still_open_from_prior ? <span className="badge">Carried forward</span> : null}
-            {item.stale_signal ? <span className="badge">Stale signal</span> : null}
+            {/* Other signals (confidence, category, new/carried/stale) collapsed to avoid chip overload; visible in expanded detail */}
+            {(item.new_since_last_review || item.still_open_from_prior || item.stale_signal) && (
+              <span className="text-[10px] text-[var(--hb-muted)]">
+                {item.new_since_last_review ? 'New ' : ''}
+                {item.still_open_from_prior ? 'Carried ' : ''}
+                {item.stale_signal ? 'Stale' : ''}
+              </span>
+            )}
           </div>
           <h4 className="mt-2 font-semibold">{text(evidence.cue_label || item.item_title)}</h4>
           {item.cue_summary || evidence.cue_summary ? (
@@ -177,10 +183,12 @@ export function ReviewCueCard({
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button className="badge" type="button" onClick={onToggleExpanded}>
+            <Eye size={12} className="mr-1 inline" aria-hidden />
             {expanded ? 'Hide detail' : 'Show detail'}
           </button>
           {driverHref ? (
             <Link className="badge" to={driverHref}>
+              <Search size={12} className="mr-1 inline" aria-hidden />
               Open Driver Detail
             </Link>
           ) : null}
