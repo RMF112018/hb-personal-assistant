@@ -2,6 +2,8 @@
 
 **Capture method:** Playwright Chromium against `http://127.0.0.1:5173`  
 **Script:** `scripts/dev_schedule_ux_corrective_screenshots.py` (run from repo root)  
+**Loaded-state gate:** Each capture waits for the relevant GET API response (200), loading markers hidden, and page-specific ready selectors (see `screenshot-loaded-state-proof.json`).  
+**`04` loading shot:** Changes the in-page As-of date input (not full navigation) while delaying the `as_of=2026-06-29` schedule API so `schedule-refreshing-banner` is visible with prior content retained.  
 **Backend:** `scripts/dev_schedule_clean_db_backend.py` on port 8000  
 **DB:** `/tmp/hb-pa-schedule-ux-final/hb-pa-schedule-ux-20260702T160500Z.sqlite`  
 **Role:** `localStorage hb-ui-role=operator` injected before navigation  

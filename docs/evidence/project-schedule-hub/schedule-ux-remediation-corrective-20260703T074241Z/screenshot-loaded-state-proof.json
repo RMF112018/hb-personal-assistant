@@ -1,0 +1,47 @@
+[
+  {
+    "file": "01-overview-top-asof-2026-06-22.png",
+    "loaded": true,
+    "markers": "schedule overview + Primary Actions"
+  },
+  {
+    "file": "02-schedule-dropdown-open-manage-baselines.png",
+    "loaded": true,
+    "markers": "dropdown Manage Baselines link"
+  },
+  {
+    "file": "03-baseline-management-visible.png",
+    "loaded": true,
+    "markers": "baseline-management-page"
+  },
+  {
+    "file": "06-import-schedule-route.png",
+    "loaded": true,
+    "markers": "Upload schedule update + Choose File"
+  },
+  {
+    "file": "07-review-workbench-route.png",
+    "loaded": true,
+    "markers": "Schedule Workbench heading"
+  },
+  {
+    "file": "08-driver-detail-empty-state.png",
+    "loaded": true,
+    "markers": "Activity Drivers index"
+  },
+  {
+    "file": "09-activity-drivers-empty-state.png",
+    "loaded": true,
+    "markers": "Activity Drivers index"
+  },
+  {
+    "file": "04-asof-refresh-loading-state.png",
+    "loaded": true,
+    "markers": "schedule-refreshing-banner visible"
+  },
+  {
+    "file": "05-post-refresh-trends-state-asof-2026-06-29.png",
+    "loaded": true,
+    "markers": "as_of 2026-06-29 settled, refreshing banner hidden"
+  }
+]

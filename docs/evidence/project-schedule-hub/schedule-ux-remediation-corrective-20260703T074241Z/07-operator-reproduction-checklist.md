@@ -76,12 +76,14 @@ Captured under:
 
 `docs/evidence/project-schedule-hub/schedule-ux-remediation-corrective-20260703T074241Z/screenshots/`
 
-Regenerate:
+Regenerate (waits for API + loaded markers before each capture):
 
 ```bash
 python scripts/dev_schedule_ux_corrective_screenshots.py \
   --out-dir docs/evidence/project-schedule-hub/schedule-ux-remediation-corrective-20260703T074241Z/screenshots
 ```
+
+Proof manifest: `screenshot-loaded-state-proof.json` in the evidence package root.
 
 ## API payload evidence
 
