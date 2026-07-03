@@ -15,6 +15,11 @@ import {
 
 import { SectionCard } from '../common/SectionCard'
 import {
+  metricPanelMessage,
+  metricPanelUiState,
+  type ScheduleQueryActivity,
+} from '../../lib/scheduleDataState'
+import {
   buildDriverImpactRows,
   buildFloatPressureBuckets,
   buildMilestoneSlipRows,
@@ -28,14 +33,18 @@ type ProjectScheduleDashboardVisualizationsProps = {
   schedule: Record<string, any>
   trendPayload?: Record<string, any>
   trendLoading?: boolean
+  trendFetching?: boolean
   trendError?: unknown
+  trendDataStale?: boolean
 }
 
 export function ProjectScheduleDashboardVisualizations({
   schedule,
   trendPayload,
   trendLoading = false,
+  trendFetching = false,
   trendError,
+  trendDataStale = false,
 }: ProjectScheduleDashboardVisualizationsProps) {
   const trend = buildScheduleTrendSeries(schedule.trend_series || {})
   const drivers = buildDriverImpactRows(schedule.change_driver_analysis || {})
@@ -44,6 +53,14 @@ export function ProjectScheduleDashboardVisualizations({
   const trendsByKey = trendPayloadByKey(trendPayload)
   const trendErrors = Array.isArray(trendPayload?.errors) ? trendPayload.errors : []
   const hasLegacyVisuals = hasScheduleVisualizations(schedule)
+
+  const trendActivity: ScheduleQueryActivity & { isStale?: boolean } = {
+    isLoading: trendLoading,
+    isFetching: trendFetching,
+    isError: Boolean(trendError),
+    hasData: Boolean(trendPayload),
+    isStale: trendDataStale,
+  }
 
   return (
     <section className="space-y-4">
@@ -57,25 +74,30 @@ export function ProjectScheduleDashboardVisualizations({
             Loading schedule controls trends...
           </div>
         )}
-        {Boolean(trendError) && (
+        {trendFetching && !trendLoading ? (
+          <div role="status" className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">
+            Refreshing schedule controls trends for the selected as-of date…
+          </div>
+        ) : null}
+        {Boolean(trendError) && !trendLoading && !trendFetching ? (
           <div role="alert" className="rounded border border-amber-800/70 p-3 text-sm">
             Schedule controls trends are unavailable right now.
           </div>
-        )}
+        ) : null}
         <div className="grid gap-4 xl:grid-cols-2">
-          <MetricPanel metric={trendsByKey.monthly_activity_start_finish_distribution} title="Monthly Activity Start/Finish Distribution">
+          <MetricPanel metric={trendsByKey.monthly_activity_start_finish_distribution} title="Monthly Activity Start/Finish Distribution" activity={trendActivity}>
             {(metric) => <MonthlyDistributionChart metric={metric} />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.planned_vs_actual_percent_complete} title="Planned vs Actual Percent Complete">
+          <MetricPanel metric={trendsByKey.planned_vs_actual_percent_complete} title="Planned vs Actual Percent Complete" activity={trendActivity}>
             {(metric) => <ProgressChart metric={metric} />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.schedule_performance_ratio} title="Schedule Performance Ratio">
+          <MetricPanel metric={trendsByKey.schedule_performance_ratio} title="Schedule Performance Ratio" activity={trendActivity}>
             {(metric) => <PerformanceRatioChart metric={metric} />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.schedule_delay_over_time} title="Schedule Delay Over Time">
+          <MetricPanel metric={trendsByKey.schedule_delay_over_time} title="Schedule Delay Over Time" activity={trendActivity}>
             {(metric) => <DelayChart metric={metric} />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.schedule_changes_over_time} title="Schedule Changes Over Time">
+          <MetricPanel metric={trendsByKey.schedule_changes_over_time} title="Schedule Changes Over Time" activity={trendActivity}>
             {(metric) => <ChangesChart metric={metric} />}
           </MetricPanel>
         </div>
@@ -84,23 +106,23 @@ export function ProjectScheduleDashboardVisualizations({
       <div className="space-y-4">
         <h5 className="text-sm font-semibold">Schedule Health / Feasibility</h5>
         <div className="grid gap-4 xl:grid-cols-2">
-          <MetricPanel metric={trendsByKey.project_schedule_health_index} title="Project Schedule Health Index">
+          <MetricPanel metric={trendsByKey.project_schedule_health_index} title="Project Schedule Health Index" activity={trendActivity}>
             {(metric) => <HealthIndexChart metric={metric} />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.schedule_feasibility_score} title="Schedule Feasibility Score">
+          <MetricPanel metric={trendsByKey.schedule_feasibility_score} title="Schedule Feasibility Score" activity={trendActivity}>
             {(metric) => <MetricPointList metric={metric} valueKey="feasibility_score" />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.required_recovery_days} title="Required Recovery Days">
+          <MetricPanel metric={trendsByKey.required_recovery_days} title="Required Recovery Days" activity={trendActivity}>
             {(metric) => <MetricPointList metric={metric} valueKey="required_recovery_days" />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.critical_path_length_index} title="Critical Path Length Index">
+          <MetricPanel metric={trendsByKey.critical_path_length_index} title="Critical Path Length Index" activity={trendActivity}>
             {(metric) => <MetricPointList metric={metric} valueKey="critical_path_length_index" />}
           </MetricPanel>
-          <MetricPanel metric={trendsByKey.total_float_consumption_index} title="Total Float Consumption Index">
+          <MetricPanel metric={trendsByKey.total_float_consumption_index} title="Total Float Consumption Index" activity={trendActivity}>
             {(metric) => <FloatConsumptionChart metric={metric} />}
           </MetricPanel>
           {trendsByKey.schedule_compression_ratio && (
-            <MetricPanel metric={trendsByKey.schedule_compression_ratio} title="Schedule Compression Ratio">
+            <MetricPanel metric={trendsByKey.schedule_compression_ratio} title="Schedule Compression Ratio" activity={trendActivity}>
               {(metric) => <MetricPointList metric={metric} valueKey="compression_ratio" />}
             </MetricPanel>
           )}
@@ -111,27 +133,27 @@ export function ProjectScheduleDashboardVisualizations({
         <h5 className="text-sm font-semibold">Execution Reliability / Review Cues</h5>
         <div className="grid gap-4 xl:grid-cols-2">
           {trendsByKey.window_start_accuracy && (
-            <MetricPanel metric={trendsByKey.window_start_accuracy} title="Window Start Accuracy">
+            <MetricPanel metric={trendsByKey.window_start_accuracy} title="Window Start Accuracy" activity={trendActivity}>
               {(metric) => <WindowAccuracySummary metric={metric} startField />}
             </MetricPanel>
           )}
           {trendsByKey.window_finish_accuracy && (
-            <MetricPanel metric={trendsByKey.window_finish_accuracy} title="Window Finish Accuracy">
+            <MetricPanel metric={trendsByKey.window_finish_accuracy} title="Window Finish Accuracy" activity={trendActivity}>
               {(metric) => <WindowAccuracySummary metric={metric} />}
             </MetricPanel>
           )}
           {trendsByKey.should_have_finished_status && (
-            <MetricPanel metric={trendsByKey.should_have_finished_status} title="Should Have Finished Status">
+            <MetricPanel metric={trendsByKey.should_have_finished_status} title="Should Have Finished Status" activity={trendActivity}>
               {(metric) => <StatusBreakdownChart metric={metric} />}
             </MetricPanel>
           )}
           {trendsByKey.delay_analysis && (
-            <MetricPanel metric={trendsByKey.delay_analysis} title="Delay Analysis">
+            <MetricPanel metric={trendsByKey.delay_analysis} title="Delay Analysis" activity={trendActivity}>
               {(metric) => <MetricPointList metric={metric} valueKey="net_movement" />}
             </MetricPanel>
           )}
           {trendsByKey.critical_issues_category_model && (
-            <MetricPanel metric={trendsByKey.critical_issues_category_model} title="Critical Issues Category Model">
+            <MetricPanel metric={trendsByKey.critical_issues_category_model} title="Critical Issues Category Model" activity={trendActivity}>
               {(metric) => <CategoryBreakdownChart metric={metric} />}
             </MetricPanel>
           )}
@@ -258,10 +280,12 @@ function MetricPanel({
   metric,
   title,
   children,
+  activity,
 }: {
   metric?: Record<string, any>
   title: string
   children: (metric: Record<string, any>) => ReactNode
+  activity?: ScheduleQueryActivity & { isStale?: boolean }
 }) {
   const points = Array.isArray(metric?.points) ? metric.points : []
   const notes = Array.isArray(metric?.data_quality_notes) ? metric.data_quality_notes : []
@@ -270,17 +294,26 @@ function MetricPanel({
   const basis = Array.isArray(metric?.basis_labels) ? metric.basis_labels : []
   const comparison = Array.isArray(metric?.comparison_basis) ? metric.comparison_basis : []
   const selectedBaseline = metric?.selected_baseline || {}
+  const panelState = metricPanelUiState(metric, activity || {})
   const unavailable = metric && metric.available === false
   return (
     <SectionCard title={title}>
-      {!metric ? (
+      {panelState === 'loading' || panelState === 'refreshing' ? (
+        <div className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]" role="status">
+          {metricPanelMessage(panelState, metric)}
+        </div>
+      ) : panelState === 'api_error' ? (
+        <div className="rounded border border-amber-800/70 p-3 text-sm" role="alert">
+          {metricPanelMessage(panelState, metric)}
+        </div>
+      ) : !metric ? (
         <div className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">
-          Trend data not available from schedule controls (no metric payload for this basis/as-of).
+          {metricPanelMessage('no_metric_payload', metric)}
         </div>
       ) : unavailable ? (
         <div className="rounded border border-amber-800/70 p-3 text-sm">
           <div className="font-medium">Trend not available</div>
-          <div className="mt-1 text-[var(--hb-muted)]">{readable(metric.reason || metric.readiness_status || 'blocked or not computed for current comparison')}</div>
+          <div className="mt-1 text-[var(--hb-muted)]">{readable(metric.reason || metric.readiness_status || metricPanelMessage(panelState, metric))}</div>
         </div>
       ) : points.length === 0 ? (
         <div className="rounded border border-[var(--hb-border)] p-3 text-sm text-[var(--hb-muted)]">

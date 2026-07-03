@@ -1,0 +1,1057 @@
+{
+  "available": true,
+  "reason": null,
+  "project_key": "tropical",
+  "schedule_data_date": "2026-06-23",
+  "as_of_date": "2026-06-29",
+  "comparison_basis": "prior_update",
+  "baseline_context": {
+    "basis": "prior_update",
+    "selection_status": "not_applicable"
+  },
+  "advisory_posture": "sequence_cues_not_causation",
+  "analytics_trust": {
+    "analytics_trust_status": "degraded",
+    "trust_reasons": [
+      "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+    ],
+    "source_formats_detected": [
+      "primavera_xer"
+    ],
+    "source_formats_used": [
+      "primavera_xer"
+    ],
+    "ignored_companion_files": [],
+    "merge_status": null,
+    "equivalence_status": null,
+    "canonical_activity_count": 1507,
+    "canonical_relationship_count": 3921,
+    "baseline_project_count": null,
+    "quality_status": "complete",
+    "cpm_status": "complete",
+    "cpm_trust": {
+      "cpm_trust_status": "ready",
+      "cpm_recompute_status": "complete",
+      "trigger_source": null,
+      "failed_step": null,
+      "failure_code": null,
+      "failure_message_redacted": null,
+      "canonical_input_activity_count": null,
+      "canonical_input_relationship_count": null,
+      "graph_node_count": null,
+      "graph_edge_count": null,
+      "duration_ms": null
+    },
+    "capability_limitations": [
+      "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+    ],
+    "identity_trust": {
+      "identity_trust_status": "trusted",
+      "identity_gate": "ready",
+      "review_required": false,
+      "operator_action_required": false,
+      "safe_project_label": "23-435-01 - Tropical World Nursery Senior Living Facility",
+      "safe_schedule_label": "TWNU19.zip (2026-06-23)",
+      "safe_reasons": [],
+      "recommended_operator_actions": [],
+      "pm_message": "Schedule identity is trusted for PM review at the current project context.",
+      "technical_identity": {
+        "schedule_trust_status": "trusted",
+        "membership_status": "accepted",
+        "identity_match_status": "resolved",
+        "requires_review": false,
+        "candidate_count": 1,
+        "confidence_score": "0.80"
+      }
+    },
+    "cpm_trust_status": "ready",
+    "cpm_recompute_status": "complete",
+    "trigger_source": null,
+    "failed_step": null,
+    "failure_code": null,
+    "failure_message_redacted": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "graph_node_count": null,
+    "graph_edge_count": null,
+    "duration_ms": null,
+    "identity_trust_status": "trusted",
+    "identity_gate": "ready"
+  },
+  "identity_trust": {
+    "identity_trust_status": "trusted",
+    "identity_gate": "ready",
+    "review_required": false,
+    "operator_action_required": false,
+    "safe_project_label": "23-435-01 - Tropical World Nursery Senior Living Facility",
+    "safe_schedule_label": "TWNU19.zip (2026-06-23)",
+    "safe_reasons": [],
+    "recommended_operator_actions": [],
+    "pm_message": "Schedule identity is trusted for PM review at the current project context.",
+    "technical_identity": {
+      "schedule_trust_status": "trusted",
+      "membership_status": "accepted",
+      "identity_match_status": "resolved",
+      "requires_review": false,
+      "candidate_count": 1,
+      "confidence_score": "0.80"
+    }
+  },
+  "quality_controls": {
+    "quality_trust_status": "degraded",
+    "quality_run_status": "complete",
+    "scorecard": {
+      "overall_status": "degraded",
+      "overall_score": "72.2",
+      "quality_grade": "C",
+      "metrics_available": 11,
+      "metrics_failed": 1,
+      "completion_posture": null
+    },
+    "control_groups": [
+      {
+        "group_key": "logic_integrity",
+        "label": "Logic Integrity",
+        "status": "ready",
+        "summary": "18 persisted finding(s) support review in this group.",
+        "metrics": [
+          {
+            "label": "Logic integrity",
+            "resolved_status": "pass",
+            "status_label": "passed threshold",
+            "value": "0.0335",
+            "counts": [
+              {
+                "label": "Open starts",
+                "count": 49
+              },
+              {
+                "label": "Open finishes",
+                "count": 0
+              },
+              {
+                "label": "Duplicate relationships",
+                "count": 0
+              },
+              {
+                "label": "Self relationships",
+                "count": 0
+              },
+              {
+                "label": "Invalid relationship references",
+                "count": 0
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review logic integrity counts and confirm whether open ends or duplicate ties need schedule cleanup."
+          }
+        ]
+      },
+      {
+        "group_key": "constraint_quality",
+        "label": "Constraint Quality",
+        "status": "ready",
+        "summary": "18 persisted finding(s) support review in this group.",
+        "metrics": [
+          {
+            "label": "Hard constraints",
+            "resolved_status": "pass",
+            "status_label": "passed threshold",
+            "value": "0.0418",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 63,
+                "denominator": 1507
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review hard-constrained activities and confirm constraints reflect the current plan."
+          }
+        ]
+      },
+      {
+        "group_key": "float_quality",
+        "label": "Float Quality",
+        "status": "ready",
+        "summary": "18 persisted finding(s) support review in this group.",
+        "metrics": [
+          {
+            "label": "High float",
+            "resolved_status": "pass",
+            "status_label": "measured from explicit source float",
+            "value": "0.0014",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 1,
+                "denominator": 712
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review high-float activities for logic gaps or unnecessary float."
+          },
+          {
+            "label": "Negative float",
+            "resolved_status": "pass",
+            "status_label": "measured from explicit source float",
+            "value": "0.9986",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 711,
+                "denominator": 712
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review negative-float activities for recovery planning follow-up."
+          }
+        ]
+      },
+      {
+        "group_key": "duration_quality",
+        "label": "Duration Quality",
+        "status": "ready",
+        "summary": "18 persisted finding(s) support review in this group.",
+        "metrics": [
+          {
+            "label": "High duration",
+            "resolved_status": "pass",
+            "status_label": "passed threshold",
+            "value": "0.0126",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 19,
+                "denominator": 1507
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review long-duration activities for decomposition or duration reasonableness."
+          }
+        ]
+      },
+      {
+        "group_key": "date_quality",
+        "label": "Date Quality",
+        "status": "degraded",
+        "summary": "1 measured check(s) are in warning range for this group.",
+        "metrics": [
+          {
+            "label": "Invalid dates",
+            "resolved_status": "warn",
+            "status_label": "warning threshold",
+            "value": "0.0151",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 12,
+                "denominator": 795
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": "Review invalid or inconsistent dates before relying on forecast dates."
+          }
+        ]
+      },
+      {
+        "group_key": "critical_path_readiness",
+        "label": "Critical Path Readiness",
+        "status": "degraded",
+        "summary": "18 persisted finding(s) support review in this group.",
+        "metrics": [
+          {
+            "label": "Critical path test",
+            "resolved_status": "not_measurable",
+            "status_label": "not measurable requires recalculation",
+            "value": null,
+            "counts": [],
+            "not_measurable_reason": "CPM recalculation not implemented; source-export critical path data is available separately",
+            "recommended_pm_action": "Confirm critical-path readiness before relying on driving-path analytics."
+          },
+          {
+            "label": "Source Critical Path Available",
+            "resolved_status": "unknown",
+            "status_label": "available xer total float threshold",
+            "value": "711",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 711,
+                "denominator": 1507
+              }
+            ],
+            "not_measurable_reason": null,
+            "recommended_pm_action": null
+          }
+        ]
+      },
+      {
+        "group_key": "cost_resource_readiness",
+        "label": "Cost Resource Readiness",
+        "status": "unavailable",
+        "summary": "Cost/resource loading analytics is not available for this schedule update.",
+        "metrics": [
+          {
+            "label": "Resources / cost loading",
+            "resolved_status": "not_measurable",
+            "status_label": "not applicable",
+            "value": "0.0",
+            "counts": [
+              {
+                "label": "Affected items",
+                "count": 0,
+                "denominator": 1507
+              }
+            ],
+            "not_measurable_reason": "schedule is not cost- or resource-loaded",
+            "recommended_pm_action": "Confirm whether cost or resource loading is expected for this schedule update."
+          }
+        ]
+      },
+      {
+        "group_key": "baseline_readiness",
+        "label": "Baseline Readiness",
+        "status": "unavailable",
+        "summary": "Baseline comparison analytics is not available for this schedule update.",
+        "metrics": [
+          {
+            "label": "Missed tasks vs baseline",
+            "resolved_status": "not_measurable",
+            "status_label": "not measurable missing data",
+            "value": null,
+            "counts": [],
+            "not_measurable_reason": "missing baseline finish dates",
+            "recommended_pm_action": "Confirm baseline comparison readiness before using missed-task metrics."
+          }
+        ]
+      },
+      {
+        "group_key": "capability_limitations",
+        "label": "Capability limitations",
+        "status": "ready",
+        "summary": "Known measurement limits for this release. These are not schedule defects.",
+        "metrics": [],
+        "limitations": [
+          "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.",
+          "Baseline execution index: missing baseline finish dates.",
+          "Critical path length index: critical path length unavailable without CPM recalculation.",
+          "Critical path test: CPM recalculation not implemented; source-export critical path data is available separately.",
+          "Missed tasks vs baseline: missing baseline finish dates.",
+          "Resources / cost loading: schedule is not cost- or resource-loaded.",
+          "Full in-app CPM recalculation is not implemented; source export float may be used where available."
+        ]
+      }
+    ],
+    "top_findings": [
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      },
+      {
+        "finding_code": "actual_finish_after_data_date",
+        "severity": "warning",
+        "summary": "Actual finish is after schedule data date",
+        "category": "dcma"
+      }
+    ],
+    "capability_limitations": [
+      "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.",
+      "Baseline execution index: missing baseline finish dates.",
+      "Critical path length index: critical path length unavailable without CPM recalculation.",
+      "Critical path test: CPM recalculation not implemented; source-export critical path data is available separately.",
+      "Missed tasks vs baseline: missing baseline finish dates.",
+      "Resources / cost loading: schedule is not cost- or resource-loaded.",
+      "Full in-app CPM recalculation is not implemented; source export float may be used where available."
+    ],
+    "recommended_pm_actions": [
+      "Confirm the latest schedule quality evaluation completed successfully.",
+      "Review invalid or inconsistent dates before relying on forecast dates.",
+      "Confirm critical-path readiness before relying on driving-path analytics."
+    ],
+    "cpm_observability_summary": null
+  },
+  "summary": {
+    "overall_status": "review",
+    "headline": "Schedule controls are degraded; review identity, analytics, and quality signals.",
+    "supporting_points": [
+      "Compared against prior update",
+      "461 remaining activities moved later in the comparison window.",
+      "711 remaining activities show negative float.",
+      "132 open review workbench cues in the selected basis."
+    ],
+    "primary_review_focus": "Candidate change driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+    "open_review_item_count": 132,
+    "high_priority_review_item_count": 8
+  },
+  "sections": {
+    "movement": {
+      "available": true,
+      "headline": "Schedule movement since comparison context",
+      "finish_moved_later_count": 461,
+      "finish_moved_earlier_count": 76,
+      "worsened_float_count": 378,
+      "comparison_basis": "prior_update"
+    },
+    "critical_path": {
+      "available": true,
+      "critical_remaining_count": 613,
+      "near_critical_remaining_count": 0,
+      "headline": "Critical-path and near-critical remaining work indicators"
+    },
+    "float": {
+      "available": true,
+      "negative_float_count": 711,
+      "zero_float_count": 0,
+      "near_critical_count": 0,
+      "headline": "Remaining float pressure indicators"
+    },
+    "execution": {
+      "available": true,
+      "headline": "Execution reliability cues are surfaced via review signals when metric data is ready.",
+      "note": "See top controls for should-have-finished and window accuracy cues."
+    },
+    "quality": {
+      "available": true,
+      "headline": "Schedule quality scorecard and control groups for PM review.",
+      "quality_trust_status": "degraded",
+      "quality_run_status": "complete",
+      "overall_score": "72.2",
+      "quality_grade": "C",
+      "groups": [
+        {
+          "group_key": "logic_integrity",
+          "label": "Logic Integrity",
+          "status": "ready",
+          "summary": "18 persisted finding(s) support review in this group."
+        },
+        {
+          "group_key": "constraint_quality",
+          "label": "Constraint Quality",
+          "status": "ready",
+          "summary": "18 persisted finding(s) support review in this group."
+        },
+        {
+          "group_key": "float_quality",
+          "label": "Float Quality",
+          "status": "ready",
+          "summary": "18 persisted finding(s) support review in this group."
+        },
+        {
+          "group_key": "duration_quality",
+          "label": "Duration Quality",
+          "status": "ready",
+          "summary": "18 persisted finding(s) support review in this group."
+        },
+        {
+          "group_key": "date_quality",
+          "label": "Date Quality",
+          "status": "degraded",
+          "summary": "1 measured check(s) are in warning range for this group."
+        },
+        {
+          "group_key": "critical_path_readiness",
+          "label": "Critical Path Readiness",
+          "status": "degraded",
+          "summary": "18 persisted finding(s) support review in this group."
+        },
+        {
+          "group_key": "cost_resource_readiness",
+          "label": "Cost Resource Readiness",
+          "status": "unavailable",
+          "summary": "Cost/resource loading analytics is not available for this schedule update."
+        },
+        {
+          "group_key": "baseline_readiness",
+          "label": "Baseline Readiness",
+          "status": "unavailable",
+          "summary": "Baseline comparison analytics is not available for this schedule update."
+        }
+      ]
+    },
+    "analytics_trust": {
+      "available": true,
+      "analytics_trust_status": "degraded",
+      "identity_gate": "ready",
+      "headline": "Analytics trust reflects import, quality, CPM, and identity readiness.",
+      "trust_reasons": [
+        "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+      ],
+      "capability_limitations": [
+        "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation."
+      ],
+      "failure_message_redacted": null
+    },
+    "logic_integrity": {
+      "available": true,
+      "group_key": "logic_integrity",
+      "label": "Logic Integrity",
+      "status": "ready",
+      "headline": "18 persisted finding(s) support review in this group.",
+      "metrics": [
+        {
+          "label": "Logic integrity",
+          "resolved_status": "pass",
+          "status_label": "passed threshold",
+          "value": "0.0335",
+          "counts": [
+            {
+              "label": "Open starts",
+              "count": 49
+            },
+            {
+              "label": "Open finishes",
+              "count": 0
+            },
+            {
+              "label": "Duplicate relationships",
+              "count": 0
+            },
+            {
+              "label": "Self relationships",
+              "count": 0
+            },
+            {
+              "label": "Invalid relationship references",
+              "count": 0
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review logic integrity counts and confirm whether open ends or duplicate ties need schedule cleanup."
+        }
+      ]
+    },
+    "constraints": {
+      "available": true,
+      "group_key": "constraint_quality",
+      "label": "Constraint Quality",
+      "status": "ready",
+      "headline": "18 persisted finding(s) support review in this group.",
+      "metrics": [
+        {
+          "label": "Hard constraints",
+          "resolved_status": "pass",
+          "status_label": "passed threshold",
+          "value": "0.0418",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 63,
+              "denominator": 1507
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review hard-constrained activities and confirm constraints reflect the current plan."
+        }
+      ]
+    },
+    "float_quality": {
+      "available": true,
+      "group_key": "float_quality",
+      "label": "Float Quality",
+      "status": "ready",
+      "headline": "18 persisted finding(s) support review in this group.",
+      "metrics": [
+        {
+          "label": "High float",
+          "resolved_status": "pass",
+          "status_label": "measured from explicit source float",
+          "value": "0.0014",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 1,
+              "denominator": 712
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review high-float activities for logic gaps or unnecessary float."
+        },
+        {
+          "label": "Negative float",
+          "resolved_status": "pass",
+          "status_label": "measured from explicit source float",
+          "value": "0.9986",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 711,
+              "denominator": 712
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review negative-float activities for recovery planning follow-up."
+        }
+      ]
+    },
+    "duration_quality": {
+      "available": true,
+      "group_key": "duration_quality",
+      "label": "Duration Quality",
+      "status": "ready",
+      "headline": "18 persisted finding(s) support review in this group.",
+      "metrics": [
+        {
+          "label": "High duration",
+          "resolved_status": "pass",
+          "status_label": "passed threshold",
+          "value": "0.0126",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 19,
+              "denominator": 1507
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review long-duration activities for decomposition or duration reasonableness."
+        }
+      ]
+    },
+    "date_quality": {
+      "available": true,
+      "group_key": "date_quality",
+      "label": "Date Quality",
+      "status": "degraded",
+      "headline": "1 measured check(s) are in warning range for this group.",
+      "metrics": [
+        {
+          "label": "Invalid dates",
+          "resolved_status": "warn",
+          "status_label": "warning threshold",
+          "value": "0.0151",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 12,
+              "denominator": 795
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": "Review invalid or inconsistent dates before relying on forecast dates."
+        }
+      ]
+    },
+    "critical_path_readiness": {
+      "available": true,
+      "group_key": "critical_path_readiness",
+      "label": "Critical Path Readiness",
+      "status": "degraded",
+      "headline": "18 persisted finding(s) support review in this group.",
+      "metrics": [
+        {
+          "label": "Critical path test",
+          "resolved_status": "not_measurable",
+          "status_label": "not measurable requires recalculation",
+          "value": null,
+          "counts": [],
+          "not_measurable_reason": "CPM recalculation not implemented; source-export critical path data is available separately",
+          "recommended_pm_action": "Confirm critical-path readiness before relying on driving-path analytics."
+        },
+        {
+          "label": "Source Critical Path Available",
+          "resolved_status": "unknown",
+          "status_label": "available xer total float threshold",
+          "value": "711",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 711,
+              "denominator": 1507
+            }
+          ],
+          "not_measurable_reason": null,
+          "recommended_pm_action": null
+        }
+      ]
+    },
+    "cost_resource_readiness": {
+      "available": true,
+      "group_key": "cost_resource_readiness",
+      "label": "Cost Resource Readiness",
+      "status": "unavailable",
+      "headline": "Cost/resource loading analytics is not available for this schedule update.",
+      "metrics": [
+        {
+          "label": "Resources / cost loading",
+          "resolved_status": "not_measurable",
+          "status_label": "not applicable",
+          "value": "0.0",
+          "counts": [
+            {
+              "label": "Affected items",
+              "count": 0,
+              "denominator": 1507
+            }
+          ],
+          "not_measurable_reason": "schedule is not cost- or resource-loaded",
+          "recommended_pm_action": "Confirm whether cost or resource loading is expected for this schedule update."
+        }
+      ]
+    },
+    "baseline_readiness": {
+      "available": true,
+      "group_key": "baseline_readiness",
+      "label": "Baseline Readiness",
+      "status": "unavailable",
+      "headline": "Baseline comparison analytics is not available for this schedule update.",
+      "metrics": [
+        {
+          "label": "Missed tasks vs baseline",
+          "resolved_status": "not_measurable",
+          "status_label": "not measurable missing data",
+          "value": null,
+          "counts": [],
+          "not_measurable_reason": "missing baseline finish dates",
+          "recommended_pm_action": "Confirm baseline comparison readiness before using missed-task metrics."
+        }
+      ]
+    },
+    "capability_limitations": {
+      "available": true,
+      "headline": "Known capability limitations (not schedule defects).",
+      "items": [
+        "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.",
+        "Baseline execution index: missing baseline finish dates.",
+        "Critical path length index: critical path length unavailable without CPM recalculation.",
+        "Critical path test: CPM recalculation not implemented; source-export critical path data is available separately.",
+        "Missed tasks vs baseline: missing baseline finish dates.",
+        "Resources / cost loading: schedule is not cost- or resource-loaded.",
+        "Full in-app CPM recalculation is not implemented; source export float may be used where available."
+      ],
+      "group": {
+        "group_key": "capability_limitations",
+        "label": "Capability limitations",
+        "status": "ready",
+        "summary": "Known measurement limits for this release. These are not schedule defects.",
+        "metrics": [],
+        "limitations": [
+          "Out-of-sequence progress analysis is not implemented in this release; do not treat schedule movement as entitlement or causation.",
+          "Baseline execution index: missing baseline finish dates.",
+          "Critical path length index: critical path length unavailable without CPM recalculation.",
+          "Critical path test: CPM recalculation not implemented; source-export critical path data is available separately.",
+          "Missed tasks vs baseline: missing baseline finish dates.",
+          "Resources / cost loading: schedule is not cost- or resource-loaded.",
+          "Full in-app CPM recalculation is not implemented; source export float may be used where available."
+        ]
+      }
+    },
+    "identity_trust": {
+      "available": true,
+      "identity_trust_status": "trusted",
+      "identity_gate": "ready",
+      "headline": "Schedule identity is trusted for PM review at the current project context.",
+      "safe_schedule_label": "TWNU19.zip (2026-06-23)",
+      "operator_action_required": false
+    },
+    "cpm_observability": {
+      "available": false,
+      "headline": "No CPM observability record found for this schedule version.",
+      "status_summary": "not_found"
+    },
+    "review_workbench": {
+      "available": true,
+      "open_review_item_count": 132,
+      "watching_count": 0,
+      "review_status": {
+        "total_items": 132,
+        "preview_cue_count": 3,
+        "persisted_item_count": 132,
+        "needs_review": 132,
+        "accepted_for_follow_up": 0,
+        "dismissed_not_material": 0,
+        "resolved": 0,
+        "blocked": 0,
+        "superseded": 0,
+        "duplicate": 0,
+        "last_reviewed_at": "2026-06-30T07:26:22.959832+00:00",
+        "pm_summary": "Schedule review items are queued for operator review.",
+        "recommended_next_action": "Review preview cues and persisted items, then record operator dispositions.",
+        "open_count": 132,
+        "watching_count": 0,
+        "reviewed_count": 0,
+        "dismissed_count": 0,
+        "total_count": 135
+      },
+      "headline": "Schedule review items are queued for operator review.",
+      "recommended_next_action": "Review preview cues and persisted items, then record operator dispositions.",
+      "comparison_basis": "prior_update",
+      "read_only_baseline_preview": false
+    }
+  },
+  "top_controls": [
+    {
+      "control_id": "driver:FAB/DEL-10",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "summary": "Compared against prior update. Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "FAB/DEL EXTERIOR LIGHT FIXTURES",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-10&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-10&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "driver:FAB/DEL-210",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: FAB/DEL WINDOW TREATMENT",
+      "summary": "Compared against prior update. Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "FAB/DEL WINDOW TREATMENT",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-210&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-210&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "driver:FAB/DEL-240",
+      "category": "critical_path",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Candidate change driver: OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "summary": "Compared against prior update. Candidate driver sequence cue for PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review the linked activity sequence and downstream movement before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "OWNER FAB/DEL IDENTIFICATION SIGNS",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=driver%3AFAB%2FDEL-240&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FAB%2FDEL-240&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "milestone:FILTER-OUT-20",
+      "category": "movement",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Milestone moved later: ENVELOPE COMPLETION",
+      "summary": "Compared against prior update. Milestone forecast moved 26 days later since prior update.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Confirm milestone forecast movement against the current schedule update context.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "ENVELOPE COMPLETION",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFILTER-OUT-20&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FILTER-OUT-20&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "milestone:FM-PERMPOWER",
+      "category": "movement",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Milestone moved later: PERM POWER",
+      "summary": "Compared against prior update. Milestone forecast moved 22 days later since prior update.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Confirm milestone forecast movement against the current schedule update context.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "PERM POWER",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=milestone%3AFM-PERMPOWER&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=FM-PERMPOWER&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": []
+    },
+    {
+      "control_id": "metric:should_have_finished:delayed:P2-01-RI-150",
+      "category": "execution",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Should have finished: CEILING COVER-UP INSPECTION",
+      "summary": "Compared against prior update. Activity due by data date is delayed and needs PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "CEILING COVER-UP INSPECTION",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP2-01-RI-150&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P2-01-RI-150&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": [
+        "Classification is a PM review cue only; it does not infer responsibility or causation."
+      ]
+    },
+    {
+      "control_id": "metric:should_have_finished:delayed:P1A-POWER-70",
+      "category": "execution",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Should have finished: FAB/DEL FPL METERS",
+      "summary": "Compared against prior update. Activity due by data date is delayed and needs PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "FAB/DEL FPL METERS",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-POWER-70&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-POWER-70&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": [
+        "Classification is a PM review cue only; it does not infer responsibility or causation."
+      ]
+    },
+    {
+      "control_id": "metric:should_have_finished:delayed:P1A-RECAREA-10",
+      "category": "execution",
+      "severity": "review",
+      "confidence": "high",
+      "title": "Should have finished: FINE GRADE",
+      "summary": "Compared against prior update. Activity due by data date is delayed and needs PM review.",
+      "why_it_matters": "This signal highlights schedule movement or data-quality context that may need PM review.",
+      "recommended_action": "Review overdue unfinished activities and confirm field status before disposition.",
+      "comparison_basis": "prior_update",
+      "schedule_data_date": "2026-06-23",
+      "as_of": "2026-06-29",
+      "activity_name": "FINE GRADE",
+      "wbs_code": null,
+      "links": {
+        "review_item": "/projects/tropical/schedule/workbench?review=metric%3Ashould_have_finished%3Adelayed%3AP1A-RECAREA-10&comparison_basis=prior_update&as_of=2026-06-29",
+        "driver_detail": "/projects/tropical/schedule/driver-detail?activity_id=P1A-RECAREA-10&comparison_basis=prior_update&as_of=2026-06-29",
+        "schedule_hub": "/projects/tropical/schedule"
+      },
+      "caveats": [
+        "This is a schedule-control review cue for PM follow-up. It is not a causation, responsibility, entitlement, compensability, or delay-damages determination.",
+        "This metric is a schedule review cue only; it is not a causation, entitlement, responsibility, or compensability finding."
+      ],
+      "data_quality_notes": [
+        "Classification is a PM review cue only; it does not infer responsibility or causation."
+      ]
+    }
+  ],
+  "provenance": {
+    "source_services": [
+      "project_schedule_summary_service",
+      "project_schedule_review_service",
+      "schedule_cpm_import_observability_repository"
+    ],
+    "source_metric_keys": [
+      "change_driver_analysis",
+      "milestones",
+      "should_have_finished_status"
+    ],
+    "cpm_run_id": null,
+    "import_id": null,
+    "package_id": null,
+    "canonical_input_activity_count": null,
+    "canonical_input_relationship_count": null,
+    "schedule_version_key": "tropical|1071|2026-06-23 08:00",
+    "comparison_label": "Compared against prior update"
+  },
+  "links": {
+    "schedule_hub": "/projects/tropical/schedule",
+    "export": "/api/projects/tropical/schedule/export?format=markdown&comparison_basis=prior_update&as_of=2026-06-29",
+    "review_workbench": "/projects/tropical/schedule/workbench?comparison_basis=prior_update&as_of=2026-06-29"
+  },
+  "controls_language_qa": {
+    "passed": true,
+    "violations": [],
+    "advisory_posture": "sequence_cues_not_causation"
+  }
+}

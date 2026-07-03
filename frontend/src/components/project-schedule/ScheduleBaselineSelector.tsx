@@ -14,10 +14,17 @@ export type ScheduleBaselineSelectorProps = {
   projectKey: string
   baselines?: Record<string, any>
   loading?: boolean
+  fetching?: boolean
   asOf?: string
 }
 
-export function ScheduleBaselineSelector({ projectKey, baselines, loading = false, asOf }: ScheduleBaselineSelectorProps) {
+export function ScheduleBaselineSelector({
+  projectKey,
+  baselines,
+  loading = false,
+  fetching = false,
+  asOf,
+}: ScheduleBaselineSelectorProps) {
   const queryClient = useQueryClient()
   const canEdit = getLocalUiRole() === 'operator' || getLocalUiRole() === 'admin'
 
@@ -48,13 +55,31 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
   if (loading) {
     return (
       <SectionCard title="Baseline Anchors">
-        <p className="text-sm text-[var(--hb-muted)]">Loading baseline selections...</p>
+        <p className="text-sm text-[var(--hb-muted)]" role="status">
+          Loading baseline selections...
+        </p>
+      </SectionCard>
+    )
+  }
+
+  if (fetching && !baselines) {
+    return (
+      <SectionCard title="Baseline Anchors">
+        <p className="text-sm text-[var(--hb-muted)]" role="status">
+          Refreshing baseline selections...
+        </p>
       </SectionCard>
     )
   }
 
   if (!baselines?.available) {
-    return null
+    return (
+      <SectionCard title="Baseline Anchors">
+        <p className="text-sm text-[var(--hb-muted)]">
+          Baseline anchor management is not available for this schedule context.
+        </p>
+      </SectionCard>
+    )
   }
 
   const versions = Array.isArray(baselines.available_versions) ? baselines.available_versions : []
@@ -62,6 +87,11 @@ export function ScheduleBaselineSelector({ projectKey, baselines, loading = fals
 
   return (
     <SectionCard title="Baseline Anchors">
+      {fetching ? (
+        <p className="mb-2 text-xs text-[var(--hb-muted)]" role="status">
+          Refreshing baseline selections for the selected as-of date…
+        </p>
+      ) : null}
       <p className="mb-3 text-xs text-[var(--hb-muted)]">
         Assign a prior schedule update to each of the three named comparison anchors. Schedule Controls and the
         Workbench use these anchors when you select a named baseline comparison.

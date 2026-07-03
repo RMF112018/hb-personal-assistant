@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
+
+import { scheduleNavHref } from '../../lib/scheduleNavLinks'
 
 type ProjectWorkspaceNavProps = {
   projectKey: string
@@ -9,10 +11,12 @@ type ProjectWorkspaceNavProps = {
 type ScheduleNavItem = {
   to: string
   label: string
+  mode?: 'analytical' | 'import'
 }
 
 export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const base = `/projects/${encodeURIComponent(projectKey)}`
 
   const flatItems = [
@@ -24,16 +28,16 @@ export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
 
   const scheduleBase = `${base}/schedule`
   const scheduleItems: ScheduleNavItem[] = [
-    { to: scheduleBase, label: 'Schedule Overview' },
-    { to: `${scheduleBase}/import`, label: 'Import Schedule' },
-    { to: `${scheduleBase}/workbench`, label: 'Review Workbench' },
-    { to: `${scheduleBase}/driver-detail`, label: 'Driver Detail' },
-    { to: `${scheduleBase}/drivers`, label: 'Activity Drivers' },
+    { to: scheduleBase, label: 'Schedule Overview', mode: 'analytical' },
+    { to: `${scheduleBase}/import`, label: 'Import Schedule', mode: 'import' },
+    { to: `${scheduleBase}/baselines`, label: 'Manage Baselines', mode: 'analytical' },
+    { to: `${scheduleBase}/workbench`, label: 'Review Workbench', mode: 'analytical' },
+    { to: `${scheduleBase}/driver-detail`, label: 'Driver Detail', mode: 'analytical' },
+    { to: `${scheduleBase}/drivers`, label: 'Activity Drivers', mode: 'analytical' },
   ]
 
   const isScheduleActive = location.pathname === scheduleBase || location.pathname.startsWith(`${scheduleBase}/`)
 
-  // Dropdown state + a11y (modeled on the established ForecastMonthlyExportMenu pattern)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const scheduleContainerRef = useRef<HTMLDivElement>(null)
 
@@ -55,7 +59,6 @@ export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
     }
   }, [scheduleOpen])
 
-  // Close menu on route change (navigation occurred)
   useEffect(() => {
     setScheduleOpen(false)
   }, [location.pathname])
@@ -78,7 +81,6 @@ export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
         )
       })}
 
-      {/* Schedule as grouped/dropdown nav (Phase 1 remediation) */}
       <div className="relative" ref={scheduleContainerRef}>
         <button
           type="button"
@@ -99,11 +101,12 @@ export function ProjectWorkspaceNav({ projectKey }: ProjectWorkspaceNavProps) {
             className="absolute left-0 z-50 mt-1 min-w-[14rem] rounded border border-[var(--hb-border)] bg-[var(--hb-bg)] py-1 shadow-md"
           >
             {scheduleItems.map((item) => {
+              const href = scheduleNavHref(item.to, searchParams, item.mode || 'analytical')
               const itemActive = location.pathname === item.to || (item.to === scheduleBase && isScheduleActive)
               return (
                 <Link
                   key={item.to}
-                  to={item.to}
+                  to={href}
                   role="menuitem"
                   className={`block px-3 py-1.5 text-sm hover:bg-black/10 ${itemActive ? 'font-medium text-[var(--hb-accent)]' : ''}`}
                   onClick={() => setScheduleOpen(false)}

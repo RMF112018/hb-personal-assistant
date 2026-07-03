@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorState } from '../components/common/ErrorState'
@@ -19,6 +19,12 @@ import type {
   ScheduleControlsComparisonBasis,
 } from '../lib/api'
 import { driverDetailHref, workbenchHref } from '../lib/scheduleBaselineLabels'
+import {
+  cpmUnavailableLabel,
+  isScheduleResponseStale,
+  scheduleQueryKeySuffix,
+} from '../lib/scheduleDataState'
+import { scheduleNavHref } from '../lib/scheduleNavLinks'
 
 function text(value: unknown, fallback = 'Not available') {
   if (value === null || value === undefined || value === '') return fallback
@@ -425,52 +431,60 @@ export function ProjectSchedulePage() {
     setNewImportBanner(false)
     invalidateScheduleQueries()
   }, [searchParams, setSearchParams, invalidateScheduleQueries])
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, asOf || 'latest'],
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['project', 'schedule', projectKey, scheduleQueryKeySuffix(asOf)],
     queryFn: () => api.getProjectScheduleSummary(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey),
+    placeholderData: keepPreviousData,
   })
   const trendSchedule = (data || {}) as ProjectScheduleSummaryResponse
   const trendCurrent = trendSchedule.current_schedule || {}
+  const summaryStale = isScheduleResponseStale(trendSchedule, requestAsOf, isFetching)
   const trendAsOf = asOf
   const {
     data: controlsTrendPayload,
     isLoading: controlsTrendLoading,
+    isFetching: controlsTrendFetching,
     error: controlsTrendError,
   } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'controls-trends', asOf || 'latest'],
+    queryKey: ['project', 'schedule', projectKey, 'controls-trends', scheduleQueryKeySuffix(asOf)],
     queryFn: () =>
       api.getProjectScheduleMetricTrends(projectKey, {
         asOf: trendAsOf || undefined,
         metrics: [...SCHEDULE_CONTROLS_METRICS],
       }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+    placeholderData: keepPreviousData,
   })
-  const { data: baselinesPayload, isLoading: baselinesLoading } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'baselines', asOf || 'latest'],
+  const { data: baselinesPayload, isLoading: baselinesLoading, isFetching: baselinesFetching } = useQuery({
+    queryKey: ['project', 'schedule', projectKey, 'baselines', scheduleQueryKeySuffix(asOf)],
     queryFn: () => api.getProjectScheduleBaselines(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+    placeholderData: keepPreviousData,
   })
   const { data: baselinePayload } = useQuery({
-    queryKey: ['project', 'schedule', projectKey, 'baseline', asOf || 'latest'],
+    queryKey: ['project', 'schedule', projectKey, 'baseline', scheduleQueryKeySuffix(asOf)],
     queryFn: () => api.getProjectScheduleBaseline(projectKey, { asOf: requestAsOf }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+    placeholderData: keepPreviousData,
   })
   const {
     data: controlsPayload,
     isLoading: controlsLoading,
+    isFetching: controlsFetching,
     error: controlsError,
   } = useQuery({
-    queryKey: ['project', 'schedule', 'controls', projectKey, asOf || 'latest', controlsComparisonBasis],
+    queryKey: ['project', 'schedule', 'controls', projectKey, scheduleQueryKeySuffix(asOf), controlsComparisonBasis],
     queryFn: () =>
       api.getProjectScheduleControls(projectKey, {
         asOf: requestAsOf,
         comparisonBasis: controlsComparisonBasis,
       }),
     enabled: Boolean(projectKey) && Boolean(trendCurrent?.available) && !isLoading && !error,
+    placeholderData: keepPreviousData,
   })
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <ProjectWorkspaceShell>
         <LoadingState label="Loading schedule intelligence..." />
@@ -517,6 +531,12 @@ export function ProjectSchedulePage() {
   const reviewWorkbench = schedule.review_workbench || {}
   const sourceFloat = schedule.source_float_summary || {}
   const computedCpmSummary = schedule.computed_cpm_summary || {}
+  const cpmStatus = cpmUnavailableLabel(computedCpmSummary, cpm, {
+    isLoading: isLoading && !data,
+    isFetching,
+    hasData: Boolean(data),
+    isStale: summaryStale,
+  })
   const links = schedule.technical_links || {}
   const actionEnvelope = schedule.actions || {}
   const previewActions = Array.isArray(actionEnvelope.preview) ? actionEnvelope.preview : []
@@ -569,6 +589,11 @@ export function ProjectSchedulePage() {
             <button className="badge" type="button" onClick={handleViewLatestAfterImport}>
               View latest
             </button>
+          </div>
+        ) : null}
+        {summaryStale || isFetching ? (
+          <div className="card text-sm text-[var(--hb-muted)]" role="status" data-testid="schedule-refreshing-banner">
+            Refreshing schedule data for as-of {asOf || 'latest'}…
           </div>
         ) : null}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -717,6 +742,13 @@ export function ProjectSchedulePage() {
             </Link>
             <Link
               className="badge"
+              to={scheduleNavHref(`/projects/${projectKey}/schedule/baselines`, searchParams)}
+              data-testid="manage-baselines-primary-action"
+            >
+              Manage Baselines
+            </Link>
+            <Link
+              className="badge"
               to={workbenchHref(projectKey, { asOf: requestAsOf, comparisonBasis: controlsComparisonBasis })}
             >
               Open Review Workbench
@@ -735,23 +767,44 @@ export function ProjectSchedulePage() {
                 Export Memo
               </button>
             )}
-            {/* Manage Baselines is exposed via the context section below + global /schedules if needed */}
-            <Link className="badge" to={`/projects/${projectKey}/schedule`}>
-              Manage Baselines (below)
-            </Link>
           </div>
           <p className="mt-2 text-xs text-[var(--hb-muted)]">
-            Import is the primary way to bring new schedule data. Workbench is for systematic review and disposition.
+            Import is the primary way to bring new schedule data. Manage Baselines sets named comparison anchors.
           </p>
         </div>
 
-        {/* 3. Baseline / Comparison Context + 6. Trends/Charts (order adjusted in subsequent edits; see final structure) */}
+        <div id="baseline-management" data-testid="baseline-management-section" className="card space-y-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-[var(--hb-muted)] mb-1">Baseline / Comparison Context</div>
+            <p className="text-sm text-[var(--hb-muted)]">
+              Named baseline anchors and comparison basis drive Schedule Controls, trends, and the Review Workbench.
+            </p>
+          </div>
+          <ScheduleBaselineSelector
+            projectKey={projectKey}
+            baselines={baselinesPayload as Record<string, any> | undefined}
+            loading={baselinesLoading && !baselinesPayload}
+            fetching={baselinesFetching || summaryStale}
+            asOf={requestAsOf}
+          />
+          <ScheduleControlsPanel
+            controls={controlsPayload}
+            loading={controlsLoading && !controlsPayload}
+            fetching={controlsFetching || summaryStale}
+            error={controlsError}
+            comparisonBasis={controlsComparisonBasis}
+            onComparisonBasisChange={setControlsComparisonBasis}
+          />
+        </div>
+
         <div className="card">
           <ProjectScheduleDashboardVisualizations
             schedule={schedule}
             trendPayload={controlsTrendPayload as any}
-            trendLoading={controlsTrendLoading}
+            trendLoading={controlsTrendLoading && !controlsTrendPayload}
+            trendFetching={controlsTrendFetching || summaryStale}
             trendError={controlsTrendError}
+            trendDataStale={summaryStale}
           />
         </div>
 
@@ -823,22 +876,6 @@ export function ProjectSchedulePage() {
           analyticsTrust={analyticsTrust}
         />
 
-        <ScheduleControlsPanel
-          controls={controlsPayload}
-          loading={controlsLoading}
-          error={controlsError}
-          comparisonBasis={controlsComparisonBasis}
-          onComparisonBasisChange={setControlsComparisonBasis}
-        />
-
-        {/* Baseline anchors also appear in Primary Actions context above; this is the full management surface */}
-        <ScheduleBaselineSelector
-          projectKey={projectKey}
-          baselines={baselinesPayload as Record<string, any> | undefined}
-          loading={baselinesLoading}
-          asOf={requestAsOf}
-        />
-
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="card">
             <h4 className="text-sm font-semibold">Source Float (Export)</h4>
@@ -853,10 +890,22 @@ export function ProjectSchedulePage() {
             <h4 className="text-sm font-semibold">Computed CPM</h4>
             <p className="mt-1 text-xs text-[var(--hb-muted)]">Application-computed critical path analysis.</p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-              <MetricTile label="Available" value={computedCpmSummary.available ?? cpm.available ? 'Yes' : 'No'} />
+              <MetricTile
+                label="Status"
+                value={
+                  cpmStatus.state === 'ready'
+                    ? 'Available'
+                    : cpmStatus.state === 'loading' || cpmStatus.state === 'refreshing'
+                      ? 'Loading…'
+                      : 'Not computed'
+                }
+              />
               <MetricTile label="Critical" value={computedCpmSummary.critical_remaining_count ?? command.critical_remaining_count} />
               <MetricTile label="Near Critical" value={computedCpmSummary.near_critical_remaining_count ?? command.near_critical_remaining_count} />
             </div>
+            {cpmStatus.state !== 'ready' && cpmStatus.state !== 'loading' && cpmStatus.state !== 'refreshing' ? (
+              <p className="mt-2 text-xs text-[var(--hb-muted)]">{cpmStatus.message}</p>
+            ) : null}
             {(computedCpmSummary.drilldown_url || links.computed_cpm_url) && (
               <Link
                 className="mt-3 inline-block text-xs underline"
@@ -943,7 +992,7 @@ export function ProjectSchedulePage() {
             <h4 className="text-sm font-semibold">Critical Path</h4>
             <div className="mt-2 text-sm text-[var(--hb-muted)]">{text(story.critical_path_summary)}</div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <MetricTile label="CPM" value={cpm.available ? 'Available' : 'Unavailable'} />
+              <MetricTile label="CPM" value={cpmStatus.state === 'ready' ? 'Available' : cpmStatus.state === 'loading' || cpmStatus.state === 'refreshing' ? 'Loading…' : 'Unavailable'} />
               <MetricTile label="Path Items" value={criticalPath.activity_count} />
             </div>
             {links.computed_cpm_url && (
