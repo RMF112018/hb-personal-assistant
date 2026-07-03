@@ -120,8 +120,31 @@ def test_smoke_config_uses_separate_scratch_root() -> None:
 
 def test_dockerignore_excludes_config_db_and_secrets() -> None:
     text = read(DOCKERIGNORE)
-    for needed in ("config/config.yml", "**/*.sqlite", "**/*.key", "**/security/", "**/auth/"):
+    # Config, DB, env, and secret FILES must be excluded from the build context.
+    for needed in (
+        "config/config.yml",
+        "**/.env",
+        "**/*.sqlite",
+        "**/*.db",
+        "**/*.key",
+        "**/*.pem",
+        "**/msal-token-cache*.bin",
+        "**/text-vault.key",
+    ):
         assert needed in text, f".dockerignore missing safety exclusion: {needed}"
+
+
+def test_dockerignore_does_not_exclude_source_packages() -> None:
+    # N1C fix: `.dockerignore` must exclude secret FILES, never directories named
+    # auth/ or security/ — those are real source packages (src/hb_assistant/{auth,security}/)
+    # and excluding them stripped the packages from the image (ModuleNotFoundError at boot).
+    # Compare on comment-stripped content so the explanatory NOTE naming these dirs is ignored.
+    active_text = active(DOCKERIGNORE)
+    for bad in ("**/auth/", "**/security/", "src/hb_assistant/auth", "src/hb_assistant/security"):
+        assert bad not in active_text, (
+            f".dockerignore must not exclude source packages via '{bad}' "
+            "(src/hb_assistant/{auth,security}/ are real packages — see the N1C fix)"
+        )
 
 
 def test_no_secret_values_in_scaffold_files() -> None:
