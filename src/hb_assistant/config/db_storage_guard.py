@@ -1,7 +1,7 @@
 """Fail-closed guard for SQLite DB storage locality (NAS-local vs network mounts).
 
 Universal deny: ``/Volumes/*``, ``smb://``, ``nfs://``, UNC-like paths, relative paths.
-When ``HB_NAS_RUNTIME=1``, only NAS-local managed DB paths under ``/volume1/personal-assistant/``
+When ``HB_NAS_RUNTIME=1``, only NAS-local managed DB paths under ``/volume2/personal-assistant/``
 are permitted. ``HB_DB_STORAGE_GUARD=permissive`` is ignored when ``HB_NAS_RUNTIME=1``.
 """
 
@@ -12,9 +12,9 @@ from pathlib import Path
 
 from hb_assistant.config.db_path_guard import is_under_clean_db_copy
 
-NAS_VOLUME_PREFIX = "/volume1/personal-assistant/"
+NAS_VOLUME_PREFIX = "/volume2/personal-assistant/"
 NAS_DEFAULT_DB_PATH = (
-    "/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
+    "/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
 )
 MANAGED_DB_FILENAME = "hb-personal-assistant.sqlite"
 MAC_APP_SUPPORT_NAME = "HB Personal Assistant"

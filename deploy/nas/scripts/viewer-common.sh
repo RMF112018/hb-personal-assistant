@@ -22,8 +22,8 @@ case "$HB_PUBLISH_ADDR" in
     ;;
 esac
 
-export HB_CONFIG_FILE="${HB_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.yml}"
-export HB_APP_SUPPORT_DIR="${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}"
+export HB_CONFIG_FILE="${HB_CONFIG_FILE:-/volume2/personal-assistant/config/hb-pa-config.yml}"
+export HB_APP_SUPPORT_DIR="${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}"
 
 viewer_require_config() {
   if [ ! -f "$HB_CONFIG_FILE" ]; then

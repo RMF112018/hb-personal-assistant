@@ -64,13 +64,13 @@ fi
 
 echo "== example configs safety =="
 if have "$NAS_CFG"; then
-  hasA  "$NAS_CFG" 'application_support_root: /volume1/personal-assistant/app-support' && pass "nas cfg app-support is NAS-local" || fail "nas cfg app-support wrong"
+  hasA  "$NAS_CFG" 'application_support_root: /volume2/personal-assistant/app-support' && pass "nas cfg app-support is NAS-local" || fail "nas cfg app-support wrong"
   missA "$NAS_CFG" '/Volumes' && pass "nas cfg no /Volumes" || fail "nas cfg references /Volumes"
   missA "$NAS_CFG" 'Library/Application Support' && pass "nas cfg no Mac path" || fail "nas cfg references Mac path"
 fi
 if have "$SMOKE_CFG"; then
   hasA "$SMOKE_CFG" 'app-support-smoke' && pass "smoke cfg uses scratch root" || fail "smoke cfg not a scratch root"
-  if active "$SMOKE_CFG" | grep -Eq 'application_support_root:[[:space:]]*/volume1/personal-assistant/app-support[[:space:]]*$'; then fail "smoke cfg points at LIVE app-support"; else pass "smoke cfg distinct from live app-support"; fi
+  if active "$SMOKE_CFG" | grep -Eq 'application_support_root:[[:space:]]*/volume2/personal-assistant/app-support[[:space:]]*$'; then fail "smoke cfg points at LIVE app-support"; else pass "smoke cfg distinct from live app-support"; fi
   missA "$SMOKE_CFG" '/Volumes' && pass "smoke cfg no /Volumes" || fail "smoke cfg references /Volumes"
 fi
 
@@ -87,7 +87,7 @@ echo "== optional: rendered runtime config =="
 RCFG="${1:-}"
 if [ -n "$RCFG" ]; then
   if [ -f "$RCFG" ]; then
-    hasAE "$RCFG" 'application_support_root:[[:space:]]*/volume1/' && pass "rendered cfg app-support is /volume1 NAS-local" || fail "rendered cfg app-support not /volume1"
+    hasAE "$RCFG" 'application_support_root:[[:space:]]*/volume2/' && pass "rendered cfg app-support is /volume2 NAS-local" || fail "rendered cfg app-support not /volume2"
     missA "$RCFG" '/Volumes' && pass "rendered cfg no /Volumes" || fail "rendered cfg references /Volumes"
     missA "$RCFG" 'Library/Application Support' && pass "rendered cfg no Mac path" || fail "rendered cfg references Mac path"
   else

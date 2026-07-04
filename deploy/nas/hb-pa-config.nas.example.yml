@@ -1,5 +1,5 @@
 # HB Personal Assistant — NAS runtime config EXAMPLE (Phase N1B scaffold)
-# Copy to the NAS as:  /volume1/personal-assistant/config/hb-pa-config.yml
+# Copy to the NAS as:  /volume2/personal-assistant/config/hb-pa-config.yml
 #
 # This file is loaded via HB_PA_CONFIG (see src/hb_assistant/config/loader.py:49).
 # The loader shallow-merges top-level keys, so this `paths:` block fully defines paths for the
@@ -9,7 +9,7 @@
 # SAFETY:
 #   * NO secrets, tokens, tenant/client secrets, Fernet/Text-Vault keys, or MSAL caches belong here.
 #     Do NOT add credentials until auth/security folder permissions are hardened (N1A blocker).
-#   * app-support MUST be a NAS-LOCAL path (/volume1/...). Never /Volumes/* (SMB) — WAL SQLite over
+#   * app-support MUST be a NAS-LOCAL path (/volume2/...). Never /Volumes/* (SMB) — WAL SQLite over
 #     SMB/NFS can corrupt.
 #   * Background workers/watchers/schedulers are disabled by env (HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1),
 #     not by this file.
@@ -17,11 +17,11 @@
 paths:
   # THE relocation seam. Everything (db, auth, security, cache, logs, evidence) derives from this
   # via PathPolicy.get_app_support() (src/hb_assistant/config/path_policy.py:57).
-  application_support_root: /volume1/personal-assistant/app-support
+  application_support_root: /volume2/personal-assistant/app-support
 
   # Obsidian vault access is DEFERRED in this phase. Point at an inert path under app-support so it
   # never resolves to a Mac path; with workers off, the vault is never read or written.
-  obsidian_vault: /volume1/personal-assistant/app-support/_vault_disabled
+  obsidian_vault: /volume2/personal-assistant/app-support/_vault_disabled
 
 # (Intentionally nothing else: no identity secrets, no automation/live-read toggles, no source-roots.
 #  The container command runs only the FastAPI factory; the launcher scheduler is not started here.)

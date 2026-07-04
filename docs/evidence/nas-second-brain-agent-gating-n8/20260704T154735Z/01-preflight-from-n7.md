@@ -29,12 +29,12 @@ Sourced from `deploy/nas/hb-pa-config.nas.example.yml`, `deploy/nas/compose.yaml
 
 | Parameter | Value |
 |---|---|
-| NAS service root | `/volume1/personal-assistant` (NAS-local, not SMB/`/Volumes`) |
-| App-support root (relocation seam) | `/volume1/personal-assistant/app-support` (via `HB_PA_CONFIG` → `paths.application_support_root`, `config/loader.py` → `config/path_policy.py:57`) |
-| DB path (derived) | `/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite` |
-| Config file on NAS | `/volume1/personal-assistant/config/hb-pa-config.yml` (mounted **read-only**) |
+| NAS service root | `/volume2/personal-assistant` (NAS-local, not SMB/`/Volumes`) |
+| App-support root (relocation seam) | `/volume2/personal-assistant/app-support` (via `HB_PA_CONFIG` → `paths.application_support_root`, `config/loader.py` → `config/path_policy.py:57`) |
+| DB path (derived) | `/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite` |
+| Config file on NAS | `/volume2/personal-assistant/config/hb-pa-config.yml` (mounted **read-only**) |
 | Obsidian vault (N1B scaffold) | `…/app-support/_vault_disabled` — **deliberately inert** in the backend scaffold config |
-| Obsidian vault (N8 live target) | a NAS-local vault path under `/volume1/personal-assistant/…` — **to be set in Phase 04**, never the Mac vault |
+| Obsidian vault (N8 live target) | a NAS-local vault path under `/volume2/personal-assistant/…` — **to be set in Phase 04**, never the Mac vault |
 | Runtime user | `personal-assistant-svc` = uid `1028`, group `users` = `100` (`compose.yaml` `user: "1028:100"`) |
 | Control user | `bfetting` |
 | Tailnet exposure | loopback-only default (`HB_PUBLISH_ADDR=127.0.0.1`); tailnet IP redacted as `<nas-tailnet-ip>` in repo |

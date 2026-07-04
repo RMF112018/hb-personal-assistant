@@ -1,19 +1,19 @@
 #!/bin/sh
 # N4C bounded backend smoke — operator-run with sudo when Docker requires it.
 # Usage on NAS (as bfetting):
-#   sudo sh /volume1/personal-assistant/runtime/n4c-backend-smoke-<TS>/n4c-smoke-run.sh
+#   sudo sh /volume2/personal-assistant/runtime/n4c-backend-smoke-<TS>/n4c-smoke-run.sh
 set -eu
 
 TS="${N4C_TS:-20260704T075948Z}"
-RUNTIME="/volume1/personal-assistant/runtime/n4c-backend-smoke-${TS}"
+RUNTIME="/volume2/personal-assistant/runtime/n4c-backend-smoke-${TS}"
 REPO="${RUNTIME}/repo"
-LOG="/volume1/personal-assistant/app-support/logs/n4c-backend-smoke-${TS}.log"
+LOG="/volume2/personal-assistant/app-support/logs/n4c-backend-smoke-${TS}.log"
 DOCKER="${DOCKER:-/usr/local/bin/docker}"
 
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export HB_PUBLISH_ADDR=127.0.0.1
-export HB_CONFIG_FILE=/volume1/personal-assistant/config/hb-pa-config.yml
-export HB_APP_SUPPORT_DIR=/volume1/personal-assistant/app-support
+export HB_CONFIG_FILE=/volume2/personal-assistant/config/hb-pa-config.yml
+export HB_APP_SUPPORT_DIR=/volume2/personal-assistant/app-support
 
 cd "${REPO}/deploy/nas"
 

@@ -17,8 +17,8 @@ Mac MCP client → http://127.0.0.1:18765/mcp
 
 ## Operator flow (deferred until authorized)
 
-1. Install `hb-mcp-launcher` + `hb-mcp-runner` to `/volume1/personal-assistant/bin/`
-2. Install compose + config under `/volume1/personal-assistant/deploy/nas/mcp/`
+1. Install `hb-mcp-launcher` + `hb-mcp-runner` to `/volume2/personal-assistant/bin/`
+2. Install compose + config under `/volume2/personal-assistant/deploy/nas/mcp/`
 3. Install sudoers example (single runner command only)
 4. `hb-mcp-launcher start` → verify `127.0.0.1:8765` LISTEN
 5. Mac: `mac-tunnel.sh.example` then hit `http://127.0.0.1:18765/health`

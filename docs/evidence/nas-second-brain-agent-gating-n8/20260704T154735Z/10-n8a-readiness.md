@@ -7,7 +7,7 @@ would depend on are ready.
 
 - **Default-off posture (3a):** `HB_NAS_RUNTIME=1` forces workers/watcher/poll-loop off and refuses
   on-demand watcher starts — a public-facing surface would not silently spin background work.
-- **Storage locality guard:** `HB_NAS_RUNTIME=1` restricts the DB to NAS-local `/volume1/personal-assistant/`
+- **Storage locality guard:** `HB_NAS_RUNTIME=1` restricts the DB to NAS-local `/volume2/personal-assistant/`
   (rejects `/Volumes`, SMB/NFS, UNC, permissive override) — fail-closed.
 - **Single-writer within the canonical DB:** watcher lease + run lock (now host-stamped) serialize and
   fail-closed on contention.

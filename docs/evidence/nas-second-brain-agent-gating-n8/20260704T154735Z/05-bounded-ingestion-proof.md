@@ -6,7 +6,7 @@ Status: **HOLD** — live NAS, per-step approval required. Not executed this ses
 1. Backend up on the NAS with `HB_NAS_RUNTIME=1` + `HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1`
    (workers default-off; ingestion is manual one-shot).
 2. Capture **before** row counts (svc, read-only): `SELECT COUNT(*) FROM source_intelligence_sources`
-   (+ metadata / generated_notes) on `/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite`.
+   (+ metadata / generated_notes) on `/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite`.
 3. Run a single bounded rebuild/drain over the `nas_test` root (one-shot `request_rebuild` drain to empty,
    or a scoped `--include-file`/manifest ingestion of the 2–3 files).
 4. Capture **after** row counts + the indexer report (scanned/indexed/skipped/errors).

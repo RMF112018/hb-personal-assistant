@@ -20,7 +20,7 @@ Verified against the N8 worktree (`recon/nas-code-n7` base, origin/main + reconc
 ## Gating flags (current behavior)
 
 - **`HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS`** (`api.py:697`, `schedule_clean_db/diagnostics.py:12`): default **workers ON**; only `"1"` disables. Scope = **A1–A3 lifespan only**. Also **required** for `nas_mcp` serve (`nas_mcp/guards.py:20`).
-- **`HB_NAS_RUNTIME`** (`config/db_storage_guard.py:41`, `api.py:692`): today gates **only the DB storage guard** (restricts DB paths to `/volume1/personal-assistant/…`, ignores `HB_DB_STORAGE_GUARD=permissive`) and fail-closed startup posture (`api.py:674,732`). **Does NOT force workers/scheduler/watcher default-off** — this is the Phase 3a gap.
+- **`HB_NAS_RUNTIME`** (`config/db_storage_guard.py:41`, `api.py:692`): today gates **only the DB storage guard** (restricts DB paths to `/volume2/personal-assistant/…`, ignores `HB_DB_STORAGE_GUARD=permissive`) and fail-closed startup posture (`api.py:674,732`). **Does NOT force workers/scheduler/watcher default-off** — this is the Phase 3a gap.
 
 ## Single-writer primitives (present)
 

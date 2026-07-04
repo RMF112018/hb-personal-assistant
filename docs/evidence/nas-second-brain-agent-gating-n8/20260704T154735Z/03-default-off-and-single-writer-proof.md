@@ -44,7 +44,7 @@ already serialize single-writer access **within a shared DB / locks dir**.
 - `test_owner_records_hostname_for_cross_host_attribution` — the active owner carries a hostname.
 
 **Cross-host boundary (honest scope):** the lease/lock coordinate only when both hosts open the **same**
-DB / locks dir. The NAS uses the canonical `/volume1/personal-assistant/app-support` DB + locks, so any
+DB / locks dir. The NAS uses the canonical `/volume2/personal-assistant/app-support` DB + locks, so any
 process against it is serialized. A **different-DB** competitor — the Mac launchd scheduler writing the
 Mac app-support DB — is *not* lease-coordinated and can overlap **only if source roots point at the same
 synced folders**. Resolution is operational + enforced by 3a's NAS default-off:

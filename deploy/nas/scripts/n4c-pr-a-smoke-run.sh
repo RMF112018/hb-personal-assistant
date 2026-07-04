@@ -1,21 +1,21 @@
 #!/bin/sh
 # N4C-PR-A bounded backend re-smoke — operator-run with sudo (Docker requires it on NAS).
 # Usage on NAS:
-#   sudo sh /volume1/personal-assistant/runtime/n4c-pr-a-backend-smoke-<TS>/n4c-pr-a-smoke-run.sh
+#   sudo sh /volume2/personal-assistant/runtime/n4c-pr-a-backend-smoke-<TS>/n4c-pr-a-smoke-run.sh
 set -eu
 
 TS="${N4C_PR_A_TS:-20260704T092127Z}"
-RUNTIME="/volume1/personal-assistant/runtime/n4c-pr-a-backend-smoke-${TS}"
+RUNTIME="/volume2/personal-assistant/runtime/n4c-pr-a-backend-smoke-${TS}"
 REPO="${RUNTIME}/repo"
 EVID="${RUNTIME}/evidence"
-LOG="/volume1/personal-assistant/app-support/logs/n4c-pr-a-backend-smoke-${TS}.log"
+LOG="/volume2/personal-assistant/app-support/logs/n4c-pr-a-backend-smoke-${TS}.log"
 DOCKER="${DOCKER:-/usr/local/bin/docker}"
-DB="/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
+DB="/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
 
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export HB_PUBLISH_ADDR=127.0.0.1
-export HB_CONFIG_FILE=/volume1/personal-assistant/config/hb-pa-config.yml
-export HB_APP_SUPPORT_DIR=/volume1/personal-assistant/app-support
+export HB_CONFIG_FILE=/volume2/personal-assistant/config/hb-pa-config.yml
+export HB_APP_SUPPORT_DIR=/volume2/personal-assistant/app-support
 
 mkdir -p "${EVID}" "$(dirname "${LOG}")"
 

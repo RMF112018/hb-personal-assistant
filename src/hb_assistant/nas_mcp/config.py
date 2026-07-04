@@ -95,7 +95,7 @@ class NasMcpConfig:
             str(
                 mcp.get("app_support_dir")
                 or paths.get("application_support_root")
-                or os.environ.get("HB_APP_SUPPORT_DIR", "/volume1/personal-assistant/app-support")
+                or os.environ.get("HB_APP_SUPPORT_DIR", "/volume2/personal-assistant/app-support")
             )
         )
         db_path = Path(

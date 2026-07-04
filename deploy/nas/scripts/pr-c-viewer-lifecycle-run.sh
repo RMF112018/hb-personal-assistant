@@ -1,20 +1,20 @@
 #!/bin/sh
 # PR C viewer lifecycle validation — operator-run with sudo on NAS.
 # Usage:
-#   sudo bash /volume1/personal-assistant/runtime/pr-c-viewer-lifecycle-<TS>/pr-c-viewer-lifecycle-run.sh
+#   sudo bash /volume2/personal-assistant/runtime/pr-c-viewer-lifecycle-<TS>/pr-c-viewer-lifecycle-run.sh
 set -eu
 
 TS="${PR_C_TS:-20260704T095243Z}"
-RUNTIME="/volume1/personal-assistant/runtime/pr-c-viewer-lifecycle-${TS}"
+RUNTIME="/volume2/personal-assistant/runtime/pr-c-viewer-lifecycle-${TS}"
 REPO="${RUNTIME}/repo"
 EVID="${RUNTIME}/evidence"
-LOG="/volume1/personal-assistant/app-support/logs/pr-c-viewer-lifecycle-${TS}.log"
+LOG="/volume2/personal-assistant/app-support/logs/pr-c-viewer-lifecycle-${TS}.log"
 DOCKER="${DOCKER:-/usr/local/bin/docker}"
 
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export HB_PUBLISH_ADDR=127.0.0.1
-export HB_CONFIG_FILE=/volume1/personal-assistant/config/hb-pa-config.yml
-export HB_APP_SUPPORT_DIR=/volume1/personal-assistant/app-support
+export HB_CONFIG_FILE=/volume2/personal-assistant/config/hb-pa-config.yml
+export HB_APP_SUPPORT_DIR=/volume2/personal-assistant/app-support
 
 mkdir -p "${EVID}"
 exec > >(tee -a "${LOG}") 2>&1

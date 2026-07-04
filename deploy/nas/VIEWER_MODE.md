@@ -5,7 +5,7 @@ The NAS backend is approved **only** as a **read-only / local-cache viewer** unt
 ## What viewer mode can do
 
 - Serve sanitized `/health` and read-only analytics API surfaces over **loopback** (`127.0.0.1:8000`).
-- Read NAS-local SQLite at `/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite`.
+- Read NAS-local SQLite at `/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite`.
 - Expose admin metadata endpoints (`/api/admin/schema/status`, `/api/admin/db/status`) to **local operators** with `X-HB-UI-Role: admin`.
 - Report environment/onboarding readiness without live Graph/Procore calls.
 
@@ -28,7 +28,7 @@ The NAS backend is approved **only** as a **read-only / local-cache viewer** unt
 | `HB_PA_CONFIG` | `/config/hb-pa-config.yml` in container |
 | `HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS` | `1` |
 | Host publish | `HB_PUBLISH_ADDR=127.0.0.1` only |
-| DB path | NAS-local under `/volume1/personal-assistant/.../db/hb-personal-assistant.sqlite` |
+| DB path | NAS-local under `/volume2/personal-assistant/.../db/hb-personal-assistant.sqlite` |
 
 ## Approved endpoints (bounded smoke set)
 

@@ -4,9 +4,9 @@
 set -eu
 
 CMD="${1:-}"
-MCP_DIR="/volume1/personal-assistant/bin"
+MCP_DIR="/volume2/personal-assistant/bin"
 RUNNER="${MCP_DIR}/hb-mcp-runner"
-CHECK_SCRIPT="/volume1/personal-assistant/deploy/nas/mcp/check-mcp-compose.sh"
+CHECK_SCRIPT="/volume2/personal-assistant/deploy/nas/mcp/check-mcp-compose.sh"
 
 usage() {
   echo "usage: hb-mcp-launcher {start|stop|status|health}" >&2

@@ -60,7 +60,7 @@ def test_obsidian_create_note_stays_in_vault(tmp_path: Path, monkeypatch: pytest
     )
     assert ok["ok"] is True
     assert (tmp_path / "vault" / "_nas-test" / "note.md").is_file()
-    assert "/volume1/" not in json.dumps(ok["result"])
+    assert "/volume" not in json.dumps(ok["result"])
 
 
 def test_obsidian_blocked_tool_denied(tmp_path: Path) -> None:
@@ -97,7 +97,7 @@ def test_work_read_only(tmp_path: Path) -> None:
     assert stat["ok"] is True
     read = broker.dispatch("hb_root_read_file", {"root_key": "work", "relative_path": "sheet.csv"})
     assert read["ok"] is True
-    assert "/volume1/" not in json.dumps(read["result"])
+    assert "/volume" not in json.dumps(read["result"])
 
 
 def test_output_sandbox_writes(tmp_path: Path) -> None:
@@ -137,7 +137,7 @@ def test_config_backup_dir_is_container_path() -> None:
 
     data = yaml.safe_load(MCP_CONFIG_EX.read_text(encoding="utf-8"))
     assert data["mcp"]["obsidian"]["backup_dir"].startswith("/app-support/")
-    assert not data["mcp"]["obsidian"]["backup_dir"].startswith("/volume1/")
+    assert not data["mcp"]["obsidian"]["backup_dir"].startswith("/volume")
 
 
 def test_vault_write_outside_vault_denied(tmp_path: Path) -> None:

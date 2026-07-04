@@ -21,7 +21,7 @@ def _write_receipt(path: Path, *, schema_version: int = LATEST_SCHEMA_VERSION - 
             {
                 "generated_utc": "2026-07-04T00:00:00Z",
                 "schema_version": schema_version,
-                "backup_path": "/volume1/personal-assistant/app-support/db/backups/test.sqlite",
+                "backup_path": "/volume2/personal-assistant/app-support/db/backups/test.sqlite",
             }
         ),
         encoding="utf-8",

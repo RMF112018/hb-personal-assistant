@@ -3,7 +3,7 @@
 Status: **HOLD** — live NAS vault write, per-step approval required. Not executed this session.
 
 ## Pre-write guard (STOP conditions)
-- Confirm the resolved vault path is **NAS-local** (`/volume1/personal-assistant/…`).
+- Confirm the resolved vault path is **NAS-local** (`/volume2/personal-assistant/…`).
 - **Abort** if the vault resolves to the Mac vault `/Users/bobbyfetting/Documents/Obsidian Vault/…`
   (wrong-vault stop condition).
 - Confirm `writes_enabled && vault_markdown_write_enabled` are the deliberate, current config.

@@ -1,6 +1,6 @@
 # NAS MCP config example (no secrets)
 paths:
-  application_support_root: /volume1/personal-assistant/app-support
+  application_support_root: /volume2/personal-assistant/app-support
 
 mcp:
   actor: bfetting-via-ssh-launcher
