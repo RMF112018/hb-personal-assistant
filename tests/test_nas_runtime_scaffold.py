@@ -174,7 +174,9 @@ def test_dockerfile_uses_factory_and_wildcard_bind_internally() -> None:
 
 
 def test_dockerfile_installs_analytics_ui_extra() -> None:
-    assert ".[analytics-ui]" in read(DOCKERFILE)
+    # analytics-ui extra must be installed; additional extras (e.g. ",mcp" for the
+    # N7 read-only MCP launcher) are allowed alongside it.
+    assert re.search(r"\.\[analytics-ui[,\]]", read(DOCKERFILE))
 
 
 def test_dockerfile_python_312_or_newer_and_nonroot() -> None:

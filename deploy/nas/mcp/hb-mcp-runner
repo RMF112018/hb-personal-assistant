@@ -1,0 +1,61 @@
+#!/bin/sh
+# hb-mcp-runner — root-owned fixed docker compose driver for MCP only.
+# Sudoers: bfetting ALL=(root) NOPASSWD: /volume1/personal-assistant/bin/hb-mcp-runner
+# Fixed verbs only: start | stop | status | health (no arbitrary args).
+set -eu
+
+ACTION="${1:-}"
+COMPOSE_FILE="/volume1/personal-assistant/deploy/nas/mcp/compose-mcp.yaml"
+DOCKER="${DOCKER:-/usr/local/bin/docker}"
+CONTAINER="hb-personal-assistant-mcp"
+
+usage() {
+  echo "usage: hb-mcp-runner {start|stop|status|health}" >&2
+  exit 2
+}
+
+loopback_listener_check() {
+  if netstat -an 2>/dev/null | grep -E '127\.0\.0\.1\.8765[[:space:]].*LISTEN' >/dev/null; then
+    echo "host_listen=127.0.0.1:8765"
+  else
+    echo "host_listen=missing"
+  fi
+  if netstat -an 2>/dev/null | grep -E '0\.0\.0\.0\.8765[[:space:]].*LISTEN' >/dev/null; then
+    echo "refusing: 0.0.0.0:8765 LISTEN detected" >&2
+    exit 2
+  fi
+}
+
+port_8000_check() {
+  if netstat -an 2>/dev/null | grep -E '[:.]8000[[:space:]].*LISTEN' >/dev/null; then
+    echo "port_8000=listen_detected"
+  else
+    echo "port_8000=absent"
+  fi
+}
+
+case "$ACTION" in
+  start)
+    exec "$DOCKER" compose -f "$COMPOSE_FILE" up --no-build -d "$CONTAINER"
+    ;;
+  stop)
+    exec "$DOCKER" compose -f "$COMPOSE_FILE" down
+    ;;
+  status)
+    echo "== container =="
+    "$DOCKER" ps --filter "name=^/${CONTAINER}$" --format '{{.Names}} {{.Status}} {{.Ports}}' || true
+    echo "== docker port 8765 =="
+    "$DOCKER" port "$CONTAINER" 8765/tcp 2>/dev/null || echo "8765/tcp: not published"
+    echo "== loopback listener =="
+    loopback_listener_check
+    echo "== backend port check =="
+    port_8000_check
+    ;;
+  health)
+    curl -fsS "http://127.0.0.1:8765/health" | head -c 4096
+    echo
+    ;;
+  *)
+    usage
+    ;;
+esac

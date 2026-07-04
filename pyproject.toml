@@ -65,6 +65,8 @@ second-brain = [
 # fail-closed.
 mcp = [
   "mcp>=1.0,<2",
+  "uvicorn>=0.30",
+  "starlette>=0.37",
 ]
 # Phase 09 retrieval — opt-in LlamaIndex semantic-retrieval layer. Lazy-imported inside the
 # Phase 09 retrieval code paths only; the base install, migrations, full test suite, the

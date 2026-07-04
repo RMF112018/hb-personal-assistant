@@ -23,6 +23,11 @@ def _now() -> str:
 
 
 def _support_dir() -> Path:
+    env = os.environ.get("HB_OBSIDIAN_MCP_SUPPORT_DIR", "").strip()
+    if env:
+        root = Path(env)
+        root.mkdir(parents=True, exist_ok=True)
+        return root
     root = PathPolicy().get_app_support() / "analytics" / "obsidian_mcp"
     root.mkdir(parents=True, exist_ok=True)
     return root

@@ -40,7 +40,7 @@ COPY . /app
 # share) rather than a plain `git clone`. Read+traverse only; no write bits granted.
 RUN chmod -R a+rX /app
 RUN python -m pip install --upgrade pip \
- && python -m pip install -e ".[analytics-ui]"
+ && python -m pip install -e ".[analytics-ui,mcp]"
 
 EXPOSE 8000
 USER hbsvc

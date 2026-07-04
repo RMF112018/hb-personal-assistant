@@ -1,0 +1,36 @@
+#!/bin/sh
+# hb-mcp-launcher — NAS MCP lifecycle (start|stop|status|health)
+# Invoked by bfetting over SSH. No arbitrary args beyond fixed subcommands.
+set -eu
+
+CMD="${1:-}"
+MCP_DIR="/volume1/personal-assistant/bin"
+RUNNER="${MCP_DIR}/hb-mcp-runner"
+CHECK_SCRIPT="/volume1/personal-assistant/deploy/nas/mcp/check-mcp-compose.sh"
+
+usage() {
+  echo "usage: hb-mcp-launcher {start|stop|status|health}" >&2
+  exit 2
+}
+
+case "$CMD" in
+  start)
+    [ -x "$CHECK_SCRIPT" ] && sh "$CHECK_SCRIPT"
+    sudo -n "$RUNNER" start
+    sleep 2
+    sudo -n "$RUNNER" status
+    ;;
+  stop)
+    sudo -n "$RUNNER" stop
+    ;;
+  status)
+    sudo -n "$RUNNER" status
+    ;;
+  health)
+    curl -fsS "http://127.0.0.1:8765/health" | head -c 4096
+    echo
+    ;;
+  *)
+    usage
+    ;;
+esac
