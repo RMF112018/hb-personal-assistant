@@ -23,7 +23,12 @@ n5b: model_validate(after forward-compat filter)=ok  ENABLED_ROOTS=[]  index=Fal
 - **`ENABLED_ROOTS=[]`** for both → if either config were loaded, **no root would register or ingest**.
 - No bearer token / secret-looking values in any file.
 
-## SCHEMA FINDING (drives WARN) — `read_only` is not a config field
+## SCHEMA FINDING (code-quality / hardening — no longer the active blocker) — `read_only` is not a config field
+
+> **Update (post-ACL, 2026-07-04):** This finding no longer blocks — `syn-work` read-only is now enforced at the
+> filesystem/ACL layer (proven in `13`). It is retained below as a code-quality / future-activation hardening item:
+> the config schema should eventually offer a real, enforced read-only control so activation does not rely solely on
+> per-path ACLs.
 `ExternalSourceRoot` fields = `[source_root_key, path, enabled, source_kind, sensitive]`, with `extra=forbid`. There
 is **no `read_only` field**. Consequences:
 - Strict `model_validate` on the raw draft **rejects** `read_only` (and the `_note` annotation) as `extra_forbidden`.
@@ -35,6 +40,8 @@ is **no `read_only` field**. Consequences:
 - `sensitive` **does** exist and currently resolves to `False` for `syn-work`.
 
 **Implication:** the N5/N5A plan's reliance on a config-level `read_only=true` control for `syn-work` is **not
-schema-enforced today**. Combined with the mode-`777` path (no FS enforcement), `syn-work` has **no** read-only
-enforcement available right now. This is a "manual schema review later" item and an activation blocker (see `11`).
-The drafts remain safe because `enabled=false` (nothing registers), but `read_only` must not be treated as a control.
+schema-enforced**. The read-only control now comes from the **filesystem/ACL** instead (svc `r-x…` ACL + proven
+write-denial, `13`), which is authoritative and sufficient for the current bounded posture. The drafts remain safe
+because `enabled=false` (nothing registers), and `read_only` in a config must not be treated as an enforced control
+until the schema honors it. Adding a schema-honored `read_only` (or wiring the existing `sensitive` field) is retained
+as a future-activation hardening item (`11`), not a blocker.

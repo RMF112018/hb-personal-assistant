@@ -2,18 +2,18 @@
 
 N5B does not redefine the roadmap. It confirms reachability + surfaces one new activation gate.
 
-## New gate surfaced by N5B — read-only enforcement for `syn-work`
-Before any `syn-work` activation, a **real** read-only enforcement mechanism must exist. Today there is **none**:
-- Filesystem: `/volume1/homes/bfetting/Work` is mode `777` → no FS enforcement.
-- Config: `ExternalSourceRoot` has **no `read_only` field** (`extra=forbid`); `read_only=true` is dropped by the
-  loader → no config enforcement.
+## Gate surfaced by N5B — read-only enforcement for `syn-work` — RESOLVED (filesystem/ACL)
+This gate is now **resolved at the filesystem layer**: a `personal-assistant-svc` ACL
+(`allow:r-x---a-R-c--:fd--`, no write/append/delete) governs `/volume1/homes/bfetting/Work`, and a bounded empirical
+test proved svc read succeeds while svc write is denied in `Work`, `NAS - HB`, `Altman` with no leaked artifact
+(`13`). Option 3 below was taken (read-only ACL). The other options remain **optional future hardening**, not gates:
+1. Add a schema-honored `read_only` field to `ExternalSourceRoot` + enforce it on the read/index path — a code-quality
+   improvement so activation does not depend solely on per-path ACLs (`05`).
+2. Wire the existing `sensitive` field if/where it gates write-capable workflows (verify semantics first).
+3. **Done** — read-only ACL for svc on the NAS path (option chosen).
 
-Options (any one, before activation):
-1. Add a schema-honored `read_only` field to `ExternalSourceRoot` + enforce it on the read/index path (hardening).
-2. Use the existing `sensitive` field if/where it gates write-capable workflows (verify semantics first).
-3. Tighten the path: a read-only bind-mount or corrected perms/ACL on the NAS side.
-
-Until then, keep `syn-work` `enabled=false` and run no write-capable workflow against it.
+The ACL is the authoritative control (the compat `777` mode bits are overridden by the present ACL). Continue to keep
+`syn-work` `enabled=false` until activation is separately authorized; the FS layer now backstops read-only regardless.
 
 ## N5C — MSAL/Graph + Procore re-provision (determined; needs interactive login)
 - Device-code `hb-assistant auth login` on the NAS → `<app-support>/auth/msal-token-cache.bin` (0600 svc); scopes
@@ -28,9 +28,9 @@ Until then, keep `syn-work` `enabled=false` and run no write-capable workflow ag
 - **N7** — MCP-on-NAS via SSH launcher (needs vault mirror + config; bearer/public-URL off by default).
 - **N8** — second-brain / watchers / scheduler gating. Gated by: (1) the `source_root_key` identity fix before any
   multi-root activation; (2) a Linux scheduler to replace macOS `launchd`; (3) Text Vault fail-closed startup
-  preflight; (4) **read-only enforcement for `syn-work`** (this phase's new gate) while its path is mode `777`.
+  preflight. (Read-only enforcement for `syn-work` is **no longer** an open gate — resolved via ACL, `13`.)
 
 ## Net
-N5B confirms NAS vault + `syn-work` are reachable/readable by svc from a scratch context, and scratch config validates
-non-active. Deeper dry-run/reconcile deferred; `syn-work` activation blocked on real read-only enforcement. N5C/N6 not
-authorized.
+N5B confirms NAS vault + `syn-work` are reachable/readable by svc from a scratch context, scratch config validates
+non-active, and `syn-work` read-only is now enforced by ACL (svc write-denied, `13`) → **PASS**. Deeper
+dry-run/reconcile remain conservatively deferred (non-blocking). N5C/N6 not authorized.
