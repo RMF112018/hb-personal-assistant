@@ -7,7 +7,7 @@ The scaffold is authored and statically validated, but these must be respected/r
 - **No secrets authorized** — none in config/image; do not add.
 - **`/health` may touch/migrate the DB** — only ever against the scratch root (guarded by `HB_SMOKE_OK=1` in `health.sh`).
 - **Portainer must remain OFF port 8000** — do not restart it there.
-- **Publish loopback only** (or, if reaching from the Mac is needed for the smoke, the tailnet IP `100.66.28.14`) — **never `0.0.0.0`**.
+- **Publish loopback only** (or, if reaching from the Mac is needed for the smoke, the tailnet IP `<nas-tailnet-ip>`) — **never `0.0.0.0`**.
 - **Operator must explicitly authorize** any NAS container start (build + up).
 - **Background workers/watchers/schedulers stay disabled** (`HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1`).
 

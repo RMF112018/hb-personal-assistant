@@ -20,7 +20,7 @@ keys) until the NAS `auth`/`security` folder permissions are hardened (N1A block
 safety checks enforce that no secret values live in the scaffold.
 
 ## .env.example (`deploy/nas/.env.example`)
-- `HB_PUBLISH_ADDR=127.0.0.1` (loopback default; documented tailnet option `100.66.28.14` only after exposure is confirmed).
+- `HB_PUBLISH_ADDR=127.0.0.1` (loopback default; documented tailnet option `<nas-tailnet-ip>` only after exposure is confirmed).
 - Commented production paths and commented **N1C scratch overrides** (`HB_APP_SUPPORT_DIR=…/app-support-smoke`,
   `HB_CONFIG_FILE=…/hb-pa-config.smoke.yml`).
 - Explicitly states `HB_PA_CONFIG` and the worker kill switch are set in compose/Dockerfile and must not be weakened.

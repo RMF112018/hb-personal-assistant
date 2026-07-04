@@ -9,7 +9,7 @@
 | Worktree | `feature/nas-runtime-scaffold-n1b-20260703T123726Z` |
 | N1B commit (base) | `52d3d419` (`feat(nas): add runtime scaffold for backend deployment`) |
 | N1C scaffold fixes | **uncommitted** — `deploy/nas/Dockerfile`, `.dockerignore` (see `02`) |
-| NAS | `thelakehousenas` `100.66.28.14` (tailnet), SSH :10021, user `personal-assistant-svc` |
+| NAS | `<nas-hostname>` `<nas-tailnet-ip>` (tailnet), SSH :`<nas-ssh-port>`, user `personal-assistant-svc` |
 | Image | `hb-personal-assistant:nas` — 263MB — id `144ac90ca3d7` (base `python:3.12-slim`) |
 | Evidence artifacts | `nas-artifacts/{build.log,container.log,health.json,run-transcript.log}` |
 

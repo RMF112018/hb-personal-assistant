@@ -6,7 +6,7 @@ app-support root only. Still **no live DB, no secrets, no vault, no scheduler/wa
 ## Preconditions (operator confirms)
 - Port 8000 free; Portainer still off 8000.
 - Memory headroom acceptable at run time (check `free -h`; scratch smoke ≈300–400 MB).
-- Decide publish address: loopback (then use an SSH tunnel from the Mac) **or** tailnet `100.66.28.14` (only if exposure confirmed). Never `0.0.0.0`.
+- Decide publish address: loopback (then use an SSH tunnel from the Mac) **or** tailnet `<nas-tailnet-ip>` (only if exposure confirmed). Never `0.0.0.0`.
 
 ## Steps
 1. Clone/checkout this branch on the NAS (or copy `deploy/nas/`).

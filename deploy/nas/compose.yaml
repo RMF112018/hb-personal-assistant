@@ -2,7 +2,7 @@
 #
 # SAFETY POSTURE (do not weaken without a new phase authorization):
 #   * Port published to LOOPBACK by default (never the host's 0.0.0.0). Change HB_PUBLISH_ADDR to the
-#     NAS tailnet IP (100.66.28.14) ONLY after the operator confirms firewall/exposure is safe.
+#     NAS tailnet IP (<nas-tailnet-ip>) ONLY after the operator confirms firewall/exposure is safe.
 #   * Background workers/watchers/schedulers disabled (HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1).
 #   * Config mounted READ-ONLY. app-support mounted read/write at an identical container path so it
 #     matches paths.application_support_root in the config (NAS-local; never /Volumes or SMB).
@@ -22,7 +22,7 @@ services:
     # Run as the NAS runtime identity (personal-assistant-svc = 1028, group users = 100).
     user: "1028:100"
 
-    # Host publish: LOOPBACK ONLY by default. Set HB_PUBLISH_ADDR=100.66.28.14 for tailnet reach
+    # Host publish: LOOPBACK ONLY by default. Set HB_PUBLISH_ADDR=<nas-tailnet-ip> for tailnet reach
     # once exposure is confirmed safe. NAS host port 8000 -> container 8000. Never 0.0.0.0.
     ports:
       - "${HB_PUBLISH_ADDR:-127.0.0.1}:8000:8000"
