@@ -1,0 +1,62 @@
+# HB Personal Assistant — NAS backend (Phase N1B scaffold, review-only)
+#
+# SAFETY POSTURE (do not weaken without a new phase authorization):
+#   * Port published to LOOPBACK by default (never the host's 0.0.0.0). Change HB_PUBLISH_ADDR to the
+#     NAS tailnet IP (<nas-tailnet-ip>) ONLY after the operator confirms firewall/exposure is safe.
+#   * Background workers/watchers/schedulers disabled (HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1).
+#   * Config mounted READ-ONLY. app-support mounted read/write at an identical container path so it
+#     matches paths.application_support_root in the config (NAS-local; never /Volumes or SMB).
+#   * NO live Obsidian vault mount. NO source-roots mount. NO secrets mount. NO DB copy job.
+#   * NO scheduler/watcher service. restart: "no" (production restart policy deferred to a later phase).
+#   * Defaults target the production app-support tree; for the N1C scratch smoke, override
+#     HB_APP_SUPPORT_DIR + HB_CONFIG_FILE to the *-smoke paths (see .env.example). Never point at a live DB.
+
+services:
+  hb-personal-assistant-backend:
+    build:
+      context: ../..              # repo root (build on the NAS after `git clone`)
+      dockerfile: deploy/nas/Dockerfile
+    image: hb-personal-assistant:nas
+    container_name: hb-personal-assistant-backend
+
+    # Run as the NAS runtime identity (personal-assistant-svc = 1028, group users = 100).
+    user: "1028:100"
+
+    # Host publish: LOOPBACK ONLY by default. Set HB_PUBLISH_ADDR=<nas-tailnet-ip> for tailnet reach
+    # once exposure is confirmed safe. NAS host port 8000 -> container 8000. Never 0.0.0.0.
+    ports:
+      - "${HB_PUBLISH_ADDR:-127.0.0.1}:8000:8000"
+
+    environment:
+      HB_PA_CONFIG: /config/hb-pa-config.yml
+      HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      # Config: read-only. Default = production config path; override HB_CONFIG_FILE for smoke.
+      - "${HB_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.yml}:/config/hb-pa-config.yml:ro"
+      # App-support: read/write, NAS-local, mounted at an IDENTICAL path so it equals
+      # paths.application_support_root in the config. Override HB_APP_SUPPORT_DIR for the smoke scratch root.
+      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}"
+
+    # Non-production restart policy. Do NOT set "always"/"unless-stopped" until a production
+    # cutover phase is authorized (and Portainer's 8000 conflict is permanently resolved).
+    restart: "no"
+
+    # Conservative resource ceiling to protect a memory-marginal NAS (see N1A memory findings).
+    # Compose v2 honors these under `deploy.resources` with the compose CLI.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+    healthcheck:
+      # NOTE: /health may touch the DB (schema read). Safe only against a scratch app-support root.
+      # Long start_period so migration-on-first-open does not flap the container during smoke.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5); sys.exit(0)"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+
+# Intentionally NO other services: no scheduler, no source watcher, no DB copy/migrate job, no reverse proxy.

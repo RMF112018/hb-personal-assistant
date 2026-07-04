@@ -1,0 +1,20 @@
+# HB Personal Assistant — NAS SMOKE config EXAMPLE (Phase N1C scratch smoke; review-only in N1B)
+# Copy to the NAS as:  /volume1/personal-assistant/config/hb-pa-config.smoke.yml
+#
+# PURPOSE: a DISPOSABLE scratch environment to prove the container starts/stops cleanly.
+# It deliberately uses a SEPARATE app-support root so the smoke can NEVER touch the live DB,
+# auth, security, or text-vault trees. A fresh empty SQLite DB will be created + migrated under
+# the scratch root on first access — that is expected and disposable.
+#
+# SAFETY:
+#   * application_support_root is a SCRATCH path (…/app-support-smoke) — NOT the live app-support.
+#   * No secrets. No live DB. No live vault. Workers disabled by env.
+#   * When paired with compose, set HB_APP_SUPPORT_DIR=/volume1/personal-assistant/app-support-smoke
+#     and HB_CONFIG_FILE=/volume1/personal-assistant/config/hb-pa-config.smoke.yml (see .env.example).
+
+paths:
+  # DISPOSABLE scratch root — distinct from the live /volume1/personal-assistant/app-support.
+  application_support_root: /volume1/personal-assistant/app-support-smoke
+
+  # Inert vault path under the scratch root (never the live vault, never a Mac path).
+  obsidian_vault: /volume1/personal-assistant/app-support-smoke/_vault_disabled

@@ -1,0 +1,51 @@
+# Repo-root .dockerignore — keeps the NAS image free of DB, secrets, config, and heavy/dev artifacts.
+# (Phase N1B scaffold.) The image must contain source + packaging only; runtime config/DB/secrets
+# are supplied at runtime via mounts and HB_PA_CONFIG.
+
+# VCS / dev
+.git
+.gitignore
+.venv
+**/__pycache__
+**/*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# macOS metadata junk (AppleDouble resource forks / Finder files) — never belong in a Linux image
+**/._*
+**/.DS_Store
+
+# Node / frontend build artifacts (backend image does not need them)
+**/node_modules
+frontend/dist
+frontend/node_modules
+
+# --- SAFETY: never bake config, DB, secrets, or vault into the image ---
+# Repo config carries Mac paths + tenant/client identity; the container gets config only via HB_PA_CONFIG.
+config/config.yml
+config/config.yaml
+config/*.local.yml
+**/.env
+**/.env.*
+# Databases / SQLite (any stray copies)
+**/*.sqlite
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/*.sqlite.bak*
+**/*.db
+# Secret material (defense in depth — these should never be in the repo anyway).
+# NOTE: match secret FILES only. Do NOT exclude directories named auth/ or security/ — those are
+# real source packages (src/hb_assistant/{auth,security}/). The runtime secret trees live under the
+# app-support tree (…/app-support/{auth,security}) which is a runtime mount, never in the build context.
+**/*.key
+**/*.pem
+**/msal-token-cache*.bin
+**/text-vault.key
+**/text-vault/
+
+# Evidence bundles and local scratch (large; not needed at runtime)
+docs/evidence
+**/local-sensitive/
+tmp/
+logs/
