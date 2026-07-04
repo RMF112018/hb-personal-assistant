@@ -31,17 +31,17 @@ PR A hardening + N4C-PR-A re-smoke **PASS** @ `9bcf7e2e`. PR B (writer/WAL/backu
 
 | Purpose | Path |
 |---|---|
-| Service root | `/volume1/personal-assistant` |
-| Runtime config | `/volume1/personal-assistant/config/hb-pa-config.yml` |
-| App-support / DB | `/volume1/personal-assistant/app-support` |
-| Scratch smoke (optional) | `/volume1/personal-assistant/app-support-smoke` |
+| Service root | `/volume2/personal-assistant` |
+| Runtime config | `/volume2/personal-assistant/config/hb-pa-config.yml` |
+| App-support / DB | `/volume2/personal-assistant/app-support` |
+| Scratch smoke (optional) | `/volume2/personal-assistant/app-support-smoke` |
 
 ## Quick start (viewer — requires prebuilt image)
 
 ```sh
 # 1) Config (no secrets)
 deploy/nas/scripts/render-config.sh nas
-deploy/nas/scripts/check-runtime-safety.sh /volume1/personal-assistant/config/hb-pa-config.yml
+deploy/nas/scripts/check-runtime-safety.sh /volume2/personal-assistant/config/hb-pa-config.yml
 
 # 2) Build or load image (see BUILD.md) — NOT done by start.sh
 

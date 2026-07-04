@@ -187,7 +187,7 @@ def test_dockerfile_python_312_or_newer_and_nonroot() -> None:
 
 def test_nas_config_uses_nas_local_app_support() -> None:
     text = active(NAS_CFG)
-    assert "application_support_root: /volume1/personal-assistant/app-support" in text
+    assert "application_support_root: /volume2/personal-assistant/app-support" in text
     assert "/Volumes" not in text
     assert "Library/Application Support" not in text
 
@@ -197,7 +197,7 @@ def test_smoke_config_uses_separate_scratch_root() -> None:
     assert "app-support-smoke" in text
     # must NOT point at the live app-support root
     assert not re.search(
-        r"application_support_root:\s*/volume1/personal-assistant/app-support\s*$", text, re.M
+        r"application_support_root:\s*/volume2/personal-assistant/app-support\s*$", text, re.M
     )
 
 

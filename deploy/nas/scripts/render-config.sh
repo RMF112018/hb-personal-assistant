@@ -21,8 +21,8 @@ for a in "$@"; do
 done
 
 case "$kind" in
-  nas)   src="$NAS_DIR/hb-pa-config.nas.example.yml";   [ -n "$dest" ] || dest="/volume1/personal-assistant/config/hb-pa-config.yml" ;;
-  smoke) src="$NAS_DIR/hb-pa-config.smoke.example.yml"; [ -n "$dest" ] || dest="/volume1/personal-assistant/config/hb-pa-config.smoke.yml" ;;
+  nas)   src="$NAS_DIR/hb-pa-config.nas.example.yml";   [ -n "$dest" ] || dest="/volume2/personal-assistant/config/hb-pa-config.yml" ;;
+  smoke) src="$NAS_DIR/hb-pa-config.smoke.example.yml"; [ -n "$dest" ] || dest="/volume2/personal-assistant/config/hb-pa-config.smoke.yml" ;;
   *) echo "usage: render-config.sh nas|smoke [dest] [--force]"; exit 2 ;;
 esac
 

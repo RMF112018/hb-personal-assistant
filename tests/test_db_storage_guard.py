@@ -26,7 +26,7 @@ def test_nas_runtime_allows_production_db(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_nas_runtime_allows_smoke_db(monkeypatch: pytest.MonkeyPatch) -> None:
-    smoke_db = "/volume1/personal-assistant/app-support-smoke/db/hb-personal-assistant.sqlite"
+    smoke_db = "/volume2/personal-assistant/app-support-smoke/db/hb-personal-assistant.sqlite"
     monkeypatch.setenv("HB_NAS_RUNTIME", "1")
     assert classify_db_storage(smoke_db) == "nas_local"
 

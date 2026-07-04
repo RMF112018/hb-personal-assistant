@@ -6,8 +6,8 @@ Operator hygiene after smoke/benchmark phases. **Review before any persistent se
 
 | Path | Phase | Action |
 |---|---|---|
-| `/volume1/personal-assistant/runtime/n4c-backend-smoke-20260704T075948Z/` | N4C | Delete or archive after evidence in git |
-| `/volume1/personal-assistant/runtime/n4c-pr-a-backend-smoke-20260704T092127Z/` | N4C-PR-A | Delete or archive after evidence in git |
+| `/volume2/personal-assistant/runtime/n4c-backend-smoke-20260704T075948Z/` | N4C | Delete or archive after evidence in git |
+| `/volume2/personal-assistant/runtime/n4c-pr-a-backend-smoke-20260704T092127Z/` | N4C-PR-A | Delete or archive after evidence in git |
 
 Exclude `.git` from NAS copies — repos are disposable staging trees.
 
@@ -15,7 +15,7 @@ Exclude `.git` from NAS copies — repos are disposable staging trees.
 
 | Item | Action |
 |---|---|
-| `/volume1/personal-assistant/app-support/tmp/sqlite-bench-*` | Delete after benchmark evidence captured |
+| `/volume2/personal-assistant/app-support/tmp/sqlite-bench-*` | Delete after benchmark evidence captured |
 | Mac `local-sensitive/` bench copies | Keep out of NAS; never commit raw DB |
 
 Any **copied production DB in scratch** must either:
@@ -27,8 +27,8 @@ Any **copied production DB in scratch** must either:
 
 | Path | Action |
 |---|---|
-| `/volume1/personal-assistant/app-support/logs/n4c-backend-smoke-*.log` | Review; delete if no unique evidence |
-| `/volume1/personal-assistant/app-support/logs/n4c-pr-a-backend-smoke-*.log` | Review; delete if redundant with git evidence |
+| `/volume2/personal-assistant/app-support/logs/n4c-backend-smoke-*.log` | Review; delete if no unique evidence |
+| `/volume2/personal-assistant/app-support/logs/n4c-pr-a-backend-smoke-*.log` | Review; delete if redundant with git evidence |
 
 Do not commit logs that may contain paths/secrets to git.
 
@@ -55,8 +55,8 @@ Do not remove the current `hb-personal-assistant:nas` tag if viewer testing cont
 
 ## Production paths — do NOT delete
 
-- `/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite`
-- `/volume1/personal-assistant/config/hb-pa-config.yml`
+- `/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite`
+- `/volume2/personal-assistant/config/hb-pa-config.yml`
 - DSM snapshots (useful supplement; not sole DB backup strategy — PR B deferred)
 
 ## After cleanup

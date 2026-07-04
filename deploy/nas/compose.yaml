@@ -35,10 +35,10 @@ services:
 
     volumes:
       # Config: read-only. Default = production config path; override HB_CONFIG_FILE for smoke.
-      - "${HB_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.yml}:/config/hb-pa-config.yml:ro"
+      - "${HB_CONFIG_FILE:-/volume2/personal-assistant/config/hb-pa-config.yml}:/config/hb-pa-config.yml:ro"
       # App-support: read/write, NAS-local, mounted at an IDENTICAL path so it equals
       # paths.application_support_root in the config. Override HB_APP_SUPPORT_DIR for the smoke scratch root.
-      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}"
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}:${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}"
 
     # Non-production restart policy. Do NOT set "always"/"unless-stopped" until a production
     # cutover phase is authorized (and Portainer's 8000 conflict is permanently resolved).

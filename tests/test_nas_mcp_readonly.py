@@ -17,7 +17,7 @@ RUNNER = REPO_ROOT / "deploy" / "nas" / "mcp" / "hb-mcp-runner"
 MCP_CONFIG_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "hb-pa-config.mcp.example.yml"
 SUDOERS_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "sudoers.hb-pa-mcp.example"
 CLIENT_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "claude-desktop-config.example.json"
-NAS_VAULT_HOST = "/volume1/personal-assistant/vault/obsidian"
+NAS_VAULT_HOST = "/volume2/personal-assistant/vault/obsidian"
 NAS_VAULT_CONTAINER = "/mnt/vault"
 MAC_VAULT_FRAGMENT = "Documents/Obsidian Vault"
 
@@ -140,7 +140,7 @@ def test_runner_fixed_commands_only() -> None:
 
 def test_sudoers_example_is_single_command() -> None:
     text = SUDOERS_EX.read_text(encoding="utf-8")
-    assert "NOPASSWD: /volume1/personal-assistant/bin/hb-mcp-runner" in text
+    assert "NOPASSWD: /volume2/personal-assistant/bin/hb-mcp-runner" in text
     assert "NOPASSWD: /usr/local/bin/docker" not in text
     assert "NOPASSWD: /bin/sh" not in text
     assert "/bin/sh" not in text
@@ -277,7 +277,7 @@ def test_filesystem_traversal_and_enc_denied(tmp_path: Path) -> None:
     ok = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "ok.md"})
     assert ok["ok"] is True
     assert ok["result"]["path_display"] == "vault/ok.md"
-    assert "/volume1/" not in json.dumps(ok["result"])
+    assert "/volume" not in json.dumps(ok["result"])
 
     traversal = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "../etc/passwd"})
     assert traversal["ok"] is False
@@ -312,7 +312,7 @@ def test_vault_tools_use_vault_root_key_only(tmp_path: Path) -> None:
     assert listing["ok"] is True
     assert listing["result"]["root_key"] == "vault"
     assert listing["result"]["path_display"] == "vault"
-    assert "/volume1/" not in json.dumps(listing["result"])
+    assert "/volume" not in json.dumps(listing["result"])
 
     stat = broker.dispatch("hb_secure_stat", {"root_key": "vault", "relative_path": "note.md"})
     assert stat["ok"] is True
@@ -325,7 +325,7 @@ def test_vault_tools_use_vault_root_key_only(tmp_path: Path) -> None:
     excerpt = broker.dispatch("hb_vault_read_excerpt", {"relative_path": "note.md"})
     assert excerpt["ok"] is True
     assert excerpt["result"]["path_display"] == "vault/note.md"
-    assert "/volume1/" not in json.dumps(excerpt["result"])
+    assert "/volume" not in json.dumps(excerpt["result"])
 
 
 def test_symlink_escape_denied(tmp_path: Path) -> None:

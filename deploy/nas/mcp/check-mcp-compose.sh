@@ -26,7 +26,7 @@ echo "$ACTIVE" | grep -q 'hb-personal-assistant-mcp' || fail "missing hb-persona
 echo "$ACTIVE" | grep -q 'HB_MCP_NAS_READONLY' || fail "missing HB_MCP_NAS_READONLY"
 echo "$ACTIVE" | grep -q '/app-support/auth' && fail "auth mount forbidden" || true
 echo "$ACTIVE" | grep -q 'text-vault' && fail "text-vault mount forbidden" || true
-echo "$ACTIVE" | grep -q '/volume1/personal-assistant/vault/obsidian.*/mnt/vault:rw' || fail "vault mount must map NAS obsidian vault to /mnt/vault:rw"
+echo "$ACTIVE" | grep -q '/volume2/personal-assistant/vault/obsidian.*/mnt/vault:rw' || fail "vault mount must map NAS obsidian vault to /mnt/vault:rw"
 echo "$ACTIVE" | grep -q '/volume1/homes/bfetting/Home.*/mnt/roots/home:ro' || fail "home mount must map to /mnt/roots/home:ro"
 echo "$ACTIVE" | grep -q '/volume1/homes/bfetting/Work.*/mnt/roots/work:ro' || fail "work mount must map to /mnt/roots/work:ro"
 echo "$ACTIVE" | grep -q '/volume1/homes/bfetting/mcp-outputs.*/mnt/outputs:rw' || fail "outputs mount must map to /mnt/outputs:rw"

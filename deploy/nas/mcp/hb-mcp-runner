@@ -1,11 +1,11 @@
 #!/bin/sh
 # hb-mcp-runner — root-owned fixed docker compose driver for MCP only.
-# Sudoers: bfetting ALL=(root) NOPASSWD: /volume1/personal-assistant/bin/hb-mcp-runner
+# Sudoers: bfetting ALL=(root) NOPASSWD: /volume2/personal-assistant/bin/hb-mcp-runner
 # Fixed verbs only: start | stop | status | health (no arbitrary args).
 set -eu
 
 ACTION="${1:-}"
-COMPOSE_FILE="/volume1/personal-assistant/deploy/nas/mcp/compose-mcp.yaml"
+COMPOSE_FILE="/volume2/personal-assistant/deploy/nas/mcp/compose-mcp.yaml"
 DOCKER="${DOCKER:-/usr/local/bin/docker}"
 CONTAINER="hb-personal-assistant-mcp"
 

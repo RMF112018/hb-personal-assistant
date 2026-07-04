@@ -40,10 +40,10 @@ services:
       - --port
       - "8765"
     volumes:
-      - "${HB_MCP_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.mcp.yml}:/config/hb-pa-config.mcp.yml:ro"
-      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:/app-support/db:ro"
-      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp:/app-support/audit/mcp:rw"
-      - "${HB_VAULT_MOUNT:-/volume1/personal-assistant/vault/obsidian}:/mnt/vault:rw"
+      - "${HB_MCP_CONFIG_FILE:-/volume2/personal-assistant/config/hb-pa-config.mcp.yml}:/config/hb-pa-config.mcp.yml:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/db:/app-support/db:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/audit/mcp:/app-support/audit/mcp:rw"
+      - "${HB_VAULT_MOUNT:-/volume2/personal-assistant/vault/obsidian}:/mnt/vault:rw"
       - "${HB_HOME_ROOT:-/volume1/homes/bfetting/Home}:/mnt/roots/home:ro"
       - "${HB_WORK_ROOT:-/volume1/homes/bfetting/Work}:/mnt/roots/work:ro"
       - "${HB_MCP_OUTPUTS:-/volume1/homes/bfetting/mcp-outputs}:/mnt/outputs:rw"

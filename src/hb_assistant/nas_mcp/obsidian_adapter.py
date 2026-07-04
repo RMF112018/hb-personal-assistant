@@ -22,7 +22,9 @@ from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
 from .config import NasMcpConfig
 from .obsidian_config import apply_obsidian_support_env, obsidian_config_from_nas
 
-_VOLUME1_RE = re.compile(r"/volume1/[^\s\"']+")
+# Redact/guard any NAS host path — /volume1/* (homes/source roots) AND /volume2/* (the
+# personal-assistant service root). Must cover every volume so a service-root path never leaks.
+_HOST_PATH_RE = re.compile(r"/volume\d+/[^\s\"']+")
 
 
 NAS_OBSIDIAN_BLOCKED: dict[str, str] = {
@@ -68,7 +70,7 @@ def _normalize(payload: Any) -> Any:
     if isinstance(payload, list):
         return [_normalize(item) for item in payload]
     if isinstance(payload, str):
-        return _VOLUME1_RE.sub("[REDACTED_HOST_PATH]", payload)
+        return _HOST_PATH_RE.sub("[REDACTED_HOST_PATH]", payload)
     return payload
 
 
@@ -122,7 +124,7 @@ def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str
     result = handler()
     normalized = _normalize(result)
     blob = json.dumps(normalized)
-    if "/volume1/" in blob:
+    if _HOST_PATH_RE.search(blob):
         raise ObsidianMcpToolError("host_path_leak", "tool response contained host path")
     return normalized
 

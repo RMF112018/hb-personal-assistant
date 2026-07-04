@@ -32,10 +32,19 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def source_id_for(source_kind: str, *, rel_path: str | None = None,
+def source_id_for(source_kind: str, *, source_root_key: str | None = None,
+                  rel_path: str | None = None,
                   domain_ref_table: str | None = None, domain_ref_id: str | None = None) -> str:
+    """Stable 32-hex identity for a source.
+
+    For file sources the identity folds in ``source_root_key`` so the SAME relative path
+    under different roots (Home/Work/NAS/…) never collides. A missing root is normalised to
+    the empty string so the key format is stable. Domain-link identity is unchanged.
+    The V99 migration recomputes existing file ``source_id``s with this same scheme.
+    """
     if rel_path is not None:
-        key = f"{source_kind}|file|{rel_path}"
+        root = source_root_key if source_root_key is not None else ""
+        key = f"{source_kind}|file|{root}|{rel_path}"
     else:
         key = f"{source_kind}|link|{domain_ref_table}|{domain_ref_id}"
     return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
@@ -112,15 +121,25 @@ class SourceIndexRepository:
                 )
 
     # ----- idempotency lookups ---------------------------------------------------------------
-    def lookup_by_path(self, source_kind: str, rel_path: str, *, conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+    def lookup_by_path(self, source_kind: str, rel_path: str, *,
+                       source_root_key: str | None = None,
+                       conn: sqlite3.Connection | None = None) -> dict[str, Any] | None:
+        """Existing row for a (kind, rel_path). Pass ``source_root_key`` to scope the lookup to a
+        single root — required when the same rel_path may exist under multiple roots, so the
+        change-detection sha/mtime and fts_rowid belong to the right root. Omitting it keeps the
+        legacy root-blind match (safe only for single-root/single-vault callers)."""
+        sql = (
+            "SELECT s.source_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted "
+            "FROM source_intelligence_sources s "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+            "WHERE s.source_kind=? AND s.rel_path=?"
+        )
+        params: list[Any] = [source_kind, rel_path]
+        if source_root_key is not None:
+            sql += " AND s.source_root_key=?"
+            params.append(source_root_key)
         with borrow_connection(conn, self.db_path) as c:
-            row = c.execute(
-                "SELECT s.source_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted "
-                "FROM source_intelligence_sources s "
-                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-                "WHERE s.source_kind=? AND s.rel_path=?",
-                (source_kind, rel_path),
-            ).fetchone()
+            row = c.execute(sql, tuple(params)).fetchone()
         if row is None:
             return None
         return {"source_id": row[0], "content_sha256": row[1], "mtime_ns": row[2],
@@ -198,7 +217,8 @@ class SourceIndexRepository:
         """Transactional write of one external file (sources+metadata+text+chunks+relationships+FTS)."""
         source_kind = record["source_kind"]
         rel_path = record["rel_path"]
-        source_id = source_id_for(source_kind, rel_path=rel_path)
+        source_id = source_id_for(source_kind, source_root_key=record.get("source_root_key"),
+                                  rel_path=rel_path)
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             existing = c.execute(
@@ -307,14 +327,20 @@ class SourceIndexRepository:
             )
         return source_id
 
-    def mark_deleted(self, source_kind: str, rel_path: str, *, conn: sqlite3.Connection | None = None) -> None:
+    def mark_deleted(self, source_kind: str, rel_path: str, *,
+                     source_root_key: str | None = None,
+                     conn: sqlite3.Connection | None = None) -> None:
+        sql = (
+            "SELECT s.source_id, m.fts_rowid FROM source_intelligence_sources s "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
+            "WHERE s.source_kind=? AND s.rel_path=?"
+        )
+        params: list[Any] = [source_kind, rel_path]
+        if source_root_key is not None:
+            sql += " AND s.source_root_key=?"
+            params.append(source_root_key)
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            row = c.execute(
-                "SELECT s.source_id, m.fts_rowid FROM source_intelligence_sources s "
-                "LEFT JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
-                "WHERE s.source_kind=? AND s.rel_path=?",
-                (source_kind, rel_path),
-            ).fetchone()
+            row = c.execute(sql, tuple(params)).fetchone()
             if row is None:
                 return
             source_id, fts_rowid = row[0], row[1]

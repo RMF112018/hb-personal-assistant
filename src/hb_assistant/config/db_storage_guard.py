@@ -1,7 +1,7 @@
 """Fail-closed guard for SQLite DB storage locality (NAS-local vs network mounts).
 
 Universal deny: ``/Volumes/*``, ``smb://``, ``nfs://``, UNC-like paths, relative paths.
-When ``HB_NAS_RUNTIME=1``, only NAS-local managed DB paths under ``/volume1/personal-assistant/``
+When ``HB_NAS_RUNTIME=1``, only NAS-local managed DB paths under ``/volume2/personal-assistant/``
 are permitted. ``HB_DB_STORAGE_GUARD=permissive`` is ignored when ``HB_NAS_RUNTIME=1``.
 """
 
@@ -12,9 +12,9 @@ from pathlib import Path
 
 from hb_assistant.config.db_path_guard import is_under_clean_db_copy
 
-NAS_VOLUME_PREFIX = "/volume1/personal-assistant/"
+NAS_VOLUME_PREFIX = "/volume2/personal-assistant/"
 NAS_DEFAULT_DB_PATH = (
-    "/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
+    "/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
 )
 MANAGED_DB_FILENAME = "hb-personal-assistant.sqlite"
 MAC_APP_SUPPORT_NAME = "HB Personal Assistant"
@@ -39,6 +39,18 @@ class DbStorageGuardError(Exception):
 
 def is_nas_runtime() -> bool:
     return os.environ.get("HB_NAS_RUNTIME", "").strip() == "1"
+
+
+def nas_on_demand_watch_allowed() -> bool:
+    """Whether on-demand watcher START/RESTART is permitted.
+
+    Outside NAS runtime: always allowed (dev/Mac operator control). Under ``HB_NAS_RUNTIME=1`` the
+    watcher is default-off and on-demand starts are refused unless the operator opts in
+    deliberately with ``HB_NAS_ALLOW_WATCH=1`` (single-writer ownership then rests on the lease).
+    """
+    if not is_nas_runtime():
+        return True
+    return os.environ.get("HB_NAS_ALLOW_WATCH", "").strip() == "1"
 
 
 def is_permissive_guard() -> bool:

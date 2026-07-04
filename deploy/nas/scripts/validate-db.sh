@@ -8,7 +8,7 @@
 #   deploy/nas/scripts/validate-db.sh
 set -eu
 
-DB="${HB_DB_PATH:-/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite}"
+DB="${HB_DB_PATH:-/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite}"
 EXPECTED_SCHEMA="${HB_EXPECTED_SCHEMA:-98}"
 EXPECTED_TABLE_COUNT="${HB_EXPECTED_TABLE_COUNT:-505}"
 EXPECTED_VIEW_COUNT="${HB_EXPECTED_VIEW_COUNT:-2}"

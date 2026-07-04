@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 98
+LATEST_SCHEMA_VERSION = 99
 
 
 class StaffingMigrationError(RuntimeError):
@@ -8638,6 +8638,17 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # v99 (NAS N8): fold source_root_key into source_id so the same rel_path under
+            # different roots (Home/Work/NAS/…) no longer collides. Root-scopes the sources
+            # uniqueness index and remaps existing file source_ids across all FK'd tables.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 99")
+            if cur.fetchone() is None:
+                self._reconcile_v99_source_identity_root_scoped(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (99, 'v99_source_identity_root_scoped', ?)",
+                    (now,),
+                )
+
 
         # Return latest version, then release the migration connection. get_connection's
         # contract is that the caller closes it; left open, this WAL connection is only
@@ -8648,6 +8659,87 @@ class SQLiteMigrator:
         version = int(row[0]) if row and row[0] is not None else 0
         conn.close()
         return version
+
+    @staticmethod
+    def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:
+        """Root-scope source identity (NAS N8).
+
+        1. Replace the collision-prone UNIQUE(source_kind, rel_path) index with a root-scoped
+           UNIQUE(source_kind, source_root_key, rel_path).
+        2. Recompute every file source_id with source_root_key folded in and remap it across all
+           tables that reference source_id, with FK enforcement deferred to commit.
+
+        Frozen behaviour: the id formula is inlined (not imported) so this migration always
+        produces the same result regardless of later changes to ``source_id_for``. It matches the
+        V99-era ``source_id_for`` for file sources. Safe/idempotent: only rows whose id actually
+        changes are remapped; a no-op if the sources table is absent or already root-scoped.
+        """
+        import hashlib
+
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        if "source_intelligence_sources" not in tables:
+            return
+
+        # (1) swap the uniqueness index to include the root.
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_root_relpath "
+            "ON source_intelligence_sources(source_kind, source_root_key, rel_path) "
+            "WHERE rel_path IS NOT NULL"
+        )
+
+        def _v99_file_sid(source_kind: str, source_root_key: str | None, rel_path: str) -> str:
+            root = source_root_key if source_root_key is not None else ""
+            key = f"{source_kind}|file|{root}|{rel_path}"
+            return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
+
+        # (2) compute the remap for file rows (rel_path present).
+        rows = conn.execute(
+            "SELECT source_id, source_kind, source_root_key, rel_path "
+            "FROM source_intelligence_sources WHERE rel_path IS NOT NULL"
+        ).fetchall()
+        remap: list[tuple[str, str]] = []
+        seen_new: dict[str, str] = {}
+        for old_id, source_kind, source_root_key, rel_path in rows:
+            new_id = _v99_file_sid(source_kind, source_root_key, rel_path)
+            if new_id == old_id:
+                continue
+            if new_id in seen_new:
+                raise sqlite3.IntegrityError(
+                    "v99 source-id remap produced a duplicate new source_id "
+                    "(pre-existing rows already violate root-scoped uniqueness)"
+                )
+            seen_new[new_id] = old_id
+            remap.append((old_id, new_id))
+
+        if not remap:
+            return
+
+        # (3) apply the remap across every table that stores a source_id, deferring FK checks to
+        # commit (the FKs have no ON UPDATE CASCADE; the graph is internally consistent by commit).
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        conn.execute("CREATE TEMP TABLE _si_v99_remap(old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL)")
+        conn.executemany("INSERT INTO _si_v99_remap(old_id, new_id) VALUES (?, ?)", remap)
+        for table, col in (
+            ("source_intelligence_sources", "source_id"),
+            ("source_intelligence_metadata", "source_id"),
+            ("source_intelligence_text", "source_id"),
+            ("source_intelligence_chunks", "source_id"),
+            ("source_intelligence_relationships", "src_source_id"),
+            ("source_intelligence_generated_notes", "source_id"),
+            ("source_intelligence_events", "source_id"),
+            ("source_intelligence_summaries", "source_id"),
+        ):
+            if table not in tables:
+                continue
+            conn.execute(
+                f"UPDATE {table} SET {col} = "
+                f"(SELECT new_id FROM _si_v99_remap WHERE old_id = {table}.{col}) "
+                f"WHERE {col} IN (SELECT old_id FROM _si_v99_remap)"
+            )
+        conn.execute("DROP TABLE _si_v99_remap")
 
     @staticmethod
     def _reconcile_v68_procore_ep_projects_one_per_key(conn: sqlite3.Connection) -> None:
