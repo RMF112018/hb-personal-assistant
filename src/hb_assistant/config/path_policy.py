@@ -63,6 +63,12 @@ class PathPolicy:
         if not p.is_absolute():
             # Make absolute relative to home if relative
             p = Path.home() / p.relative_to(p.anchor) if p.anchor else Path.home() / p
+        from hb_assistant.config.db_storage_guard import assert_db_storage_allowed
+
+        assert_db_storage_allowed(
+            p / "db" / "hb-personal-assistant.sqlite",
+            context="application_support_root",
+        )
         self._app_support = p
         return p
 

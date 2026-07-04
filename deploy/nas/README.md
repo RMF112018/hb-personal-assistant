@@ -91,6 +91,18 @@ DB, secrets, other containers, or Synology packages.
 - Do **not** enable background workers, source watchers, or schedulers.
 - Do **not** point the smoke at a live DB — scratch root only.
 
+## Startup schema policy (PR A)
+
+NAS runtime (`HB_NAS_RUNTIME=1`) enforces fail-closed startup:
+
+- DB missing → container fails to start
+- schema == head → start with **no** silent migration
+- schema < head → fail unless `HB_ALLOW_STARTUP_MIGRATIONS=1` **and**
+  `HB_STARTUP_MIGRATION_BACKUP_RECEIPT` points to a valid backup receipt JSON
+- schema > head → fail always
+
+Normal container restart must not mutate the production DB.
+
 ## Future DB migration (later phase, not now)
 Move the DB with the **SQLite backup API** (`sqlite3.connect("file:<src>?mode=ro", uri=True)` → `src.backup(dst)`;
 pattern in `src/hb_assistant/launcher/profiles.py:214-223`) — **never a raw copy of a hot WAL DB**. Migrate the

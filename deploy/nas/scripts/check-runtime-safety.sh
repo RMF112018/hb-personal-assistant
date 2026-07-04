@@ -37,6 +37,7 @@ done
 echo "== compose safety =="
 if have "$COMPOSE"; then
   hasA  "$COMPOSE" 'HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"' && pass "background workers disabled" || fail "worker kill switch missing/!=1"
+  hasA  "$COMPOSE" 'HB_NAS_RUNTIME: "1"'                         && pass "NAS runtime flag set"         || fail "HB_NAS_RUNTIME missing/!=1"
   hasA  "$COMPOSE" 'HB_PA_CONFIG: /config/hb-pa-config.yml'      && pass "HB_PA_CONFIG set"            || fail "HB_PA_CONFIG missing"
   hasA  "$COMPOSE" ':8000:8000"'                                 && pass "publishes container port 8000" || fail "port 8000 mapping not found"
   hasA  "$COMPOSE" '${HB_PUBLISH_ADDR:-127.0.0.1}'               && pass "publish defaults to loopback" || fail "publish default is not loopback"
