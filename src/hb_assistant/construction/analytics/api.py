@@ -671,16 +671,29 @@ def _oauth_consent_html(*, scopes: list[str], vault_root: str, write_enabled: bo
 async def _forecast_lifespan(app: Any) -> Any:
     """Startup bootstrap: ensure app-managed forecast storage before serving.
 
-    Informative and fail-closed — never raises (a bootstrap failure must never block app startup,
-    mirroring the optional-surface degrade posture).
+    NAS runtime (``HB_NAS_RUNTIME=1``) fails closed on storage-guard or startup schema policy
+    violations. Non-NAS dev mode keeps the prior degrade posture for optional bootstrap faults.
     """
     import asyncio
     import logging
     import os
 
+    from hb_assistant.config.db_storage_guard import (
+        DbStorageGuardError,
+        assert_db_storage_allowed,
+        is_nas_runtime,
+    )
+    from hb_assistant.config.path_policy import PathPolicy
     from hb_assistant.construction.schedule_clean_db.diagnostics import evidence_disable_background_workers
+    from hb_assistant.store.db_posture import log_db_posture_at_startup
+    from hb_assistant.store.startup_schema_policy import StartupSchemaPolicyError
 
     _logger = logging.getLogger(__name__)
+    nas_runtime = is_nas_runtime()
+    app.state.nas_runtime = nas_runtime
+    app.state.startup_migration_performed = False
+    app.state.db_storage_class = "blocked"
+
     disable_workers = evidence_disable_background_workers()
     if os.environ.get("HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS", "").strip() not in {"", "1"}:
         _logger.warning(
@@ -697,13 +710,32 @@ async def _forecast_lifespan(app: Any) -> Any:
     }
 
     poll_task: asyncio.Task[None] | None = None
+    configured = getattr(app.state, "db_path", None)
+    resolved_db = str(configured) if configured else str(PathPolicy().get_db_path())
+
     try:
+        app.state.db_storage_class = assert_db_storage_allowed(resolved_db, context="startup")
+
         from hb_assistant.construction.analytics.forecast_bootstrap import (
             ensure_forecast_managed_storage,
         )
 
-        ensure_forecast_managed_storage()
+        bootstrap = ensure_forecast_managed_storage()
+        db_report = bootstrap.get("bootstrap", {}).get("db", {})
+        app.state.startup_migration_performed = bool(db_report.get("migration_performed"))
+        log_db_posture_at_startup(
+            _logger,
+            resolved_db,
+            background_worker_mode=app.state.background_worker_mode,
+            startup_migration_performed=app.state.startup_migration_performed,
+        )
+    except (DbStorageGuardError, StartupSchemaPolicyError):
+        if nas_runtime:
+            raise
+        _logger.exception("startup guard/policy failure (non-NAS runtime degrade)")
     except Exception:
+        if nas_runtime:
+            raise
         pass
 
     async def _quality_poll_loop() -> None:
@@ -825,9 +857,12 @@ def create_app(*, db_path: str | None = None) -> Any:
     def health(role: dict[str, str] = role_dep) -> dict[str, Any]:
         from hb_assistant.config.path_policy import PathPolicy
         from hb_assistant.construction.schedule_clean_db.diagnostics import build_db_diagnostics
+        from hb_assistant.store.db_posture import public_health_posture
 
         resolved = db_path or str(PathPolicy().get_db_path())
         schema_version = _schema_version(resolved)
+        worker_mode = getattr(app.state, "background_worker_mode", "enabled")
+        startup_migration_performed = bool(getattr(app.state, "startup_migration_performed", False))
         payload: dict[str, Any] = {
             "status": "ok",
             "surface": "analytics.fastapi_shell",
@@ -837,7 +872,7 @@ def create_app(*, db_path: str | None = None) -> Any:
             "schema_ready": schema_version >= LATEST_SCHEMA_VERSION,
             "chat_enabled": False,
             "guardrails": _guardrails(),
-            "background_worker_mode": getattr(app.state, "background_worker_mode", "enabled"),
+            "background_worker_mode": worker_mode,
             "background_workers_disabled_by_env": getattr(
                 app.state, "background_workers_disabled_by_env", False
             ),
@@ -845,6 +880,13 @@ def create_app(*, db_path: str | None = None) -> Any:
         workers = getattr(app.state, "background_workers", None)
         if workers is not None:
             payload["background_workers"] = workers
+        payload.update(
+            public_health_posture(
+                resolved,
+                background_worker_mode=worker_mode,
+                startup_migration_performed=startup_migration_performed,
+            )
+        )
         payload.update(
             build_db_diagnostics(
                 db_path,
@@ -3085,20 +3127,10 @@ def create_app(*, db_path: str | None = None) -> Any:
     def _admin_schema_db_path() -> str:
         return db_path or str(PathPolicy().get_db_path())
 
-    def _admin_table_count(schema_db: str) -> int:
-        import sqlite3
+    def _admin_schema_object_counts(schema_db: str) -> dict[str, int]:
+        from hb_assistant.store.db_posture import schema_object_counts
 
-        conn = sqlite3.connect(f"file:{schema_db}?mode=ro", uri=True)
-        try:
-            row = conn.execute(
-                """
-                SELECT COUNT(*) FROM sqlite_master
-                WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
-                """
-            ).fetchone()
-            return int(row[0]) if row else 0
-        finally:
-            conn.close()
+        return schema_object_counts(schema_db)
 
     def _schedule_v65_physical_status(schema_db: str) -> dict[str, object]:
         from hb_assistant.store.connection import get_connection
@@ -3116,13 +3148,26 @@ def create_app(*, db_path: str | None = None) -> Any:
         schema_db = _admin_schema_db_path()
         current = _schema_version(schema_db)
         physical = _schedule_v65_physical_status(schema_db)
+        counts = _admin_schema_object_counts(schema_db)
         return {
             "schema_version": current,
             "schema_expected": LATEST_SCHEMA_VERSION,
             "schema_ready": current >= LATEST_SCHEMA_VERSION,
-            "table_count": _admin_table_count(schema_db),
+            **counts,
             **physical,
         }
+
+    @app.get("/api/admin/db/status")
+    def admin_db_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        require_admin_role(role)
+        from hb_assistant.store.db_posture import collect_db_posture
+
+        schema_db = _admin_schema_db_path()
+        return collect_db_posture(
+            schema_db,
+            background_worker_mode=getattr(app.state, "background_worker_mode", "enabled"),
+            startup_migration_performed=bool(getattr(app.state, "startup_migration_performed", False)),
+        )
 
     @app.post("/api/admin/schema/migrate")
     def admin_schema_migrate(role: dict[str, str] = role_dep) -> dict[str, Any]:
@@ -3132,12 +3177,13 @@ def create_app(*, db_path: str | None = None) -> Any:
         physical_before = _schedule_v65_physical_status(schema_db)
         after = int(SQLiteMigrator(db_path=schema_db).apply())
         physical_after = _schedule_v65_physical_status(schema_db)
+        counts = _admin_schema_object_counts(schema_db)
         return {
             "schema_before": before,
             "schema_after": after,
             "schema_expected": LATEST_SCHEMA_VERSION,
             "schema_ready": after >= LATEST_SCHEMA_VERSION,
-            "table_count": _admin_table_count(schema_db),
+            **counts,
             "migration_name": f"v{after}_schema",
             "schedule_v65_physical_before": physical_before,
             "schedule_v65_physical_after": physical_after,

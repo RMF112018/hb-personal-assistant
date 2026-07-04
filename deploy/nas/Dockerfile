@@ -22,6 +22,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     # Runtime defaults — the actual config file is mounted read-only at /config by compose.
     HB_PA_CONFIG=/config/hb-pa-config.yml \
+    HB_NAS_RUNTIME=1 \
     # Master kill switch: disables the quality-poll loop + source watcher + source-root
     # registration started by the app lifespan (see src/.../analytics/api.py:671-798).
     HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1

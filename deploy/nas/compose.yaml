@@ -29,6 +29,7 @@ services:
 
     environment:
       HB_PA_CONFIG: /config/hb-pa-config.yml
+      HB_NAS_RUNTIME: "1"
       HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
       PYTHONUNBUFFERED: "1"
 

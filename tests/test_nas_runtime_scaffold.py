@@ -48,6 +48,10 @@ def test_compose_disables_background_workers() -> None:
     assert 'HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"' in read(COMPOSE)
 
 
+def test_compose_sets_nas_runtime() -> None:
+    assert 'HB_NAS_RUNTIME: "1"' in read(COMPOSE)
+
+
 def test_compose_sets_hb_pa_config() -> None:
     assert "HB_PA_CONFIG: /config/hb-pa-config.yml" in read(COMPOSE)
 

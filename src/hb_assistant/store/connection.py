@@ -36,6 +36,10 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     pp = PathPolicy()
     path = Path(db_path) if db_path is not None else pp.get_db_path()
 
+    from hb_assistant.config.db_storage_guard import assert_db_storage_allowed
+
+    assert_db_storage_allowed(path, context="sqlite_connect")
+
     if db_path is None:
         # Default (ambient) DB: full app-support dir + readiness checks.
         pp.ensure_dirs(create_sensitive=False)  # db/ is 755, non-sensitive

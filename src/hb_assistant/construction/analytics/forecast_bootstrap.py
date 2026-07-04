@@ -24,7 +24,6 @@ from typing import Any
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.construction.analytics import forecast_runtime_config as rc
-from hb_assistant.store.migrator import SQLiteMigrator
 
 # Write-roots this bootstrap may create, paired with their resolver. Order is stable so the
 # returned ``created`` list is deterministic.
@@ -62,17 +61,18 @@ def _ensure_managed_directories() -> list[str]:
 
 def _ensure_managed_database() -> dict[str, Any]:
     """Create + migrate the managed app DB when ``db_path`` resolves to it."""
+    from hb_assistant.store.startup_schema_policy import apply_startup_schema_policy
+
     db_raw = rc.resolve_db_path()
     if not rc.is_managed_db_path(db_raw):
-        return {"managed": False, "migrated": False}
+        return {"managed": False, "migrated": False, "migration_performed": False}
     db_path = Path(db_raw)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
     created = not db_path.exists()
-    try:
-        version = int(SQLiteMigrator(db_path=str(db_path)).apply())
-    except Exception:
-        return {"managed": True, "migrated": False, "created": created}
-    return {"managed": True, "migrated": True, "created": created, "schema_version": version}
+    if created:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    report = apply_startup_schema_policy(db_path)
+    report["created"] = created
+    return report
 
 
 def ensure_forecast_roots() -> dict[str, Any]:

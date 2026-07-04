@@ -73,10 +73,37 @@ def test_health_is_metadata_only_and_chat_disabled(tmp_path: Path) -> None:
     assert payload["guardrails"]["read_only"] is True
     assert payload["guardrails"]["active_chat_routes"] is False
     assert payload["role"]["role"] == "viewer"
+    assert "db_storage_class" in payload
+    assert "startup_migration_performed" in payload
+    assert "resolved_db_path" not in payload
+    assert "db_file_uid" not in payload
+    assert "process_uid" not in payload
 
     serialized = json.dumps(payload, default=str)
     for marker in FORBIDDEN:
         assert marker not in serialized
+
+
+def test_admin_schema_status_table_count_excludes_views(tmp_path: Path) -> None:
+    import sqlite3
+
+    db = str(tmp_path / "api.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    client = TestClient(create_app(db_path=db))
+    before = client.get("/api/admin/schema/status", headers={"X-HB-UI-Role": "admin"}).json()
+
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute("CREATE TABLE demo_table (id INTEGER PRIMARY KEY)")
+        conn.execute("CREATE VIEW demo_view AS SELECT id FROM demo_table")
+        conn.commit()
+    finally:
+        conn.close()
+
+    after = client.get("/api/admin/schema/status", headers={"X-HB-UI-Role": "admin"}).json()
+    assert after["table_count"] == before["table_count"] + 1
+    assert after["view_count"] == before["view_count"] + 1
+    assert after["schema_object_count"] == after["table_count"] + after["view_count"]
 
 
 def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
@@ -136,6 +163,7 @@ def test_openapi_exposes_only_shell_routes(tmp_path: Path) -> None:
         "/api/admin/data-completeness",
         "/api/admin/schema/status",
         "/api/admin/schema/migrate",
+        "/api/admin/db/status",
         # Prompt 14B / UI-14B Settings / Connection Management UX (overview + 8 areas + patches)
         "/api/settings",
         "/api/settings/accounts",
@@ -326,6 +354,7 @@ def test_all_ui_analytics_routes_no_forbidden_sensitive_fields_and_role_guards(
         ("GET", "admin", "/api/admin/permissions-governance", None),
         ("GET", "admin", "/api/admin/data-completeness", None),
         ("GET", "admin", "/api/admin/schema/status", None),
+        ("GET", "admin", "/api/admin/db/status", None),
         ("POST", "admin", "/api/admin/schema/migrate", None),
         # Operator/admin write-ish for local config (use admin to simplify)
         ("POST", "admin", "/api/daily-brief/configure", {}),
