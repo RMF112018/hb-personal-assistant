@@ -244,11 +244,11 @@ def test_referenced_sheet_match_does_not_cross_root(tmp_path: Path, monkeypatch:
 
 # ----- Identity caution: source_kind + rel_path collision (document current behavior) ----------
 
-def test_same_rel_path_in_two_roots_collides_on_source_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Source identity is keyed on source_kind + rel_path; two roots sharing a rel_path collide.
+def test_same_rel_path_in_two_roots_gets_distinct_source_ids(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Source identity folds in source_root_key (NAS N8): the same rel_path under two roots gets
+    DISTINCT source_ids and both rows survive independently (no cross-root overwrite).
 
-    This documents CURRENT behavior (A1.8 must not worsen it / must not match relationships across
-    roots). A real fix to source identity is a separate follow-up.
+    Previously (pre-V99) these collided to one id and the later write clobbered the earlier root.
     """
     vault = tmp_path / "vault"
     vault.mkdir(exist_ok=True)
@@ -277,7 +277,10 @@ def test_same_rel_path_in_two_roots_collides_on_source_id(tmp_path: Path, monkey
     fb.write_text("from root B", encoding="utf-8")
     sid_a = index_source_file(fa, config.external_sources[0], repo, config)
     sid_b = index_source_file(fb, config.external_sources[1], repo, config)
-    # Current behavior: identical rel_path -> identical source_id (collision); the later write wins.
-    assert sid_a == sid_b
-    detail = repo.get_source_detail(sid_a)
-    assert detail["source_root_key"] == "b"
+    # Root-scoped identity: distinct ids, and each row keeps its own root (no clobber).
+    assert sid_a != sid_b
+    detail_a = repo.get_source_detail(sid_a)
+    detail_b = repo.get_source_detail(sid_b)
+    assert detail_a["source_root_key"] == "a"
+    assert detail_b["source_root_key"] == "b"
+    assert detail_a["rel_path"] == detail_b["rel_path"] == "shared/x.txt"

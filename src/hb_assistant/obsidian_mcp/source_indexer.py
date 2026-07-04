@@ -374,7 +374,8 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
             break
         seen.add(rel_path)
         try:
-            existing = repo.lookup_by_path("external_file", rel_path)
+            existing = repo.lookup_by_path("external_file", rel_path,
+                                           source_root_key=root.source_root_key)
             if existing and not existing["deleted"]:
                 stat = abs_path.stat()
                 if existing["mtime_ns"] == stat.st_mtime_ns and existing["content_sha256"] == _sha256_file(abs_path):
@@ -394,7 +395,7 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
 
     # Reconcile deletions: active indexed files under this root no longer on disk.
     for gone in repo.active_rel_paths(root.source_root_key) - seen:
-        repo.mark_deleted("external_file", gone)
+        repo.mark_deleted("external_file", gone, source_root_key=root.source_root_key)
         report.deleted += 1
     return report
 
@@ -543,7 +544,8 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 repo.complete_event(event["event_id"], "done")
             elif event["event_type"] == "deleted":
                 if event["rel_path"]:
-                    repo.mark_deleted("external_file", event["rel_path"])
+                    repo.mark_deleted("external_file", event["rel_path"],
+                                      source_root_key=event.get("source_root_key"))
                 repo.complete_event(event["event_id"], "done")
             elif (event["source_root_key"] == _VAULT_ROOT_KEY and event["rel_path"]
                     and is_source_notes_path(event["rel_path"], config)):
