@@ -1,0 +1,16 @@
+# HB Personal Assistant — NAS runtime config DRAFT (N5A)
+# NON-ACTIVATED. Do NOT place at /volume1/personal-assistant/config/hb-pa-config.yml or set as HB_PA_CONFIG yet.
+# Draft only — for review toward N5B/N7. Contains NO secrets.
+paths:
+  application_support_root: /volume1/personal-assistant/app-support
+  obsidian_vault: /volume1/personal-assistant/vault/obsidian
+  # daily_notes_folder / ai_outputs_folder / reference_root inherit vault-relative defaults.
+
+security:
+  microsoft_365_writeback_enabled: false
+  external_llm_enabled: false
+
+# Notes:
+# - Text Vault key + blobs already on NAS at <app-support>/security/ (N4A). Key resolves from application_support_root.
+# - Keep background workers OFF for any first NAS boot: env HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS=1 (set in compose/Dockerfile).
+# - Secrets (PROCORE_CLIENT_SECRET, HB_ANTHROPIC_API_KEY, etc.) are provided via env / protected files, NEVER in this YAML.
