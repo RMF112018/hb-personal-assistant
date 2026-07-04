@@ -1,0 +1,178 @@
+{
+  "command": "read",
+  "connection_open_close": {
+    "busy_errors": 0,
+    "count": 10,
+    "errors": 0,
+    "max_ms": 0.21,
+    "p50_ms": 0.052,
+    "p95_ms": 0.21,
+    "p99_ms": 0.21
+  },
+  "count_queries": {
+    "forecast_cost_entries": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.063,
+      "p50_ms": 0.003,
+      "p95_ms": 0.063,
+      "p99_ms": 0.063
+    },
+    "procore_ep_budget_detail_row_cells": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 2.526,
+      "p50_ms": 2.352,
+      "p95_ms": 2.526,
+      "p99_ms": 2.526
+    },
+    "procore_ep_budget_detail_rows": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.024,
+      "p50_ms": 0.002,
+      "p95_ms": 0.024,
+      "p99_ms": 0.024
+    },
+    "procore_ep_schedule_activities": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.049,
+      "p50_ms": 0.003,
+      "p95_ms": 0.049,
+      "p99_ms": 0.049
+    },
+    "procore_ep_schedule_relationships": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.355,
+      "p50_ms": 0.016,
+      "p95_ms": 0.355,
+      "p99_ms": 0.355
+    },
+    "procore_ep_subcontractor_invoice_contract_detail_items": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.235,
+      "p50_ms": 0.009,
+      "p95_ms": 0.235,
+      "p99_ms": 0.235
+    },
+    "schedule_cpm_activity_results": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.186,
+      "p50_ms": 0.008,
+      "p95_ms": 0.186,
+      "p99_ms": 0.186
+    },
+    "schedule_cpm_runs": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.003,
+      "p50_ms": 0.002,
+      "p95_ms": 0.003,
+      "p99_ms": 0.003
+    },
+    "schedule_file_imports": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.004,
+      "p50_ms": 0.002,
+      "p95_ms": 0.004,
+      "p99_ms": 0.004
+    },
+    "schema_migrations": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.006,
+      "p50_ms": 0.002,
+      "p95_ms": 0.006,
+      "p99_ms": 0.006
+    },
+    "second_brain_financial_review_required_items": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 2.899,
+      "p50_ms": 2.774,
+      "p95_ms": 2.899,
+      "p99_ms": 2.899
+    }
+  },
+  "db_path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite",
+  "generated_utc": "2026-07-04T07:29:45Z",
+  "migrator_current_version": 98,
+  "migrator_elapsed_ms": 7.94,
+  "quick_check": null,
+  "schema_version_query": {
+    "busy_errors": 0,
+    "count": 5,
+    "errors": 0,
+    "max_ms": 6.974,
+    "p50_ms": 0.003,
+    "p95_ms": 6.974,
+    "p99_ms": 6.974
+  },
+  "table_count_query": {
+    "busy_errors": 0,
+    "count": 5,
+    "errors": 0,
+    "max_ms": 0.175,
+    "p50_ms": 0.09,
+    "p95_ms": 0.175,
+    "p99_ms": 0.175
+  },
+  "top_tables_by_row_count": [
+    {
+      "row_count": 447152,
+      "table": "procore_financial_amount_facts"
+    },
+    {
+      "row_count": 273951,
+      "table": "procore_ep_budget_detail_row_cells"
+    },
+    {
+      "row_count": 209437,
+      "table": "schedule_version_diff_detail_facts"
+    },
+    {
+      "row_count": 136458,
+      "table": "procore_endpoint_raw_payloads"
+    },
+    {
+      "row_count": 128769,
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "row_count": 124609,
+      "table": "email_raw_message_recipients_structured"
+    },
+    {
+      "row_count": 124528,
+      "table": "email_message_recipients"
+    },
+    {
+      "row_count": 112971,
+      "table": "procore_live_records"
+    },
+    {
+      "row_count": 109257,
+      "table": "procore_live_record_change_events"
+    },
+    {
+      "row_count": 106390,
+      "table": "procore_live_record_snapshots"
+    }
+  ]
+}

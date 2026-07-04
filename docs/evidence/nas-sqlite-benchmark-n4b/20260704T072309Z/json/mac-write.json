@@ -1,0 +1,79 @@
+{
+  "bench_table_row_count": 1110,
+  "command": "write",
+  "db_path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite",
+  "db_size_after_bytes": 4151631872,
+  "db_size_before_bytes": 4151631872,
+  "generated_utc": "2026-07-04T07:29:45Z",
+  "journal_mode_after": "wal",
+  "scenarios": {
+    "autocommit_single_insert": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.218,
+      "p50_ms": 0.06,
+      "p95_ms": 0.218,
+      "p99_ms": 0.218
+    },
+    "batched_insert_10": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 0.117,
+      "p50_ms": 0.117,
+      "p95_ms": 0.117,
+      "p99_ms": 0.117
+    },
+    "batched_insert_100": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 0.39,
+      "p50_ms": 0.39,
+      "p95_ms": 0.39,
+      "p99_ms": 0.39
+    },
+    "batched_insert_1000": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 2.31,
+      "p50_ms": 2.31,
+      "p95_ms": 2.31,
+      "p99_ms": 2.31
+    },
+    "delete_synthetic_subset": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 0.091,
+      "p50_ms": 0.091,
+      "p95_ms": 0.091,
+      "p99_ms": 0.091
+    },
+    "journal_mode_before": "wal",
+    "synchronous": 2,
+    "update_synthetic": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 0.852,
+      "p50_ms": 0.852,
+      "p95_ms": 0.852,
+      "p99_ms": 0.852
+    }
+  },
+  "sidecars_after": {},
+  "sidecars_before": {
+    "hb-pa-mac-bench.sqlite-shm": {
+      "path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite-shm",
+      "size_bytes": 32768
+    },
+    "hb-pa-mac-bench.sqlite-wal": {
+      "path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite-wal",
+      "size_bytes": 0
+    }
+  },
+  "sidecars_in_scratch_only": true
+}

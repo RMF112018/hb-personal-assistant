@@ -1,0 +1,79 @@
+{
+  "bench_table_row_count": 2390,
+  "command": "write",
+  "db_path": "/volume1/personal-assistant/app-support/tmp/sqlite-bench-20260704T072309Z/hb-pa-nas-bench.sqlite",
+  "db_size_after_bytes": 4151631872,
+  "db_size_before_bytes": 4151631872,
+  "generated_utc": "2026-07-04T07:34:59Z",
+  "journal_mode_after": "wal",
+  "scenarios": {
+    "autocommit_single_insert": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 164.292,
+      "p50_ms": 64.275,
+      "p95_ms": 164.292,
+      "p99_ms": 164.292
+    },
+    "batched_insert_10": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 36.525,
+      "p50_ms": 36.525,
+      "p95_ms": 36.525,
+      "p99_ms": 36.525
+    },
+    "batched_insert_100": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 79.891,
+      "p50_ms": 79.891,
+      "p95_ms": 79.891,
+      "p99_ms": 79.891
+    },
+    "batched_insert_1000": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 53.05,
+      "p50_ms": 53.05,
+      "p95_ms": 53.05,
+      "p99_ms": 53.05
+    },
+    "delete_synthetic_subset": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 33.116,
+      "p50_ms": 33.116,
+      "p95_ms": 33.116,
+      "p99_ms": 33.116
+    },
+    "journal_mode_before": "wal",
+    "synchronous": 2,
+    "update_synthetic": {
+      "busy_errors": 0,
+      "count": 1,
+      "errors": 0,
+      "max_ms": 316.637,
+      "p50_ms": 316.637,
+      "p95_ms": 316.637,
+      "p99_ms": 316.637
+    }
+  },
+  "sidecars_after": {},
+  "sidecars_before": {
+    "hb-pa-nas-bench.sqlite-shm": {
+      "path": "/volume1/personal-assistant/app-support/tmp/sqlite-bench-20260704T072309Z/hb-pa-nas-bench.sqlite-shm",
+      "size_bytes": 32768
+    },
+    "hb-pa-nas-bench.sqlite-wal": {
+      "path": "/volume1/personal-assistant/app-support/tmp/sqlite-bench-20260704T072309Z/hb-pa-nas-bench.sqlite-wal",
+      "size_bytes": 0
+    }
+  },
+  "sidecars_in_scratch_only": true
+}
