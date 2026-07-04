@@ -1,0 +1,6 @@
+== HB viewer start (compose up --no-build, loopback only) ==
+image=hb-personal-assistant:nas publish=127.0.0.1 config=/volume1/personal-assistant/config/hb-pa-config.yml app_support=/volume1/personal-assistant/app-support
+-- compose ps --
+NAME                            IMAGE                       COMMAND                  SERVICE                         CREATED             STATUS                                     PORTS
+hb-personal-assistant-backend   hb-personal-assistant:nas   "python -m uvicorn h…"   hb-personal-assistant-backend   4 seconds ago       Up Less than a second (health: starting)   127.0.0.1:8000->8000/tcp
+start complete (viewer mode; workers disabled by compose)

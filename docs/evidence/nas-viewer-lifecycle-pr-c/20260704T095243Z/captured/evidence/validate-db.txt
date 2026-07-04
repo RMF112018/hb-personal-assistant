@@ -1,0 +1,9 @@
+== validate-db (read-only) ==
+db=/volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite
+quick_check=ok
+schema=98
+table_count=505 view_count=2 schema_object_count=507
+file_stat=-rw------- 1 personal-assistant-svc users 4151631872 Jul  4 08:55 /volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite
+owner_ok=yes
+WARN: expected mode 600 (-rw-------)
+PASS: read-only DB validation

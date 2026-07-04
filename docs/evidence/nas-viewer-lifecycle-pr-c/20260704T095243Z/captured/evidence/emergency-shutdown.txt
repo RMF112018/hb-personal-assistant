@@ -1,0 +1,6 @@
+== HB viewer emergency shutdown ==
+-- container check --
+container_absent=yes
+-- LISTEN check (port 8000) --
+port_8000_listen=no
+emergency shutdown complete

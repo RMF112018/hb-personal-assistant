@@ -1,0 +1,14 @@
+== HB viewer status ==
+publish_addr=127.0.0.1 (required: loopback)
+config=/volume1/personal-assistant/config/hb-pa-config.yml
+app_support=/volume1/personal-assistant/app-support
+image=hb-personal-assistant:nas
+-- compose ps --
+NAME                            IMAGE                       COMMAND                  SERVICE                         CREATED             STATUS                                     PORTS
+hb-personal-assistant-backend   hb-personal-assistant:nas   "python -m uvicorn h…"   hb-personal-assistant-backend   4 seconds ago       Up Less than a second (health: starting)   127.0.0.1:8000->8000/tcp
+container_running=yes (hb-personal-assistant-backend Up Less than a second (health: starting))
+-- port bindings (docker inspect) --
+HostIp=127.0.0.1 HostPort=8000
+-- LISTEN check (host port 8000) --
+port_8000_listen=no
+status complete

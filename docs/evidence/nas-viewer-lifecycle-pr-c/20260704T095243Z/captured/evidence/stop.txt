@@ -1,0 +1,3 @@
+docker compose down (this HB project only; keeps images/volumes)
+-- HB service state --
+NAME                IMAGE               COMMAND             SERVICE             CREATED             STATUS              PORTS

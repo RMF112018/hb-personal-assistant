@@ -1,0 +1,178 @@
+{
+  "command": "read",
+  "connection_open_close": {
+    "busy_errors": 0,
+    "count": 10,
+    "errors": 0,
+    "max_ms": 0.234,
+    "p50_ms": 0.128,
+    "p95_ms": 0.234,
+    "p99_ms": 0.234
+  },
+  "count_queries": {
+    "forecast_cost_entries": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.117,
+      "p50_ms": 0.01,
+      "p95_ms": 0.117,
+      "p99_ms": 0.117
+    },
+    "procore_ep_budget_detail_row_cells": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 3.779,
+      "p50_ms": 3.339,
+      "p95_ms": 3.779,
+      "p99_ms": 3.779
+    },
+    "procore_ep_budget_detail_rows": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.046,
+      "p50_ms": 0.008,
+      "p95_ms": 0.046,
+      "p99_ms": 0.046
+    },
+    "procore_ep_schedule_activities": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.088,
+      "p50_ms": 0.009,
+      "p95_ms": 0.088,
+      "p99_ms": 0.088
+    },
+    "procore_ep_schedule_relationships": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.538,
+      "p50_ms": 0.027,
+      "p95_ms": 0.538,
+      "p99_ms": 0.538
+    },
+    "procore_ep_subcontractor_invoice_contract_detail_items": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.337,
+      "p50_ms": 0.017,
+      "p95_ms": 0.337,
+      "p99_ms": 0.337
+    },
+    "schedule_cpm_activity_results": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.278,
+      "p50_ms": 0.016,
+      "p95_ms": 0.278,
+      "p99_ms": 0.278
+    },
+    "schedule_cpm_runs": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.024,
+      "p50_ms": 0.007,
+      "p95_ms": 0.024,
+      "p99_ms": 0.024
+    },
+    "schedule_file_imports": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.026,
+      "p50_ms": 0.007,
+      "p95_ms": 0.026,
+      "p99_ms": 0.026
+    },
+    "schema_migrations": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 0.027,
+      "p50_ms": 0.007,
+      "p95_ms": 0.027,
+      "p99_ms": 0.027
+    },
+    "second_brain_financial_review_required_items": {
+      "busy_errors": 0,
+      "count": 5,
+      "errors": 0,
+      "max_ms": 4.393,
+      "p50_ms": 4.079,
+      "p95_ms": 4.393,
+      "p99_ms": 4.393
+    }
+  },
+  "db_path": "/volume1/personal-assistant/app-support/tmp/sqlite-bench-20260704T072309Z/hb-pa-nas-bench.sqlite",
+  "generated_utc": "2026-07-04T07:34:58Z",
+  "migrator_current_version": null,
+  "migrator_elapsed_ms": null,
+  "quick_check": null,
+  "schema_version_query": {
+    "busy_errors": 0,
+    "count": 5,
+    "errors": 0,
+    "max_ms": 17.159,
+    "p50_ms": 0.008,
+    "p95_ms": 17.159,
+    "p99_ms": 17.159
+  },
+  "table_count_query": {
+    "busy_errors": 0,
+    "count": 5,
+    "errors": 0,
+    "max_ms": 0.336,
+    "p50_ms": 0.213,
+    "p95_ms": 0.336,
+    "p99_ms": 0.336
+  },
+  "top_tables_by_row_count": [
+    {
+      "row_count": 447152,
+      "table": "procore_financial_amount_facts"
+    },
+    {
+      "row_count": 273951,
+      "table": "procore_ep_budget_detail_row_cells"
+    },
+    {
+      "row_count": 209437,
+      "table": "schedule_version_diff_detail_facts"
+    },
+    {
+      "row_count": 136458,
+      "table": "procore_endpoint_raw_payloads"
+    },
+    {
+      "row_count": 128769,
+      "table": "second_brain_financial_review_required_items"
+    },
+    {
+      "row_count": 124609,
+      "table": "email_raw_message_recipients_structured"
+    },
+    {
+      "row_count": 124528,
+      "table": "email_message_recipients"
+    },
+    {
+      "row_count": 112971,
+      "table": "procore_live_records"
+    },
+    {
+      "row_count": 109257,
+      "table": "procore_live_record_change_events"
+    },
+    {
+      "row_count": 106390,
+      "table": "procore_live_record_snapshots"
+    }
+  ]
+}

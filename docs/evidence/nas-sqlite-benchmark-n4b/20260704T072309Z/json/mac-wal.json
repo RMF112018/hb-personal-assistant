@@ -1,0 +1,35 @@
+{
+  "checkpoint_passive_ms": 0.141,
+  "checkpoint_passive_result": [
+    0,
+    6,
+    6
+  ],
+  "checkpoint_truncate_ms": 0.034,
+  "checkpoint_truncate_result": [
+    0,
+    0,
+    0
+  ],
+  "command": "wal",
+  "db_path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite",
+  "generated_utc": "2026-07-04T07:30:01Z",
+  "journal_mode_after": "wal",
+  "journal_mode_before": "wal",
+  "quick_check_after": "ok",
+  "quick_check_ms": 15289.071,
+  "sidecars_after": {},
+  "sidecars_in_scratch_only": true,
+  "sidecars_mid": {
+    "hb-pa-mac-bench.sqlite-shm": {
+      "path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite-shm",
+      "size_bytes": 32768
+    },
+    "hb-pa-mac-bench.sqlite-wal": {
+      "path": "/private/tmp/hb-nas-sqlite-bench-20260704T072309Z/hb-pa-mac-bench.sqlite-wal",
+      "size_bytes": 24752
+    }
+  },
+  "wal_set_ms": 0.002,
+  "write_burst_100_rows_ms": 0.848
+}

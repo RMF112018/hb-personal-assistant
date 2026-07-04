@@ -1,0 +1,40 @@
+{
+  "command": "backup",
+  "dest_fingerprint": {
+    "ino": 170799175,
+    "mtime_ns": 1783150132176014706,
+    "path": "<mac-scratch>/hb-pa-mac-bench.sqlite",
+    "size_bytes": 4151631872
+  },
+  "elapsed_seconds": 4.606,
+  "generated_utc": "2026-07-04T07:29:30Z",
+  "sidecars": {
+    "hb-pa-mac-bench.sqlite-shm": {
+      "path": "<mac-scratch>/hb-pa-mac-bench.sqlite-shm",
+      "size_bytes": 32768
+    },
+    "hb-pa-mac-bench.sqlite-wal": {
+      "path": "<mac-scratch>/hb-pa-mac-bench.sqlite-wal",
+      "size_bytes": 0
+    }
+  },
+  "source_fingerprint_after": {
+    "ino": 105921913,
+    "mtime_ns": 1783123233810219113,
+    "path": "<live-mac-db>",
+    "size_bytes": 4151631872
+  },
+  "source_fingerprint_before": {
+    "ino": 105921913,
+    "mtime_ns": 1783123233810219113,
+    "path": "<live-mac-db>",
+    "size_bytes": 4151631872
+  },
+  "source_unchanged": true,
+  "validation": {
+    "quick_check": "ok",
+    "schema_version": 98,
+    "table_count": 507
+  },
+  "note": "Full source paths retained in local-sensitive/mac-backup.json (gitignored)."
+}

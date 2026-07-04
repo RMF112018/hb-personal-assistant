@@ -1,0 +1,156 @@
+{
+  "command": "concurrency",
+  "db_path": "/volume1/personal-assistant/app-support/tmp/sqlite-bench-20260704T072309Z/hb-pa-nas-bench.sqlite",
+  "generated_utc": "2026-07-04T07:35:05Z",
+  "scenarios": [
+    {
+      "duration_seconds": 0.144,
+      "error_samples": [],
+      "iterations_per_thread": 20,
+      "ops_attempted": 100,
+      "ops_completed": 100,
+      "read_errors": 0,
+      "read_latency": {
+        "busy_errors": 0,
+        "count": 100,
+        "errors": 0,
+        "max_ms": 135.603,
+        "p50_ms": 0.084,
+        "p95_ms": 5.807,
+        "p99_ms": 135.534
+      },
+      "readers": 5,
+      "retry_count": 0,
+      "sqlite_busy_count": 0,
+      "write_errors": 0,
+      "write_latency": {
+        "busy_errors": 0,
+        "count": 0,
+        "errors": 0
+      },
+      "writers": 0
+    },
+    {
+      "duration_seconds": 0.281,
+      "error_samples": [],
+      "iterations_per_thread": 20,
+      "ops_attempted": 200,
+      "ops_completed": 200,
+      "read_errors": 0,
+      "read_latency": {
+        "busy_errors": 0,
+        "count": 200,
+        "errors": 0,
+        "max_ms": 249.713,
+        "p50_ms": 0.524,
+        "p95_ms": 5.846,
+        "p99_ms": 249.212
+      },
+      "readers": 10,
+      "retry_count": 0,
+      "sqlite_busy_count": 0,
+      "write_errors": 0,
+      "write_latency": {
+        "busy_errors": 0,
+        "count": 0,
+        "errors": 0
+      },
+      "writers": 0
+    },
+    {
+      "duration_seconds": 1.454,
+      "error_samples": [],
+      "iterations_per_thread": 20,
+      "ops_attempted": 120,
+      "ops_completed": 120,
+      "read_errors": 0,
+      "read_latency": {
+        "busy_errors": 0,
+        "count": 100,
+        "errors": 0,
+        "max_ms": 143.574,
+        "p50_ms": 0.077,
+        "p95_ms": 2.044,
+        "p99_ms": 143.568
+      },
+      "readers": 5,
+      "retry_count": 0,
+      "sqlite_busy_count": 0,
+      "write_errors": 0,
+      "write_latency": {
+        "busy_errors": 0,
+        "count": 20,
+        "errors": 0,
+        "max_ms": 137.269,
+        "p50_ms": 72.445,
+        "p95_ms": 109.383,
+        "p99_ms": 137.269
+      },
+      "writers": 1
+    },
+    {
+      "duration_seconds": 1.633,
+      "error_samples": [],
+      "iterations_per_thread": 20,
+      "ops_attempted": 220,
+      "ops_completed": 220,
+      "read_errors": 0,
+      "read_latency": {
+        "busy_errors": 0,
+        "count": 200,
+        "errors": 0,
+        "max_ms": 266.22,
+        "p50_ms": 0.592,
+        "p95_ms": 6.651,
+        "p99_ms": 258.35
+      },
+      "readers": 10,
+      "retry_count": 0,
+      "sqlite_busy_count": 0,
+      "write_errors": 0,
+      "write_latency": {
+        "busy_errors": 0,
+        "count": 20,
+        "errors": 0,
+        "max_ms": 124.891,
+        "p50_ms": 72.477,
+        "p95_ms": 120.457,
+        "p99_ms": 124.891
+      },
+      "writers": 1
+    },
+    {
+      "duration_seconds": 2.056,
+      "error_samples": [],
+      "iterations_per_thread": 30,
+      "ops_attempted": 60,
+      "ops_completed": 60,
+      "read_errors": 0,
+      "read_latency": {
+        "busy_errors": 0,
+        "count": 30,
+        "errors": 0,
+        "max_ms": 35.74,
+        "p50_ms": 0.016,
+        "p95_ms": 0.029,
+        "p99_ms": 35.74
+      },
+      "readers": 1,
+      "retry_count": 0,
+      "sqlite_busy_count": 0,
+      "write_errors": 0,
+      "write_latency": {
+        "busy_errors": 0,
+        "count": 30,
+        "errors": 0,
+        "max_ms": 139.157,
+        "p50_ms": 71.211,
+        "p95_ms": 129.026,
+        "p99_ms": 139.157
+      },
+      "writers": 1
+    }
+  ],
+  "total_retry_count": 0,
+  "total_sqlite_busy_count": 0
+}
