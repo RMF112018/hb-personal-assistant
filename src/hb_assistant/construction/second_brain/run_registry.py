@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import socket
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -208,6 +209,7 @@ def acquire_run_lock(
     payload = {
         "token": token,
         "run_kind": run_kind,
+        "hostname": socket.gethostname(),  # attribute cross-host (Mac vs NAS) run contention
         "pid": os.getpid(),
         "acquired_utc": now.astimezone(timezone.utc).isoformat(),
         "expires_after_seconds": stale_lock_seconds,

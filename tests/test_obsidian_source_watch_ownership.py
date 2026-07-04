@@ -159,6 +159,21 @@ def test_status_owner_redacts_token(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         w.stop()
 
 
+def test_owner_records_hostname_for_cross_host_attribution(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The lease owner_info carries a hostname so a competing owner across hosts (Mac vs NAS) is
+    attributable in status/logs — contention is noticed, never silent."""
+    db, config = _watch_setup(tmp_path, watch=True)
+    monkeypatch.setattr(SourceWatcher, "_start_watchdog", _force_polling)
+    w = SourceWatcher(db, config)
+    w.start()
+    try:
+        owner = w.status()["owner"]
+        assert owner is not None
+        assert owner.get("hostname")  # non-empty host id recorded for the active owner
+    finally:
+        w.stop()
+
+
 def test_lease_check_error_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A lease-check DB error must NOT start the drain — degrade with a safe code (fail-closed)."""
     db, config = _watch_setup(tmp_path, watch=True)

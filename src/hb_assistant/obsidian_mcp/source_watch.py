@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 import os
+import socket
 import threading
 import uuid
 from contextlib import suppress
@@ -96,6 +97,7 @@ class SourceWatcher:
         # — this instance serves the API but stays degraded (no drain thread, no observer). Better a
         # quiet/degraded watcher than two uncoordinated drains racing the same DB/source roots.
         owner_info = {
+            "hostname": socket.gethostname(),  # attribute cross-host (Mac vs NAS) contention
             "pid": os.getpid(),
             "cwd": os.getcwd(),
             "db_path": str(self._db_path),
@@ -119,8 +121,9 @@ class SourceWatcher:
             self._degraded = True
             self._mode = "degraded"
             self._last_error_code = "watcher_not_owner"
+            _owner = lease.get("owner") or {}
             _logger.warning("source_watch.degraded_not_owner", extra={"obsidian_mcp": {
-                "owner_pid": (lease.get("owner") or {}).get("pid")}})
+                "owner_pid": _owner.get("pid"), "owner_host": _owner.get("hostname")}})
             return
         self._is_owner = True
         self._degraded = False
