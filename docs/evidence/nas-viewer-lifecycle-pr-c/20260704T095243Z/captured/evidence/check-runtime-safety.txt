@@ -1,0 +1,42 @@
+== files present ==
+PASS  exists: compose.yaml
+PASS  exists: Dockerfile
+PASS  exists: hb-pa-config.nas.example.yml
+PASS  exists: hb-pa-config.smoke.example.yml
+== compose safety ==
+PASS  background workers disabled
+PASS  NAS runtime flag set
+PASS  HB_PA_CONFIG set
+PASS  publishes container port 8000
+PASS  publish defaults to loopback
+PASS  no 0.0.0.0 host publish
+PASS  no /Volumes (SMB) path
+PASS  no Mac app-support path
+PASS  no live Obsidian vault mount
+PASS  restart != always
+PASS  restart != unless-stopped
+PASS  no scheduler/watcher service
+PASS  config mounted read-only
+== Dockerfile safety ==
+PASS  CMD uses create_app factory
+PASS  uvicorn --factory
+PASS  container binds 0.0.0.0 (namespace-internal)
+PASS  installs analytics-ui extra
+PASS  workers disabled by image default
+PASS  python >=3.12 base
+PASS  runs as non-root user
+== example configs safety ==
+PASS  nas cfg app-support is NAS-local
+PASS  nas cfg no /Volumes
+PASS  nas cfg no Mac path
+PASS  smoke cfg uses scratch root
+PASS  smoke cfg distinct from live app-support
+PASS  smoke cfg no /Volumes
+== no secret material in config-bearing files ==
+PASS  no embedded secret values
+== optional: rendered runtime config ==
+PASS  rendered cfg app-support is /volume1 NAS-local
+PASS  rendered cfg no /Volumes
+PASS  rendered cfg no Mac path
+-----------------------------------------
+RESULT: PASS (all safety invariants hold)

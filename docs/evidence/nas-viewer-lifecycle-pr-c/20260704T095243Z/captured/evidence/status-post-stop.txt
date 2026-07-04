@@ -1,0 +1,13 @@
+== HB viewer status ==
+publish_addr=127.0.0.1 (required: loopback)
+config=/volume1/personal-assistant/config/hb-pa-config.yml
+app_support=/volume1/personal-assistant/app-support
+image=hb-personal-assistant:nas
+-- compose ps --
+NAME                IMAGE               COMMAND             SERVICE             CREATED             STATUS              PORTS
+container_running=no
+-- port bindings (docker inspect) --
+inspect: container not present
+-- LISTEN check (host port 8000) --
+port_8000_listen=no
+status complete
