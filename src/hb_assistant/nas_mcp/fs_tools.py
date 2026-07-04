@@ -11,6 +11,7 @@ from .path_safe import (
     PathAccessError,
     deny_if_blocked,
     is_probably_binary,
+    path_display,
     relative_display,
     resolve_under_root,
 )
@@ -61,18 +62,22 @@ def hb_secure_list(
                 deny_if_blocked(child, denied_patterns=config.denied_name_patterns, denied_dir_segments=config.denied_dir_segments)
             except PathAccessError:
                 continue
+            rel = relative_display(root, child)
             entries.append(
                 {
                     "name": entry.name,
                     "kind": "dir" if entry.is_dir(follow_symlinks=False) else "file",
-                    "relative_path": relative_display(root, child),
+                    "relative_path": rel,
+                    "path_display": path_display(root_key, rel),
                 }
             )
             if len(entries) >= limit:
                 break
+    rel = relative_display(root, target)
     return {
         "root_key": root_key,
-        "relative_path": relative_display(root, target),
+        "relative_path": rel,
+        "path_display": path_display(root_key, rel),
         "entries": entries,
         "entry_count": len(entries),
         "truncated": len(entries) >= limit,
@@ -86,9 +91,11 @@ def hb_secure_stat(*, config: NasMcpConfig, root_key: str, relative_path: str) -
     if not target.exists():
         raise FsToolError("path not found")
     st = target.lstat()
+    rel = relative_display(root, target)
     return {
         "root_key": root_key,
-        "relative_path": relative_display(root, target),
+        "relative_path": rel,
+        "path_display": path_display(root_key, rel),
         "kind": "dir" if target.is_dir() else "file",
         "size": st.st_size,
         "mode": st.st_mode,
@@ -114,9 +121,11 @@ def hb_secure_read_excerpt(
         raise FsToolError("binary file denied")
     text = sample[:cap].decode("utf-8", errors="replace")
     redacted, applied = redact_text(text)
+    rel = relative_display(root, target)
     return {
         "root_key": root_key,
-        "relative_path": relative_display(root, target),
+        "relative_path": rel,
+        "path_display": path_display(root_key, rel),
         "excerpt": redacted,
         "bytes_returned": len(redacted.encode("utf-8")),
         "truncated": len(sample) > cap,

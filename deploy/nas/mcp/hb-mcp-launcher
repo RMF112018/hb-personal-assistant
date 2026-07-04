@@ -6,45 +6,25 @@ set -eu
 CMD="${1:-}"
 MCP_DIR="/volume1/personal-assistant/bin"
 RUNNER="${MCP_DIR}/hb-mcp-runner"
-COMPOSE_FILE="/volume1/personal-assistant/deploy/nas/mcp/compose-mcp.yaml"
 CHECK_SCRIPT="/volume1/personal-assistant/deploy/nas/mcp/check-mcp-compose.sh"
-DOCKER="${DOCKER:-/usr/local/bin/docker}"
 
 usage() {
   echo "usage: hb-mcp-launcher {start|stop|status|health}" >&2
   exit 2
 }
 
-require_loopback_publish() {
-  if netstat -an 2>/dev/null | grep -E '127\.0\.0\.1\.8765[[:space:]].*LISTEN' >/dev/null; then
-    echo "host_listen=127.0.0.1:8765"
-  else
-    echo "host_listen=missing"
-    return 1
-  fi
-  if netstat -an 2>/dev/null | grep -E '0\.0\.0\.0\.8765[[:space:]].*LISTEN' >/dev/null; then
-    echo "refusing: 0.0.0.0:8765 LISTEN detected" >&2
-    exit 2
-  fi
-  if netstat -an 2>/dev/null | grep -E '[:.]8000[[:space:]].*LISTEN' >/dev/null; then
-    echo "warn: port 8000 LISTEN detected (backend may be running)" >&2
-  fi
-}
-
 case "$CMD" in
   start)
     [ -x "$CHECK_SCRIPT" ] && sh "$CHECK_SCRIPT"
-    sudo -n "$RUNNER" up
+    sudo -n "$RUNNER" start
     sleep 2
-    require_loopback_publish
-    "$DOCKER" ps --filter name=hb-personal-assistant-mcp --format '{{.Names}} {{.Status}} {{.Ports}}'
+    sudo -n "$RUNNER" status
     ;;
   stop)
-    sudo -n "$RUNNER" down
+    sudo -n "$RUNNER" stop
     ;;
   status)
-    "$DOCKER" ps --filter name=hb-personal-assistant-mcp --format '{{.Names}} {{.Status}} {{.Ports}}' || true
-    require_loopback_publish || true
+    sudo -n "$RUNNER" status
     ;;
   health)
     curl -fsS "http://127.0.0.1:8765/health" | head -c 4096

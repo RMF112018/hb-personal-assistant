@@ -12,9 +12,14 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MCP_COMPOSE = REPO_ROOT / "deploy" / "nas" / "mcp" / "compose-mcp.yaml"
 MCP_CHECK = REPO_ROOT / "deploy" / "nas" / "mcp" / "check-mcp-compose.sh"
+LAUNCHER = REPO_ROOT / "deploy" / "nas" / "mcp" / "hb-mcp-launcher"
 RUNNER = REPO_ROOT / "deploy" / "nas" / "mcp" / "hb-mcp-runner"
+MCP_CONFIG_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "hb-pa-config.mcp.example.yml"
 SUDOERS_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "sudoers.hb-pa-mcp.example"
 CLIENT_EX = REPO_ROOT / "deploy" / "nas" / "mcp" / "claude-desktop-config.example.json"
+NAS_VAULT_HOST = "/volume1/personal-assistant/vault/obsidian"
+NAS_VAULT_CONTAINER = "/mnt/vault"
+MAC_VAULT_FRAGMENT = "Documents/Obsidian Vault"
 
 
 def _strip_comments(text: str) -> str:
@@ -46,6 +51,69 @@ def test_compose_rejects_network_mode_none_with_ports() -> None:
     assert "hb-personal-assistant-backend" not in text
 
 
+def test_compose_vault_mount_uses_nas_obsidian_path() -> None:
+    text = _strip_comments(MCP_COMPOSE.read_text(encoding="utf-8"))
+    assert NAS_VAULT_HOST in text
+    assert f":{NAS_VAULT_CONTAINER}:ro" in text
+    assert MAC_VAULT_FRAGMENT not in text
+
+
+def test_mcp_config_vault_root_is_container_mount() -> None:
+    import yaml
+
+    data = yaml.safe_load(MCP_CONFIG_EX.read_text(encoding="utf-8"))
+    vault = data["mcp"]["roots"]["vault"]
+    assert vault["mount"] == NAS_VAULT_CONTAINER
+    assert vault["mode"] == "read_only"
+    blob = MCP_CONFIG_EX.read_text(encoding="utf-8")
+    assert MAC_VAULT_FRAGMENT not in blob
+
+
+def test_nas_mcp_sources_exclude_mac_vault_path() -> None:
+    nas_mcp = REPO_ROOT / "src" / "hb_assistant" / "nas_mcp"
+    deploy_mcp = REPO_ROOT / "deploy" / "nas" / "mcp"
+    for path in (*nas_mcp.rglob("*.py"), *deploy_mcp.rglob("*")):
+        if path.is_dir() or path.suffix not in ("", ".py", ".yaml", ".yml", ".sh"):
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        assert MAC_VAULT_FRAGMENT not in text, f"Mac vault path in {path}"
+
+
+def test_launcher_status_uses_runner_not_docker() -> None:
+    text = LAUNCHER.read_text(encoding="utf-8")
+    assert 'sudo -n "$RUNNER" status' in text
+    assert "docker ps" not in text
+    assert "DOCKER=" not in text
+
+
+def test_launcher_start_uses_runner_not_docker() -> None:
+    text = LAUNCHER.read_text(encoding="utf-8")
+    assert 'sudo -n "$RUNNER" start' in text
+    assert "docker ps" not in text
+
+
+def test_runner_fixed_verbs_only() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    for verb in ("start", "stop", "status", "health"):
+        assert f"  {verb})" in text
+    assert "usage: hb-mcp-runner {start|stop|status|health}" in text
+    assert '"$2"' not in text
+    assert "shift" not in text
+    assert " compose " in text
+    assert "hb-personal-assistant-mcp" in text
+    assert "NOPASSWD: /bin/sh" not in text
+    assert " exec /bin/sh" not in text
+    assert " exec bash" not in text
+
+
+def test_runner_status_inspection_is_bounded() -> None:
+    text = RUNNER.read_text(encoding="utf-8")
+    assert 'ps --filter "name=^/${CONTAINER}$"' in text
+    assert '"$DOCKER" port "$CONTAINER" 8765/tcp' in text
+    assert "127\\.0\\.0\\.1\\.8765" in text
+    assert "port_8000" in text
+
+
 def test_runner_fixed_commands_only() -> None:
     text = RUNNER.read_text(encoding="utf-8")
     assert "compose -f" in text
@@ -59,10 +127,12 @@ def test_runner_fixed_commands_only() -> None:
 def test_sudoers_example_is_single_command() -> None:
     text = SUDOERS_EX.read_text(encoding="utf-8")
     assert "NOPASSWD: /volume1/personal-assistant/bin/hb-mcp-runner" in text
-    assert "docker" not in text.lower() or "hb-mcp-runner" in text
+    assert "NOPASSWD: /usr/local/bin/docker" not in text
+    assert "NOPASSWD: /bin/sh" not in text
     assert "/bin/sh" not in text
     assert "/bin/bash" not in text
     assert "ALL=(ALL)" not in text
+    assert text.strip().count("NOPASSWD:") == 1
 
 
 def test_client_example_uses_mac_tunnel_endpoint() -> None:
@@ -192,12 +262,76 @@ def test_filesystem_traversal_and_enc_denied(tmp_path: Path) -> None:
 
     ok = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "ok.md"})
     assert ok["ok"] is True
+    assert ok["result"]["path_display"] == "vault/ok.md"
+    assert "/volume1/" not in json.dumps(ok["result"])
 
     traversal = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "../etc/passwd"})
     assert traversal["ok"] is False
 
     enc = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "secret.enc"})
     assert enc["ok"] is False
+
+    absolute = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "/etc/passwd"})
+    assert absolute["ok"] is False
+
+    token = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "msal-token-cache.json"})
+    assert token["ok"] is False
+
+    assert any((tmp_path / "audit").glob("mcp-audit-*.jsonl"))
+
+
+def test_vault_tools_use_vault_root_key_only(tmp_path: Path) -> None:
+    from hb_assistant.nas_mcp.broker import NasMcpBroker
+    from hb_assistant.nas_mcp.config import NasMcpConfig, RootSpec
+
+    root = tmp_path / "vault"
+    root.mkdir(exist_ok=True)
+    (root / "note.md").write_text("vault note", encoding="utf-8")
+    cfg = NasMcpConfig(
+        db_path=tmp_path / "x.sqlite",
+        audit_dir=tmp_path / "audit",
+        roots={"vault": RootSpec("vault", root)},
+    )
+    broker = NasMcpBroker(cfg)
+
+    listing = broker.dispatch("hb_secure_list", {"root_key": "vault", "relative_path": "."})
+    assert listing["ok"] is True
+    assert listing["result"]["root_key"] == "vault"
+    assert listing["result"]["path_display"] == "vault"
+    assert "/volume1/" not in json.dumps(listing["result"])
+
+    stat = broker.dispatch("hb_secure_stat", {"root_key": "vault", "relative_path": "note.md"})
+    assert stat["ok"] is True
+    assert stat["result"]["path_display"] == "vault/note.md"
+
+    search = broker.dispatch("hb_vault_search", {"query": "note", "relative_path": "."})
+    assert search["ok"] is True
+    assert search["result"]["root_key"] == "vault"
+
+    excerpt = broker.dispatch("hb_vault_read_excerpt", {"relative_path": "note.md"})
+    assert excerpt["ok"] is True
+    assert excerpt["result"]["path_display"] == "vault/note.md"
+    assert "/volume1/" not in json.dumps(excerpt["result"])
+
+
+def test_symlink_escape_denied(tmp_path: Path) -> None:
+    from hb_assistant.nas_mcp.broker import NasMcpBroker
+    from hb_assistant.nas_mcp.config import NasMcpConfig, RootSpec
+
+    root = tmp_path / "vault"
+    outside = tmp_path / "outside"
+    root.mkdir(exist_ok=True)
+    outside.mkdir(exist_ok=True)
+    (outside / "secret.txt").write_text("nope", encoding="utf-8")
+    (root / "link.md").symlink_to(outside / "secret.txt")
+    cfg = NasMcpConfig(
+        db_path=tmp_path / "x.sqlite",
+        audit_dir=tmp_path / "audit",
+        roots={"vault": RootSpec("vault", root)},
+    )
+    broker = NasMcpBroker(cfg)
+    denied = broker.dispatch("hb_secure_read_excerpt", {"root_key": "vault", "relative_path": "link.md"})
+    assert denied["ok"] is False
 
 
 def test_build_asgi_health_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

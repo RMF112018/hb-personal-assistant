@@ -29,7 +29,22 @@ def validate_relative_under_root(source_root: Path, rel: str, *, kind: str = "pa
 
 
 def resolve_under_root(root: Path, relative: str) -> Path:
-    return validate_relative_under_root(root, relative)
+    target = validate_relative_under_root(root, relative)
+    root_resolved = Path(os.path.realpath(root))
+    if target.exists() or target.is_symlink():
+        resolved = Path(os.path.realpath(target))
+        root_s = os.path.normpath(str(root_resolved))
+        resolved_s = os.path.normpath(str(resolved))
+        if resolved_s != root_s and not resolved_s.startswith(root_s + os.sep):
+            raise PathAccessError("symlink escapes root")
+    return target
+
+
+def path_display(root_key: str, relative: str) -> str:
+    rel = relative.strip().replace("\\", "/")
+    if rel in ("", "."):
+        return root_key
+    return f"{root_key}/{rel}"
 
 
 def deny_if_blocked(path: Path, *, denied_patterns: tuple[str, ...], denied_dir_segments: tuple[str, ...]) -> None:

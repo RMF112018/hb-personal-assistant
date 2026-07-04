@@ -26,5 +26,6 @@ echo "$ACTIVE" | grep -q 'hb-personal-assistant-mcp' || fail "missing hb-persona
 echo "$ACTIVE" | grep -q 'HB_MCP_NAS_READONLY' || fail "missing HB_MCP_NAS_READONLY"
 echo "$ACTIVE" | grep -q '/app-support/auth' && fail "auth mount forbidden" || true
 echo "$ACTIVE" | grep -q 'text-vault' && fail "text-vault mount forbidden" || true
+echo "$ACTIVE" | grep -q '/volume1/personal-assistant/vault/obsidian.*/mnt/vault:ro' || fail "vault mount must map NAS obsidian vault to /mnt/vault:ro"
 
 pass "compose-mcp.yaml static guards"
