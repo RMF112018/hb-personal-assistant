@@ -1,0 +1,46 @@
+# HB Personal Assistant — NAS dedicated MCP service (Phase N7)
+#
+# SAFETY:
+#   * Host publish: 127.0.0.1:8765 ONLY (never 0.0.0.0 / LAN / tailnet)
+#   * Bridge networking (NOT network_mode: none + ports)
+#   * Container process binds 0.0.0.0:8765 inside namespace
+#   * Does NOT start hb-personal-assistant-backend or port 8000
+#   * No auth/security/token mounts; RO DB + RO roots + audit RW only
+
+networks:
+  hb-mcp-internal:
+    driver: bridge
+
+services:
+  hb-personal-assistant-mcp:
+    image: hb-personal-assistant:nas
+    container_name: hb-personal-assistant-mcp
+    user: "1028:100"
+    networks:
+      - hb-mcp-internal
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      HB_PA_CONFIG: /config/hb-pa-config.mcp.yml
+      HB_NAS_RUNTIME: "1"
+      HB_MCP_NAS_READONLY: "1"
+      HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
+      HB_ASSISTANT_DB_READONLY: "1"
+      PYTHONUNBUFFERED: "1"
+    command:
+      - hb-assistant
+      - mcp
+      - serve
+      - --nas-readonly
+      - --streamable-http
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8765"
+    volumes:
+      - "${HB_MCP_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.mcp.yml}:/config/hb-pa-config.mcp.yml:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp"
+      - "${HB_VAULT_MOUNT:-/volume1/personal-assistant/vault/obsidian}:/mnt/vault:ro"
+      - "${HB_SOURCE_ROOT_SYN_WORK:-/volume1/homes/bfetting/Work}:/mnt/source-roots/syn-work:ro"
+    restart: "no"

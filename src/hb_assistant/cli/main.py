@@ -26,6 +26,7 @@ from . import files as files_mod
 from . import graph as graph_mod
 from . import launcher as launcher_mod
 from . import email_calendar as email_calendar_mod
+from . import mcp_nas as mcp_nas_mod
 from . import procore as procore_mod
 from . import run as run_mod
 from . import scheduler as scheduler_mod
@@ -73,6 +74,7 @@ app.add_typer(procore_mod.app, name="procore")
 app.add_typer(email_calendar_mod.app, name="email-calendar")
 app.add_typer(graph_mod.app, name="graph")
 app.add_typer(second_brain_mod.app, name="second-brain")
+app.add_typer(mcp_nas_mod.mcp_app, name="mcp")
 app.add_typer(launcher_mod.app, name="launcher")
 app.add_typer(scheduler_mod.app, name="scheduler")
 

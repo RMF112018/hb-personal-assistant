@@ -1,0 +1,21 @@
+# NAS MCP config example (no secrets)
+paths:
+  application_support_root: /volume1/personal-assistant/app-support
+
+mcp:
+  actor: bfetting-via-ssh-launcher
+  db_path: /volume1/personal-assistant/app-support/db/hb-personal-assistant.sqlite
+  audit_dir: /volume1/personal-assistant/app-support/audit/mcp
+  limits:
+    max_excerpt_bytes: 16384
+    max_list_entries: 100
+    default_db_rows: 25
+    max_db_rows: 100
+    max_response_bytes: 256000
+  roots:
+    vault:
+      mount: /mnt/vault
+      mode: read_only
+    syn-work:
+      mount: /mnt/source-roots/syn-work
+      mode: read_only

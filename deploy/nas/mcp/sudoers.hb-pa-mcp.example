@@ -1,0 +1,3 @@
+# Example sudoers fragment — install only after operator review.
+# Validates with: visudo -cf /etc/sudoers.d/hb-pa-mcp
+bfetting ALL=(root) NOPASSWD: /volume1/personal-assistant/bin/hb-mcp-runner
