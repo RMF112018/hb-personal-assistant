@@ -144,12 +144,25 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
         }
         return JSONResponse(body)
 
+    from contextlib import AsyncExitStack, asynccontextmanager  # noqa: PLC0415
+
     mcp_app = mcp.streamable_http_app()
+    inner = getattr(mcp_app, "app", mcp_app)
+    mcp_lifespan = getattr(getattr(inner, "router", None), "lifespan_context", None)
+
+    @asynccontextmanager
+    async def lifespan(_app: Any):
+        async with AsyncExitStack() as stack:
+            if callable(mcp_lifespan):
+                await stack.enter_async_context(mcp_lifespan(inner))
+            yield
+
     return Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
-            Mount("/mcp", app=mcp_app),
-        ]
+            Mount("/", app=mcp_app),
+        ],
+        lifespan=lifespan,
     )
 
 
