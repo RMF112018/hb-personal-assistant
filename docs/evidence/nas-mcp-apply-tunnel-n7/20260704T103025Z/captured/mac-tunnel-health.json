@@ -1,0 +1,1 @@
+{"status":"ok","surface":"nas_mcp.readonly","nas_readonly":true,"allowlisted_table_keys":["schema_version"],"configured_roots":["syn-work","vault"],"guardrails":{"nas_readonly":true,"background_workers_disabled":true,"db_readonly_env":true,"nas_runtime":true,"forbidden_backend_imports":["hb_assistant.construction.analytics.api"]}}
