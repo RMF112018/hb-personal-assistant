@@ -9,8 +9,8 @@
 | **Evidence commit** | `c81e3084` |
 | Evidence SHA (full) | `c81e3084a2424e8f3438b8eab15ea2587266010d` |
 | Evidence message | `docs(nas): add PR C viewer lifecycle validation evidence` |
-| Evidence metadata patch | `989cbf82` — `docs(nas): clarify PR C code vs evidence commit SHAs` |
-| Parent chain | `989cbf82` → `c81e3084` → `e862cc11` → `13f84c2e` → … |
+| Evidence metadata patch | `caf46db2` — `docs(nas): clarify PR C code vs evidence commit SHAs` |
+| Parent chain | `caf46db2` → `c81e3084` → `e862cc11` → `13f84c2e` → … |
 | Push | **Not authorized** |
 
 Excluded from evidence commit: passwords, `local-sensitive/`, raw DB/WAL/SHM, `__MACOSX/`, `._*`.
