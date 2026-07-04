@@ -3,15 +3,20 @@
 **Phase:** PR C NAS viewer lifecycle validation  
 **Result:** **PASS** (with non-blocking follow-ups)
 
-## Branch / commit
+## Branch / commits
 
 | Item | Value |
 |---|---|
 | Branch | `feat/nas-sqlite-hardening-pr-a` |
-| Commit | `e862cc119290b441a336a49ab43874ce59aaac02` |
+| **Code commit (validated)** | `e862cc11` — `ops(nas): add viewer lifecycle scripts and runbooks` |
+| Code SHA (full) | `e862cc119290b441a336a49ab43874ce59aaac02` |
+| **Evidence commit** | `c81e3084` — `docs(nas): add PR C viewer lifecycle validation evidence` |
+| Evidence SHA (full) | `c81e3084a2424e8f3438b8eab15ea2587266010d` |
 | Evidence TS | `20260704T095243Z` |
-| NAS runtime | `/volume1/personal-assistant/runtime/pr-c-viewer-lifecycle-20260704T095243Z` |
+| NAS runtime (code @ `e862cc11`) | `/volume1/personal-assistant/runtime/pr-c-viewer-lifecycle-20260704T095243Z` |
 | Image | `hb-personal-assistant:nas` @ `d18715bf714c` |
+
+The NAS validation exercised **code** at `e862cc11`. The **evidence package** is recorded in git at `c81e3084` (child of `e862cc11` on the same branch).
 
 ## Verdict summary
 
