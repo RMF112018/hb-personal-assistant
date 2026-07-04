@@ -1,0 +1,7 @@
+# HB Personal Assistant — N5B SCRATCH config (NON-PRODUCTION, NON-ACTIVATED)
+# For availability/validation only. Do NOT place at a production config path or set HB_PA_CONFIG.
+# application_support_root points at a bounded app-support-smoke SCRATCH root (never production app-support).
+# Contains NO secrets.
+paths:
+  application_support_root: /volume1/personal-assistant/app-support-smoke/n5b-20260704T082556Z
+  obsidian_vault: /volume1/personal-assistant/vault/obsidian
