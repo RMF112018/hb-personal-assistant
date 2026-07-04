@@ -1,0 +1,23 @@
+{
+  "_draft_notice": "N5A NON-ACTIVATED DRAFT. Do NOT place at <app-support>/analytics/obsidian_mcp_config.json. No bearer token, no secrets. external_sources are enabled=false / read_only=true so nothing registers or ingests until a later authorized phase.",
+  "vault_root": "/volume1/personal-assistant/vault/obsidian",
+  "external_source_index_enabled": false,
+  "external_source_watch_enabled": false,
+  "source_card_auto_generate_enabled": false,
+  "source_summary_auto_generate_enabled": false,
+  "external_sources": [
+    {
+      "source_root_key": "syn-work",
+      "path": "/volume1/homes/bfetting/Work",
+      "enabled": false,
+      "read_only": true,
+      "source_kind": "external_file",
+      "_note": "Same source_root_key + identical rel_path tree (NAS - HB, Altman) as the Mac root -> source_id stable. Path is mode 777 so FS does not enforce read-only; read_only=true is the config-level control. Activate only after the source_id-omits-source_root_key hardening (N8)."
+    }
+  ],
+  "_deferred": {
+    "hb-onedrive": "OneDrive/Graph source -> re-provision delegated MSAL (Files.ReadWrite.All), not a filesystem root. N5C.",
+    "__vault_notes__": "Covered by vault_root above once activated.",
+    "docs-test / manual-test": "scratch roots, excluded."
+  }
+}
