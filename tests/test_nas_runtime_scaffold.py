@@ -14,11 +14,33 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 NAS = REPO_ROOT / "deploy" / "nas"
+SCRIPTS = NAS / "scripts"
 COMPOSE = NAS / "compose.yaml"
 DOCKERFILE = NAS / "Dockerfile"
 NAS_CFG = NAS / "hb-pa-config.nas.example.yml"
 SMOKE_CFG = NAS / "hb-pa-config.smoke.example.yml"
 DOCKERIGNORE = REPO_ROOT / ".dockerignore"
+
+VIEWER_LIFECYCLE_SCRIPTS = (
+    "viewer-common.sh",
+    "start.sh",
+    "stop.sh",
+    "restart.sh",
+    "status.sh",
+    "health.sh",
+    "validate-db.sh",
+    "emergency-shutdown.sh",
+)
+
+FORBIDDEN_SCRIPT_PATTERNS = (
+    "0.0.0.0:8000",
+    "portainer",
+    "compose up --build",
+    "compose up -d --build",
+    "restart: \"always\"",
+    "restart: \"unless-stopped\"",
+    "/Volumes/",
+)
 
 
 def read(p: Path) -> str:
@@ -38,6 +60,61 @@ def active(p: Path) -> str:
 def test_scaffold_files_exist() -> None:
     for p in (COMPOSE, DOCKERFILE, NAS_CFG, SMOKE_CFG, DOCKERIGNORE):
         assert p.is_file(), f"missing scaffold file: {p.relative_to(REPO_ROOT)}"
+    for doc in ("README.md", "VIEWER_MODE.md", "BUILD.md", "CLEANUP.md"):
+        assert (NAS / doc).is_file(), f"missing deploy/nas/{doc}"
+
+
+def test_viewer_lifecycle_scripts_exist() -> None:
+    for name in VIEWER_LIFECYCLE_SCRIPTS:
+        path = SCRIPTS / name
+        assert path.is_file(), f"missing lifecycle script: {path.relative_to(REPO_ROOT)}"
+
+
+def test_start_script_uses_no_build_and_requires_image() -> None:
+    text = active(SCRIPTS / "start.sh")
+    assert "compose up --no-build" in text
+    assert "viewer_require_image" in read(SCRIPTS / "start.sh")
+    assert "compose up --build" not in text
+    assert "127.0.0.1" in text or "loopback" in text.lower()
+
+
+def test_restart_script_chains_stop_and_start_without_build() -> None:
+    text = read(SCRIPTS / "restart.sh")
+    assert "stop.sh" in text
+    assert "start.sh" in text
+    assert "compose up --build" not in active(SCRIPTS / "restart.sh")
+
+
+def test_viewer_scripts_forbid_unsafe_patterns() -> None:
+    offenders: list[str] = []
+    for name in VIEWER_LIFECYCLE_SCRIPTS:
+        path = SCRIPTS / name
+        text = active(path).lower()
+        for pattern in FORBIDDEN_SCRIPT_PATTERNS:
+            if pattern.lower() in text:
+                offenders.append(f"{name}: {pattern}")
+    assert not offenders, f"unsafe patterns in viewer scripts: {offenders}"
+
+
+def test_validate_db_script_is_read_only() -> None:
+    text = active(SCRIPTS / "validate-db.sh")
+    assert "mode=ro" in text
+    assert "quick_check" in text
+    assert "migrate" not in text
+
+
+def test_emergency_shutdown_no_checkpoint_by_default() -> None:
+    text = read(SCRIPTS / "emergency-shutdown.sh")
+    assert "compose down" in text
+    assert "--passive-checkpoint" in text
+    assert "PRAGMA wal_checkpoint" not in active(SCRIPTS / "emergency-shutdown.sh")
+
+
+def test_health_script_no_ingestion_endpoints() -> None:
+    text = active(SCRIPTS / "health.sh")
+    assert "/health" in text
+    for forbidden in ("/api/source", "ingestion", "watcher", "scheduler", "onboarding", "environment"):
+        assert forbidden not in text
 
 
 def test_compose_publishes_port_8000() -> None:
