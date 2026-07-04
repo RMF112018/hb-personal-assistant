@@ -12,6 +12,20 @@ def evidence_disable_background_workers() -> bool:
     return os.environ.get("HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS", "").strip() == "1"
 
 
+def resolve_background_worker_disable(
+    *, nas_runtime: bool, env_disabled: bool
+) -> tuple[bool, bool]:
+    """Decide the boot-time background-worker posture.
+
+    Returns ``(disable_workers, forced_off_by_nas_runtime)``. NAS runtime is single-purpose and
+    must never auto-start workers/watchers/poll-loop, so ``HB_NAS_RUNTIME=1`` forces them off even
+    when the ``HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS`` kill-switch was not set. ``forced_off`` is
+    True only when NAS runtime is what flipped an otherwise-enabled posture to off.
+    """
+    forced_off = nas_runtime and not env_disabled
+    return (env_disabled or forced_off, forced_off)
+
+
 def evidence_diagnostics_enabled(role: dict[str, str] | None = None) -> bool:
     if os.environ.get("HB_EVIDENCE_DIAGNOSTICS", "").strip() == "1":
         return True

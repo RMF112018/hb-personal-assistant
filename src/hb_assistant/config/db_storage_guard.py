@@ -41,6 +41,18 @@ def is_nas_runtime() -> bool:
     return os.environ.get("HB_NAS_RUNTIME", "").strip() == "1"
 
 
+def nas_on_demand_watch_allowed() -> bool:
+    """Whether on-demand watcher START/RESTART is permitted.
+
+    Outside NAS runtime: always allowed (dev/Mac operator control). Under ``HB_NAS_RUNTIME=1`` the
+    watcher is default-off and on-demand starts are refused unless the operator opts in
+    deliberately with ``HB_NAS_ALLOW_WATCH=1`` (single-writer ownership then rests on the lease).
+    """
+    if not is_nas_runtime():
+        return True
+    return os.environ.get("HB_NAS_ALLOW_WATCH", "").strip() == "1"
+
+
 def is_permissive_guard() -> bool:
     if is_nas_runtime():
         return False

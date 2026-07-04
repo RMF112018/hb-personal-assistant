@@ -694,15 +694,29 @@ async def _forecast_lifespan(app: Any) -> Any:
     app.state.startup_migration_performed = False
     app.state.db_storage_class = "blocked"
 
-    disable_workers = evidence_disable_background_workers()
+    from hb_assistant.construction.schedule_clean_db.diagnostics import (
+        resolve_background_worker_disable,
+    )
+
+    env_disabled = evidence_disable_background_workers()
     if os.environ.get("HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS", "").strip() not in {"", "1"}:
         _logger.warning(
             "HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS has unexpected value; treating as unset"
         )
-        disable_workers = False
+        env_disabled = False
+
+    # NAS runtime is single-purpose (viewer/API): HB_NAS_RUNTIME=1 forces the poll loop, source
+    # watcher, and root registration off at boot even if the env kill-switch was forgotten
+    # (authoritative default-off posture for single-writer safety).
+    disable_workers, nas_forced_workers_off = resolve_background_worker_disable(
+        nas_runtime=nas_runtime, env_disabled=env_disabled
+    )
+    if nas_forced_workers_off:
+        _logger.info("HB_NAS_RUNTIME=1 forces background workers off (NAS default-off posture)")
 
     app.state.background_worker_mode = "disabled" if disable_workers else "enabled"
     app.state.background_workers_disabled_by_env = disable_workers
+    app.state.background_workers_forced_off_by_nas_runtime = nas_forced_workers_off
     app.state.background_workers = {
         "quality_poll_started": False,
         "source_watcher_initialized": False,
@@ -876,6 +890,10 @@ def create_app(*, db_path: str | None = None) -> Any:
             "background_workers_disabled_by_env": getattr(
                 app.state, "background_workers_disabled_by_env", False
             ),
+            "background_workers_forced_off_by_nas_runtime": getattr(
+                app.state, "background_workers_forced_off_by_nas_runtime", False
+            ),
+            "nas_runtime": bool(getattr(app.state, "nas_runtime", False)),
         }
         workers = getattr(app.state, "background_workers", None)
         if workers is not None:
@@ -2528,6 +2546,23 @@ def create_app(*, db_path: str | None = None) -> Any:
 
         return _load_obsidian_config()
 
+    def _nas_watch_guard() -> dict[str, Any] | None:
+        """Under NAS runtime the watcher is default-off; these routes lazily construct + start a
+        watcher, bypassing the boot gate. Refuse on-demand START/RESTART/TEST unless the operator
+        opts in deliberately with HB_NAS_ALLOW_WATCH=1 — single-writer ownership then rests on the
+        watcher lease. Returns a blocked payload to short-circuit, or None to proceed."""
+        from hb_assistant.config.db_storage_guard import nas_on_demand_watch_allowed
+
+        if not nas_on_demand_watch_allowed():
+            return {
+                "running": False,
+                "mode": "blocked",
+                "reason_code": "NAS_ON_DEMAND_WATCH_BLOCKED",
+                "detail": "NAS runtime is default-off; set HB_NAS_ALLOW_WATCH=1 to start the "
+                          "watcher deliberately (single-writer ownership via the watcher lease).",
+            }
+        return None
+
     def _resolve_source_watcher() -> Any:
         """Return the lifespan watcher, lazily constructing one if watch was disabled at boot."""
         watcher = getattr(app.state, "source_watcher", None)
@@ -2552,6 +2587,8 @@ def create_app(*, db_path: str | None = None) -> Any:
     @app.post("/api/settings/obsidian-mcp/source-watch/start")
     async def settings_obsidian_mcp_source_watch_start(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
+        if (blocked := _nas_watch_guard()) is not None:
+            return blocked
         watcher = _resolve_source_watcher()
         cfg = _fresh_obsidian_config()  # honor a just-PATCHed external_source_watch_enabled
         await asyncio.to_thread(watcher.start, config=cfg)
@@ -2569,18 +2606,24 @@ def create_app(*, db_path: str | None = None) -> Any:
     @app.post("/api/settings/obsidian-mcp/source-watch/restart")
     async def settings_obsidian_mcp_source_watch_restart(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
+        if (blocked := _nas_watch_guard()) is not None:
+            return blocked
         watcher = _resolve_source_watcher()
         return await asyncio.to_thread(watcher.restart)
 
     @app.post("/api/settings/obsidian-mcp/source-watch/test-event")
     async def settings_obsidian_mcp_source_watch_test_event(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
+        if (blocked := _nas_watch_guard()) is not None:
+            return blocked
         watcher = _resolve_source_watcher()
         return await asyncio.to_thread(watcher.test_event)
 
     @app.post("/api/settings/obsidian-mcp/source-watch/recover-stuck")
     async def settings_obsidian_mcp_source_watch_recover_stuck(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
+        if (blocked := _nas_watch_guard()) is not None:
+            return blocked
         watcher = _resolve_source_watcher()
         return await asyncio.to_thread(watcher.recover_stuck)
 
