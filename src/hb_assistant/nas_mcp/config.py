@@ -33,6 +33,22 @@ DEFAULT_DENIED_DIR_SEGMENTS = (
 )
 
 
+DEFAULT_READ_EXTENSIONS = frozenset(
+    {"txt", "md", "csv", "json", "yaml", "yml", "pdf", "docx", "xlsx", "xls"}
+)
+DEFAULT_OUTPUT_WRITE_EXTENSIONS = frozenset({"txt", "md", "csv", "json", "yaml", "yml", "docx", "xlsx"})
+
+
+@dataclass(frozen=True)
+class NasObsidianConfig:
+    vault_root: Path
+    backup_dir: Path
+    support_dir: Path
+    writes_enabled: bool = True
+    vault_markdown_write_enabled: bool = True
+    summarization_backend: str = "deterministic"
+
+
 @dataclass(frozen=True)
 class RootSpec:
     key: str
@@ -50,9 +66,14 @@ class NasMcpConfig:
     max_db_rows: int = 100
     default_db_rows: int = 25
     max_response_bytes: int = 256_000
+    max_write_bytes: int = 262_144
+    max_output_file_bytes: int = 1_048_576
+    read_extensions: frozenset[str] = DEFAULT_READ_EXTENSIONS
+    output_write_extensions: frozenset[str] = DEFAULT_OUTPUT_WRITE_EXTENSIONS
     denied_name_patterns: tuple[str, ...] = DEFAULT_DENIED_NAME_PATTERNS
     denied_dir_segments: tuple[str, ...] = DEFAULT_DENIED_DIR_SEGMENTS
     actor: str = "bfetting-via-ssh-launcher"
+    obsidian: NasObsidianConfig | None = None
 
     @classmethod
     def from_env(cls) -> NasMcpConfig:
@@ -95,6 +116,16 @@ class NasMcpConfig:
                 continue
             roots[str(key)] = RootSpec(key=str(key), mount=mount, mode=str(spec.get("mode", "read_only")))
         limits = mcp.get("limits") if isinstance(mcp.get("limits"), dict) else {}
+        obs_raw = mcp.get("obsidian") if isinstance(mcp.get("obsidian"), dict) else {}
+        vault_mount = roots.get("vault").mount if roots.get("vault") else Path("/mnt/vault")
+        obsidian = NasObsidianConfig(
+            vault_root=Path(str(obs_raw.get("vault_root") or vault_mount)),
+            backup_dir=Path(str(obs_raw.get("backup_dir") or audit_dir / "obsidian-backups")),
+            support_dir=Path(str(obs_raw.get("support_dir") or audit_dir / "obsidian-support")),
+            writes_enabled=bool(obs_raw.get("writes_enabled", True)),
+            vault_markdown_write_enabled=bool(obs_raw.get("vault_markdown_write_enabled", True)),
+            summarization_backend=str(obs_raw.get("summarization_backend", "deterministic")),
+        )
         return cls(
             db_path=db_path,
             audit_dir=audit_dir,
@@ -104,7 +135,10 @@ class NasMcpConfig:
             max_db_rows=int(limits.get("max_db_rows", 100)),
             default_db_rows=int(limits.get("default_db_rows", 25)),
             max_response_bytes=int(limits.get("max_response_bytes", 256_000)),
+            max_write_bytes=int(limits.get("max_write_bytes", 262_144)),
+            max_output_file_bytes=int(limits.get("max_output_file_bytes", 1_048_576)),
             actor=str(mcp.get("actor", "bfetting-via-ssh-launcher")),
+            obsidian=obsidian,
         )
 
     def root_mount(self, root_key: str) -> Path:

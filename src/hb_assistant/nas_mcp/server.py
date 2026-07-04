@@ -13,6 +13,7 @@ from .guards import (
     build_guard_status,
     require_nas_readonly_env,
 )
+from .tool_registration import register_nas_mcp_tools
 
 
 class NasMcpUnavailable(RuntimeError):
@@ -34,112 +35,16 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
             "MCP SDK not installed. Install with `pip install -e '.[mcp]'`."
         ) from exc
 
-    mcp = FastMCP("hb-nas-mcp-readonly", json_response=True, stateless_http=True)
-
-    @mcp.tool()
-    def hb_mcp_status() -> dict[str, Any]:
-        """Return NAS readonly MCP posture (metadata only)."""
-        payload = broker.dispatch("hb_mcp_status", {})
-        return payload.get("result", payload)
-
-    @mcp.tool()
-    def hb_db_select(
-        table_key: str,
-        columns: list[str],
-        filters: dict[str, Any] | None = None,
-        order_by: str | None = None,
-        limit: int | None = None,
-    ) -> dict[str, Any]:
-        """Structured allowlisted DB read (no raw SQL)."""
-        payload = broker.dispatch(
-            "hb_db_select",
-            {
-                "table_key": table_key,
-                "columns": columns,
-                "filters": filters or {},
-                "order_by": order_by,
-                "limit": limit,
-            },
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_secure_list(root_key: str, relative_path: str = ".", max_entries: int | None = None) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_secure_list",
-            {"root_key": root_key, "relative_path": relative_path, "max_entries": max_entries},
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_secure_stat(root_key: str, relative_path: str) -> dict[str, Any]:
-        payload = broker.dispatch("hb_secure_stat", {"root_key": root_key, "relative_path": relative_path})
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_secure_read_excerpt(root_key: str, relative_path: str, max_bytes: int | None = None) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_secure_read_excerpt",
-            {"root_key": root_key, "relative_path": relative_path, "max_bytes": max_bytes},
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_vault_search(query: str, relative_path: str = ".", limit: int = 25) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_vault_search",
-            {"query": query, "relative_path": relative_path, "limit": limit},
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_vault_read_excerpt(relative_path: str, max_bytes: int | None = None) -> dict[str, Any]:
-        payload = broker.dispatch("hb_vault_read_excerpt", {"relative_path": relative_path, "max_bytes": max_bytes})
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_source_root_search(
-        query: str, root_key: str = "syn-work", relative_path: str = ".", limit: int = 25
-    ) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_source_root_search",
-            {"query": query, "root_key": root_key, "relative_path": relative_path, "limit": limit},
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
-
-    @mcp.tool()
-    def hb_source_root_read_excerpt(
-        relative_path: str, root_key: str = "syn-work", max_bytes: int | None = None
-    ) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_source_root_read_excerpt",
-            {"relative_path": relative_path, "root_key": root_key, "max_bytes": max_bytes},
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
+    mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
+    register_nas_mcp_tools(mcp, broker)
 
     async def health(_request: Any) -> JSONResponse:
         body = {
             "status": "ok",
-            "surface": "nas_mcp.readonly",
+            "surface": "nas_mcp",
             "nas_readonly": True,
             "allowlisted_table_keys": list_allowlisted_table_keys(),
-            "configured_roots": sorted(cfg.roots.keys()),
+            "configured_roots": {k: v.mode for k, v in cfg.roots.items()},
             "guardrails": build_guard_status(),
         }
         return JSONResponse(body)

@@ -1,11 +1,12 @@
-# HB Personal Assistant — NAS dedicated MCP service (Phase N7)
+# HB Personal Assistant — NAS dedicated MCP service (Phase N7 / N7-FS-RW)
 #
 # SAFETY:
 #   * Host publish: 127.0.0.1:8765 ONLY (never 0.0.0.0 / LAN / tailnet)
 #   * Bridge networking (NOT network_mode: none + ports)
 #   * Container process binds 0.0.0.0:8765 inside namespace
 #   * Does NOT start hb-personal-assistant-backend or port 8000
-#   * No auth/security/token mounts; RO DB + RO roots + audit RW only
+#   * No auth/security/token mounts
+#   * Vault + outputs RW; home/work RO; DB RO; audit RW only under /app-support/audit/mcp
 
 networks:
   hb-mcp-internal:
@@ -26,6 +27,7 @@ services:
       HB_MCP_NAS_READONLY: "1"
       HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
       HB_ASSISTANT_DB_READONLY: "1"
+      HB_OBSIDIAN_MCP_SUPPORT_DIR: /app-support/audit/mcp/obsidian-support
       PYTHONUNBUFFERED: "1"
     command:
       - hb-assistant
@@ -39,8 +41,10 @@ services:
       - "8765"
     volumes:
       - "${HB_MCP_CONFIG_FILE:-/volume1/personal-assistant/config/hb-pa-config.mcp.yml}:/config/hb-pa-config.mcp.yml:ro"
-      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:ro"
-      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp:${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp"
-      - "${HB_VAULT_MOUNT:-/volume1/personal-assistant/vault/obsidian}:/mnt/vault:ro"
-      - "${HB_SOURCE_ROOT_SYN_WORK:-/volume1/homes/bfetting/Work}:/mnt/source-roots/syn-work:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/db:/app-support/db:ro"
+      - "${HB_APP_SUPPORT_DIR:-/volume1/personal-assistant/app-support}/audit/mcp:/app-support/audit/mcp:rw"
+      - "${HB_VAULT_MOUNT:-/volume1/personal-assistant/vault/obsidian}:/mnt/vault:rw"
+      - "${HB_HOME_ROOT:-/volume1/homes/bfetting/Home}:/mnt/roots/home:ro"
+      - "${HB_WORK_ROOT:-/volume1/homes/bfetting/Work}:/mnt/roots/work:ro"
+      - "${HB_MCP_OUTPUTS:-/volume1/homes/bfetting/mcp-outputs}:/mnt/outputs:rw"
     restart: "no"

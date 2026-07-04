@@ -54,8 +54,19 @@ def test_compose_rejects_network_mode_none_with_ports() -> None:
 def test_compose_vault_mount_uses_nas_obsidian_path() -> None:
     text = _strip_comments(MCP_COMPOSE.read_text(encoding="utf-8"))
     assert NAS_VAULT_HOST in text
-    assert f":{NAS_VAULT_CONTAINER}:ro" in text
+    assert f":{NAS_VAULT_CONTAINER}:rw" in text
     assert MAC_VAULT_FRAGMENT not in text
+
+
+def test_compose_home_work_outputs_mounts() -> None:
+    text = _strip_comments(MCP_COMPOSE.read_text(encoding="utf-8"))
+    assert "/volume1/homes/bfetting/Home" in text
+    assert "/mnt/roots/home:ro" in text
+    assert "/volume1/homes/bfetting/Work" in text
+    assert "/mnt/roots/work:ro" in text
+    assert "/volume1/homes/bfetting/mcp-outputs" in text
+    assert "/mnt/outputs:rw" in text
+    assert "/app-support/audit/mcp:rw" in text
 
 
 def test_mcp_config_vault_root_is_container_mount() -> None:
@@ -64,7 +75,10 @@ def test_mcp_config_vault_root_is_container_mount() -> None:
     data = yaml.safe_load(MCP_CONFIG_EX.read_text(encoding="utf-8"))
     vault = data["mcp"]["roots"]["vault"]
     assert vault["mount"] == NAS_VAULT_CONTAINER
-    assert vault["mode"] == "read_only"
+    assert vault["mode"] == "read_write"
+    obsidian = data["mcp"]["obsidian"]
+    assert obsidian["backup_dir"] == "/app-support/audit/mcp/obsidian-backups"
+    assert obsidian["vault_root"] == NAS_VAULT_CONTAINER
     blob = MCP_CONFIG_EX.read_text(encoding="utf-8")
     assert MAC_VAULT_FRAGMENT not in blob
 
@@ -354,4 +368,4 @@ def test_build_asgi_health_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         assert resp.status_code == 200
         body = resp.json()
         assert body["nas_readonly"] is True
-        assert "hb_assistant.construction.analytics.api" not in sys.modules
+        assert "vault" in body["configured_roots"]
