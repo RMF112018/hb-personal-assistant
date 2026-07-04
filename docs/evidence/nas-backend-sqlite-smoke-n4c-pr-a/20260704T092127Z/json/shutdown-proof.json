@@ -1,0 +1,7 @@
+{
+  "checked_utc": "2026-07-04T09:37:00Z",
+  "port_8000_listen": false,
+  "port_8000_time_wait": false,
+  "hb_personal_assistant_container_running": false,
+  "note": "Container empty list confirmed by operator after smoke; agent verified LISTEN absence via netstat without sudo docker"
+}

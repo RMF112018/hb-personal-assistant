@@ -1,0 +1,9 @@
+hb-personal-assistant-backend  | INFO:     Started server process [1]
+hb-personal-assistant-backend  | INFO:     Waiting for application startup.
+hb-personal-assistant-backend  | INFO:     Application startup complete.
+hb-personal-assistant-backend  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+hb-personal-assistant-backend  | INFO:     172.19.0.1:45006 - "GET /health HTTP/1.1" 200 OK
+hb-personal-assistant-backend  | INFO:     172.19.0.1:45010 - "GET /api/admin/schema/status HTTP/1.1" 200 OK
+hb-personal-assistant-backend  | INFO:     172.19.0.1:45014 - "GET /api/admin/db/status HTTP/1.1" 200 OK
+hb-personal-assistant-backend  | INFO:     172.19.0.1:45018 - "GET /api/environment HTTP/1.1" 200 OK
+hb-personal-assistant-backend  | INFO:     172.19.0.1:45022 - "GET /api/onboarding/readiness HTTP/1.1" 200 OK

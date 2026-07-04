@@ -1,0 +1,6 @@
+ Container hb-personal-assistant-backend  Stopping
+ Container hb-personal-assistant-backend  Stopped
+ Container hb-personal-assistant-backend  Removing
+ Container hb-personal-assistant-backend  Removed
+ Network nas_default  Removing
+ Network nas_default  Removed
