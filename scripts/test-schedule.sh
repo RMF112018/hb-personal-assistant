@@ -86,6 +86,7 @@ pytest_targets=(
   "tests/test_schedule_xer_quality_metrics.py"
   "tests/test_schedule_xml_parser.py::test_parse_minimal_xml_fixture"
   "tests/test_schedule_xml_parser.py::test_parse_gma_real_sample"
+  "tests/test_schema_version_head_consistency.py"
 )
 
 echo "=== Fast schedule test bundle ==="
