@@ -281,14 +281,22 @@ def build_streamable_http_app(
                 "127.0.0.1",
                 "127.0.0.1:8000",
                 "127.0.0.1:3010",
+                "127.0.0.1:8765",
                 "localhost",
                 "localhost:8000",
                 "localhost:3010",
+                "localhost:8765",
                 "mcp.bobby-fetting.me",
                 "mcp.bobby-fetting.me:443",
+                # N8B NAS MCP public hostname (Cloudflare Tunnel + Access front the origin on
+                # :8765). The tunnel may forward this Host directly or a loopback Host via
+                # originRequest.httpHostHeader; accept both so the DNS-rebinding guard passes.
+                "nas-mcp.bobby-fetting.me",
+                "nas-mcp.bobby-fetting.me:443",
             ],
             allowed_origins=[
                 "https://mcp.bobby-fetting.me",
+                "https://nas-mcp.bobby-fetting.me",
                 "https://grok.com",
                 "https://x.ai",
             ],

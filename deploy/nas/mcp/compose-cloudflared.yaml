@@ -1,38 +1,43 @@
-# HB Personal Assistant — NAS-side Cloudflare Tunnel connector (Phase N8B foundation)
+# HB Personal Assistant — NAS-side Cloudflare Tunnel connector (Phase N8B)
 #
 # Persistent NAS connector for the Cloudflare Tunnel that fronts the read-mostly MCP
 # origin. It runs ON THE NAS (never Bobby's Mac) and dials OUT to Cloudflare — no inbound
 # ports are published.
 #
+# NETWORKING NOTE (N8B live activation): this NAS's Docker embedded bridge DNS (127.0.0.11)
+# cannot forward external lookups, so a bridge-attached connector cannot resolve Cloudflare's
+# edge (_v2-origintunneld._tcp.argotunnel.com) and never registers. We therefore run the
+# connector with HOST networking so it uses the host's working resolv.conf. Consequences:
+#   * The Cloudflare tunnel ingress "service" MUST be http://127.0.0.1:8765 (the MCP origin's
+#     loopback publish from compose-mcp.yaml) — NOT the bridge name hb-personal-assistant-mcp.
+#   * The connector is outbound-only (no inbound ports; metrics bind 127.0.0.1 only) and, per
+#     its Cloudflare-side ingress config, still serves ONLY the one MCP hostname/route.
+#
 # SAFETY / SCOPE:
-#   * Routes ONLY to the MCP origin over the shared internal bridge: http://hb-personal-assistant-mcp:8765
-#     (the tunnel ingress "service" is set in the Cloudflare dashboard to that internal URL).
+#   * Routes ONLY to the MCP origin at http://127.0.0.1:8765 (ingress set in the Cloudflare dashboard).
 #   * Never routes to DSM / SSH / SMB / NFS / WebDAV / raw vault / raw SQLite / Portainer / NAS admin.
 #   * Token is injected ONLY via ${CLOUDFLARE_TUNNEL_TOKEN} from the git-ignored deploy/nas/.env —
 #     never hard-coded, never printed, never committed.
-#   * Cloudflare Access MUST deny unauthenticated traffic BEFORE this connector's route is
-#     considered usable (access-before-route gate; see docs/evidence/nas-cloudflare-access-n8b/).
-#   * restart: "no" for the foundation branch. Promotion to `unless-stopped` + boot-start is a
-#     deliberate live-activation step (a full N8B PASS requires start-after-reboot + restart-after-failure).
+#   * Cloudflare Access MUST deny unauthenticated traffic; the MCP origin ALSO requires a bearer
+#     (two-lock). Even if Access is misconfigured, origin auth rejects unauthenticated MCP.
+#   * restart: unless-stopped — restarts after failure and starts on daemon/boot (N8B
+#     persistence). A full N8B PASS proves start-after-reboot + restart-after-failure.
 #   * Image is PINNED. Capture the resolved image digest in evidence at deploy time
 #     (docker inspect --format '{{index .RepoDigests 0}}' <image>). Override the tag via ${CLOUDFLARED_IMAGE}.
 #
 # Start (operator, after tunnel + Access exist and the token is in deploy/nas/.env):
-#   docker compose -f deploy/nas/mcp/compose-mcp.yaml -f deploy/nas/mcp/compose-cloudflared.yaml up -d
+#   docker compose --env-file deploy/nas/.env -f deploy/nas/mcp/compose-cloudflared.yaml up -d
 # Stop:
 #   docker compose -f deploy/nas/mcp/compose-cloudflared.yaml down
-
-networks:
-  hb-mcp-internal:
-    name: hb-mcp-internal
-    external: true
 
 services:
   hb-personal-assistant-cloudflared:
     image: "${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2024.12.2}"
     container_name: hb-personal-assistant-cloudflared
-    networks:
-      - hb-mcp-internal
+    # Host networking: the connector uses the host's working resolv.conf (the Docker bridge
+    # embedded DNS on this Synology cannot forward external lookups). It reaches the MCP origin
+    # via 127.0.0.1:8765 (compose-mcp.yaml publishes the origin on host loopback only).
+    network_mode: host
     environment:
       # Token supplied ONLY via git-ignored deploy/nas/.env — see .env.example placeholder.
       CLOUDFLARE_TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in git-ignored deploy/nas/.env}"
@@ -43,4 +48,6 @@ services:
       - --token
       - "${CLOUDFLARE_TUNNEL_TOKEN}"
     # No `ports:` — outbound-only connector. No secrets/token/auth volumes mounted.
-    restart: "no"
+    # Always-on: restart on failure and on daemon/boot start (N8B persistence). The token
+    # is baked into the container config at create time, so boot restarts need no compose re-run.
+    restart: unless-stopped
