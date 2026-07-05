@@ -10,6 +10,7 @@
 
 networks:
   hb-mcp-internal:
+    name: hb-mcp-internal
     driver: bridge
 
 services:
@@ -25,6 +26,9 @@ services:
       HB_PA_CONFIG: /config/hb-pa-config.mcp.yml
       HB_NAS_RUNTIME: "1"
       HB_MCP_NAS_READONLY: "1"
+      # N8B: internet-facing exposure profile — read (tiers 0-2) + the single AI Outputs
+      # write only; broad vault mutation + scratch output writes are hard-blocked here.
+      HB_MCP_PROFILE: "remote_cloudflare"
       HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
       HB_ASSISTANT_DB_READONLY: "1"
       HB_OBSIDIAN_MCP_SUPPORT_DIR: /app-support/audit/mcp/obsidian-support

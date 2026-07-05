@@ -135,6 +135,13 @@ celerybeat.pid
 env/
 venv/
 ENV/
+
+# NAS deploy secrets — real tunnel token / secret values live only here, never committed (N8B)
+deploy/nas/.env
+deploy/**/.env
+# Cloudflared tunnel credentials (if a credentials-file tunnel is ever used instead of a token)
+**/*.cloudflared-credentials.json
+deploy/**/cloudflared/*.json
 env.bak/
 venv.bak/
 

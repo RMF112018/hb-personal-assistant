@@ -1,0 +1,27 @@
+#!/bin/sh
+# cloudflared-launcher — NAS Cloudflare Tunnel connector lifecycle (start|stop|status|logs)
+# Invoked by bfetting over SSH. Fixed subcommands only; never echoes the tunnel token.
+# FOUNDATION: documented, not installed. Do NOT start the connector until the Cloudflare
+# tunnel + Access app exist and Access denies unauthenticated traffic (access-before-route gate).
+set -eu
+
+CMD="${1:-}"
+RUNNER="/volume2/personal-assistant/bin/cloudflared-runner"
+
+usage() {
+  echo "usage: cloudflared-launcher {start|stop|status|logs}" >&2
+  exit 2
+}
+
+case "$CMD" in
+  start)
+    # Refuses unless CLOUDFLARE_TUNNEL_TOKEN is present in the git-ignored deploy/nas/.env.
+    sudo -n "$RUNNER" start
+    sleep 2
+    sudo -n "$RUNNER" status
+    ;;
+  stop)   sudo -n "$RUNNER" stop ;;
+  status) sudo -n "$RUNNER" status ;;
+  logs)   sudo -n "$RUNNER" logs ;;   # connector logs only; token is not logged by cloudflared
+  *)      usage ;;
+esac

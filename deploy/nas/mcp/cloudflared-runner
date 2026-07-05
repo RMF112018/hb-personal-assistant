@@ -1,0 +1,38 @@
+#!/bin/sh
+# cloudflared-runner — root-owned, fixed-verb docker lifecycle for the NAS Cloudflare connector.
+# Installed to /volume2/personal-assistant/bin/cloudflared-runner (root:root 0755) and granted to
+# bfetting via an exact-command NOPASSWD sudoers drop-in (see sudoers.hb-pa-cloudflared.example).
+# FOUNDATION: documented, not installed. Never prints the tunnel token.
+set -eu
+
+DOCKER="/usr/local/bin/docker"
+BASE="/volume2/personal-assistant/deploy/nas/mcp"
+COMPOSE_FILE="${BASE}/compose-cloudflared.yaml"
+ENV_FILE="/volume2/personal-assistant/deploy/nas/.env"
+SERVICE="hb-personal-assistant-cloudflared"
+CONTAINER="hb-personal-assistant-cloudflared"
+
+case "${1:-}" in
+  start)
+    # Fail closed if the token is not present in the git-ignored .env.
+    if ! grep -q '^CLOUDFLARE_TUNNEL_TOKEN=..*' "$ENV_FILE" 2>/dev/null; then
+      echo "refusing: CLOUDFLARE_TUNNEL_TOKEN missing from $ENV_FILE" >&2
+      exit 3
+    fi
+    exec "$DOCKER" compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up --no-build -d "$SERVICE"
+    ;;
+  stop)
+    exec "$DOCKER" compose -f "$COMPOSE_FILE" down
+    ;;
+  status)
+    "$DOCKER" ps --filter "name=^/${CONTAINER}$" --format '{{.Names}} {{.Status}}'
+    ;;
+  logs)
+    # Tail connector logs only (cloudflared does not log the token). No env/inspect dumping.
+    exec "$DOCKER" compose -f "$COMPOSE_FILE" logs --tail 200 "$SERVICE"
+    ;;
+  *)
+    echo "usage: cloudflared-runner {start|stop|status|logs}" >&2
+    exit 2
+    ;;
+esac

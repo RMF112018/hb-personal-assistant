@@ -1,0 +1,46 @@
+# HB Personal Assistant — NAS-side Cloudflare Tunnel connector (Phase N8B foundation)
+#
+# Persistent NAS connector for the Cloudflare Tunnel that fronts the read-mostly MCP
+# origin. It runs ON THE NAS (never Bobby's Mac) and dials OUT to Cloudflare — no inbound
+# ports are published.
+#
+# SAFETY / SCOPE:
+#   * Routes ONLY to the MCP origin over the shared internal bridge: http://hb-personal-assistant-mcp:8765
+#     (the tunnel ingress "service" is set in the Cloudflare dashboard to that internal URL).
+#   * Never routes to DSM / SSH / SMB / NFS / WebDAV / raw vault / raw SQLite / Portainer / NAS admin.
+#   * Token is injected ONLY via ${CLOUDFLARE_TUNNEL_TOKEN} from the git-ignored deploy/nas/.env —
+#     never hard-coded, never printed, never committed.
+#   * Cloudflare Access MUST deny unauthenticated traffic BEFORE this connector's route is
+#     considered usable (access-before-route gate; see docs/evidence/nas-cloudflare-access-n8b/).
+#   * restart: "no" for the foundation branch. Promotion to `unless-stopped` + boot-start is a
+#     deliberate live-activation step (a full N8B PASS requires start-after-reboot + restart-after-failure).
+#   * Image is PINNED. Capture the resolved image digest in evidence at deploy time
+#     (docker inspect --format '{{index .RepoDigests 0}}' <image>). Override the tag via ${CLOUDFLARED_IMAGE}.
+#
+# Start (operator, after tunnel + Access exist and the token is in deploy/nas/.env):
+#   docker compose -f deploy/nas/mcp/compose-mcp.yaml -f deploy/nas/mcp/compose-cloudflared.yaml up -d
+# Stop:
+#   docker compose -f deploy/nas/mcp/compose-cloudflared.yaml down
+
+networks:
+  hb-mcp-internal:
+    name: hb-mcp-internal
+    external: true
+
+services:
+  hb-personal-assistant-cloudflared:
+    image: "${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2024.12.2}"
+    container_name: hb-personal-assistant-cloudflared
+    networks:
+      - hb-mcp-internal
+    environment:
+      # Token supplied ONLY via git-ignored deploy/nas/.env — see .env.example placeholder.
+      CLOUDFLARE_TUNNEL_TOKEN: "${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in git-ignored deploy/nas/.env}"
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+      - --token
+      - "${CLOUDFLARE_TUNNEL_TOKEN}"
+    # No `ports:` — outbound-only connector. No secrets/token/auth volumes mounted.
+    restart: "no"

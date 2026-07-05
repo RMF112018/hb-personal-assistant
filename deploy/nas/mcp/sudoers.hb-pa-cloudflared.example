@@ -1,0 +1,4 @@
+# Example sudoers fragment — install only after operator review, at the live-activation step.
+# Validates with: visudo -cf /etc/sudoers.d/hb-pa-cloudflared
+# Grants bfetting exactly the fixed-verb connector runner (no wildcards, no docker/shell passthrough).
+bfetting ALL=(root) NOPASSWD: /volume2/personal-assistant/bin/cloudflared-runner
