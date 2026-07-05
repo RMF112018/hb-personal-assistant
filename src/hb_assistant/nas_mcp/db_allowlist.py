@@ -14,12 +14,14 @@ class TableAllowSpec:
     order_by_columns: tuple[str, ...]
 
 
-# Production proposal — disabled by default until operator approval.
+# Production allowlist. The applied-schema-version ledger is the real table
+# ``schema_migrations`` (columns version/name/applied_at) — an earlier entry named a
+# non-existent ``schema_version`` table and would have failed at query time.
 PRODUCTION_TABLE_PROPOSAL: dict[str, TableAllowSpec] = {
     "schema_version": TableAllowSpec(
         table_key="schema_version",
-        table_name="schema_version",
-        columns=("version", "applied_at"),
+        table_name="schema_migrations",
+        columns=("version", "name", "applied_at"),
         order_by_columns=("version",),
     ),
 }

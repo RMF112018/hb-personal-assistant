@@ -6,6 +6,7 @@ import time
 import uuid
 from typing import Any
 
+from . import freshness, limits
 from .audit import NasMcpAuditWriter
 from .config import NasMcpConfig
 from .db_allowlist import list_allowlisted_table_keys
@@ -31,8 +32,9 @@ from .output_tools import (
     hb_output_stat,
     hb_output_write_file,
 )
+from .overrides import OverrideStore
 from .path_safe import PathAccessError
-from .profile import AI_OUTPUTS_WRITE_TOOL, blocked_write_tools, gate_status
+from .profile import AI_OUTPUTS_WRITE_TOOL, blocked_write_tools, gate_status, safe_mode_enabled
 from .root_policy import RootPolicyError
 from .root_tools import (
     hb_root_list,
@@ -54,11 +56,32 @@ OBSIDIAN_WRITE_TOOLS = frozenset(
     }
 )
 
+# Read-only freshness/status tools (Tier 0) — always allowed (even in safe mode), never write.
+FRESHNESS_TOOLS = frozenset(
+    {"hb_data_freshness", "hb_queue_status", "hb_recent_failures", "hb_last_successful_runs", "hb_capability_mode"}
+)
+
+
+def _capability_tier(tool_name: str, write_attempted: bool) -> int:
+    if tool_name in DENIED_TOOL_NAMES:
+        return 5
+    if tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_write") or tool_name == "hb_output_create_dir":
+        return 4
+    if tool_name == AI_OUTPUTS_WRITE_TOOL:
+        return 3
+    if tool_name in FRESHNESS_TOOLS or tool_name == "hb_mcp_status":
+        return 0
+    return 1
+
 
 class NasMcpBroker:
     def __init__(self, config: NasMcpConfig) -> None:
         self._config = config
         self._audit = NasMcpAuditWriter(config.audit_dir)
+        self._concurrency = limits.ConcurrencyLimiter(limits.max_concurrent_calls(config))
+        self._override_store: OverrideStore | None = (
+            OverrideStore(config.override_store_path) if config.override_store_path else None
+        )
 
     def dispatch(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
@@ -71,6 +94,8 @@ class NasMcpBroker:
             or tool_name == AI_OUTPUTS_WRITE_TOOL
         )
         auth = get_auth_context()
+        client_label = auth.client_label if auth else "any"
+        safe_mode = safe_mode_enabled()
         base_audit = {
             "request_id": request_id,
             "tool_name": tool_name,
@@ -87,20 +112,49 @@ class NasMcpBroker:
             "relative_path": relative_path,
             "operation": tool_name,
             "write_attempted": write_attempted,
+            "safe_mode": safe_mode,
+            "capability_tier": _capability_tier(tool_name, write_attempted),
         }
         if tool_name in DENIED_TOOL_NAMES:
             return self._deny(base_audit, "action_denied_by_policy", started)
+        # Safe mode: deny every mutation, keep reads/status/freshness. Before the profile
+        # gate so an incident lockdown is unconditional.
+        if safe_mode and write_attempted:
+            return self._deny(base_audit, f"safe_mode_active:{tool_name}", started)
         if tool_name in blocked_write_tools():
             return self._deny(base_audit, f"write_tool_blocked_by_profile:{tool_name}", started)
         # Optional per-token narrowing: a token may carry an allowed_tools allowlist that
         # further restricts (never broadens) what the profile already permits.
         if auth and auth.allowed_tools and tool_name not in auth.allowed_tools:
             return self._deny(base_audit, f"tool_not_in_token_scope:{tool_name}", started)
+        # Per-window AI-Outputs write limiter (override-aware, fail-closed on limit AND on
+        # unreadable/corrupt receipt state).
+        if tool_name == AI_OUTPUTS_WRITE_TOOL:
+            window = limits.check_write_window(self._config, client_label, self._override_store)
+            if window["override_id"]:
+                base_audit["override_id"] = window["override_id"]
+            if not window["allowed"]:
+                reason = window["reason"] or limits.DENY_WRITE_RATE
+                base_audit["rate_limit_result"] = reason
+                return self._deny(base_audit, reason, started)
+        # Concurrency cap (best-effort under uvicorn threading).
+        if not self._concurrency.try_acquire():
+            base_audit["rate_limit_result"] = limits.DENY_CONCURRENCY
+            return self._deny(base_audit, limits.DENY_CONCURRENCY, started)
         try:
-            result = self._invoke(tool_name, arguments)
+            # Resolve effective (env + raise-only override) size/row/search/card limits.
+            eff_config, override_ids = limits.apply_effective_limits(
+                self._config, client_label, self._override_store
+            )
+            if override_ids:
+                base_audit.setdefault("override_id", override_ids[0])
+            result = self._invoke(tool_name, arguments, eff_config)
         except (DbSelectError, FsToolError, PathAccessError, RootPolicyError, KeyError, ValueError, TypeError) as exc:
             return self._deny(base_audit, str(exc), started)
+        finally:
+            self._concurrency.release()
         duration_ms = int((time.perf_counter() - started) * 1000)
+        timeout_s = limits.resolve_int_limit(limits.SCOPE_TIMEOUT, self._config)
         audit = {
             **base_audit,
             "decision": "allow",
@@ -116,6 +170,9 @@ class NasMcpBroker:
             "overwrite_applied": result.get("overwrite_applied"),
             "created_dirs": result.get("created"),
             "sha256_prefix": result.get("sha256_prefix"),
+            # Best-effort timeout: flagged post-hoc (hard pre-emption of sync tools is a
+            # documented HOLD). Static per-call bounds + concurrency cap bound real work.
+            "slow_tool": duration_ms > timeout_s * 1000,
         }
         self._audit.write(audit)
         return {"ok": True, "tool": tool_name, "result": result, "request_id": request_id}
@@ -143,8 +200,19 @@ class NasMcpBroker:
         self._audit.write(event)
         return {"ok": False, "tool": base["tool_name"], "error": reason, "request_id": base["request_id"]}
 
-    def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        cfg = self._config
+    def _invoke(self, tool_name: str, arguments: dict[str, Any], config: NasMcpConfig | None = None) -> dict[str, Any]:
+        cfg = config or self._config
+        if tool_name == "hb_data_freshness":
+            return freshness.data_freshness(cfg)
+        if tool_name == "hb_queue_status":
+            return freshness.queue_status(cfg)
+        if tool_name == "hb_recent_failures":
+            return freshness.recent_failures(cfg, limit=int(arguments.get("limit", 10)))
+        if tool_name == "hb_last_successful_runs":
+            return freshness.last_successful_runs(cfg)
+        if tool_name == "hb_capability_mode":
+            summary = self._override_store.active_summary() if self._override_store else None
+            return freshness.capability_mode(cfg, summary)
         if tool_name == "hb_mcp_status":
             obsidian_names = set(list_nas_obsidian_tool_names())
             profile_blocked = blocked_write_tools()
@@ -158,6 +226,9 @@ class NasMcpBroker:
                 "obsidian_tools_blocked": blocked,
                 "exposure_profile": gate_status(),
                 "blocked_write_tools": sorted(profile_blocked),
+                "active_override_count": (
+                    self._override_store.active_summary()["active_count"] if self._override_store else 0
+                ),
                 "port_policy": "127.0.0.1:8765 host publish only",
             }
         if tool_name == AI_OUTPUTS_WRITE_TOOL:

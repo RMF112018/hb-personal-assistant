@@ -21,7 +21,7 @@ ALLOWED_CLIENTS = frozenset({"claude", "chatgpt", "grok", "local", "unknown"})
 ALLOWED_MODES = frozenset({"create", "update", "append"})
 MAX_TITLE_LEN = 120
 MAX_REL_PATH_LEN = 200
-MAX_BODY_BYTES = 262_144
+MAX_BODY_BYTES = 262_144  # default; effective cap is config.max_card_bytes (env/override-aware)
 
 _SLUG_STRIP = re.compile(r"[^A-Za-z0-9 _-]+")
 _SLUG_WS = re.compile(r"\s+")
@@ -88,8 +88,9 @@ def ai_outputs_card_upsert(
     ):
         raise AiOutputsError("path_not_allowed")
 
+    card_cap = int(getattr(config, "max_card_bytes", MAX_BODY_BYTES) or MAX_BODY_BYTES)
     body = str(body_markdown)
-    if len(body.encode("utf-8")) > MAX_BODY_BYTES:
+    if len(body.encode("utf-8")) > card_cap:
         raise AiOutputsError("body_too_large")
     tag_list = [str(t) for t in (tags or [])]
 
@@ -117,7 +118,7 @@ def ai_outputs_card_upsert(
                 if expected_sha and str(expected_sha) != current_sha:
                     raise AiOutputsError("sha256_mismatch")
                 new_content = target.read_text(encoding="utf-8").rstrip() + "\n\n" + body.rstrip() + "\n"
-                if len(new_content.encode("utf-8")) > MAX_BODY_BYTES:
+                if len(new_content.encode("utf-8")) > card_cap:
                     raise AiOutputsError("body_too_large")
                 result = mutations.patch_note(ob, path=rel_path, content=new_content, expected_sha256=current_sha, **common)
     except ObsidianMcpToolError as exc:

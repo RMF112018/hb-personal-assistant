@@ -110,6 +110,15 @@ def health_mode() -> str:
     return raw if raw in KNOWN_HEALTH_MODES else HEALTH_MODE_MINIMAL_PUBLIC
 
 
+def safe_mode_enabled() -> bool:
+    """Global incident/safe mode. When on, the surface stays readable (status, freshness,
+    Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
+    ``HB_MCP_SAFE_MODE=1`` (env/config) — there is no MCP tool that toggles it, so a remote
+    LLM can never enable or disable it. Origin auth remains required (safe mode creates no
+    unauthenticated path)."""
+    return _env_bool("HB_MCP_SAFE_MODE") is True
+
+
 def blocked_write_tools() -> frozenset[str]:
     """Tool names denied under the current profile/gate posture."""
     blocked: set[str] = set()
@@ -130,4 +139,5 @@ def gate_status() -> dict[str, object]:
         "legacy_broad_vault_write_enabled": legacy_vault_write_enabled(),
         "origin_auth_required": origin_auth_required(),
         "health_mode": health_mode(),
+        "safe_mode": safe_mode_enabled(),
     }

@@ -69,12 +69,20 @@ class NasMcpConfig:
     max_response_bytes: int = 256_000
     max_write_bytes: int = 262_144
     max_output_file_bytes: int = 1_048_576
+    # N8B safe-mode/limits seams (all env-overridable via HB_MCP_MAX_* — see limits.py).
+    max_search_results: int = 50
+    max_card_bytes: int = 262_144
+    max_ai_outputs_writes_per_window: int = 20
+    write_window_seconds: int = 3600
+    max_concurrent_calls: int = 8
+    tool_timeout_seconds: int = 30
     read_extensions: frozenset[str] = DEFAULT_READ_EXTENSIONS
     output_write_extensions: frozenset[str] = DEFAULT_OUTPUT_WRITE_EXTENSIONS
     denied_name_patterns: tuple[str, ...] = DEFAULT_DENIED_NAME_PATTERNS
     denied_dir_segments: tuple[str, ...] = DEFAULT_DENIED_DIR_SEGMENTS
     actor: str = "bfetting-via-ssh-launcher"
     origin_auth_store_path: Path | None = None
+    override_store_path: Path | None = None
     obsidian: NasObsidianConfig | None = None
 
     @classmethod
@@ -115,6 +123,13 @@ class NasMcpConfig:
                 or app_support / "origin-auth" / "tokens.json"
             )
         )
+        override_store_path = Path(
+            str(
+                os.environ.get("HB_MCP_OVERRIDE_STORE")
+                or mcp.get("override_store_path")
+                or app_support / "origin-auth" / "overrides.json"
+            )
+        )
         roots_raw = mcp.get("roots") if isinstance(mcp.get("roots"), dict) else {}
         roots: dict[str, RootSpec] = {}
         for key, spec in roots_raw.items():
@@ -147,8 +162,15 @@ class NasMcpConfig:
             max_response_bytes=int(limits.get("max_response_bytes", 256_000)),
             max_write_bytes=int(limits.get("max_write_bytes", 262_144)),
             max_output_file_bytes=int(limits.get("max_output_file_bytes", 1_048_576)),
+            max_search_results=int(limits.get("max_search_results", 50)),
+            max_card_bytes=int(limits.get("max_card_bytes", 262_144)),
+            max_ai_outputs_writes_per_window=int(limits.get("max_ai_outputs_writes_per_window", 20)),
+            write_window_seconds=int(limits.get("write_window_seconds", 3600)),
+            max_concurrent_calls=int(limits.get("max_concurrent_calls", 8)),
+            tool_timeout_seconds=int(limits.get("tool_timeout_seconds", 30)),
             actor=str(mcp.get("actor", "bfetting-via-ssh-launcher")),
             origin_auth_store_path=origin_auth_store_path,
+            override_store_path=override_store_path,
             obsidian=obsidian,
         )
 

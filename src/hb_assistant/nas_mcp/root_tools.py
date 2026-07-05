@@ -43,7 +43,7 @@ def hb_root_search(
     assert_read(config, root_key)
     listing = hb_root_list(config=config, root_key=root_key, relative_path=relative_path)
     q = query.lower()
-    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_list_entries)]
+    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_search_results)]
     return {"root_key": root_key, "query": query, "matches": matches, "match_count": len(matches)}
 
 

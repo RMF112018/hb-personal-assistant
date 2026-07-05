@@ -136,7 +136,7 @@ def hb_secure_read_excerpt(
 def hb_vault_search(*, config: NasMcpConfig, query: str, relative_path: str = ".", limit: int = 25) -> dict[str, Any]:
     listing = hb_secure_list(config=config, root_key="vault", relative_path=relative_path, max_entries=config.max_list_entries)
     q = query.lower()
-    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_list_entries)]
+    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_search_results)]
     return {"root_key": "vault", "query": query, "matches": matches, "match_count": len(matches)}
 
 
@@ -149,7 +149,7 @@ def hb_source_root_search(
 ) -> dict[str, Any]:
     listing = hb_secure_list(config=config, root_key=root_key, relative_path=relative_path, max_entries=config.max_list_entries)
     q = query.lower()
-    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_list_entries)]
+    matches = [e for e in listing["entries"] if q in e["name"].lower()][: min(limit, config.max_search_results)]
     return {"root_key": root_key, "query": query, "matches": matches, "match_count": len(matches)}
 
 
