@@ -2824,6 +2824,252 @@ export function getForecastHolidayCalendars() {
 }
 
 /* Convenience aggregate for pages that prefer a single object. */
+/* Assistant (read-only second-brain browser) surfaces — GET-only; every response carries `guardrails`. */
+export interface AssistantSourceSearchResult {
+  result_type?: string
+  source_id?: string
+  path?: string
+  project_key?: string
+  score?: number
+  snippet?: string
+}
+
+export interface AssistantSourcesResponse {
+  sources: AssistantSourceSearchResult[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantSources(
+  q: string,
+  opts?: { limit?: number; projectKey?: string },
+): Promise<AssistantSourcesResponse> {
+  const params = new URLSearchParams({ q })
+  if (opts?.limit != null) params.set('limit', String(opts.limit))
+  if (opts?.projectKey) params.set('project_key', opts.projectKey)
+  return fetchJson(`/api/assistant/sources?${params.toString()}`)
+}
+
+export interface AssistantSourceDetail {
+  source_id?: string
+  source_kind?: string
+  source_root_key?: string
+  rel_path?: string
+  text_excerpt?: string
+  [key: string]: any
+}
+
+export interface AssistantSourceResponse {
+  source?: AssistantSourceDetail
+  card?: any
+  is_duplicate?: boolean
+  active_card_paths?: string[]
+  guardrails?: any
+}
+
+export function getAssistantSource(sourceId: string): Promise<AssistantSourceResponse> {
+  return fetchJson(`/api/assistant/sources/${encodeURIComponent(sourceId)}`)
+}
+
+export interface AssistantSourceCardResponse {
+  source_id?: string
+  card?: any
+  is_duplicate?: boolean
+  active_card_paths?: string[]
+  guardrails?: any
+}
+
+export function getAssistantSourceCard(sourceId: string): Promise<AssistantSourceCardResponse> {
+  return fetchJson(`/api/assistant/sources/${encodeURIComponent(sourceId)}/card`)
+}
+
+export interface AssistantSourceStateResponse {
+  source_id?: string
+  state?: string
+  card_paths?: string[]
+  reason?: string
+  legacy_flags?: any
+  guardrails?: any
+}
+
+export function getAssistantSourceState(sourceId: string): Promise<AssistantSourceStateResponse> {
+  return fetchJson(`/api/assistant/sources/${encodeURIComponent(sourceId)}/state`)
+}
+
+export interface AssistantRelatedItem {
+  dst_kind?: string
+  dst_ref?: string
+  relation?: string
+  confidence?: number
+  evidence?: any
+  dst_rel_path?: string
+}
+
+export interface AssistantSourceRelatedResponse {
+  source_id?: string
+  related: AssistantRelatedItem[]
+  count?: number
+  guardrails?: any
+}
+
+export function getAssistantSourceRelated(sourceId: string): Promise<AssistantSourceRelatedResponse> {
+  return fetchJson(`/api/assistant/sources/${encodeURIComponent(sourceId)}/related`)
+}
+
+export interface AssistantCardSearchResult {
+  result_type?: string
+  source_id?: string
+  path?: string
+  tags?: string[]
+  score?: number
+  snippet?: string
+}
+
+export interface AssistantCardsSearchResponse {
+  cards: AssistantCardSearchResult[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantCardsSearch(
+  q: string,
+  opts?: { limit?: number; pathPrefix?: string },
+): Promise<AssistantCardsSearchResponse> {
+  const params = new URLSearchParams({ q })
+  if (opts?.limit != null) params.set('limit', String(opts.limit))
+  if (opts?.pathPrefix) params.set('path_prefix', opts.pathPrefix)
+  return fetchJson(`/api/assistant/cards/search?${params.toString()}`)
+}
+
+export interface AssistantCardSourceResponse {
+  note_rel_path?: string
+  resolution?: string
+  source_id?: string
+  sources?: any[]
+  count?: number
+  guardrails?: any
+}
+
+export function getAssistantCardSource(noteRelPath: string): Promise<AssistantCardSourceResponse> {
+  const params = new URLSearchParams({ note_rel_path: noteRelPath })
+  return fetchJson(`/api/assistant/card-source?${params.toString()}`)
+}
+
+export interface AssistantStaleCard {
+  source_id?: string
+  note_rel_path?: string
+}
+
+export interface AssistantStaleCardsResponse {
+  stale_cards: AssistantStaleCard[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantStaleCards(limit?: number): Promise<AssistantStaleCardsResponse> {
+  const params = new URLSearchParams()
+  if (limit != null) params.set('limit', String(limit))
+  const qs = params.toString()
+  return fetchJson(`/api/assistant/cards/stale${qs ? `?${qs}` : ''}`)
+}
+
+export interface AssistantDuplicateCard {
+  source_id?: string
+  active_card_paths?: string[]
+  card_count?: number
+}
+
+export interface AssistantDuplicateCardsResponse {
+  duplicate_cards: AssistantDuplicateCard[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantDuplicateCards(limit?: number): Promise<AssistantDuplicateCardsResponse> {
+  const params = new URLSearchParams()
+  if (limit != null) params.set('limit', String(limit))
+  const qs = params.toString()
+  return fetchJson(`/api/assistant/cards/duplicates${qs ? `?${qs}` : ''}`)
+}
+
+export interface AssistantAmbiguousCardLink {
+  note_rel_path?: string
+  source_ids?: string[]
+  source_count?: number
+}
+
+export interface AssistantAmbiguousCardLinksResponse {
+  ambiguous_card_links: AssistantAmbiguousCardLink[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantAmbiguousCardLinks(
+  limit?: number,
+): Promise<AssistantAmbiguousCardLinksResponse> {
+  const params = new URLSearchParams()
+  if (limit != null) params.set('limit', String(limit))
+  const qs = params.toString()
+  return fetchJson(`/api/assistant/cards/ambiguous${qs ? `?${qs}` : ''}`)
+}
+
+export interface AssistantRecentChange {
+  event_id?: string
+  source_id?: string
+  rel_path?: string
+  source_root_key?: string
+  event_type?: string
+  status?: string
+  created_at?: string
+}
+
+export interface AssistantRecentChangesResponse {
+  changes: AssistantRecentChange[]
+  count?: number
+  limit?: number
+  truncated?: boolean
+  guardrails?: any
+}
+
+export function getAssistantRecentChanges(
+  limit?: number,
+  eventTypes?: string[],
+): Promise<AssistantRecentChangesResponse> {
+  const params = new URLSearchParams()
+  if (limit != null) params.set('limit', String(limit))
+  if (eventTypes?.length) params.set('event_types', eventTypes.join(','))
+  const qs = params.toString()
+  return fetchJson(`/api/assistant/recent-changes${qs ? `?${qs}` : ''}`)
+}
+
+export interface AssistantVaultNoteResponse {
+  path?: string
+  file_type?: string
+  content?: string
+  metadata?: any
+  note_type?: string
+  guardrails?: any
+}
+
+export function getAssistantVaultNote(
+  noteRelPath: string,
+  maxChars?: number,
+): Promise<AssistantVaultNoteResponse> {
+  const params = new URLSearchParams({ note_rel_path: noteRelPath })
+  if (maxChars != null) params.set('max_chars', String(maxChars))
+  return fetchJson(`/api/assistant/vault-note?${params.toString()}`)
+}
+
 export const api = {
   getProjectStaffingConfig,
   createProjectStaffingConfig,
@@ -3064,6 +3310,19 @@ export const api = {
   saveForecastRuntimeConfig,
   repairForecastRuntimeStorage,
   resetForecastRuntimeDefaults,
+  // Assistant — read-only second-brain browser (sources/cards/recent-changes). GET-only.
+  getAssistantSources,
+  getAssistantSource,
+  getAssistantSourceCard,
+  getAssistantSourceState,
+  getAssistantSourceRelated,
+  getAssistantCardsSearch,
+  getAssistantCardSource,
+  getAssistantStaleCards,
+  getAssistantDuplicateCards,
+  getAssistantAmbiguousCardLinks,
+  getAssistantRecentChanges,
+  getAssistantVaultNote,
 };
 
 export default api;

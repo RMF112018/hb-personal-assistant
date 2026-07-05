@@ -2520,6 +2520,123 @@ def create_app(*, db_path: str | None = None) -> Any:
                 result["watcher"] = watcher.status(config=_fresh_obsidian_config())
         return result
 
+    # ----- N8C-3 read-only source/card/note navigation (local UI surface) -----------------
+    # All GET, all-roles, read-only. Delegates to the shared obsidian_mcp.source_navigation service
+    # over a live-DB SourceIndexRepository. No writes, no raw SQL/fs; relative paths only.
+    def _assistant_nav() -> tuple[Any, Any]:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp import source_navigation as nav
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        return nav, SourceIndexRepository(db_path or str(PathPolicy().get_db_path()))
+
+    def _assistant_env(payload: dict[str, Any]) -> dict[str, Any]:
+        return {**payload, "guardrails": _guardrails()}
+
+    @app.get("/api/assistant/sources")
+    def assistant_sources(
+        role: dict[str, str] = role_dep,
+        q: str = Query(default=""),
+        limit: int = Query(default=25),
+        project_key: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.search_sources(repo, q, limit=limit, project_key=project_key))
+
+    @app.get("/api/assistant/sources/{source_id}")
+    def assistant_source(source_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        nav, repo = _assistant_nav()
+        result = nav.get_source(repo, source_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="source_not_found")
+        return _assistant_env(result)
+
+    @app.get("/api/assistant/sources/{source_id}/card")
+    def assistant_source_card(source_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.get_card_for_source(repo, source_id))
+
+    @app.get("/api/assistant/sources/{source_id}/state")
+    def assistant_source_state(source_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.get_card_state(repo, _fresh_obsidian_config(), source_id))
+
+    @app.get("/api/assistant/sources/{source_id}/related")
+    def assistant_source_related(source_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.get_related_sources(repo, source_id))
+
+    @app.get("/api/assistant/cards/search")
+    def assistant_cards_search(
+        role: dict[str, str] = role_dep,
+        q: str = Query(default=""),
+        limit: int = Query(default=25),
+        path_prefix: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.search_cards(repo, q, limit=limit, path_prefix=path_prefix))
+
+    @app.get("/api/assistant/cards/stale")
+    def assistant_cards_stale(role: dict[str, str] = role_dep, limit: int = Query(default=25)) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.list_stale_cards(repo, limit=limit))
+
+    @app.get("/api/assistant/cards/duplicates")
+    def assistant_cards_duplicates(role: dict[str, str] = role_dep, limit: int = Query(default=25)) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.list_duplicate_cards(repo, limit=limit))
+
+    @app.get("/api/assistant/cards/ambiguous")
+    def assistant_cards_ambiguous(role: dict[str, str] = role_dep, limit: int = Query(default=25)) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.list_ambiguous_card_links(repo, limit=limit))
+
+    @app.get("/api/assistant/card-source")
+    def assistant_card_source(role: dict[str, str] = role_dep, note_rel_path: str = Query(default="")) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        return _assistant_env(nav.get_source_for_card(repo, note_rel_path))
+
+    @app.get("/api/assistant/recent-changes")
+    def assistant_recent_changes(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=25),
+        event_types: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        nav, repo = _assistant_nav()
+        types = tuple(t.strip() for t in event_types.split(",") if t.strip()) if event_types else None
+        return _assistant_env(nav.recent_changes(repo, limit=limit, event_types=types))
+
+    @app.get("/api/assistant/vault-note")
+    def assistant_vault_note(
+        role: dict[str, str] = role_dep,
+        note_rel_path: str = Query(default=""),
+        max_chars: int | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import source_navigation as nav
+        from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
+
+        try:
+            result = nav.get_vault_note(_fresh_obsidian_config(), note_rel_path, max_chars=max_chars)
+        except ObsidianMcpToolError as exc:
+            raise HTTPException(status_code=400, detail=str(getattr(exc, "code", exc))) from exc
+        return _assistant_env(result)
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

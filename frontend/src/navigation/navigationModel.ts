@@ -16,6 +16,7 @@ export const PRIMARY_NAV: NavItem[] = [
 
 export const SUPPORT_NAV: NavItem[] = [
   { label: 'Data Health', route: '/admin' },
+  { label: 'Assistant', route: '/assistant' },
   { label: 'Settings', route: '/settings' },
 ]
 
@@ -78,6 +79,7 @@ export function getRouteTitleForPath(path: string): string {
   if (path.startsWith('/forecasting/')) return 'Forecast Package'
   if (path.startsWith('/forecasting')) return 'Forecasting'
   if (path.startsWith('/admin')) return 'Data Health'
+  if (path.startsWith('/assistant')) return 'Assistant'
   if (path.startsWith('/settings')) return 'Settings'
   // Prompt D
   if (path.startsWith('/get-started')) return 'Get Started'

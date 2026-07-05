@@ -110,6 +110,18 @@ def health_mode() -> str:
     return raw if raw in KNOWN_HEALTH_MODES else HEALTH_MODE_MINIMAL_PUBLIC
 
 
+def assistant_nav_enabled() -> bool:
+    """N8C-3 read-only source/card/note navigation tools (``assistant_*``).
+
+    These are **reads only** — they never write, so they are independent of the three write gates
+    and are enabled by DEFAULT (operator-authorized full-content navigation of the personal
+    knowledge base). Origin auth still applies (hard-on in ``remote_cloudflare``), so the tools are
+    only reachable by an authenticated caller. Kill-switch: ``HB_MCP_ASSISTANT_NAV=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_NAV")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -150,4 +162,5 @@ def gate_status() -> dict[str, object]:
         "health_mode": health_mode(),
         "safe_mode": safe_mode_enabled(),
         "oauth_enabled": oauth_enabled(),
+        "assistant_nav_enabled": assistant_nav_enabled(),
     }

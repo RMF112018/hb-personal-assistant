@@ -7,7 +7,12 @@ from typing import Any
 
 from .broker import NasMcpBroker
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
-from .profile import ai_outputs_write_enabled, blocked_write_tools, scratch_output_write_enabled
+from .profile import (
+    ai_outputs_write_enabled,
+    assistant_nav_enabled,
+    blocked_write_tools,
+    scratch_output_write_enabled,
+)
 
 
 def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
@@ -120,6 +125,65 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         if not payload.get("ok"):
             raise ValueError(str(payload.get("error")))
         return payload["result"]
+
+    # N8C-3 read-only source/card/note navigation (assistant_*). Reads only; enabled by default
+    # (operator-authorized full-content navigation). Origin auth still applies. Each forwards to the
+    # broker, which serves them from a read-only DB snapshot (query_only) with no live-DB fallback.
+    def _assistant_result(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        payload = broker.dispatch(name, arguments)
+        if not payload.get("ok"):
+            raise ValueError(str(payload.get("error")))
+        return payload["result"]
+
+    if assistant_nav_enabled():
+
+        @mcp.tool()
+        def assistant_search_sources(query: str, limit: int = 25, project_key: str | None = None) -> dict[str, Any]:
+            return _assistant_result("assistant_search_sources", {"query": query, "limit": limit, "project_key": project_key})
+
+        @mcp.tool()
+        def assistant_get_source(source_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_source", {"source_id": source_id})
+
+        @mcp.tool()
+        def assistant_get_card_for_source(source_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_card_for_source", {"source_id": source_id})
+
+        @mcp.tool()
+        def assistant_get_source_for_card(note_rel_path: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_source_for_card", {"note_rel_path": note_rel_path})
+
+        @mcp.tool()
+        def assistant_search_cards(query: str, limit: int = 25, path_prefix: str | None = None) -> dict[str, Any]:
+            return _assistant_result("assistant_search_cards", {"query": query, "limit": limit, "path_prefix": path_prefix})
+
+        @mcp.tool()
+        def assistant_get_card_state(source_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_card_state", {"source_id": source_id})
+
+        @mcp.tool()
+        def assistant_list_stale_cards(limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_stale_cards", {"limit": limit})
+
+        @mcp.tool()
+        def assistant_list_duplicate_cards(limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_duplicate_cards", {"limit": limit})
+
+        @mcp.tool()
+        def assistant_list_ambiguous_card_links(limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_ambiguous_card_links", {"limit": limit})
+
+        @mcp.tool()
+        def assistant_recent_changes(limit: int = 25, event_types: list[str] | None = None) -> dict[str, Any]:
+            return _assistant_result("assistant_recent_changes", {"limit": limit, "event_types": event_types})
+
+        @mcp.tool()
+        def assistant_get_related_sources(source_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_related_sources", {"source_id": source_id})
+
+        @mcp.tool()
+        def assistant_get_vault_note(note_rel_path: str, max_chars: int | None = None) -> dict[str, Any]:
+            return _assistant_result("assistant_get_vault_note", {"note_rel_path": note_rel_path, "max_chars": max_chars})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

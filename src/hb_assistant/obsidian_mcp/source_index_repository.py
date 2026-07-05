@@ -425,6 +425,30 @@ class SourceIndexRepository:
             ).fetchall()
         return [{"source_id": r[0], "note_rel_path": r[1]} for r in rows]
 
+    def list_recent_events(self, *, limit: int = 25, event_types: tuple[str, ...] | None = None,
+                           conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Most-recent indexer events (created/modified/deleted/reindex/rebuild), newest first.
+
+        Read-only audit-trail reader for "what changed recently". ``event_types`` optionally narrows
+        by bound parameters (no SQL interpolation). Returns event_id, source_id, rel_path,
+        source_root_key, event_type, status, created_at.
+        """
+        params: list[Any] = []
+        sql = (
+            "SELECT event_id, source_id, rel_path, source_root_key, event_type, status, created_at "
+            "FROM source_intelligence_events "
+        )
+        types = tuple(event_types) if event_types else ()
+        if types:
+            sql += "WHERE event_type IN (%s) " % ",".join("?" for _ in types)
+            params.extend(types)
+        sql += "ORDER BY created_at DESC, event_id DESC LIMIT ?"
+        params.append(int(limit))
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(sql, params).fetchall()
+        return [{"event_id": r[0], "source_id": r[1], "rel_path": r[2], "source_root_key": r[3],
+                 "event_type": r[4], "status": r[5], "created_at": r[6]} for r in rows]
+
     def list_generated_notes(self, *, statuses: tuple[str, ...] = ("generated",),
                              conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         """Generated-note rows joined to their source (rel_path/kind) — for maintenance scans.

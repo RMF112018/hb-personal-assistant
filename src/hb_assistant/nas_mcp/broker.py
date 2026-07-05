@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import time
 import uuid
 from typing import Any
@@ -10,7 +11,7 @@ from . import freshness, limits
 from .audit import NasMcpAuditWriter
 from .config import NasMcpConfig
 from .db_allowlist import list_allowlisted_table_keys
-from .db_tools import DbSelectError, hb_db_select
+from .db_tools import DbSelectError, _ro_uri, hb_db_select
 from .fs_tools import (
     FsToolError,
     hb_secure_list,
@@ -34,7 +35,13 @@ from .output_tools import (
 )
 from .overrides import OverrideStore
 from .path_safe import PathAccessError
-from .profile import AI_OUTPUTS_WRITE_TOOL, blocked_write_tools, gate_status, safe_mode_enabled
+from .profile import (
+    AI_OUTPUTS_WRITE_TOOL,
+    assistant_nav_enabled,
+    blocked_write_tools,
+    gate_status,
+    safe_mode_enabled,
+)
 from .root_policy import RootPolicyError
 from .root_tools import (
     hb_root_list,
@@ -45,6 +52,23 @@ from .root_tools import (
 )
 
 DENIED_TOOL_NAMES = frozenset({"raw_sql", "sql", "shell", "exec", "read_file_absolute", "hb_output_delete"})
+
+# N8C-3 read-only source/card/note navigation tools (reads only; never write). Operator-authorized to
+# return complete content; served from a read-only DB snapshot with no live-DB fallback.
+ASSISTANT_NAV_TOOLS = (
+    "assistant_search_sources",
+    "assistant_get_source",
+    "assistant_get_card_for_source",
+    "assistant_get_source_for_card",
+    "assistant_search_cards",
+    "assistant_get_card_state",
+    "assistant_list_stale_cards",
+    "assistant_list_duplicate_cards",
+    "assistant_list_ambiguous_card_links",
+    "assistant_recent_changes",
+    "assistant_get_related_sources",
+    "assistant_get_vault_note",
+)
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
     {
@@ -229,6 +253,8 @@ class NasMcpBroker:
                 "obsidian_tools_enabled": enabled,
                 "obsidian_tools_blocked": blocked,
                 "exposure_profile": gate_status(),
+                "assistant_nav_enabled": assistant_nav_enabled(),
+                "assistant_nav_tools": list(ASSISTANT_NAV_TOOLS) if assistant_nav_enabled() else [],
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -248,6 +274,10 @@ class NasMcpBroker:
                 mode=str(arguments.get("mode", "create")),
                 domain=str(arguments.get("domain", "unknown")),
             )
+        if tool_name.startswith("assistant_"):
+            if not assistant_nav_enabled():
+                raise ValueError("assistant_nav_disabled")
+            return self._invoke_assistant(cfg, tool_name, arguments)
         if tool_name == "hb_db_select":
             return hb_db_select(
                 config=cfg,
@@ -335,3 +365,62 @@ class NasMcpBroker:
         if tool_name in list_nas_obsidian_tool_names() or tool_name in NAS_OBSIDIAN_BLOCKED:
             return dispatch_obsidian_tool(cfg, tool_name, arguments)
         raise KeyError(f"tool_not_registered: {tool_name}")
+
+    def _invoke_assistant(self, cfg: NasMcpConfig, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only ``assistant_*`` navigation tool over a READ-ONLY DB snapshot.
+
+        The snapshot connection is opened ``mode=ro&immutable=1`` + ``PRAGMA query_only=ON`` (the same
+        posture the freshness/DB tools use) and threaded via ``conn=`` into the shared
+        :mod:`hb_assistant.obsidian_mcp.source_navigation` service — so these tools physically cannot
+        write and never fall back to a live/writable DB handle. Bad input raises (``ValueError`` /
+        ``KeyError`` / ``ObsidianMcpToolError``), which the caller maps to a deny.
+        """
+        from hb_assistant.obsidian_mcp import source_navigation as nav
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        from .obsidian_config import apply_obsidian_support_env, obsidian_config_from_nas
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = SourceIndexRepository(str(cfg.db_path))
+            if tool_name == "assistant_search_sources":
+                return nav.search_sources(repo, str(arguments.get("query", "")), limit=_limit(),
+                                          project_key=arguments.get("project_key"), conn=conn)
+            if tool_name == "assistant_get_source":
+                result = nav.get_source(repo, str(arguments["source_id"]), conn=conn)
+                if result is None:
+                    raise ValueError("source_not_found")
+                return result
+            if tool_name == "assistant_get_card_for_source":
+                return nav.get_card_for_source(repo, str(arguments["source_id"]), conn=conn)
+            if tool_name == "assistant_get_source_for_card":
+                return nav.get_source_for_card(repo, str(arguments["note_rel_path"]), conn=conn)
+            if tool_name == "assistant_search_cards":
+                return nav.search_cards(repo, str(arguments.get("query", "")), limit=_limit(),
+                                        path_prefix=arguments.get("path_prefix"), conn=conn)
+            if tool_name == "assistant_list_stale_cards":
+                return nav.list_stale_cards(repo, limit=_limit(), conn=conn)
+            if tool_name == "assistant_list_duplicate_cards":
+                return nav.list_duplicate_cards(repo, limit=_limit(), conn=conn)
+            if tool_name == "assistant_list_ambiguous_card_links":
+                return nav.list_ambiguous_card_links(repo, limit=_limit(), conn=conn)
+            if tool_name == "assistant_recent_changes":
+                ets = arguments.get("event_types")
+                types = tuple(str(x) for x in ets) if isinstance(ets, list) and ets else None
+                return nav.recent_changes(repo, limit=_limit(), event_types=types, conn=conn)
+            if tool_name == "assistant_get_related_sources":
+                return nav.get_related_sources(repo, str(arguments["source_id"]), conn=conn)
+            if tool_name in ("assistant_get_card_state", "assistant_get_vault_note"):
+                apply_obsidian_support_env(cfg)
+                obs = obsidian_config_from_nas(cfg)
+                if tool_name == "assistant_get_card_state":
+                    return nav.get_card_state(repo, obs, str(arguments["source_id"]), conn=conn)
+                return nav.get_vault_note(obs, str(arguments.get("note_rel_path", "")),
+                                         max_chars=arguments.get("max_chars"))
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()

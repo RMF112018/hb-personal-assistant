@@ -47,6 +47,7 @@ import { ScheduleCostWeightingPage } from '../pages/ScheduleCostWeightingPage'
 import { DataHealthPage } from '../pages/DataHealthPage'
 import { SettingsPage } from '../pages/SettingsPage'
 import { GetStartedPage } from '../pages/GetStartedPage'
+import { AssistantPage } from '../pages/AssistantPage'
 import { fetchOnboardingReadiness } from '../hooks/useOnboardingReadiness'
 
 // Root layout using the required AppShell (provides primary + support nav + header + outlet)
@@ -333,6 +334,11 @@ const router = createBrowserRouter([
         path: 'forecasting/:packageId',
         element: <ForecastPackagePage />,
         handle: { title: 'Forecast Package' },
+      },
+      {
+        path: 'assistant',
+        element: <AssistantPage />,
+        handle: { title: 'Assistant' },
       },
       {
         path: 'admin',
