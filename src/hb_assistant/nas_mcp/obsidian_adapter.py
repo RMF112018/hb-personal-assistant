@@ -55,6 +55,29 @@ NAS_OBSIDIAN_BLOCKED: dict[str, str] = {
 }
 
 
+def _capint(args: dict[str, Any], key: str, default: int) -> int:
+    """Coerce an optional positive-cap int (e.g. ``max_files``) to the tool's own
+    default when absent/None.
+
+    The MCP input schema exposes these caps as optional, so an omitted value
+    arrives here as ``None``. The underlying vault tools declare them as
+    non-optional ``int`` (``max_files: int = N``) and compare ``len(...) >= cap``,
+    so passing ``None`` raises ``'>=' not supported between 'int' and 'NoneType'``.
+    Pass the tool's documented default instead of ``None``.
+    """
+    value = args.get(key)
+    return default if value is None else int(value)
+
+
+def _opt_list(args: dict[str, Any], key: str) -> list[Any] | None:
+    """Return an optional list-typed arg, or None. The merged NAS input schema is
+    untyped, so a client may omit it (None) or send a non-list (e.g. a bool); the
+    underlying tool expects ``list | None`` and would raise on a bool. Coerce
+    anything that is not a list to None so the tool applies its own default."""
+    value = args.get(key)
+    return value if isinstance(value, list) else None
+
+
 def _normalize(payload: Any) -> Any:
     if isinstance(payload, dict):
         out: dict[str, Any] = {}
@@ -89,9 +112,9 @@ def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str
         "read_file": lambda: tools.read_file(ob, path=str(args["path"]), start_page=args.get("start_page"), end_page=args.get("end_page"), section=args.get("section"), max_chars=args.get("max_chars")),
         "create_note": lambda: mutations.create_note(ob, path=str(args["path"]), content=str(args["content"]), overwrite=bool(args.get("overwrite", False)), create_parent_dirs=bool(args.get("create_parent_dirs", True)), expected_sha256=args.get("expected_sha256"), caller_surface="nas_mcp"),
         "patch_note": lambda: mutations.patch_note(ob, path=str(args["path"]), content=str(args["content"]), expected_sha256=str(args["expected_sha256"]), caller_surface="nas_mcp"),
-        "vault_map": lambda: curation.vault_map(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), file_types=args.get("file_types"), include_hidden=bool(args.get("include_hidden", False)), include_frontmatter=bool(args.get("include_frontmatter", False)), include_links=bool(args.get("include_links", False)), include_tags=bool(args.get("include_tags", False)), max_files=args.get("max_files")),
+        "vault_map": lambda: curation.vault_map(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), file_types=args.get("file_types"), include_hidden=bool(args.get("include_hidden", False)), include_frontmatter=bool(args.get("include_frontmatter", False)), include_links=bool(args.get("include_links", False)), include_tags=bool(args.get("include_tags", False)), max_files=_capint(args, "max_files", 500)),
         "vault_summarize_note": lambda: summarize.summarize_note(ob, path=str(args["path"]), max_chars=args.get("max_chars"), summary_style=str(args.get("summary_style", "executive")), include_action_items=bool(args.get("include_action_items", True)), include_decisions=bool(args.get("include_decisions", True)), include_entities=bool(args.get("include_entities", True)), backend=None),
-        "vault_summarize_folder": lambda: summarize.summarize_folder(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), max_files=args.get("max_files"), summary_style=str(args.get("summary_style", "executive")), include_file_summaries=bool(args.get("include_file_summaries", True)), include_themes=bool(args.get("include_themes", True)), include_action_items=bool(args.get("include_action_items", True)), backend=None),
+        "vault_summarize_folder": lambda: summarize.summarize_folder(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), max_files=_capint(args, "max_files", 100), summary_style=str(args.get("summary_style", "executive")), include_file_summaries=bool(args.get("include_file_summaries", True)), include_themes=bool(args.get("include_themes", True)), include_action_items=bool(args.get("include_action_items", True)), backend=None),
         "vault_read_frontmatter": lambda: frontmatter.read_frontmatter(ob, path=str(args["path"])),
         "vault_update_frontmatter": lambda: frontmatter.update_frontmatter(ob, path=str(args["path"]), updates=dict(args.get("updates") or {}), merge_tags=bool(args.get("merge_tags", True)), expected_sha256=str(args["expected_sha256"]), backup_before_replace=bool(args.get("backup_before_replace", True)), caller_surface="nas_mcp"),
         "vault_search_by_properties": lambda: frontmatter.search_by_properties(ob, root_path=str(args.get("root_path", "")), filters=dict(args.get("filters") or {}), tags_any=args.get("tags_any"), tags_all=args.get("tags_all"), limit=int(args.get("limit", 25))),
@@ -105,17 +128,17 @@ def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str
         "vault_rename_note_plan": lambda: fileops.rename_note_plan(ob, source_path=str(args["source_path"]), new_name=str(args["new_name"]), update_links=bool(args.get("update_links", True))),
         "vault_archive_note_plan": lambda: fileops.archive_note_plan(ob, source_path=str(args["source_path"]), update_links=bool(args.get("update_links", True))),
         "vault_delete_note_plan": lambda: fileops.delete_note_plan(ob, source_path=str(args["source_path"]), update_links=bool(args.get("update_links", True))),
-        "vault_curation_plan": lambda: curation.build_curation_plan(ob, root_path=str(args.get("root_path", "")), strategy=str(args.get("strategy", "balanced")), max_depth=args.get("max_depth"), max_files=args.get("max_files"), allowed_actions=args.get("allowed_actions"), dry_run=bool(args.get("dry_run", True))),
-        "vault_create_moc_plan": lambda: curation.build_moc_plan(ob, root_path=str(args.get("root_path", "")), moc_title=str(args.get("moc_title", "")), target_path=str(args.get("target_path", "")), max_files=args.get("max_files"), include_sections=bool(args.get("include_sections", True))),
-        "vault_auto_link_plan": lambda: curation.build_auto_link_plan(ob, root_path=str(args.get("root_path", "")), max_files=args.get("max_files"), min_confidence=float(args.get("min_confidence", 0.5)), max_suggestions=int(args.get("max_suggestions", 10))),
-        "vault_bulk_tagging_plan": lambda: curation.build_bulk_tagging_plan(ob, root_path=str(args.get("root_path", "")), tag_namespace=str(args.get("tag_namespace", "")), max_files=args.get("max_files"), max_suggestions=int(args.get("max_suggestions", 10))),
+        "vault_curation_plan": lambda: curation.build_curation_plan(ob, root_path=str(args.get("root_path", "")), strategy=str(args.get("strategy", "balanced")), max_depth=args.get("max_depth"), max_files=_capint(args, "max_files", 300), allowed_actions=args.get("allowed_actions"), dry_run=bool(args.get("dry_run", True))),
+        "vault_create_moc_plan": lambda: curation.build_moc_plan(ob, root_path=str(args.get("root_path", "")), moc_title=str(args.get("moc_title", "")), target_path=str(args.get("target_path", "")), max_files=_capint(args, "max_files", 100), include_sections=_opt_list(args, "include_sections")),
+        "vault_auto_link_plan": lambda: curation.build_auto_link_plan(ob, root_path=str(args.get("root_path", "")), max_files=_capint(args, "max_files", 200), min_confidence=float(args.get("min_confidence", 0.5)), max_suggestions=int(args.get("max_suggestions", 10))),
+        "vault_bulk_tagging_plan": lambda: curation.build_bulk_tagging_plan(ob, root_path=str(args.get("root_path", "")), tag_namespace=str(args.get("tag_namespace", "")), max_files=_capint(args, "max_files", 200), max_suggestions=int(args.get("max_suggestions", 10))),
         "vault_email_to_note_plan": lambda: curation.build_email_to_note_plan(ob, email_path=str(args["email_path"]), target_folder=str(args.get("target_folder", "")), template_path=args.get("template_path"), link_projects=bool(args.get("link_projects", True)), extract_action_items=bool(args.get("extract_action_items", True)), extract_decisions=bool(args.get("extract_decisions", True)), redact=bool(args.get("redact", True))),
         "vault_read_eml": lambda: __import__("hb_assistant.obsidian_mcp.eml", fromlist=["read_eml"]).read_eml(ob, path=str(args["path"]), include_body=bool(args.get("include_body", True)), include_attachments=bool(args.get("include_attachments", False)), max_body_chars=args.get("max_body_chars"), redact_email_addresses=bool(args.get("redact_email_addresses", True)), redact_phone_numbers=bool(args.get("redact_phone_numbers", True))),
-        "vault_email_inventory": lambda: __import__("hb_assistant.obsidian_mcp.eml", fromlist=["email_inventory"]).email_inventory(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), max_files=args.get("max_files"), include_subject=bool(args.get("include_subject", True)), include_from=bool(args.get("include_from", True)), include_date=bool(args.get("include_date", True)), include_body_preview=bool(args.get("include_body_preview", False))),
+        "vault_email_inventory": lambda: __import__("hb_assistant.obsidian_mcp.eml", fromlist=["email_inventory"]).email_inventory(ob, root_path=str(args.get("root_path", "")), recursive=bool(args.get("recursive", False)), max_depth=args.get("max_depth"), max_files=_capint(args, "max_files", 500), include_subject=bool(args.get("include_subject", True)), include_from=bool(args.get("include_from", True)), include_date=bool(args.get("include_date", True)), include_body_preview=bool(args.get("include_body_preview", False))),
         "vault_parse_email": lambda: __import__("hb_assistant.obsidian_mcp.eml", fromlist=["parse_email"]).parse_email(ob, path=str(args["path"]), extract=args.get("extract"), max_body_chars=args.get("max_body_chars"), redact_email_addresses=bool(args.get("redact_email_addresses", True)), redact_phone_numbers=bool(args.get("redact_phone_numbers", True))),
         "vault_extract_action_items": lambda: domain.extract_action_items(ob, path=str(args["path"]), source_type=str(args.get("source_type", "note")), extract_fields=args.get("extract_fields"), max_chars=args.get("max_chars")),
-        "vault_project_status_summary": lambda: domain.project_status_summary(ob, root_path=str(args.get("root_path", "")), lookback_days=int(args.get("lookback_days", 30)), include=args.get("include"), max_files=args.get("max_files")),
-        "vault_extract_project_mentions": lambda: domain.extract_project_mentions(ob, root_path=str(args.get("root_path", "")), project_aliases=args.get("project_aliases"), max_files=args.get("max_files"), include_snippets=bool(args.get("include_snippets", False))),
+        "vault_project_status_summary": lambda: domain.project_status_summary(ob, root_path=str(args.get("root_path", "")), lookback_days=int(args.get("lookback_days", 30)), include=args.get("include"), max_files=_capint(args, "max_files", 100)),
+        "vault_extract_project_mentions": lambda: domain.extract_project_mentions(ob, root_path=str(args.get("root_path", "")), project_aliases=args.get("project_aliases"), max_files=_capint(args, "max_files", 200), include_snippets=bool(args.get("include_snippets", False))),
     }
 
     handler = handlers.get(tool_name)

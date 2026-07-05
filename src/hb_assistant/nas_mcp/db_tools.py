@@ -25,8 +25,15 @@ class DbSelectError(Exception):
 
 
 def _ro_uri(db_path: str) -> str:
+    # The NAS MCP reads a checkpointed *snapshot* copy of the managed DB, bind-mounted
+    # read-only (the live production DB is never mounted into this internet-facing
+    # container). ``immutable=1`` is required to open a DB on a read-only mount (a plain
+    # ``mode=ro`` open needs write access to the containing directory and fails with
+    # "unable to open database file"), and it is *safe* here precisely because the
+    # snapshot does not change while open — the refresh job writes a temp file and
+    # atomically renames it, so an open descriptor keeps reading its stable inode.
     assert_db_storage_allowed(db_path, context="nas_mcp_db_select")
-    return f"file:{db_path}?mode=ro"
+    return f"file:{db_path}?mode=ro&immutable=1"
 
 
 def hb_db_select(

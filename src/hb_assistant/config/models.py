@@ -6,7 +6,7 @@ These mirror the structure and defaults in resources/config.example.yml (and con
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Literal
+from typing import Any, List, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -156,6 +156,13 @@ class AppConfig(BaseModel):
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
     launcher: LauncherConfig = Field(default_factory=LauncherConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    # The NAS MCP deployment shares one config file between AppConfig (resolved via
+    # PathPolicy) and the MCP subsystem, whose settings live under a top-level ``mcp:``
+    # block that AppConfig does not otherwise model. Accept it as an opaque mapping so
+    # ``extra="forbid"`` does not reject the shared file; ``nas_mcp.config`` owns its
+    # schema. Without this, any code path that loads config on the NAS (e.g. plan tools
+    # via PathPolicy) fails with "AppConfig ... mcp Extra inputs are not permitted".
+    mcp: dict[str, Any] | None = None
 
     @field_validator("paths")
     @classmethod

@@ -4,7 +4,11 @@ paths:
 
 mcp:
   actor: bfetting-via-ssh-launcher
-  db_path: /app-support/db/hb-personal-assistant.sqlite
+  # Read-only SNAPSHOT of the managed DB (the live production DB is never mounted into the
+  # internet-facing MCP). Must match the compose snapshot mount target and satisfy the DB
+  # storage guard (/volume2/personal-assistant/.../db/hb-personal-assistant.sqlite). Refresh
+  # with deploy/nas/scripts/snapshot-mcp-db.sh; db_tools opens it mode=ro&immutable=1.
+  db_path: /volume2/personal-assistant/app-support/mcp-snapshot/db/hb-personal-assistant.sqlite
   audit_dir: /app-support/audit/mcp
   limits:
     max_excerpt_bytes: 16384
