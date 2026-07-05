@@ -2,8 +2,10 @@
 
 - **Branch:** `ops/nas-second-brain-n8c-01-neutral-graph-20260705T185844Z`
 - **Base:** `e80f3729c661a98daa04c2d393b19fce253eeb94` (`origin/main`); merge-base == base.
-- **Not committed, not pushed.** Commit locally only after tests/evidence pass **and** explicit
-  authorization.
+- **N8C-1 implementation commit:** `acd22926` (tests + evidence + implementation).
+- **Committed locally, NOT pushed.** Working tree clean after commit.
+- _(Corrected post-commit: this file originally read "Not committed"; the N8C-1 work was committed as
+  `acd22926`. This evidence-metadata correction is a separate follow-up commit on the N8C-1 branch.)_
 
 ## `git status --short`
 ```

@@ -33,6 +33,11 @@
 - End-to-end smoke via `NasMcpBroker.dispatch`: `domain` sanitized + path-inert; `created_via` server-fixed; folder-lock intact (`02-neutral-naming-proof.md`).
 - No new employer-branded generated content; live MCP tool names unchanged; `remote_cloudflare` stays read-mostly + AI-Outputs-write-only.
 
-## Not committed / not pushed
+## Committed locally / not pushed
 
-No commit made — awaiting explicit authorization. `git status` in `18-git-status.md`.
+Committed locally as `acd22926` on branch
+`ops/nas-second-brain-n8c-01-neutral-graph-20260705T185844Z` (base `e80f3729`). **Not pushed.**
+Working tree clean after commit. See `18-git-status.md`.
+
+_(This closeout line was corrected after the commit landed — the implementation/tests/evidence were
+finished and committed as `acd22926`; this file originally, incorrectly, still read "No commit made".)_
