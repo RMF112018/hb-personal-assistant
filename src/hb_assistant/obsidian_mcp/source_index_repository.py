@@ -448,6 +448,43 @@ class SourceIndexRepository:
                  "generation_status": r[3], "source_rel_path": r[4], "source_kind": r[5]}
                 for r in rows]
 
+    def get_sources_for_note(self, note_rel_path: str, *,
+                             conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Reverse lookup: source rows whose generated card lives at ``note_rel_path``.
+
+        Returns a LIST (0, 1, or many) on purpose: there is no UNIQUE on ``note_rel_path`` alone, so
+        two different ``source_id``s could point at the same card path. Callers MUST treat ``len > 1``
+        as ambiguous rather than picking one arbitrarily. Read-only.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT g.source_id, g.generation_status, g.generated_at, "
+                "       s.source_kind, s.rel_path, s.source_root_key, s.deleted, s.active "
+                "FROM source_intelligence_generated_notes g "
+                "JOIN source_intelligence_sources s ON s.source_id = g.source_id "
+                "WHERE g.note_rel_path=? ORDER BY g.updated_at",
+                (note_rel_path,),
+            ).fetchall()
+        return [{"source_id": r[0], "generation_status": r[1], "generated_at": r[2],
+                 "source_kind": r[3], "source_rel_path": r[4], "source_root_key": r[5],
+                 "deleted": bool(r[6]), "active": bool(r[7])} for r in rows]
+
+    def list_cards_for_source(self, source_id: str, *,
+                              conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """All generated-note rows for a ``source_id`` (any status), oldest-updated first.
+
+        Read-only; the basis for duplicate-card and card-state detection. One source SHOULD have one
+        active (generated/stale) card row; more than one is a duplicate the caller flags.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT generated_note_id, note_rel_path, generation_status, generated_at, updated_at "
+                "FROM source_intelligence_generated_notes WHERE source_id=? ORDER BY updated_at",
+                (source_id,),
+            ).fetchall()
+        return [{"generated_note_id": r[0], "note_rel_path": r[1], "generation_status": r[2],
+                 "generated_at": r[3], "updated_at": r[4]} for r in rows]
+
     def set_generated_note_status(self, generated_note_id: str, status: str, *,
                                   conn: sqlite3.Connection | None = None) -> None:
         """Set one generated-note row's status (legal: not_generated/generated/stale)."""
