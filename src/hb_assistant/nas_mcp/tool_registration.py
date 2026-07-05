@@ -7,6 +7,7 @@ from typing import Any
 
 from .broker import NasMcpBroker
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
+from .profile import ai_outputs_write_enabled, blocked_write_tools, scratch_output_write_enabled
 
 
 def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
@@ -93,23 +94,56 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             raise ValueError(str(payload.get("error")))
         return payload["result"]
 
-    @mcp.tool()
-    def hb_output_write_file(relative_path: str, content: str, overwrite: bool = False) -> dict[str, Any]:
-        payload = broker.dispatch(
-            "hb_output_write_file", {"relative_path": relative_path, "content": content, "overwrite": overwrite}
-        )
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
+    # Local-scratch output writers — registered only when the scratch gate is on
+    # (always off in the remote_cloudflare profile).
+    if scratch_output_write_enabled():
 
-    @mcp.tool()
-    def hb_output_create_dir(relative_path: str) -> dict[str, Any]:
-        payload = broker.dispatch("hb_output_create_dir", {"relative_path": relative_path})
-        if not payload.get("ok"):
-            raise ValueError(str(payload.get("error")))
-        return payload["result"]
+        @mcp.tool()
+        def hb_output_write_file(relative_path: str, content: str, overwrite: bool = False) -> dict[str, Any]:
+            payload = broker.dispatch(
+                "hb_output_write_file", {"relative_path": relative_path, "content": content, "overwrite": overwrite}
+            )
+            if not payload.get("ok"):
+                raise ValueError(str(payload.get("error")))
+            return payload["result"]
 
-    enabled = sorted(set(list_nas_obsidian_tool_names()) - set(NAS_OBSIDIAN_BLOCKED.keys()))
+        @mcp.tool()
+        def hb_output_create_dir(relative_path: str) -> dict[str, Any]:
+            payload = broker.dispatch("hb_output_create_dir", {"relative_path": relative_path})
+            if not payload.get("ok"):
+                raise ValueError(str(payload.get("error")))
+            return payload["result"]
+
+    # The single sanctioned remote write (tier 3): AI Outputs card create/update/append.
+    if ai_outputs_write_enabled():
+
+        @mcp.tool()
+        def ai_outputs_card_upsert(
+            title: str,
+            body_markdown: str,
+            tags: list[str] | None = None,
+            source_client: str = "unknown",
+            expected_sha: str | None = None,
+            mode: str = "create",
+        ) -> dict[str, Any]:
+            payload = broker.dispatch(
+                "ai_outputs_card_upsert",
+                {
+                    "title": title,
+                    "body_markdown": body_markdown,
+                    "tags": tags or [],
+                    "source_client": source_client,
+                    "expected_sha": expected_sha,
+                    "mode": mode,
+                },
+            )
+            if not payload.get("ok"):
+                raise ValueError(str(payload.get("error")))
+            return payload["result"]
+
+    enabled = sorted(
+        (set(list_nas_obsidian_tool_names()) - set(NAS_OBSIDIAN_BLOCKED.keys())) - blocked_write_tools()
+    )
 
     obsidian_param_names = sorted(
         {

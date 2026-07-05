@@ -51,6 +51,7 @@ def test_mac_obsidian_tool_audit_registry_complete() -> None:
 def test_obsidian_create_note_stays_in_vault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from hb_assistant.nas_mcp.broker import NasMcpBroker
 
+    monkeypatch.setenv("HB_MCP_PROFILE", "local_trusted")  # broad vault writes are blocked in the default remote profile
     cfg = _cfg(tmp_path)
     monkeypatch.setenv("HB_OBSIDIAN_MCP_SUPPORT_DIR", str(cfg.obsidian.support_dir))
     broker = NasMcpBroker(cfg)
@@ -100,9 +101,10 @@ def test_work_read_only(tmp_path: Path) -> None:
     assert "/volume" not in json.dumps(read["result"])
 
 
-def test_output_sandbox_writes(tmp_path: Path) -> None:
+def test_output_sandbox_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from hb_assistant.nas_mcp.broker import NasMcpBroker
 
+    monkeypatch.setenv("HB_MCP_PROFILE", "local_trusted")  # scratch output writes blocked in the default remote profile
     broker = NasMcpBroker(_cfg(tmp_path))
     txt = broker.dispatch("hb_output_write_file", {"relative_path": "probe.txt", "content": "hello"})
     assert txt["ok"] is True

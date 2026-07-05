@@ -32,10 +32,13 @@ def assert_no_backend_modules_loaded() -> None:
 
 
 def build_guard_status() -> dict[str, Any]:
+    from .profile import gate_status  # noqa: PLC0415  (avoid import cycle at module load)
+
     return {
         "nas_readonly": os.environ.get("HB_MCP_NAS_READONLY") == "1",
         "background_workers_disabled": os.environ.get("HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS") == "1",
         "db_readonly_env": os.environ.get("HB_ASSISTANT_DB_READONLY") == "1",
         "nas_runtime": os.environ.get("HB_NAS_RUNTIME") == "1",
         "forbidden_backend_imports": list(BACKEND_FORBIDDEN_IMPORTS),
+        "exposure_profile": gate_status(),
     }

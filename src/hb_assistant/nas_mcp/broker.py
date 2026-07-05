@@ -31,6 +31,7 @@ from .output_tools import (
     hb_output_write_file,
 )
 from .path_safe import PathAccessError
+from .profile import AI_OUTPUTS_WRITE_TOOL, blocked_write_tools, gate_status
 from .root_policy import RootPolicyError
 from .root_tools import (
     hb_root_list,
@@ -63,7 +64,11 @@ class NasMcpBroker:
         request_id = uuid.uuid4().hex
         root_key = str(arguments.get("root_key") or ("vault" if tool_name in list_nas_obsidian_tool_names() else ""))
         relative_path = str(arguments.get("relative_path") or arguments.get("path") or ".")
-        write_attempted = tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_")
+        write_attempted = (
+            tool_name in OBSIDIAN_WRITE_TOOLS
+            or tool_name.startswith("hb_output_")
+            or tool_name == AI_OUTPUTS_WRITE_TOOL
+        )
         base_audit = {
             "request_id": request_id,
             "tool_name": tool_name,
@@ -76,6 +81,8 @@ class NasMcpBroker:
         }
         if tool_name in DENIED_TOOL_NAMES:
             return self._deny(base_audit, "action_denied_by_policy", started)
+        if tool_name in blocked_write_tools():
+            return self._deny(base_audit, f"write_tool_blocked_by_profile:{tool_name}", started)
         try:
             result = self._invoke(tool_name, arguments)
         except (DbSelectError, FsToolError, PathAccessError, RootPolicyError, KeyError, ValueError, TypeError) as exc:
@@ -102,7 +109,12 @@ class NasMcpBroker:
 
     @staticmethod
     def _access_mode(tool_name: str) -> str:
-        if tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_write") or tool_name == "hb_output_create_dir":
+        if (
+            tool_name in OBSIDIAN_WRITE_TOOLS
+            or tool_name.startswith("hb_output_write")
+            or tool_name == "hb_output_create_dir"
+            or tool_name == AI_OUTPUTS_WRITE_TOOL
+        ):
             return "write"
         return "read"
 
@@ -121,15 +133,32 @@ class NasMcpBroker:
     def _invoke(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         cfg = self._config
         if tool_name == "hb_mcp_status":
-            enabled = sorted(set(list_nas_obsidian_tool_names()) - set(NAS_OBSIDIAN_BLOCKED.keys()))
+            obsidian_names = set(list_nas_obsidian_tool_names())
+            profile_blocked = blocked_write_tools()
+            enabled = sorted((obsidian_names - set(NAS_OBSIDIAN_BLOCKED.keys())) - profile_blocked)
+            blocked = sorted(set(NAS_OBSIDIAN_BLOCKED.keys()) | (profile_blocked & obsidian_names))
             return {
                 "mode": "nas_mcp_surface",
                 "allowlisted_table_keys": list_allowlisted_table_keys(),
                 "configured_roots": {k: v.mode for k, v in cfg.roots.items()},
                 "obsidian_tools_enabled": enabled,
-                "obsidian_tools_blocked": sorted(NAS_OBSIDIAN_BLOCKED.keys()),
+                "obsidian_tools_blocked": blocked,
+                "exposure_profile": gate_status(),
+                "blocked_write_tools": sorted(profile_blocked),
                 "port_policy": "127.0.0.1:8765 host publish only",
             }
+        if tool_name == AI_OUTPUTS_WRITE_TOOL:
+            from .ai_outputs import ai_outputs_card_upsert  # noqa: PLC0415
+
+            return ai_outputs_card_upsert(
+                config=cfg,
+                title=str(arguments.get("title", "")),
+                body_markdown=str(arguments.get("body_markdown", "")),
+                tags=list(arguments.get("tags") or []),
+                source_client=str(arguments.get("source_client", "unknown")),
+                expected_sha=arguments.get("expected_sha"),
+                mode=str(arguments.get("mode", "create")),
+            )
         if tool_name == "hb_db_select":
             return hb_db_select(
                 config=cfg,

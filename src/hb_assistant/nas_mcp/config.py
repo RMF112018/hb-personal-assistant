@@ -47,6 +47,7 @@ class NasObsidianConfig:
     writes_enabled: bool = True
     vault_markdown_write_enabled: bool = True
     summarization_backend: str = "deterministic"
+    ai_outputs_folder: str = "AI Outputs"
 
 
 @dataclass(frozen=True)
@@ -125,6 +126,7 @@ class NasMcpConfig:
             writes_enabled=bool(obs_raw.get("writes_enabled", True)),
             vault_markdown_write_enabled=bool(obs_raw.get("vault_markdown_write_enabled", True)),
             summarization_backend=str(obs_raw.get("summarization_backend", "deterministic")),
+            ai_outputs_folder=str(obs_raw.get("ai_outputs_folder", "AI Outputs")),
         )
         return cls(
             db_path=db_path,
