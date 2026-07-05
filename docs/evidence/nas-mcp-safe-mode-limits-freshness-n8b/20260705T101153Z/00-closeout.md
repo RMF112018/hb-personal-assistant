@@ -22,4 +22,5 @@
 - Live Cloudflare / client-compat / reboot / rollback proofs remain later sub-phases.
 
 ## Commit posture
-Uncommitted, unpushed. Commit locally only after Bobby reviews the diff and authorizes. No push.
+Committed locally (Bobby-authorized) in 4 commits `7742146c`/`310b10a7`/`9fe62ea1`/`612641f7`
+(+ a follow-up post-commit status correction). **Unpushed.** No push until authorized.

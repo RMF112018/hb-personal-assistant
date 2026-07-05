@@ -1,10 +1,20 @@
 # 20 — Git Status
 
-**Nothing pushed. No commit yet (awaiting Bobby's review).**
+**Committed locally (Bobby-authorized). Nothing pushed.**
 
 - **Branch:** `ops/nas-mcp-safe-mode-limits-freshness-n8b-20260705T101153Z`
-- **Base:** origin-auth tip `0633514d` (6 commits ahead of `origin/main` @ `7f22fa9d`)
+- **Base:** origin-auth tip `0633514d` (off `origin/main` @ `7f22fa9d`)
 - **Worktree:** `/Users/bobbyfetting/hb-pa-n8b-20260705T090033Z`
+- **State:** working tree clean; **10 commits ahead of `origin/main`** (3 foundation + 3 origin-auth + 4 this phase); nothing pushed.
+
+## This phase's four local commits
+- `7742146c` — nas-mcp: add safe mode and rate limit enforcement
+- `310b10a7` — nas-mcp: add operator overrides and freshness status
+- `9fe62ea1` — test: add NAS MCP safe-mode limits freshness coverage
+- `612641f7` — docs: add N8B safe-mode limits freshness evidence
+
+(A subsequent `docs: update N8B safe-mode evidence post-commit status` commit carries this
+post-commit status correction.) **Verdict remains HOLD.**
 
 ## Changed files
 - **New code:** `nas_mcp/limits.py`, `nas_mcp/overrides.py`, `nas_mcp/override_cli.py`, `nas_mcp/freshness.py`.
@@ -21,4 +31,4 @@ No secret/token committed. `overrides.json`/`tokens.json` are runtime artifacts 
 4. `docs: add N8B safe-mode limits freshness evidence` — the evidence directory.
 
 ## Push posture
-Unpushed. **No push** until Bobby authorizes.
+Committed locally only; **unpushed**. No push until Bobby authorizes.
