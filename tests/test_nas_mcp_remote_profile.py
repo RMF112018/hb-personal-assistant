@@ -72,12 +72,19 @@ def test_ai_outputs_create_update_append(tmp_path: Path, monkeypatch: pytest.Mon
 
     created = broker.dispatch(
         "ai_outputs_card_upsert",
-        {"title": "Test Card", "body_markdown": "hello", "tags": ["a"], "source_client": "claude", "mode": "create"},
+        {"title": "Test Card", "body_markdown": "hello", "tags": ["a"], "source_client": "claude",
+         "mode": "create", "domain": "work"},
     )
     assert created["ok"] is True
     assert created["result"]["relative_path"] == "AI Outputs/Test Card.md"
     card = tmp_path / "vault" / "AI Outputs" / "Test Card.md"
     assert card.is_file()
+    # Neutral frontmatter going forward (N8C-1): no employer-branded hb_managed marker.
+    created_text = card.read_text(encoding="utf-8")
+    assert "managed_by: personal_assistant" in created_text
+    assert "note_type: ai_output" in created_text
+    assert "domain: work" in created_text and "created_via: mcp" in created_text
+    assert "hb_managed" not in created_text and "ai_outputs_card" not in created_text
     sha = created["result"]["sha256"]
 
     # update requires the current sha
@@ -93,13 +100,17 @@ def test_ai_outputs_create_update_append(tmp_path: Path, monkeypatch: pytest.Mon
         {"title": "Test Card", "body_markdown": "v2", "source_client": "claude", "mode": "update", "expected_sha": sha},
     )
     assert updated["ok"] is True
+    assert "managed_by: personal_assistant" in card.read_text(encoding="utf-8")
 
     appended = broker.dispatch(
         "ai_outputs_card_upsert",
         {"title": "Test Card", "body_markdown": "more", "source_client": "grok", "mode": "append"},
     )
     assert appended["ok"] is True
-    assert "more" in card.read_text(encoding="utf-8")
+    final_text = card.read_text(encoding="utf-8")
+    assert "more" in final_text
+    # Neutral frontmatter survives the full create -> update -> append round-trip.
+    assert "managed_by: personal_assistant" in final_text and "hb_managed" not in final_text
     # a mutation receipt was written
     assert any((cfg.obsidian.support_dir).glob("mutations.jsonl")) or (cfg.obsidian.support_dir / "mutations.jsonl").exists()
 

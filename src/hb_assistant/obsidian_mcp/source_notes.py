@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hb_assistant import naming
+
 from . import extract, llm, source_analyzers
 from .config import ObsidianMcpConfig
 from .mutations import create_note, resolve_markdown_write_path, sha256_file
@@ -32,8 +34,12 @@ TEMPLATE_VERSION = "source-card-v1"
 CARD_VERSION = "phase10a-v1"
 # Local-summary append target for the future qwen2.5:14b summarizer (Phase 10A readiness).
 LOCAL_SUMMARY_MODEL = "qwen2.5:14b"
-LOCAL_SUMMARY_BEGIN_PREFIX = "<!-- hb-local-summary:start"
-LOCAL_SUMMARY_END = "<!-- hb-local-summary:end -->"
+# N8C-1 lands dual-READ compatibility (readers below recognise both the neutral
+# "assistant-local-summary" and the legacy "hb-local-summary" forms via hb_assistant.naming),
+# but the EMITTER intentionally stays on the legacy marker this slice to avoid a wide test/asset
+# rewrite for a cosmetic internal comment. N8C-2 flips these to naming.LOCAL_SUMMARY_* (neutral).
+LOCAL_SUMMARY_BEGIN_PREFIX = naming.LEGACY_LOCAL_SUMMARY_BEGIN_PREFIX
+LOCAL_SUMMARY_END = naming.LEGACY_LOCAL_SUMMARY_END
 # document_type values that are not a confident PM class → flag the card for human review.
 # template_form is ambiguous-by-design: a blank instrument needs a human to confirm blank-vs-executed.
 _AMBIGUOUS_DOC_TYPES = frozenset({
@@ -717,8 +723,10 @@ def replace_local_summary_block(card_text: str, inner_lines: list[str], *, model
     Raises ``ObsidianMcpToolError`` if the block is missing or not unique.
     """
     lines = card_text.splitlines()
-    starts = [i for i, ln in enumerate(lines) if ln.startswith(LOCAL_SUMMARY_BEGIN_PREFIX)]
-    ends = [i for i, ln in enumerate(lines) if ln.strip() == LOCAL_SUMMARY_END]
+    # Recognise both the neutral and legacy marker forms; a card carries exactly one block. The
+    # replacement below re-emits the current emitter marker (legacy this slice; neutral from N8C-2).
+    starts = [i for i, ln in enumerate(lines) if naming.is_local_summary_begin(ln)]
+    ends = [i for i, ln in enumerate(lines) if naming.is_local_summary_end(ln)]
     if len(starts) != 1 or len(ends) != 1 or ends[0] <= starts[0]:
         raise ObsidianMcpToolError("local_summary_block_not_found")
     s, e = starts[0], ends[0]

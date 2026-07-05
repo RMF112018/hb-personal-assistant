@@ -20,6 +20,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from hb_assistant import naming
+
 from . import source_note_graph as ng
 from .source_analyzers import from_detail
 from .source_document_classifier import classify_source_document
@@ -166,14 +168,14 @@ def set_source_basis_classification(card_text: str, new_type: str,
 
 # --------------------------------------------------------------------------- summary consistency
 def _summary_block(card_text: str) -> tuple[str | None, str]:
-    """Return (status, body) for the hb-local-summary block; status None if the block is absent."""
+    """Return (status, body) for the local-summary block (neutral or legacy marker); status None if absent."""
     lines = card_text.splitlines()
     start = next((i for i, ln in enumerate(lines)
-                  if ln.strip().startswith("<!-- hb-local-summary:start")), None)
+                  if naming.is_local_summary_begin(ln)), None)
     if start is None:
         return None, ""
     end = next((i for i in range(start + 1, len(lines))
-                if lines[i].strip().startswith("<!-- hb-local-summary:end")), len(lines))
+                if naming.is_local_summary_end(lines[i])), len(lines))
     m = re.search(r'status="([^"]*)"', lines[start])
     return (m.group(1) if m else ""), "\n".join(lines[start + 1:end])
 

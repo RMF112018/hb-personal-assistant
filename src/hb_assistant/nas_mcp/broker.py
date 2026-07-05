@@ -246,6 +246,7 @@ class NasMcpBroker:
                 source_client=str(arguments.get("source_client", "unknown")),
                 expected_sha=arguments.get("expected_sha"),
                 mode=str(arguments.get("mode", "create")),
+                domain=str(arguments.get("domain", "unknown")),
             )
         if tool_name == "hb_db_select":
             return hb_db_select(

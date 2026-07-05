@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from hb_assistant.naming import CREATED_VIA_MCP, MANAGED_BY, NOTE_TYPE_AI_OUTPUT, sanitize_domain
 from hb_assistant.obsidian_mcp import mutations
 from hb_assistant.obsidian_mcp.tools import ObsidianMcpToolError
 
@@ -36,14 +37,17 @@ def _slug(title: str) -> str:
     return _SLUG_WS.sub(" ", cleaned).strip()
 
 
-def _render_card(title: str, tags: list[str], source_client: str, body: str) -> str:
+def _render_card(title: str, tags: list[str], source_client: str, body: str, domain: str) -> str:
     tag_line = ", ".join(sorted({t.strip() for t in tags if t.strip()}))
     front = [
         "---",
         f"title: {title}",
         f"tags: [{tag_line}]",
         f"source_client: {source_client}",
-        "hb_managed: ai_outputs_card",
+        f"managed_by: {MANAGED_BY}",
+        f"note_type: {NOTE_TYPE_AI_OUTPUT}",
+        f"domain: {domain}",
+        f"created_via: {CREATED_VIA_MCP}",
         "---",
         "",
     ]
@@ -59,6 +63,7 @@ def ai_outputs_card_upsert(
     source_client: str = "unknown",
     expected_sha: str | None = None,
     mode: str = "create",
+    domain: str = "unknown",
 ) -> dict[str, Any]:
     if config.obsidian is None:
         raise AiOutputsError("obsidian_not_configured")
@@ -66,6 +71,8 @@ def ai_outputs_card_upsert(
         raise AiOutputsError("invalid_mode")
     if source_client not in ALLOWED_CLIENTS:
         raise AiOutputsError("invalid_source_client")
+    # Metadata-only, path-inert label; never trusted for a path. Invalid/empty -> "unknown".
+    domain = sanitize_domain(domain)
     title = str(title).strip()
     if not title or len(title) > MAX_TITLE_LEN:
         raise AiOutputsError("invalid_title")
@@ -100,18 +107,18 @@ def ai_outputs_card_upsert(
 
     try:
         if mode == "create":
-            content = _render_card(title, tag_list, source_client, body)
+            content = _render_card(title, tag_list, source_client, body, domain)
             result = mutations.create_note(ob, path=rel_path, content=content, overwrite=False, **common)
         elif mode == "update":
             if not expected_sha:
                 raise AiOutputsError("expected_sha_required_for_update")
-            content = _render_card(title, tag_list, source_client, body)
+            content = _render_card(title, tag_list, source_client, body, domain)
             result = mutations.patch_note(ob, path=rel_path, content=content, expected_sha256=str(expected_sha), **common)
         else:  # append
             target = Path(str(ob.vault_root)) / rel_path
             if not target.is_file():
                 # Nothing to append to — create the card.
-                content = _render_card(title, tag_list, source_client, body)
+                content = _render_card(title, tag_list, source_client, body, domain)
                 result = mutations.create_note(ob, path=rel_path, content=content, overwrite=False, **common)
             else:
                 current_sha = mutations.sha256_file(target)

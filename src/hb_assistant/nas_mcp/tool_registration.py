@@ -152,6 +152,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             source_client: str = "unknown",
             expected_sha: str | None = None,
             mode: str = "create",
+            domain: str = "unknown",
         ) -> dict[str, Any]:
             payload = broker.dispatch(
                 "ai_outputs_card_upsert",
@@ -162,6 +163,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                     "source_client": source_client,
                     "expected_sha": expected_sha,
                     "mode": mode,
+                    "domain": domain,
                 },
             )
             if not payload.get("ok"):

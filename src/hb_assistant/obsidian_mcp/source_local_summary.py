@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 
+from hb_assistant import naming
 from hb_assistant.construction.classification.client import OllamaChatClient, OllamaUnavailable
 
 from .source_document_classifier import (
@@ -19,7 +20,7 @@ from .source_document_classifier import (
     _title_signal,
     detect_classification_conflict,  # noqa: F401  (re-exported for 10J scripts/tests)
 )
-from .source_notes import LOCAL_SUMMARY_BEGIN_PREFIX, LOCAL_SUMMARY_END
+from .source_notes import LOCAL_SUMMARY_BEGIN_PREFIX, LOCAL_SUMMARY_END  # noqa: F401  (re-exported)
 
 LOCAL_SUMMARY_SYSTEM_PROMPT = (
     "You are writing an ADVISORY local summary for a deterministic Obsidian construction source card.\n"
@@ -70,11 +71,11 @@ def _strip_local_summary_block(text: str) -> str:
     lines = text.splitlines()
     out, skip = [], False
     for ln in lines:
-        if ln.startswith(LOCAL_SUMMARY_BEGIN_PREFIX):
+        if naming.is_local_summary_begin(ln):
             skip = True
             continue
         if skip:
-            if ln.strip() == LOCAL_SUMMARY_END:
+            if naming.is_local_summary_end(ln):
                 skip = False
             continue
         out.append(ln)
@@ -103,16 +104,17 @@ def sanitize_advisory_markdown(text: str, *, max_chars: int = _MAX_OUTPUT_CHARS,
                                max_lines: int = _MAX_OUTPUT_LINES) -> list[str]:
     """Bound + strip model output so it can never corrupt the card or leak local detail.
 
-    Drops code fences, HTML comments, hb-local-summary markers, YAML/HR delimiters, table rows,
-    absolute paths, and local-file markdown links; bounds total length/lines. Returns [] when nothing
-    safe remains (the caller then leaves the card unchanged).
+    Drops code fences, HTML comments, local-summary markers (neutral + legacy), YAML/HR delimiters,
+    table rows, absolute paths, and local-file markdown links; bounds total length/lines. Returns []
+    when nothing safe remains (the caller then leaves the card unchanged).
     """
     raw = text.replace("\r\n", "\n")[: max_chars * 2]
     kept: list[str] = []
     for ln in raw.split("\n"):
         if _FENCE_RE.match(ln):
             continue
-        if "hb-local-summary" in ln or "<!--" in ln or "-->" in ln:
+        if ("hb-local-summary" in ln or "assistant-local-summary" in ln
+                or "<!--" in ln or "-->" in ln):
             continue
         if _HR_RE.match(ln):
             continue

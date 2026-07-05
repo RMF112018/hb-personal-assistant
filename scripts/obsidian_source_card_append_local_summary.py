@@ -32,6 +32,7 @@ for _p in (_REPO_ROOT / "src", _REPO_ROOT / "scripts"):
 
 import obsidian_source_first_indexing_dryrun as dryrun  # noqa: E402  (reuse _load_config)
 
+from hb_assistant import naming  # noqa: E402
 from hb_assistant.construction.classification.client import (  # noqa: E402
     OllamaChatClient,
     OllamaUnavailable,
@@ -42,8 +43,8 @@ from hb_assistant.obsidian_mcp.mutations import create_note, sha256_file  # noqa
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository  # noqa: E402
 from hb_assistant.obsidian_mcp.source_notes import (  # noqa: E402
     CARD_VERSION,
-    LOCAL_SUMMARY_BEGIN_PREFIX,
-    LOCAL_SUMMARY_END,
+    LOCAL_SUMMARY_BEGIN_PREFIX,  # noqa: F401  (re-exported; referenced by tests)
+    LOCAL_SUMMARY_END,  # noqa: F401  (re-exported; referenced by tests)
     LOCAL_SUMMARY_MODEL,
     replace_local_summary_block,
 )
@@ -118,7 +119,7 @@ def _frontmatter_value(text: str, key: str) -> str | None:
 
 def _start_marker_status(text: str) -> str | None:
     for ln in text.splitlines():
-        if ln.startswith(LOCAL_SUMMARY_BEGIN_PREFIX):
+        if naming.is_local_summary_begin(ln):
             import re
             m = re.search(r'status="([a-z_]+)"', ln)
             return m.group(1) if m else None
@@ -135,7 +136,13 @@ def _eligibility(text: str, note_rel: str, domain_folder: str, args: argparse.Na
         return "not_source_card"
     if not args.allow_non_current_version and _frontmatter_value(text, "card_version") != CARD_VERSION:
         return "card_version_mismatch"
-    if text.count(LOCAL_SUMMARY_BEGIN_PREFIX) != 1 or text.count(LOCAL_SUMMARY_END) != 1:
+    # Count the neutral and legacy marker forms (distinct string values in hb_assistant.naming);
+    # a card carries exactly one, in either form. Do not use the re-exported source_notes constant
+    # here — this slice aliases it to the legacy value, which would double-count a legacy card.
+    begin = (text.count(naming.LOCAL_SUMMARY_BEGIN_PREFIX)
+             + text.count(naming.LEGACY_LOCAL_SUMMARY_BEGIN_PREFIX))
+    end = text.count(naming.LOCAL_SUMMARY_END) + text.count(naming.LEGACY_LOCAL_SUMMARY_END)
+    if begin != 1 or end != 1:
         return "marker_count"
     status = _start_marker_status(text)
     if status == "generated" and not args.allow_resummarize:
