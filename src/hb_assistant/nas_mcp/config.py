@@ -74,6 +74,7 @@ class NasMcpConfig:
     denied_name_patterns: tuple[str, ...] = DEFAULT_DENIED_NAME_PATTERNS
     denied_dir_segments: tuple[str, ...] = DEFAULT_DENIED_DIR_SEGMENTS
     actor: str = "bfetting-via-ssh-launcher"
+    origin_auth_store_path: Path | None = None
     obsidian: NasObsidianConfig | None = None
 
     @classmethod
@@ -107,6 +108,13 @@ class NasMcpConfig:
             )
         )
         audit_dir = Path(str(mcp.get("audit_dir") or app_support / "audit" / "mcp"))
+        origin_auth_store_path = Path(
+            str(
+                os.environ.get("HB_MCP_ORIGIN_AUTH_TOKEN_STORE")
+                or mcp.get("origin_auth_store_path")
+                or app_support / "origin-auth" / "tokens.json"
+            )
+        )
         roots_raw = mcp.get("roots") if isinstance(mcp.get("roots"), dict) else {}
         roots: dict[str, RootSpec] = {}
         for key, spec in roots_raw.items():
@@ -140,6 +148,7 @@ class NasMcpConfig:
             max_write_bytes=int(limits.get("max_write_bytes", 262_144)),
             max_output_file_bytes=int(limits.get("max_output_file_bytes", 1_048_576)),
             actor=str(mcp.get("actor", "bfetting-via-ssh-launcher")),
+            origin_auth_store_path=origin_auth_store_path,
             obsidian=obsidian,
         )
 

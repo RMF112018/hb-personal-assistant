@@ -35,18 +35,27 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
             "MCP SDK not installed. Install with `pip install -e '.[mcp]'`."
         ) from exc
 
+    from .profile import active_profile, health_mode, origin_auth_required  # noqa: PLC0415
+
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
     register_nas_mcp_tools(mcp, broker)
 
     async def health(_request: Any) -> JSONResponse:
-        body = {
+        # Minimal liveness only for the unauthenticated surface — no DB path, no root
+        # mounts, no allowlisted table keys, no host details. Detailed health is served
+        # via the authenticated ``hb_mcp_status`` tool, or here when health_mode is
+        # ``protected`` (which the auth middleware gates behind a valid bearer token).
+        body: dict[str, Any] = {
             "status": "ok",
             "surface": "nas_mcp",
             "nas_readonly": True,
-            "allowlisted_table_keys": list_allowlisted_table_keys(),
-            "configured_roots": {k: v.mode for k, v in cfg.roots.items()},
-            "guardrails": build_guard_status(),
+            "profile": active_profile(),
+            "origin_auth_required": origin_auth_required(),
         }
+        if health_mode() == "protected":
+            body["allowlisted_table_keys"] = list_allowlisted_table_keys()
+            body["configured_roots"] = {k: v.mode for k, v in cfg.roots.items()}
+            body["guardrails"] = build_guard_status()
         return JSONResponse(body)
 
     from contextlib import AsyncExitStack, asynccontextmanager  # noqa: PLC0415
@@ -62,13 +71,20 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
                 await stack.enter_async_context(mcp_lifespan(inner))
             yield
 
-    return Starlette(
+    app = Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
             Mount("/", app=mcp_app),
         ],
         lifespan=lifespan,
     )
+
+    # Defense-in-depth: wrap the whole app in origin bearer-auth. The middleware itself
+    # decides per-path (it exempts minimal-public /health and is a no-op when the active
+    # profile does not require origin auth), so lifespan + non-http scopes pass through.
+    from .origin_auth import OriginAuthMiddleware  # noqa: PLC0415
+
+    return OriginAuthMiddleware(app, config=cfg)
 
 
 def serve_nas_readonly_streamable_http(

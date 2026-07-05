@@ -23,6 +23,7 @@ from .obsidian_adapter import (
     dispatch_obsidian_tool,
     list_nas_obsidian_tool_names,
 )
+from .origin_auth import get_auth_context
 from .output_tools import (
     hb_output_create_dir,
     hb_output_list,
@@ -69,10 +70,18 @@ class NasMcpBroker:
             or tool_name.startswith("hb_output_")
             or tool_name == AI_OUTPUTS_WRITE_TOOL
         )
+        auth = get_auth_context()
         base_audit = {
             "request_id": request_id,
             "tool_name": tool_name,
-            "actor": self._config.actor,
+            # Authenticated actor when a bearer identity is present (defense-in-depth
+            # origin auth), else the static config actor (e.g. local trusted profile).
+            "actor": auth.actor if auth else self._config.actor,
+            "authenticated": auth is not None,
+            "client": auth.client if auth else None,
+            "client_label": auth.client_label if auth else None,
+            "token_id": auth.token_id if auth else None,
+            "auth_method": auth.auth_method if auth else None,
             "nas_readonly": True,
             "root_key": root_key or None,
             "relative_path": relative_path,
@@ -83,6 +92,10 @@ class NasMcpBroker:
             return self._deny(base_audit, "action_denied_by_policy", started)
         if tool_name in blocked_write_tools():
             return self._deny(base_audit, f"write_tool_blocked_by_profile:{tool_name}", started)
+        # Optional per-token narrowing: a token may carry an allowed_tools allowlist that
+        # further restricts (never broadens) what the profile already permits.
+        if auth and auth.allowed_tools and tool_name not in auth.allowed_tools:
+            return self._deny(base_audit, f"tool_not_in_token_scope:{tool_name}", started)
         try:
             result = self._invoke(tool_name, arguments)
         except (DbSelectError, FsToolError, PathAccessError, RootPolicyError, KeyError, ValueError, TypeError) as exc:

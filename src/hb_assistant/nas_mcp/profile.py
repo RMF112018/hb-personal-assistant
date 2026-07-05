@@ -82,6 +82,34 @@ def legacy_vault_write_enabled() -> bool:
     return _profile_defaults(profile)[2] if override is None else override
 
 
+HEALTH_MODE_MINIMAL_PUBLIC = "minimal_public"
+HEALTH_MODE_PROTECTED = "protected"
+KNOWN_HEALTH_MODES = (HEALTH_MODE_MINIMAL_PUBLIC, HEALTH_MODE_PROTECTED)
+
+
+def origin_auth_required() -> bool:
+    """Whether the NAS MCP origin (nas_mcp:8765) requires a valid bearer token.
+
+    Defense-in-depth: this is *in addition to* Cloudflare Access at the edge, never a
+    replacement. In the internet-facing ``remote_cloudflare`` profile origin auth is
+    **hard-on regardless of any env override** — mirroring the write-gate lockdown so a
+    stray flag can never expose an unauthenticated MCP to the tunnel. Only the
+    ``local_trusted`` profile may run without origin auth (default off, opt-in on).
+    """
+    if active_profile() == PROFILE_REMOTE_CLOUDFLARE:
+        return True
+    override = _env_bool("HB_MCP_ORIGIN_AUTH_REQUIRED")
+    return False if override is None else override
+
+
+def health_mode() -> str:
+    """``minimal_public`` (default) exposes only liveness unauthenticated; ``protected``
+    requires origin auth for /health too. Detailed health is always reachable via the
+    authenticated ``hb_mcp_status`` tool regardless of this mode."""
+    raw = os.environ.get("HB_MCP_ORIGIN_AUTH_HEALTH_MODE", "").strip() or HEALTH_MODE_MINIMAL_PUBLIC
+    return raw if raw in KNOWN_HEALTH_MODES else HEALTH_MODE_MINIMAL_PUBLIC
+
+
 def blocked_write_tools() -> frozenset[str]:
     """Tool names denied under the current profile/gate posture."""
     blocked: set[str] = set()
@@ -100,4 +128,6 @@ def gate_status() -> dict[str, object]:
         "ai_outputs_write_enabled": ai_outputs_write_enabled(),
         "local_scratch_output_write_enabled": scratch_output_write_enabled(),
         "legacy_broad_vault_write_enabled": legacy_vault_write_enabled(),
+        "origin_auth_required": origin_auth_required(),
+        "health_mode": health_mode(),
     }
