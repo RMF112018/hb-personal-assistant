@@ -103,8 +103,28 @@ def _sha256(value: str) -> str:
     return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
 
 
+def _supported_scopes() -> tuple[str, ...]:
+    """Advertised/accepted OAuth scopes. Process-configurable via
+    ``HB_OAUTH_SUPPORTED_SCOPES`` (comma-separated) so a second MCP surface (the NAS
+    server) can advertise its own scope vocabulary without affecting this default.
+    Defaults to the obsidian scopes (unchanged behaviour)."""
+    raw = os.environ.get("HB_OAUTH_SUPPORTED_SCOPES", "").strip()
+    if raw:
+        parsed = tuple(s.strip() for s in raw.split(",") if s.strip())
+        if parsed:
+            return parsed
+    return SUPPORTED_SCOPES
+
+
+def _default_scope() -> str:
+    return _supported_scopes()[0]
+
+
 def oauth_dir() -> Path:
-    root = PathPolicy().get_app_support() / "analytics" / "obsidian_mcp" / "oauth"
+    # Process-configurable via ``HB_OAUTH_STORE_DIR`` so a separate surface (NAS) keeps its
+    # own token/code/client store; defaults to the obsidian app-support location.
+    env = os.environ.get("HB_OAUTH_STORE_DIR", "").strip()
+    root = Path(env) if env else PathPolicy().get_app_support() / "analytics" / "obsidian_mcp" / "oauth"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -152,7 +172,7 @@ def fixed_grok_client() -> OAuthClient:
         client_id=CLIENT_ID,
         client_name="Grok",
         redirect_uris=(),
-        scopes=SUPPORTED_SCOPES,
+        scopes=_supported_scopes(),
         source="fixed",
         allow_any_https_redirect=True,
         allow_localhost_redirect=True,
@@ -220,7 +240,7 @@ def normalize_scopes(scope: object, *, default: str | None = None) -> list[str]:
         raise OAuthError("invalid_scope", "no scope requested")
     normalized: list[str] = []
     for item in requested:
-        if item not in SUPPORTED_SCOPES:
+        if item not in _supported_scopes():
             raise OAuthError("invalid_scope", f"unsupported scope: {item}")
         if item not in normalized:
             normalized.append(item)
@@ -324,7 +344,8 @@ def _record_registration_rejection(metadata: dict, *, error: str) -> None:
     record_event("client_registration_rejected", registration_metadata=diagnostics)
 
 
-def register_client(metadata: dict, *, default_scope: str = "obsidian.read") -> dict:
+def register_client(metadata: dict, *, default_scope: str | None = None) -> dict:
+    default_scope = default_scope or _default_scope()
     if metadata.get("client_secret") or metadata.get("client_secret_expires_at"):
         _record_registration_rejection(metadata, error="client_secret_present")
         raise OAuthError("invalid_client_metadata", "client secrets are not accepted for public clients")
@@ -615,7 +636,7 @@ def authorization_server_metadata(base_url: str) -> dict:
         "grant_types_supported": ["authorization_code"],
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["none"],
-        "scopes_supported": list(SUPPORTED_SCOPES),
+        "scopes_supported": list(_supported_scopes()),
     }
 
 
@@ -624,7 +645,7 @@ def protected_resource_metadata(base_url: str) -> dict:
     return {
         "resource": mcp_resource(base),
         "authorization_servers": [base],
-        "scopes_supported": list(SUPPORTED_SCOPES),
+        "scopes_supported": list(_supported_scopes()),
         "bearer_methods_supported": ["header"],
     }
 
@@ -633,7 +654,8 @@ def resource_metadata_url(base_url: str) -> str:
     return f"{base_url.rstrip('/')}/.well-known/oauth-protected-resource"
 
 
-def www_authenticate_header(base_url: str, *, scope: str = "obsidian.read", error: str | None = None, error_description: str | None = None) -> str:
+def www_authenticate_header(base_url: str, *, scope: str | None = None, error: str | None = None, error_description: str | None = None) -> str:
+    scope = scope or _default_scope()
     parts = [
         f'resource_metadata="{resource_metadata_url(base_url)}"',
         f'scope="{scope}"',

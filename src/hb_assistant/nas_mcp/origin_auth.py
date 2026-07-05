@@ -27,12 +27,22 @@ from pathlib import Path
 from typing import Any
 
 from .audit import NasMcpAuditWriter
-from .profile import active_profile, health_mode, origin_auth_required
+from .profile import (
+    AI_OUTPUTS_WRITE_TOOL,
+    active_profile,
+    health_mode,
+    oauth_enabled,
+    origin_auth_required,
+)
 
 ALLOWED_TOKEN_CLIENTS = frozenset({"claude", "chatgpt", "grok", "admin", "local"})
 STORE_VERSION = 1
 DEFAULT_EXPIRES_DAYS = 30
 AUTH_METHOD_BEARER = "bearer"
+AUTH_METHOD_OAUTH = "oauth"
+# OAuth scope that unlocks the single sanctioned remote write. A token without it is barred
+# from AI_OUTPUTS_WRITE_TOOL via AuthContext.denied_tools even though the profile permits it.
+OAUTH_WRITE_SCOPE = "nas.write"
 
 # Internal deny reason classes (recorded in the 0600 audit only — NEVER returned to the
 # client, which always sees a uniform 401 so token existence is not leaked).
@@ -67,6 +77,9 @@ class AuthContext:
     token_id: str
     tier: str | None = None
     allowed_tools: tuple[str, ...] = ()
+    # Denylist that only ever RESTRICTS (never broadens). Used to bar a read-scoped OAuth
+    # token from the single write tool; the broker checks it alongside allowed_tools.
+    denied_tools: tuple[str, ...] = ()
     auth_method: str = AUTH_METHOD_BEARER
 
 
@@ -242,6 +255,32 @@ def _extract_bearer(authorization: str | None) -> tuple[str | None, str]:
     return raw, REASON_OK
 
 
+def _oauth_auth_context(raw_token: str, *, resource: str) -> AuthContext | None:
+    """Validate ``raw_token`` as an OAuth 2.1 access token bound to ``resource`` and, on
+    success, build an audit-attributed :class:`AuthContext`. Returns None (never raises) so
+    the middleware can fall through to a uniform 401. Scope gates the single write tool:
+    a token lacking ``nas.write`` is barred from ``ai_outputs_card_upsert`` via denied_tools.
+
+    Imported lazily: ``oauth_store`` pulls in ``PathPolicy`` which is import-safe in the NAS
+    process, but keeping it lazy avoids any cost when OAuth is disabled.
+    """
+    from hb_assistant.obsidian_mcp import oauth_store  # noqa: PLC0415
+
+    info = oauth_store.validate_access_token(raw_token, resource=resource)
+    if info is None:
+        return None
+    denied = () if OAUTH_WRITE_SCOPE in info.scopes else (AI_OUTPUTS_WRITE_TOOL,)
+    return AuthContext(
+        client="oauth",
+        client_label=info.client_id,
+        actor=f"oauth:{info.client_id}",
+        token_id=info.client_id,
+        tier="oauth",
+        denied_tools=denied,
+        auth_method=AUTH_METHOD_OAUTH,
+    )
+
+
 class OriginAuthMiddleware:
     """Pure-ASGI bearer-auth wrapper for the NAS MCP app (adapted from the obsidian
     ``BearerTokenMiddleware`` pattern). Gates protected routes, sets the request auth
@@ -263,6 +302,9 @@ class OriginAuthMiddleware:
         self._config = config
         self._store = store
         self._audit = audit_writer
+        # Fixed public HTTPS origin used to bind/verify OAuth token audience + build the
+        # RFC 9728 WWW-Authenticate pointer. None when OAuth is not configured.
+        self._public_base_url = (getattr(config, "public_base_url", None) or "").rstrip("/") or None
 
     @property
     def store(self) -> OriginAuthTokenStore:
@@ -278,6 +320,11 @@ class OriginAuthMiddleware:
         if path == "/health" and health_mode() != "protected":
             await self.app(scope, receive, send)
             return
+        # OAuth flow + discovery endpoints run PRE-token and must be reachable unauthenticated
+        # (resource-owner auth for /oauth/authorize is supplied at the edge by CF Access SSO).
+        if oauth_enabled() and (path.startswith("/oauth/") or path.startswith("/.well-known/")):
+            await self.app(scope, receive, send)
+            return
         if not origin_auth_required():
             await self.app(scope, receive, send)
             return
@@ -289,6 +336,14 @@ class OriginAuthMiddleware:
         ctx: AuthContext | None = None
         if raw is not None:
             ctx, reason = self.store.validate(raw)
+            # Fall back to an OAuth 2.1 access token (additive second credential). The static
+            # origin bearer store is tried first; unknown-there tokens may still be valid OAuth.
+            if ctx is None and oauth_enabled() and self._public_base_url:
+                from hb_assistant.obsidian_mcp.oauth_store import mcp_resource  # noqa: PLC0415
+
+                ctx = _oauth_auth_context(raw, resource=mcp_resource(self._public_base_url))
+                if ctx is not None:
+                    reason = REASON_OK
         if ctx is None:
             self._audit_denial(path, reason)
             await self._deny(send)
@@ -314,15 +369,24 @@ class OriginAuthMiddleware:
             }
         )
 
-    @staticmethod
-    async def _deny(send: Any) -> None:
+    def _www_authenticate(self) -> bytes:
+        """When OAuth is on, point unauthenticated clients at the Protected Resource Metadata
+        (RFC 9728) so they can discover the authorization server and start the flow; otherwise
+        the plain bearer realm challenge."""
+        if oauth_enabled() and self._public_base_url:
+            from hb_assistant.obsidian_mcp import oauth_store  # noqa: PLC0415
+
+            return oauth_store.www_authenticate_header(self._public_base_url).encode("latin1")
+        return b'Bearer realm="hb-nas-mcp"'
+
+    async def _deny(self, send: Any) -> None:
         await send(
             {
                 "type": "http.response.start",
                 "status": 401,
                 "headers": [
                     (b"content-type", b"application/json"),
-                    (b"www-authenticate", b'Bearer realm="hb-nas-mcp"'),
+                    (b"www-authenticate", self._www_authenticate()),
                 ],
             }
         )

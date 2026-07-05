@@ -127,6 +127,10 @@ class NasMcpBroker:
         # further restricts (never broadens) what the profile already permits.
         if auth and auth.allowed_tools and tool_name not in auth.allowed_tools:
             return self._deny(base_audit, f"tool_not_in_token_scope:{tool_name}", started)
+        # Denylist narrowing (only ever restricts): e.g. a read-scoped OAuth token is barred
+        # from the single write tool even though the profile permits it.
+        if auth and auth.denied_tools and tool_name in auth.denied_tools:
+            return self._deny(base_audit, f"tool_denied_by_token_scope:{tool_name}", started)
         # Per-window AI-Outputs write limiter (override-aware, fail-closed on limit AND on
         # unreadable/corrupt receipt state).
         if tool_name == AI_OUTPUTS_WRITE_TOOL:

@@ -6,7 +6,8 @@
 #   * Container process binds 0.0.0.0:8765 inside namespace
 #   * Does NOT start hb-personal-assistant-backend or port 8000
 #   * No auth/security/token mounts
-#   * Vault + outputs RW; home/work RO; DB RO; audit RW only under /app-support/audit/mcp
+#   * Vault + outputs RW; home/work RO; DB RO SNAPSHOT (live prod DB never mounted here);
+#     audit RW under /app-support/audit/mcp; analytics RW (writable plan store)
 
 networks:
   hb-mcp-internal:
@@ -31,7 +32,24 @@ services:
       HB_MCP_PROFILE: "remote_cloudflare"
       HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
       HB_ASSISTANT_DB_READONLY: "1"
+      # N8B origin-auth token + operator-override stores. The config default resolves to
+      # <app_support>/origin-auth/... which is a HOST path NOT mounted into the container;
+      # pin both under the RW-mounted audit dir so tokens persist across restarts and are
+      # writable by the non-root runtime user (1028:100). config.py reads these env first.
+      HB_MCP_ORIGIN_AUTH_TOKEN_STORE: /app-support/audit/mcp/origin-auth/tokens.json
+      HB_MCP_OVERRIDE_STORE: /app-support/audit/mcp/origin-auth/overrides.json
       HB_OBSIDIAN_MCP_SUPPORT_DIR: /app-support/audit/mcp/obsidian-support
+      # N8B OAuth 2.1: accept OAuth access tokens as a SECOND origin credential (in addition
+      # to the static bearer) so OAuth-2.1-only web connectors (Claude.ai/ChatGPT/Grok) can
+      # authenticate — they cannot send Cloudflare Access service-token headers. Additive:
+      # never relaxes origin_auth_required or the write gates. The public base URL is the
+      # fixed HTTPS origin used to build discovery metadata + bind/verify token audience
+      # (never request-Host-derived, to defeat Host spoofing). The OAuth store (codes/
+      # tokens/clients) must land under the RW-mounted audit dir — the config default would
+      # resolve to the canonical /volume2 audit path which is NOT the writable mount here.
+      HB_MCP_OAUTH_ENABLED: "1"
+      HB_MCP_PUBLIC_BASE_URL: "https://nas-mcp.bobby-fetting.me"
+      HB_OAUTH_STORE_DIR: /app-support/audit/mcp/oauth
       PYTHONUNBUFFERED: "1"
     command:
       - hb-assistant
@@ -45,10 +63,25 @@ services:
       - "8765"
     volumes:
       - "${HB_MCP_CONFIG_FILE:-/volume2/personal-assistant/config/hb-pa-config.mcp.yml}:/config/hb-pa-config.mcp.yml:ro"
-      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/db:/app-support/db:ro"
+      # The MCP reads a checkpointed READ-ONLY SNAPSHOT of the managed DB — the live 4GB
+      # production DB is NEVER mounted into this internet-facing container. The snapshot is
+      # produced by deploy/nas/scripts/snapshot-mcp-db.sh (SQLite online backup + atomic
+      # rename). The container path satisfies the DB storage guard (must be under
+      # /volume2/personal-assistant/.../db/hb-personal-assistant.sqlite) and db_tools opens
+      # it mode=ro&immutable=1 — immutable is safe (snapshot is stable between refreshes)
+      # and required to open a DB on a read-only mount. Keep config mcp.db_path in sync.
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/mcp-snapshot/db:/volume2/personal-assistant/app-support/mcp-snapshot/db:ro"
       - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/audit/mcp:/app-support/audit/mcp:rw"
+      # Writable plan store: the vault_*_plan tools persist server-generated plans under
+      # <app_support>/analytics/obsidian_mcp/plans (PathPolicy). app_support resolves to
+      # the canonical /volume2/.../app-support, so analytics must be a writable mount or
+      # plan generation fails with EACCES after loading. Host dir must be writable by
+      # the container user (1028:100).
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/analytics:/volume2/personal-assistant/app-support/analytics:rw"
       - "${HB_VAULT_MOUNT:-/volume2/personal-assistant/vault/obsidian}:/mnt/vault:rw"
       - "${HB_HOME_ROOT:-/volume1/homes/bfetting/Home}:/mnt/roots/home:ro"
       - "${HB_WORK_ROOT:-/volume1/homes/bfetting/Work}:/mnt/roots/work:ro"
       - "${HB_MCP_OUTPUTS:-/volume1/homes/bfetting/mcp-outputs}:/mnt/outputs:rw"
-    restart: "no"
+    # Always-on: restart on failure and on daemon/boot start (N8B persistence). Container
+    # Manager auto-starts on boot, so unless-stopped gives start-after-reboot too.
+    restart: unless-stopped

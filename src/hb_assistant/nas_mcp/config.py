@@ -84,6 +84,9 @@ class NasMcpConfig:
     origin_auth_store_path: Path | None = None
     override_store_path: Path | None = None
     obsidian: NasObsidianConfig | None = None
+    # External HTTPS base URL for OAuth discovery/issuer (e.g. https://nas-mcp.example.me).
+    # Required when OAuth is enabled; used to build AS/PRM metadata and resource binding.
+    public_base_url: str | None = None
 
     @classmethod
     def from_env(cls) -> NasMcpConfig:
@@ -172,6 +175,10 @@ class NasMcpConfig:
             origin_auth_store_path=origin_auth_store_path,
             override_store_path=override_store_path,
             obsidian=obsidian,
+            public_base_url=(
+                os.environ.get("HB_MCP_PUBLIC_BASE_URL")
+                or (str(mcp.get("public_base_url")) if mcp.get("public_base_url") else None)
+            ),
         )
 
     def root_mount(self, root_key: str) -> Path:

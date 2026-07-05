@@ -35,7 +35,12 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
             "MCP SDK not installed. Install with `pip install -e '.[mcp]'`."
         ) from exc
 
-    from .profile import active_profile, health_mode, origin_auth_required  # noqa: PLC0415
+    from .profile import (  # noqa: PLC0415
+        active_profile,
+        health_mode,
+        oauth_enabled,
+        origin_auth_required,
+    )
 
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
     register_nas_mcp_tools(mcp, broker)
@@ -71,9 +76,21 @@ def build_nas_mcp_asgi_app(config: NasMcpConfig | None = None) -> Any:
                 await stack.enter_async_context(mcp_lifespan(inner))
             yield
 
+    # OAuth 2.1 surface (additive, opt-in via HB_MCP_OAUTH_ENABLED). Mounted BEFORE the
+    # catch-all Mount("/") so /oauth/* and /.well-known/* resolve to the AS handlers rather
+    # than the MCP app. Requires a configured public base URL (discovery/issuer). This never
+    # relaxes origin auth or the write gates — it only adds OAuth as a second credential.
+    oauth_routes: list[Any] = []
+    if oauth_enabled() and cfg.public_base_url:
+        from .oauth import build_oauth_routes, configure_process_oauth  # noqa: PLC0415
+
+        configure_process_oauth(cfg)
+        oauth_routes = build_oauth_routes(cfg.public_base_url.rstrip("/"))
+
     app = Starlette(
         routes=[
             Route("/health", health, methods=["GET"]),
+            *oauth_routes,
             Mount("/", app=mcp_app),
         ],
         lifespan=lifespan,

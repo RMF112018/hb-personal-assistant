@@ -119,6 +119,15 @@ def safe_mode_enabled() -> bool:
     return _env_bool("HB_MCP_SAFE_MODE") is True
 
 
+def oauth_enabled() -> bool:
+    """Whether the NAS surface also accepts OAuth 2.1 access tokens (in addition to the
+    static origin bearer). Default off; opt-in via ``HB_MCP_OAUTH_ENABLED=1``. This is
+    strictly ADDITIVE — it never relaxes ``origin_auth_required()`` or the write gates;
+    it only adds OAuth as a second accepted credential + mounts the OAuth discovery/flow
+    endpoints. Requires a configured public base URL to build discovery metadata."""
+    return _env_bool("HB_MCP_OAUTH_ENABLED") is True
+
+
 def blocked_write_tools() -> frozenset[str]:
     """Tool names denied under the current profile/gate posture."""
     blocked: set[str] = set()
@@ -140,4 +149,5 @@ def gate_status() -> dict[str, object]:
         "origin_auth_required": origin_auth_required(),
         "health_mode": health_mode(),
         "safe_mode": safe_mode_enabled(),
+        "oauth_enabled": oauth_enabled(),
     }
