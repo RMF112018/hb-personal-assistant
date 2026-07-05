@@ -368,4 +368,8 @@ def test_build_asgi_health_endpoint(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         assert resp.status_code == 200
         body = resp.json()
         assert body["nas_readonly"] is True
-        assert "vault" in body["configured_roots"]
+        # Minimal-public health: liveness only, no sensitive detail leaked unauthenticated.
+        assert body["status"] == "ok"
+        assert body["origin_auth_required"] is True
+        assert "configured_roots" not in body
+        assert "allowlisted_table_keys" not in body
