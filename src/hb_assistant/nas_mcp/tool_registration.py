@@ -16,6 +16,33 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         payload = broker.dispatch("hb_mcp_status", {})
         return payload.get("result", payload)
 
+    # Tier-0 read-only status/freshness tools — always available (incl. safe mode),
+    # require origin auth like every other tool, never expose row content/paths.
+    @mcp.tool()
+    def hb_data_freshness() -> dict[str, Any]:
+        payload = broker.dispatch("hb_data_freshness", {})
+        return payload.get("result", payload)
+
+    @mcp.tool()
+    def hb_queue_status() -> dict[str, Any]:
+        payload = broker.dispatch("hb_queue_status", {})
+        return payload.get("result", payload)
+
+    @mcp.tool()
+    def hb_recent_failures(limit: int = 10) -> dict[str, Any]:
+        payload = broker.dispatch("hb_recent_failures", {"limit": limit})
+        return payload.get("result", payload)
+
+    @mcp.tool()
+    def hb_last_successful_runs() -> dict[str, Any]:
+        payload = broker.dispatch("hb_last_successful_runs", {})
+        return payload.get("result", payload)
+
+    @mcp.tool()
+    def hb_capability_mode() -> dict[str, Any]:
+        payload = broker.dispatch("hb_capability_mode", {})
+        return payload.get("result", payload)
+
     @mcp.tool()
     def hb_db_select(
         table_key: str,
