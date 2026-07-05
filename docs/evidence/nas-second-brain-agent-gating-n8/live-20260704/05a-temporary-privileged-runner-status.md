@@ -1,31 +1,38 @@
-# 05a — Temporary Privileged Proof-05 Runner — STATUS / SECURITY NOTE
+# 05a — Temporary Privileged Proof-05 / Proof-06 Runners — STATUS / SECURITY NOTE
 
-Records the temporary privileged path installed to run Proof 05, its current status, and the outstanding
-cleanup obligations. **No sudoers cleanup has been performed** — the runner remains installed by design as
-the explicit rollback path pending Proof 06/07.
+Records the temporary privileged paths installed to run Proofs 05 and 06, their current status, and the
+outstanding cleanup obligations. **No sudoers cleanup has been performed** — the runners remain installed by
+design as the explicit rollback paths pending Proof 07.
 
 ## Installed components
-- **Runner:** `/usr/local/sbin/hb-pa-proof05-runner` (root-owned)
-- **Driver:** `/usr/local/sbin/hb-pa-proof05-driver.py` (root-owned; runs inside the pinned container as the service uid)
+Proof 05 (DB ingest + rollback path):
+- **Runner:** `/usr/local/sbin/hb-pa-proof05-runner` (root-owned) · **Driver:** `/usr/local/sbin/hb-pa-proof05-driver.py`
 - **Sudoers drop-in:** `/etc/sudoers.d/hb-pa-proof05` (root-owned, mode `0440`)
 
-## Allowed subcommands (exact, no wildcards)
-`status` · `backup` · `ingest` · `restore`
+Proof 06 (one Obsidian card + rollback; separate runner so the proof-05 path stayed untouched):
+- **Runner:** `/usr/local/sbin/hb-pa-proof06-runner` (root-owned) · **Driver:** `/usr/local/sbin/hb-pa-proof06-driver.py`
+- **Minimal `/volume2` config:** `/usr/local/sbin/hb-pa-proof06-config.yml` (container-only `HB_PA_CONFIG`; no secrets)
+- **Sudoers drop-in:** `/etc/sudoers.d/hb-pa-proof06` (root-owned, mode `0440`)
 
-Each sudoers line is an exact command with a fixed argument — no other argv is accepted. The drop-in does
-**not** grant `docker`, `su`, `bash`/`sh`, `cp`/`rsync`, `sqlite3`, or `python`, and grants **no** arbitrary
+## Allowed subcommands (exact, no wildcards)
+- proof05: `status` · `backup` · `ingest` · `restore`
+- proof06: `card-preflight` · `backup` · `card` · `restore`
+
+Each sudoers line is an exact command with a fixed argument — no other argv is accepted. Neither drop-in
+grants `docker`, `su`, `bash`/`sh`, `cp`/`rsync`, `sqlite3`, or `python`, and neither grants arbitrary
 `sudo -u`. The DB stays `0600` service-owned; `bfetting` never gains direct DB read/write.
 
 ## Current status
-- The runner remains **installed but unused** after Proof 05 completed. It is retained **only** as the
-  rollback/status path (`status` for read-only inspection, `restore` for rollback from the Proof 05 backup)
-  pending Proof 06 and Proof 07.
-- `restore` has **not** been run and must not be run unless explicitly authorized after a stop condition.
+- Both runners remain **installed but idle** after Proofs 05 and 06 completed. Each is retained **only** as
+  its rollback/status path (proof05 `status`/`restore`; proof06 `card-preflight`/`restore`) pending Proof 07.
+- The proof-06 `restore` WAS run once (operator-authorized) to reverse a partial-write stop condition, then
+  the proof completed cleanly on retry. No `restore` is queued now; none runs without explicit authorization
+  after a stop condition.
 
 ## Revocation obligation
-- This privileged path **must be revoked at N8 live-proof closeout** (remove the sudoers drop-in, runner,
-  and driver) **unless explicitly retained** by Bobby. Its continued existence is a standing, time-bounded
-  exception, not a permanent grant.
+- **Both** privileged paths **must be revoked at N8 live-proof closeout** (remove each sudoers drop-in,
+  runner, driver, and the proof-06 config) **unless explicitly retained** by Bobby. They are standing,
+  time-bounded exceptions, not permanent grants.
 
 ## Separate, still-open item — stale `/volume1` sudoers drift
 - A pre-existing sudoers entry referencing `/volume1/personal-assistant/bin/hb-mcp-runner` remains present.
