@@ -23,8 +23,9 @@ def _old_file_sid(source_kind: str, rel_path: str) -> str:
     return hashlib.sha256(f"{source_kind}|file|{rel_path}".encode()).hexdigest()[:32]
 
 
-def test_latest_schema_version_is_99() -> None:
-    assert LATEST_SCHEMA_VERSION == 99
+def test_latest_schema_version_is_100() -> None:
+    # v99 folded root_key into source_id; v100 (N8C-4) added the claim-extraction tables.
+    assert LATEST_SCHEMA_VERSION == 100
 
 
 def test_source_id_folds_in_root_key() -> None:

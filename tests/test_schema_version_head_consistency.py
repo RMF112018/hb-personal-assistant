@@ -61,6 +61,15 @@ def test_v99_migration_row_present(tmp_path: Path) -> None:
     assert row[0] == "v99_source_identity_root_scoped"
 
 
+def test_v100_migration_row_present(tmp_path: Path) -> None:
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        row = conn.execute("SELECT name FROM schema_migrations WHERE version = 100").fetchone()
+    assert row is not None
+    assert row[0] == "v100_assistant_claims"
+
+
 def test_apply_is_idempotent(tmp_path: Path) -> None:
     # v98 is a destructive rebuild-and-rename guarded only by the outer
     # ``WHERE version = 98`` check; a second apply() must be a safe no-op.

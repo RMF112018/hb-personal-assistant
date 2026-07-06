@@ -2637,6 +2637,42 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=400, detail=str(getattr(exc, "code", exc))) from exc
         return _assistant_env(result)
 
+    # ----- N8C-4 read-only claim navigation (local UI surface; claims stay OFF the remote MCP) -----
+    def _claim_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.claim_repository import ClaimRepository
+
+        return ClaimRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/claims")
+    def assistant_claims(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=50),
+        claim_type: str | None = Query(default=None),
+        status: str | None = Query(default=None),
+        source_id: str | None = Query(default=None),
+        note_rel_path: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        claims = _claim_repo().list_claims(limit=limit, claim_type=claim_type, status=status,
+                                           source_id=source_id, note_rel_path=note_rel_path)
+        return _assistant_env({"claims": claims, "count": len(claims)})
+
+    @app.get("/api/assistant/sources/{source_id}/claims")
+    def assistant_source_claims(source_id: str, role: dict[str, str] = role_dep,
+                                limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        claims = _claim_repo().get_claims_for_source(source_id, limit=limit)
+        return _assistant_env({"source_id": source_id, "claims": claims, "count": len(claims)})
+
+    @app.get("/api/assistant/cards/claims")
+    def assistant_card_claims(role: dict[str, str] = role_dep,
+                              note_rel_path: str = Query(default=""),
+                              limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        claims = _claim_repo().get_claims_for_note(note_rel_path, limit=limit)
+        return _assistant_env({"note_rel_path": note_rel_path, "claims": claims, "count": len(claims)})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
