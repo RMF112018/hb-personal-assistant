@@ -122,6 +122,17 @@ def assistant_nav_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_context_packs_enabled() -> bool:
+    """N8C-6 read-only enrichment-review + context-pack tools (``assistant_list_context_packs`` etc.).
+
+    Reads only — they never write (the pack BUILD/apply path is CLI-only and never exposed remotely),
+    so they are independent of the three write gates and enabled by DEFAULT, like the N8C-3 nav tools.
+    Origin auth still applies. Kill-switch: ``HB_MCP_ASSISTANT_CONTEXT_PACKS=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_CONTEXT_PACKS")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -163,4 +174,5 @@ def gate_status() -> dict[str, object]:
         "safe_mode": safe_mode_enabled(),
         "oauth_enabled": oauth_enabled(),
         "assistant_nav_enabled": assistant_nav_enabled(),
+        "assistant_context_packs_enabled": assistant_context_packs_enabled(),
     }

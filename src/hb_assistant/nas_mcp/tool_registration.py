@@ -9,6 +9,7 @@ from .broker import NasMcpBroker
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
+    assistant_context_packs_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
@@ -184,6 +185,32 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         @mcp.tool()
         def assistant_get_vault_note(note_rel_path: str, max_chars: int | None = None) -> dict[str, Any]:
             return _assistant_result("assistant_get_vault_note", {"note_rel_path": note_rel_path, "max_chars": max_chars})
+
+    # N8C-6 read-only enrichment-review + context-pack tools. Reads only; enabled by default. The pack
+    # BUILD/apply path is CLI-only and is NEVER exposed remotely (no write tool is registered here).
+    # Served from the same read-only DB snapshot via the broker.
+    if assistant_context_packs_enabled():
+
+        @mcp.tool()
+        def assistant_list_context_packs(pack_type: str | None = None, status: str | None = None,
+                                         limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_context_packs",
+                                     {"pack_type": pack_type, "status": status, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_context_pack(pack_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_context_pack", {"pack_id": pack_id})
+
+        @mcp.tool()
+        def assistant_get_context_pack_items(pack_id: str, limit: int = 200) -> dict[str, Any]:
+            return _assistant_result("assistant_get_context_pack_items",
+                                     {"pack_id": pack_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_list_enrichment_review_items(limit: int = 25, job_type: str | None = None,
+                                                   review_tier: str | None = None) -> dict[str, Any]:
+            return _assistant_result("assistant_list_enrichment_review_items",
+                                     {"limit": limit, "job_type": job_type, "review_tier": review_tier})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

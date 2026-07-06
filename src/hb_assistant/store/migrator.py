@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 101
+LATEST_SCHEMA_VERSION = 102
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6962,6 +6962,12 @@ class SQLiteMigrator:
 
         return V101_STATEMENTS
 
+    @staticmethod
+    def _v102_statements() -> list[str]:
+        from hb_assistant.store.assistant_context_pack_tables import V102_STATEMENTS
+
+        return V102_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8681,6 +8687,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (101, 'v101_assistant_enrichment', ?)",
+                    (now,),
+                )
+
+            # v102 (NAS N8C-6): context-pack tables — assistant_context_packs +
+            # assistant_context_pack_items + assistant_context_pack_receipts +
+            # assistant_context_pack_events. Additive, empty on create; nothing populates them on
+            # startup (no lifespan/scheduler/watcher/worker path builds a pack). NOT a bridge/job
+            # schema (that is N8D).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 102")
+            if cur.fetchone() is None:
+                for stmt in self._v102_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (102, 'v102_assistant_context_packs', ?)",
                     (now,),
                 )
 

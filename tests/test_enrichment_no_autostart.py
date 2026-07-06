@@ -63,15 +63,21 @@ def test_worker_not_referenced_by_lifespan_or_automation() -> None:
 
 
 def test_remote_mcp_has_no_enrichment_write_tool() -> None:
-    from hb_assistant.nas_mcp.broker import ASSISTANT_NAV_TOOLS
+    from hb_assistant.nas_mcp.broker import ASSISTANT_CONTEXT_PACK_TOOLS, ASSISTANT_NAV_TOOLS
 
     assert len(ASSISTANT_NAV_TOOLS) == 12
     assert not any("enrichment" in name for name in ASSISTANT_NAV_TOOLS)
-    # No nas_mcp module wires the enrichment repository/queue onto the remote surface.
+    # N8C-6 adds ONE read-only enrichment-review tool remotely (reads receipts via the read-only
+    # snapshot); it is NOT a queue write. No nas_mcp module may call an enrichment WRITE method, so
+    # the queue lifecycle (enqueue/claim/complete/fail) stays CLI/service-only and off the remote
+    # surface — ``ai_outputs_card_upsert`` remains the only sanctioned remote write.
+    assert "assistant_list_enrichment_review_items" in ASSISTANT_CONTEXT_PACK_TOOLS
+    write_methods = ("queue_job", "claim_next_job", "mark_running", "complete_job", "fail_job",
+                     "heartbeat_job", "release_expired_leases")
     for path in (SRC / "nas_mcp").glob("*.py"):
         text = path.read_text(encoding="utf-8")
-        assert "EnrichmentRepository" not in text
-        assert "enrichment_repository" not in text
+        for method in write_methods:
+            assert method not in text, f"{path.name} references enrichment write method {method}"
 
 
 def test_repository_writes_only_enrichment_tables() -> None:

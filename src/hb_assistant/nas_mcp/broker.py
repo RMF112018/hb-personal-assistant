@@ -37,6 +37,7 @@ from .overrides import OverrideStore
 from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
+    assistant_context_packs_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
     gate_status,
@@ -68,6 +69,16 @@ ASSISTANT_NAV_TOOLS = (
     "assistant_recent_changes",
     "assistant_get_related_sources",
     "assistant_get_vault_note",
+)
+
+# N8C-6 read-only enrichment-review + context-pack tools (reads only; never write — the pack
+# BUILD/apply path is CLI-only and never exposed remotely). Served from the same read-only DB
+# snapshot as the nav tools. Gated independently by ``assistant_context_packs_enabled()``.
+ASSISTANT_CONTEXT_PACK_TOOLS = (
+    "assistant_list_context_packs",
+    "assistant_get_context_pack",
+    "assistant_get_context_pack_items",
+    "assistant_list_enrichment_review_items",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -255,6 +266,10 @@ class NasMcpBroker:
                 "exposure_profile": gate_status(),
                 "assistant_nav_enabled": assistant_nav_enabled(),
                 "assistant_nav_tools": list(ASSISTANT_NAV_TOOLS) if assistant_nav_enabled() else [],
+                "assistant_context_packs_enabled": assistant_context_packs_enabled(),
+                "assistant_context_pack_tools": (
+                    list(ASSISTANT_CONTEXT_PACK_TOOLS) if assistant_context_packs_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -274,6 +289,10 @@ class NasMcpBroker:
                 mode=str(arguments.get("mode", "create")),
                 domain=str(arguments.get("domain", "unknown")),
             )
+        if tool_name in ASSISTANT_CONTEXT_PACK_TOOLS:
+            if not assistant_context_packs_enabled():
+                raise ValueError("assistant_context_packs_disabled")
+            return self._invoke_assistant_context_packs(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -421,6 +440,49 @@ class NasMcpBroker:
                     return nav.get_card_state(repo, obs, str(arguments["source_id"]), conn=conn)
                 return nav.get_vault_note(obs, str(arguments.get("note_rel_path", "")),
                                          max_chars=arguments.get("max_chars"))
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_context_packs(self, cfg: NasMcpConfig, tool_name: str,
+                                        arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-6 enrichment-review / context-pack tool over a READ-ONLY DB
+        snapshot (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the
+        derived read model and the context-pack repository — so these tools physically cannot write
+        and never fall back to a writable handle. No build/apply path is reachable remotely.
+        """
+        from hb_assistant.obsidian_mcp import enrichment_review as rv
+        from hb_assistant.obsidian_mcp.claim_repository import ClaimRepository
+        from hb_assistant.obsidian_mcp.context_pack_repository import ContextPackRepository
+        from hb_assistant.obsidian_mcp.enrichment_repository import EnrichmentRepository
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            db = str(cfg.db_path)
+            if tool_name == "assistant_list_context_packs":
+                repo = ContextPackRepository(db)
+                packs = repo.list_packs(pack_type=arguments.get("pack_type"),
+                                        status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"context_packs": packs, "count": len(packs)}
+            if tool_name == "assistant_get_context_pack":
+                pack = ContextPackRepository(db).get_pack(str(arguments["pack_id"]), conn=conn)
+                if pack is None:
+                    raise ValueError("context_pack_not_found")
+                return {"context_pack": pack}
+            if tool_name == "assistant_get_context_pack_items":
+                items = ContextPackRepository(db).list_items(str(arguments["pack_id"]),
+                                                             limit=_limit(200), conn=conn)
+                return {"pack_id": str(arguments["pack_id"]), "items": items, "count": len(items)}
+            if tool_name == "assistant_list_enrichment_review_items":
+                return rv.list_enrichment_review_items(
+                    EnrichmentRepository(db), ClaimRepository(db), SourceIndexRepository(db),
+                    limit=_limit(), job_type=arguments.get("job_type"),
+                    review_tier=arguments.get("review_tier"), conn=conn)
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

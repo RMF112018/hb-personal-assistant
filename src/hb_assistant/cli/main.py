@@ -21,6 +21,7 @@ from . import actions as actions_mod
 from . import auth as auth_mod
 from . import automation as auto_mod
 from . import construction as construction_mod
+from . import context_pack as context_pack_mod
 from . import diagnostics as diag_mod
 from . import email_calendar as email_calendar_mod
 from . import files as files_mod
@@ -79,6 +80,7 @@ app.add_typer(mcp_nas_mod.mcp_app, name="mcp")
 app.add_typer(launcher_mod.app, name="launcher")
 app.add_typer(scheduler_mod.app, name="scheduler")
 app.add_typer(qwen_worker_mod.app, name="qwen-worker")
+app.add_typer(context_pack_mod.app, name="context-pack")
 
 
 # Explicit thin stubs for remaining command groups

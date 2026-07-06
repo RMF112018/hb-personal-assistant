@@ -2714,6 +2714,94 @@ def create_app(*, db_path: str | None = None) -> Any:
         receipts = _enrichment_repo().list_receipts(job_id=job_id, limit=limit)
         return _assistant_env({"receipts": receipts, "count": len(receipts)})
 
+    # ----- N8C-6 read-only enrichment-review + context-pack navigation (local UI surface) -----
+    # All GET, all-roles, read-only. The enrichment-review read model is DERIVED (no table). Context
+    # packs are persisted; the BUILD/apply path is CLI-only (`hb-assistant context-pack build
+    # --apply`) — there is intentionally no write route here.
+    def _review_deps() -> tuple[Any, Any, Any]:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.claim_repository import ClaimRepository
+        from hb_assistant.obsidian_mcp.enrichment_repository import EnrichmentRepository
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        path = db_path or str(PathPolicy().get_db_path())
+        return EnrichmentRepository(path), ClaimRepository(path), SourceIndexRepository(path)
+
+    def _context_pack_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.context_pack_repository import ContextPackRepository
+
+        return ContextPackRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/enrichment/review")
+    def assistant_enrichment_review(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=50),
+        job_type: str | None = Query(default=None),
+        review_tier: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import enrichment_review as rv
+
+        er, cr, sr = _review_deps()
+        return _assistant_env(rv.list_enrichment_review_items(
+            er, cr, sr, limit=limit, job_type=job_type, review_tier=review_tier))
+
+    @app.get("/api/assistant/enrichment/review/{item_id}")
+    def assistant_enrichment_review_item(item_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import enrichment_review as rv
+
+        er, cr, sr = _review_deps()
+        item = rv.get_enrichment_review_item(er, cr, sr, item_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="review_item_not_found")
+        return _assistant_env({"review_item": item})
+
+    @app.get("/api/assistant/context-packs")
+    def assistant_context_packs(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=50),
+        pack_type: str | None = Query(default=None),
+        status: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        packs = _context_pack_repo().list_packs(pack_type=pack_type, status=status, limit=limit)
+        return _assistant_env({"context_packs": packs, "count": len(packs)})
+
+    @app.get("/api/assistant/context-packs/{pack_id}")
+    def assistant_context_pack(pack_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        pack = _context_pack_repo().get_pack(pack_id)
+        if pack is None:
+            raise HTTPException(status_code=404, detail="context_pack_not_found")
+        return _assistant_env({"context_pack": pack})
+
+    @app.get("/api/assistant/context-packs/{pack_id}/items")
+    def assistant_context_pack_items(pack_id: str, role: dict[str, str] = role_dep,
+                                     limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        items = _context_pack_repo().list_items(pack_id, limit=limit)
+        return _assistant_env({"pack_id": pack_id, "items": items, "count": len(items)})
+
+    @app.get("/api/assistant/context-packs/{pack_id}/export")
+    def assistant_context_pack_export(pack_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import context_pack_builder as builder
+
+        repo = _context_pack_repo()
+        pack = repo.get_pack(pack_id)
+        if pack is None:
+            raise HTTPException(status_code=404, detail="context_pack_not_found")
+        export = builder.export_context_pack(pack, repo.list_items(pack_id))
+        return _assistant_env(export)
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
