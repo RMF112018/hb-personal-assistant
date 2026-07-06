@@ -22,12 +22,13 @@ from . import auth as auth_mod
 from . import automation as auto_mod
 from . import construction as construction_mod
 from . import diagnostics as diag_mod
+from . import email_calendar as email_calendar_mod
 from . import files as files_mod
 from . import graph as graph_mod
 from . import launcher as launcher_mod
-from . import email_calendar as email_calendar_mod
 from . import mcp_nas as mcp_nas_mod
 from . import procore as procore_mod
+from . import qwen_worker as qwen_worker_mod
 from . import run as run_mod
 from . import scheduler as scheduler_mod
 from . import search as search_mod
@@ -77,6 +78,7 @@ app.add_typer(second_brain_mod.app, name="second-brain")
 app.add_typer(mcp_nas_mod.mcp_app, name="mcp")
 app.add_typer(launcher_mod.app, name="launcher")
 app.add_typer(scheduler_mod.app, name="scheduler")
+app.add_typer(qwen_worker_mod.app, name="qwen-worker")
 
 
 # Explicit thin stubs for remaining command groups

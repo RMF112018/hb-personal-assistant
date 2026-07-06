@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 100
+LATEST_SCHEMA_VERSION = 101
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6956,6 +6956,12 @@ class SQLiteMigrator:
 
         return V100_STATEMENTS
 
+    @staticmethod
+    def _v101_statements() -> list[str]:
+        from hb_assistant.store.assistant_enrichment_tables import V101_STATEMENTS
+
+        return V101_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8663,6 +8669,18 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (100, 'v100_assistant_claims', ?)",
+                    (now,),
+                )
+
+            # v101 (NAS N8C-5): typed Qwen enrichment queue — assistant_enrichment_jobs +
+            # assistant_enrichment_receipts. Additive, empty on create; nothing populates them on
+            # startup (no lifespan/scheduler/watcher path enqueues or runs a worker).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 101")
+            if cur.fetchone() is None:
+                for stmt in self._v101_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (101, 'v101_assistant_enrichment', ?)",
                     (now,),
                 )
 

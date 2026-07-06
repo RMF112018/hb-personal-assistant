@@ -2673,6 +2673,47 @@ def create_app(*, db_path: str | None = None) -> Any:
         claims = _claim_repo().get_claims_for_note(note_rel_path, limit=limit)
         return _assistant_env({"note_rel_path": note_rel_path, "claims": claims, "count": len(claims)})
 
+    # ----- N8C-5 read-only enrichment queue navigation (local UI surface; NO remote MCP, NO write) -----
+    # Write operations (queue/claim/complete/fail) are driven only by the internal service +
+    # `hb-assistant qwen-worker` CLI. A local write API is deferred (default-OFF flag
+    # HB_ASSISTANT_ENRICHMENT_WORKER_API reserved for a later operator-only slice).
+    def _enrichment_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.enrichment_repository import EnrichmentRepository
+
+        return EnrichmentRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/enrichment/jobs")
+    def assistant_enrichment_jobs(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=50),
+        status: str | None = Query(default=None),
+        job_type: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        jobs = _enrichment_repo().list_jobs(status=status, job_type=job_type, limit=limit)
+        return _assistant_env({"jobs": jobs, "count": len(jobs)})
+
+    @app.get("/api/assistant/enrichment/jobs/{job_id}")
+    def assistant_enrichment_job(job_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        job = _enrichment_repo().get_job(job_id)
+        if job is None:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=404, detail="job_not_found")
+        return _assistant_env({"job": job})
+
+    @app.get("/api/assistant/enrichment/receipts")
+    def assistant_enrichment_receipts(
+        role: dict[str, str] = role_dep,
+        job_id: str | None = Query(default=None),
+        limit: int = Query(default=50),
+    ) -> dict[str, Any]:
+        del role
+        receipts = _enrichment_repo().list_receipts(job_id=job_id, limit=limit)
+        return _assistant_env({"receipts": receipts, "count": len(receipts)})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
