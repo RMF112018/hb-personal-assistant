@@ -10,6 +10,7 @@ from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
     assistant_context_packs_enabled,
+    assistant_decision_memory_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
@@ -238,6 +239,43 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         def assistant_get_memory_compilations(node_id: str, limit: int = 25) -> dict[str, Any]:
             return _assistant_result("assistant_get_memory_compilations",
                                      {"node_id": node_id, "limit": limit})
+
+    # N8C-8 read-only decision/preference/open-loop tools. Reads only; enabled by default. The
+    # extract/apply path is CLI-only and is NEVER exposed remotely (no write/extract/action tool is
+    # registered here). Served from the same read-only DB snapshot via the broker.
+    if assistant_decision_memory_enabled():
+
+        @mcp.tool()
+        def assistant_list_decisions(decision_type: str | None = None, status: str | None = None,
+                                     limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_decisions",
+                                     {"decision_type": decision_type, "status": status, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_decision(decision_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_decision", {"decision_id": decision_id})
+
+        @mcp.tool()
+        def assistant_list_preferences(preference_type: str | None = None, status: str | None = None,
+                                       limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_preferences",
+                                     {"preference_type": preference_type, "status": status,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_preference(preference_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_preference", {"preference_id": preference_id})
+
+        @mcp.tool()
+        def assistant_list_open_loops(open_loop_type: str | None = None, status: str | None = None,
+                                      limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_open_loops",
+                                     {"open_loop_type": open_loop_type, "status": status,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_open_loop(open_loop_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_open_loop", {"open_loop_id": open_loop_id})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

@@ -2856,6 +2856,73 @@ def create_app(*, db_path: str | None = None) -> Any:
         comps = _memory_repo().list_compilations(node_id, limit=limit)
         return _assistant_env({"node_id": node_id, "compilations": comps, "count": len(comps)})
 
+    # ----- N8C-8 read-only decision / preference / open-loop navigation (local UI surface) ------
+    # All GET, all-roles, read-only. Records are DERIVED/EXTRACTED and ADVISORY (candidate/unreviewed;
+    # never claim acceptance, never an action). The extract/apply path is CLI-only
+    # (`hb-assistant decision-memory extract --apply`) — there is intentionally no write route here.
+    def _decision_memory_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.decision_memory_repository import DecisionMemoryRepository
+
+        return DecisionMemoryRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/decisions")
+    def assistant_decisions(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                            decision_type: str | None = Query(default=None),
+                            status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _decision_memory_repo().list_decisions(decision_type=decision_type, status=status,
+                                                         limit=limit)
+        return _assistant_env({"decisions": records, "count": len(records)})
+
+    @app.get("/api/assistant/decisions/{decision_id}")
+    def assistant_decision(decision_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _decision_memory_repo().get_decision(decision_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="decision_not_found")
+        return _assistant_env({"decision": record})
+
+    @app.get("/api/assistant/preferences")
+    def assistant_preferences(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                              preference_type: str | None = Query(default=None),
+                              status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _decision_memory_repo().list_preferences(preference_type=preference_type,
+                                                          status=status, limit=limit)
+        return _assistant_env({"preferences": records, "count": len(records)})
+
+    @app.get("/api/assistant/preferences/{preference_id}")
+    def assistant_preference(preference_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _decision_memory_repo().get_preference(preference_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="preference_not_found")
+        return _assistant_env({"preference": record})
+
+    @app.get("/api/assistant/open-loops")
+    def assistant_open_loops(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                             open_loop_type: str | None = Query(default=None),
+                             status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _decision_memory_repo().list_open_loops(open_loop_type=open_loop_type,
+                                                        status=status, limit=limit)
+        return _assistant_env({"open_loops": records, "count": len(records)})
+
+    @app.get("/api/assistant/open-loops/{open_loop_id}")
+    def assistant_open_loop(open_loop_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _decision_memory_repo().get_open_loop(open_loop_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="open_loop_not_found")
+        return _assistant_env({"open_loop": record})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

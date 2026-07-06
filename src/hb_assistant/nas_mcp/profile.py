@@ -145,6 +145,18 @@ def assistant_memory_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_decision_memory_enabled() -> bool:
+    """N8C-8 read-only decision/preference/open-loop tools (``assistant_list_decisions`` etc.).
+
+    Reads only — they never write (the extract/apply path is CLI-only and never exposed remotely), so
+    they are independent of the three write gates and enabled by DEFAULT, like the N8C-3 nav, N8C-6
+    context-pack, and N8C-7 memory tools. Origin auth still applies. Kill-switch:
+    ``HB_MCP_ASSISTANT_DECISION_MEMORY=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_DECISION_MEMORY")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -188,4 +200,5 @@ def gate_status() -> dict[str, object]:
         "assistant_nav_enabled": assistant_nav_enabled(),
         "assistant_context_packs_enabled": assistant_context_packs_enabled(),
         "assistant_memory_enabled": assistant_memory_enabled(),
+        "assistant_decision_memory_enabled": assistant_decision_memory_enabled(),
     }

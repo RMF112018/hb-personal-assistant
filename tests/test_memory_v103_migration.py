@@ -20,8 +20,14 @@ def _tables(db: str) -> set[str]:
         return {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
 
-def test_head_is_103() -> None:
-    assert LATEST_SCHEMA_VERSION == 103
+def test_v103_present_and_head_at_least_103(tmp_path: Path) -> None:
+    # V103 is additive; later migrations (V104+) advance the head without removing it.
+    assert LATEST_SCHEMA_VERSION >= 103
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    with sqlite3.connect(db) as c:
+        row = c.execute("SELECT name FROM schema_migrations WHERE version = 103").fetchone()
+    assert row is not None and row[0] == "v103_assistant_memory"
 
 
 def test_apply_creates_four_memory_tables(tmp_path: Path) -> None:

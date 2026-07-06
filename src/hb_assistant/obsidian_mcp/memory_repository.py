@@ -314,6 +314,28 @@ class MemoryRepository:
             ).fetchall()
         return [dict(zip(_COMPILATION_COLUMNS, r, strict=True)) for r in rows]
 
+    def list_built_compilations_for_sources(self, source_ids: list[str], *, limit: int = _MAX_LIMIT,
+                                            conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Read-only: built compilations whose node has a mention in any of ``source_ids`` (bounded).
+
+        Used by the N8C-8 decision/preference/open-loop extractor to mine a pack's memory context —
+        never writes. Empty ``source_ids`` returns ``[]``.
+        """
+        ids = [s for s in dict.fromkeys(source_ids) if s]
+        if not ids:
+            return []
+        placeholders = ", ".join("?" for _ in ids)
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                f"SELECT {', '.join('c.' + col for col in _COMPILATION_COLUMNS)} "
+                "FROM assistant_memory_compilations c WHERE c.status='built' AND c.node_id IN ("
+                "  SELECT DISTINCT node_id FROM assistant_memory_mentions "
+                f"  WHERE source_id IN ({placeholders})) "  # noqa: S608 (placeholders are bound params)
+                "ORDER BY c.created_at DESC, c.compilation_id DESC LIMIT ?",
+                (*ids, _clamp_limit(limit)),
+            ).fetchall()
+        return [dict(zip(_COMPILATION_COLUMNS, r, strict=True)) for r in rows]
+
     def list_events(self, node_id: str, *, limit: int = _MAX_LIMIT,
                     conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         with borrow_connection(conn, self.db_path) as c:

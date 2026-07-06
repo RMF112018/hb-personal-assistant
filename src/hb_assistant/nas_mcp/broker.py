@@ -38,6 +38,7 @@ from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
     assistant_context_packs_enabled,
+    assistant_decision_memory_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
@@ -90,6 +91,18 @@ ASSISTANT_MEMORY_TOOLS = (
     "assistant_get_memory_node",
     "assistant_get_memory_mentions",
     "assistant_get_memory_compilations",
+)
+
+# N8C-8 read-only decision/preference/open-loop tools (reads only; never write — the extract/apply
+# path is CLI-only and never exposed remotely). Served from the same read-only DB snapshot. Gated
+# independently by ``assistant_decision_memory_enabled()``.
+ASSISTANT_DECISION_MEMORY_TOOLS = (
+    "assistant_list_decisions",
+    "assistant_get_decision",
+    "assistant_list_preferences",
+    "assistant_get_preference",
+    "assistant_list_open_loops",
+    "assistant_get_open_loop",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -285,6 +298,10 @@ class NasMcpBroker:
                 "assistant_memory_tools": (
                     list(ASSISTANT_MEMORY_TOOLS) if assistant_memory_enabled() else []
                 ),
+                "assistant_decision_memory_enabled": assistant_decision_memory_enabled(),
+                "assistant_decision_memory_tools": (
+                    list(ASSISTANT_DECISION_MEMORY_TOOLS) if assistant_decision_memory_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -312,6 +329,10 @@ class NasMcpBroker:
             if not assistant_memory_enabled():
                 raise ValueError("assistant_memory_disabled")
             return self._invoke_assistant_memory(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_DECISION_MEMORY_TOOLS:
+            if not assistant_decision_memory_enabled():
+                raise ValueError("assistant_decision_memory_disabled")
+            return self._invoke_assistant_decision_memory(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -540,6 +561,53 @@ class NasMcpBroker:
                 comps = repo.list_compilations(str(arguments["node_id"]), limit=_limit(), conn=conn)
                 return {"node_id": str(arguments["node_id"]), "compilations": comps,
                         "count": len(comps)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_decision_memory(self, cfg: NasMcpConfig, tool_name: str,
+                                          arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-8 decision/preference/open-loop tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the
+        decision-memory repository — physically cannot write, no live-DB fallback. No extract/apply
+        path is reachable remotely.
+        """
+        from hb_assistant.obsidian_mcp.decision_memory_repository import DecisionMemoryRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = DecisionMemoryRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_decisions":
+                recs = repo.list_decisions(decision_type=arguments.get("decision_type"),
+                                           status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"decisions": recs, "count": len(recs)}
+            if tool_name == "assistant_get_decision":
+                rec = repo.get_decision(str(arguments["decision_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("decision_not_found")
+                return {"decision": rec}
+            if tool_name == "assistant_list_preferences":
+                recs = repo.list_preferences(preference_type=arguments.get("preference_type"),
+                                             status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"preferences": recs, "count": len(recs)}
+            if tool_name == "assistant_get_preference":
+                rec = repo.get_preference(str(arguments["preference_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("preference_not_found")
+                return {"preference": rec}
+            if tool_name == "assistant_list_open_loops":
+                recs = repo.list_open_loops(open_loop_type=arguments.get("open_loop_type"),
+                                            status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"open_loops": recs, "count": len(recs)}
+            if tool_name == "assistant_get_open_loop":
+                rec = repo.get_open_loop(str(arguments["open_loop_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("open_loop_not_found")
+                return {"open_loop": rec}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

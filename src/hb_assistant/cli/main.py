@@ -22,6 +22,7 @@ from . import auth as auth_mod
 from . import automation as auto_mod
 from . import construction as construction_mod
 from . import context_pack as context_pack_mod
+from . import decision_memory as decision_memory_mod
 from . import diagnostics as diag_mod
 from . import email_calendar as email_calendar_mod
 from . import files as files_mod
@@ -83,6 +84,7 @@ app.add_typer(scheduler_mod.app, name="scheduler")
 app.add_typer(qwen_worker_mod.app, name="qwen-worker")
 app.add_typer(context_pack_mod.app, name="context-pack")
 app.add_typer(memory_mod.app, name="memory")
+app.add_typer(decision_memory_mod.app, name="decision-memory")
 
 
 # Explicit thin stubs for remaining command groups

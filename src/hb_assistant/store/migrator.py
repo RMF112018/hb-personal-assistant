@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 103
+LATEST_SCHEMA_VERSION = 104
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6974,6 +6974,12 @@ class SQLiteMigrator:
 
         return V103_STATEMENTS
 
+    @staticmethod
+    def _v104_statements() -> list[str]:
+        from hb_assistant.store.assistant_decision_memory_tables import V104_STATEMENTS
+
+        return V104_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8720,6 +8726,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (103, 'v103_assistant_memory', ?)",
+                    (now,),
+                )
+
+            # v104 (NAS N8C-8): decision / preference / open-loop memory — assistant_decision_records +
+            # assistant_preference_records + assistant_open_loop_records + assistant_decision_memory_events.
+            # Additive, empty on create; nothing populates them on startup (no lifespan/scheduler/watcher/
+            # worker path extracts records). Advisory records only — NOT a workflow engine / task executor /
+            # reminder / bridge-job schema (that is N8D).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 104")
+            if cur.fetchone() is None:
+                for stmt in self._v104_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (104, 'v104_assistant_decision_memory', ?)",
                     (now,),
                 )
 
