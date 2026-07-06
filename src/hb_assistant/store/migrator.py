@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 102
+LATEST_SCHEMA_VERSION = 103
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6968,6 +6968,12 @@ class SQLiteMigrator:
 
         return V102_STATEMENTS
 
+    @staticmethod
+    def _v103_statements() -> list[str]:
+        from hb_assistant.store.assistant_memory_tables import V103_STATEMENTS
+
+        return V103_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8701,6 +8707,19 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (102, 'v102_assistant_context_packs', ?)",
+                    (now,),
+                )
+
+            # v103 (NAS N8C-7): source-backed memory compiler — assistant_memory_nodes +
+            # assistant_memory_mentions + assistant_memory_compilations + assistant_memory_events.
+            # Additive, empty on create; nothing populates them on startup (no lifespan/scheduler/
+            # watcher/worker path compiles memory). NOT a graph/vector/bridge schema.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 103")
+            if cur.fetchone() is None:
+                for stmt in self._v103_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (103, 'v103_assistant_memory', ?)",
                     (now,),
                 )
 

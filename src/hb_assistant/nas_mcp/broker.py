@@ -38,6 +38,7 @@ from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
     assistant_context_packs_enabled,
+    assistant_memory_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
     gate_status,
@@ -79,6 +80,16 @@ ASSISTANT_CONTEXT_PACK_TOOLS = (
     "assistant_get_context_pack",
     "assistant_get_context_pack_items",
     "assistant_list_enrichment_review_items",
+)
+
+# N8C-7 read-only memory-compiler tools (reads only; never write — the compile/apply path is
+# CLI-only and never exposed remotely). Served from the same read-only DB snapshot as the nav /
+# context-pack tools. Gated independently by ``assistant_memory_enabled()``.
+ASSISTANT_MEMORY_TOOLS = (
+    "assistant_list_memory_nodes",
+    "assistant_get_memory_node",
+    "assistant_get_memory_mentions",
+    "assistant_get_memory_compilations",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -270,6 +281,10 @@ class NasMcpBroker:
                 "assistant_context_pack_tools": (
                     list(ASSISTANT_CONTEXT_PACK_TOOLS) if assistant_context_packs_enabled() else []
                 ),
+                "assistant_memory_enabled": assistant_memory_enabled(),
+                "assistant_memory_tools": (
+                    list(ASSISTANT_MEMORY_TOOLS) if assistant_memory_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -293,6 +308,10 @@ class NasMcpBroker:
             if not assistant_context_packs_enabled():
                 raise ValueError("assistant_context_packs_disabled")
             return self._invoke_assistant_context_packs(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_MEMORY_TOOLS:
+            if not assistant_memory_enabled():
+                raise ValueError("assistant_memory_disabled")
+            return self._invoke_assistant_memory(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -483,6 +502,44 @@ class NasMcpBroker:
                     EnrichmentRepository(db), ClaimRepository(db), SourceIndexRepository(db),
                     limit=_limit(), job_type=arguments.get("job_type"),
                     review_tier=arguments.get("review_tier"), conn=conn)
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_memory(self, cfg: NasMcpConfig, tool_name: str,
+                                 arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-7 memory-compiler tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the memory
+        repository — physically cannot write, no live-DB fallback. No compile/apply path is reachable
+        remotely.
+        """
+        from hb_assistant.obsidian_mcp.memory_repository import MemoryRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = MemoryRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_memory_nodes":
+                nodes = repo.list_nodes(node_type=arguments.get("node_type"),
+                                        status=arguments.get("status"),
+                                        domain=arguments.get("domain"), limit=_limit(), conn=conn)
+                return {"memory_nodes": nodes, "count": len(nodes)}
+            if tool_name == "assistant_get_memory_node":
+                node = repo.get_node(str(arguments["node_id"]), conn=conn)
+                if node is None:
+                    raise ValueError("memory_node_not_found")
+                return {"memory_node": node}
+            if tool_name == "assistant_get_memory_mentions":
+                mentions = repo.list_mentions(str(arguments["node_id"]), limit=_limit(200), conn=conn)
+                return {"node_id": str(arguments["node_id"]), "mentions": mentions,
+                        "count": len(mentions)}
+            if tool_name == "assistant_get_memory_compilations":
+                comps = repo.list_compilations(str(arguments["node_id"]), limit=_limit(), conn=conn)
+                return {"node_id": str(arguments["node_id"]), "compilations": comps,
+                        "count": len(comps)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

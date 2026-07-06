@@ -10,6 +10,7 @@ from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
     assistant_context_packs_enabled,
+    assistant_memory_enabled,
     assistant_nav_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
@@ -211,6 +212,32 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                                                    review_tier: str | None = None) -> dict[str, Any]:
             return _assistant_result("assistant_list_enrichment_review_items",
                                      {"limit": limit, "job_type": job_type, "review_tier": review_tier})
+
+    # N8C-7 read-only memory-compiler tools. Reads only; enabled by default. The compile/apply path
+    # is CLI-only and is NEVER exposed remotely (no write tool is registered here). Served from the
+    # same read-only DB snapshot via the broker.
+    if assistant_memory_enabled():
+
+        @mcp.tool()
+        def assistant_list_memory_nodes(node_type: str | None = None, status: str | None = None,
+                                        domain: str | None = None, limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_memory_nodes",
+                                     {"node_type": node_type, "status": status, "domain": domain,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_memory_node(node_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_memory_node", {"node_id": node_id})
+
+        @mcp.tool()
+        def assistant_get_memory_mentions(node_id: str, limit: int = 200) -> dict[str, Any]:
+            return _assistant_result("assistant_get_memory_mentions",
+                                     {"node_id": node_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_memory_compilations(node_id: str, limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_get_memory_compilations",
+                                     {"node_id": node_id, "limit": limit})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

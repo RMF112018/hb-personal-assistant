@@ -2802,6 +2802,60 @@ def create_app(*, db_path: str | None = None) -> Any:
         export = builder.export_context_pack(pack, repo.list_items(pack_id))
         return _assistant_env(export)
 
+    # ----- N8C-7 read-only memory-node navigation (local UI surface) -----------------------
+    # All GET, all-roles, read-only. Memory objects are DERIVED/COMPILED and ADVISORY (never claim
+    # acceptance). The compile/apply path is CLI-only (`hb-assistant memory compile --apply`) — there
+    # is intentionally no write route here.
+    def _memory_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.memory_repository import MemoryRepository
+
+        return MemoryRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/memory/nodes")
+    def assistant_memory_nodes(
+        role: dict[str, str] = role_dep,
+        limit: int = Query(default=50),
+        node_type: str | None = Query(default=None),
+        status: str | None = Query(default=None),
+        domain: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        nodes = _memory_repo().list_nodes(node_type=node_type, status=status, domain=domain,
+                                          limit=limit)
+        return _assistant_env({"memory_nodes": nodes, "count": len(nodes)})
+
+    @app.get("/api/assistant/memory/search")
+    def assistant_memory_search(role: dict[str, str] = role_dep, q: str = Query(default=""),
+                                limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        nodes = _memory_repo().search_nodes(q, limit=limit)
+        return _assistant_env({"memory_nodes": nodes, "count": len(nodes)})
+
+    @app.get("/api/assistant/memory/nodes/{node_id}")
+    def assistant_memory_node(node_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        node = _memory_repo().get_node(node_id)
+        if node is None:
+            raise HTTPException(status_code=404, detail="memory_node_not_found")
+        return _assistant_env({"memory_node": node})
+
+    @app.get("/api/assistant/memory/nodes/{node_id}/mentions")
+    def assistant_memory_node_mentions(node_id: str, role: dict[str, str] = role_dep,
+                                       limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        mentions = _memory_repo().list_mentions(node_id, limit=limit)
+        return _assistant_env({"node_id": node_id, "mentions": mentions, "count": len(mentions)})
+
+    @app.get("/api/assistant/memory/nodes/{node_id}/compilations")
+    def assistant_memory_node_compilations(node_id: str, role: dict[str, str] = role_dep,
+                                           limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        comps = _memory_repo().list_compilations(node_id, limit=limit)
+        return _assistant_env({"node_id": node_id, "compilations": comps, "count": len(comps)})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

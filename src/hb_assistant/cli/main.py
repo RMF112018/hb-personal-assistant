@@ -28,6 +28,7 @@ from . import files as files_mod
 from . import graph as graph_mod
 from . import launcher as launcher_mod
 from . import mcp_nas as mcp_nas_mod
+from . import memory as memory_mod
 from . import procore as procore_mod
 from . import qwen_worker as qwen_worker_mod
 from . import run as run_mod
@@ -81,6 +82,7 @@ app.add_typer(launcher_mod.app, name="launcher")
 app.add_typer(scheduler_mod.app, name="scheduler")
 app.add_typer(qwen_worker_mod.app, name="qwen-worker")
 app.add_typer(context_pack_mod.app, name="context-pack")
+app.add_typer(memory_mod.app, name="memory")
 
 
 # Explicit thin stubs for remaining command groups

@@ -113,6 +113,40 @@ def test_prior_assistant_tables_survive_v102(tmp_path: Path) -> None:
     assert {"assistant_enrichment_jobs", "assistant_enrichment_receipts"} <= names
 
 
+def test_v103_migration_row_present(tmp_path: Path) -> None:
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        row = conn.execute("SELECT name FROM schema_migrations WHERE version = 103").fetchone()
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name LIKE 'assistant_memory%'"
+            )
+        }
+    assert row is not None
+    assert row[0] == "v103_assistant_memory"
+    assert tables == {
+        "assistant_memory_nodes",
+        "assistant_memory_mentions",
+        "assistant_memory_compilations",
+        "assistant_memory_events",
+    }
+
+
+def test_prior_assistant_tables_survive_v103(tmp_path: Path) -> None:
+    # V103 is additive: V100 claim, V101 enrichment, and V102 context-pack tables must remain.
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        names = {
+            r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert {"assistant_claims", "assistant_enrichment_jobs"} <= names
+    assert {"assistant_context_packs", "assistant_context_pack_items"} <= names
+
+
 def test_apply_is_idempotent(tmp_path: Path) -> None:
     # v98 is a destructive rebuild-and-rename guarded only by the outer
     # ``WHERE version = 98`` check; a second apply() must be a safe no-op.
