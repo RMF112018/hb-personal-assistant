@@ -99,7 +99,9 @@ def _ok(payload: dict) -> dict:
 
 # -- schema invariance -------------------------------------------------------------------
 def test_no_schema_bump() -> None:
-    assert LATEST_SCHEMA_VERSION == 108
+    # The workflow/MCP layer itself adds no schema; the head may advance for later N8C phases
+    # (e.g. V109 N8C-18 feedback), so this asserts head-agnostic floor + no workflow tables below.
+    assert LATEST_SCHEMA_VERSION >= 108
 
 
 def test_no_workflow_persistence_table_in_migrator() -> None:

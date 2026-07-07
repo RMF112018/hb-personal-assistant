@@ -26,6 +26,7 @@ from . import context_pack as context_pack_mod
 from . import decision_memory as decision_memory_mod
 from . import diagnostics as diag_mod
 from . import email_calendar as email_calendar_mod
+from . import feedback as feedback_mod
 from . import files as files_mod
 from . import graph as graph_mod
 from . import intelligence as intelligence_mod
@@ -97,6 +98,7 @@ app.add_typer(answer_draft_mod.app, name="answer-draft")
 app.add_typer(research_packet_mod.app, name="research-packet")
 app.add_typer(source_connector_mod.app, name="source-connector")
 app.add_typer(workflow_mod.app, name="workflow")
+app.add_typer(feedback_mod.app, name="feedback")
 
 
 # Explicit thin stubs for remaining command groups

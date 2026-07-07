@@ -1,5 +1,5 @@
 """N8C-15 workflow registry: canonical catalog, per-type routing targets, and deferred-capability markers.
-Also asserts N8C-15 remains schema-free (LATEST_SCHEMA_VERSION stays 108)."""
+Also asserts N8C-15 itself remains schema-free (the head only advances for later schema-bearing phases)."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 
 
 def test_no_schema_bump() -> None:
-    # N8C-15 is route-only and adds no schema; the head must remain at the N8C-14 (V108) version.
-    assert LATEST_SCHEMA_VERSION == 108
+    # N8C-15 is route-only and adds no schema; the head may advance for later schema-bearing phases
+    # (e.g. V109 N8C-18 feedback). Assert the N8C-14 floor, not an exact head.
+    assert LATEST_SCHEMA_VERSION >= 108
 
 
 def test_catalog_lists_all_types_and_targets() -> None:

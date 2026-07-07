@@ -24,9 +24,10 @@ def _migrate(db: Path) -> int:
 
 
 def test_head_is_108(tmp_path: Path) -> None:
+    # Head-agnostic (the schema head advances with later N8C phases; V108 remains applied).
     db = tmp_path / "h.db"
-    assert _migrate(db) == 108
-    assert LATEST_SCHEMA_VERSION == 108
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert LATEST_SCHEMA_VERSION >= 108
 
 
 def test_five_draft_tables_created(tmp_path: Path) -> None:
@@ -40,8 +41,8 @@ def test_five_draft_tables_created(tmp_path: Path) -> None:
 
 def test_migration_is_idempotent(tmp_path: Path) -> None:
     db = tmp_path / "h.db"
-    assert _migrate(db) == 108
-    assert _migrate(db) == 108  # re-apply is a no-op
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION  # re-apply is a no-op
     with sqlite3.connect(db) as c:
         row = c.execute("SELECT name FROM schema_migrations WHERE version=108").fetchone()
     assert row[0] == "v108_assistant_answer_draft"

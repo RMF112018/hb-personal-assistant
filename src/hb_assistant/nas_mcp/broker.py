@@ -40,6 +40,7 @@ from .profile import (
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
+    assistant_feedback_enabled,
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
@@ -188,6 +189,21 @@ ASSISTANT_WORKFLOW_TOOLS = (
     "assistant_get_workflow_artifacts",
     "assistant_get_workflow_policy",
     "assistant_get_workflow_summary",
+)
+
+# N8C-18 read-only feedback / review-loop inspection tools (reads only; never write). They retrieve bounded
+# operator feedback records + ADVISORY review-loop recommendations from the five N8C-18 feedback tables —
+# never a review disposition, no write/build/apply, no action. Served from the same read-only DB snapshot
+# (mode=ro&immutable=1 + PRAGMA query_only=ON). Gated independently by ``assistant_feedback_enabled()``. The
+# names use list/get/targets/recommendations/summary/export verbs — none is a forbidden finality/action
+# substring (``export`` is not ``extract``), so the tool-registration finality guards keep passing unchanged.
+ASSISTANT_FEEDBACK_TOOLS = (
+    "assistant_list_feedback",
+    "assistant_get_feedback",
+    "assistant_get_feedback_targets",
+    "assistant_get_feedback_recommendations",
+    "assistant_get_feedback_summary",
+    "assistant_get_feedback_export",
 )
 
 # The five fixed no-execution policy fields carried by every N8C-15 workflow envelope.
@@ -456,6 +472,10 @@ class NasMcpBroker:
                 "assistant_workflow_tools": (
                     list(ASSISTANT_WORKFLOW_TOOLS) if assistant_workflows_enabled() else []
                 ),
+                "assistant_feedback_enabled": assistant_feedback_enabled(),
+                "assistant_feedback_tools": (
+                    list(ASSISTANT_FEEDBACK_TOOLS) if assistant_feedback_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -511,6 +531,10 @@ class NasMcpBroker:
             if not assistant_workflows_enabled():
                 raise ValueError("assistant_workflows_disabled")
             return self._invoke_assistant_workflows(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_FEEDBACK_TOOLS:
+            if not assistant_feedback_enabled():
+                raise ValueError("assistant_feedback_disabled")
+            return self._invoke_assistant_feedback(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -1040,6 +1064,55 @@ class NasMcpBroker:
                     raise ValueError(str(e)) from None
             if tool_name == "assistant_get_draft_summary":
                 return {"summary": repo.summary(conn=conn)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_feedback(self, cfg: NasMcpConfig, tool_name: str,
+                                   arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-18 feedback tool over a READ-ONLY DB snapshot (``mode=ro&immutable=1`` +
+        ``PRAGMA query_only=ON``), threaded via ``conn=`` into the feedback repository — physically cannot
+        write, no live-DB fallback. These retrieve bounded operator feedback records + ADVISORY review-loop
+        recommendations only; no write, no review-disposition, no build/apply, and no action path is reachable
+        remotely (the ``feedback add --apply`` writer is CLI-only)."""
+        from hb_assistant.obsidian_mcp import feedback_service as FS
+        from hb_assistant.obsidian_mcp.feedback_models import FeedbackValidationError
+        from hb_assistant.obsidian_mcp.feedback_repository import FeedbackRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = FeedbackRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_feedback":
+                recs = repo.list_feedback(feedback_type=arguments.get("feedback_type"),
+                                          status=arguments.get("status"),
+                                          workflow_id=arguments.get("workflow_id"), limit=_limit(),
+                                          conn=conn)
+                return {"feedback": recs, "count": len(recs)}
+            if tool_name == "assistant_get_feedback":
+                rec = repo.get_feedback(str(arguments["feedback_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("feedback_not_found")
+                return {"feedback": rec}
+            if tool_name == "assistant_get_feedback_targets":
+                recs = repo.list_targets(str(arguments["feedback_id"]), limit=_limit(100), conn=conn)
+                return {"feedback_id": str(arguments["feedback_id"]), "targets": recs, "count": len(recs)}
+            if tool_name == "assistant_get_feedback_recommendations":
+                recs = repo.list_recommendations(
+                    arguments.get("feedback_id"),
+                    recommendation_type=arguments.get("recommendation_type"), limit=_limit(), conn=conn)
+                return {"recommendations": recs, "count": len(recs)}
+            if tool_name == "assistant_get_feedback_summary":
+                return {"summary": repo.summary(conn=conn)}
+            if tool_name == "assistant_get_feedback_export":
+                try:
+                    return FS.export_feedback(repo, feedback_id=str(arguments["feedback_id"]),
+                                              limit=_limit(200), conn=conn)
+                except FeedbackValidationError as e:
+                    raise ValueError(str(e)) from None
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

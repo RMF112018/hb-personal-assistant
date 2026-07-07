@@ -12,6 +12,7 @@ from .profile import (
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
+    assistant_feedback_enabled,
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
@@ -625,6 +626,56 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                 "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
                 "review_item_id": review_item_id, "memory_node_id": memory_node_id,
                 "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
+
+    # N8C-18 read-only feedback / review-loop inspection. Reads only; enabled by default. These tools
+    # retrieve bounded operator feedback records + ADVISORY, operator-review-required review-loop
+    # recommendations. They NEVER write, change a review disposition, mutate any upstream record, stage an
+    # action, or execute anything — the `feedback add --apply` writer is CLI-only. Served from the same
+    # read-only DB snapshot via the broker.
+    if assistant_feedback_enabled():
+
+        @mcp.tool()
+        def assistant_list_feedback(feedback_type: str | None = None, status: str | None = None,
+                                    workflow_id: str | None = None, limit: int = 25) -> dict[str, Any]:
+            """List persisted operator FEEDBACK records (read-only). Feedback is advisory input to the review
+            loop for operator review only; it does not execute actions or change any review state."""
+            return _assistant_result("assistant_list_feedback",
+                                     {"feedback_type": feedback_type, "status": status,
+                                      "workflow_id": workflow_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_feedback(feedback_id: str) -> dict[str, Any]:
+            """Get one FEEDBACK record header (read-only). Advisory input only — never a review disposition."""
+            return _assistant_result("assistant_get_feedback", {"feedback_id": feedback_id})
+
+        @mcp.tool()
+        def assistant_get_feedback_targets(feedback_id: str, limit: int = 100) -> dict[str, Any]:
+            """List a feedback record's bounded targets + preserved provenance (read-only). Metadata only —
+            no raw bodies, no live source read."""
+            return _assistant_result("assistant_get_feedback_targets",
+                                     {"feedback_id": feedback_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_feedback_recommendations(feedback_id: str | None = None,
+                                                   recommendation_type: str | None = None,
+                                                   limit: int = 25) -> dict[str, Any]:
+            """List ADVISORY review-loop recommendations (read-only). Each is a SUGGESTION for operator
+            review only — never an applied relabel, accept, reject, defer, or dispose."""
+            return _assistant_result("assistant_get_feedback_recommendations",
+                                     {"feedback_id": feedback_id,
+                                      "recommendation_type": recommendation_type, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_feedback_summary() -> dict[str, Any]:
+            """Bounded aggregate over persisted feedback (read-only counts by type/status)."""
+            return _assistant_result("assistant_get_feedback_summary", {})
+
+        @mcp.tool()
+        def assistant_get_feedback_export(feedback_id: str, limit: int = 200) -> dict[str, Any]:
+            """Bounded JSON export of a persisted FEEDBACK record (read-only; header + targets +
+            recommendations). Advisory review-loop input only — no state change, no action."""
+            return _assistant_result("assistant_get_feedback_export",
+                                     {"feedback_id": feedback_id, "limit": limit})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

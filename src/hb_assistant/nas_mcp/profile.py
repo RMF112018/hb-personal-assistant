@@ -237,6 +237,21 @@ def assistant_workflows_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_feedback_enabled() -> bool:
+    """N8C-18 read-only feedback / review-loop inspection tools (``assistant_list_feedback`` /
+    ``assistant_get_feedback`` / ``assistant_get_feedback_recommendations`` etc.).
+
+    Reads only — they retrieve bounded operator feedback records + ADVISORY review-loop recommendations. They
+    never write (the ``feedback add --apply`` writer is CLI-only and never exposed remotely), never change a
+    review disposition, never mutate a source/workflow/upstream record, and execute nothing, so they are
+    independent of the three write gates and enabled by DEFAULT, like the N8C-3 nav … N8C-16 workflow tools.
+    Origin auth still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_FEEDBACK=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_FEEDBACK")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -287,4 +302,5 @@ def gate_status() -> dict[str, object]:
         "assistant_source_connector_enabled": assistant_source_connector_enabled(),
         "assistant_answer_drafts_enabled": assistant_answer_drafts_enabled(),
         "assistant_workflows_enabled": assistant_workflows_enabled(),
+        "assistant_feedback_enabled": assistant_feedback_enabled(),
     }

@@ -3327,6 +3327,82 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="draft_not_found") from None
         return _assistant_env(payload)
 
+    # ----- N8C-18 read-only feedback / review-loop recommendations (local UI surface) ------------
+    # All GET, all-roles, read-only. Feedback records are bounded operator feedback on existing N8C artifacts;
+    # recommendations are ADVISORY, operator-review-required review-loop suggestions. There is intentionally NO
+    # write route and NO review-disposition route here — the `feedback add --apply` writer is CLI-only. Reading
+    # feedback never mutates a review disposition, source/workflow/packet/draft/projection/context-pack/
+    # decision/preference/open-loop record, stages nothing, and executes nothing.
+    def _feedback_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.feedback_repository import FeedbackRepository
+
+        return FeedbackRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/feedback")
+    def assistant_feedback(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                           feedback_type: str | None = Query(default=None),
+                           status: str | None = Query(default=None),
+                           workflow_id: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _feedback_repo().list_feedback(feedback_type=feedback_type, status=status,
+                                                 workflow_id=workflow_id, limit=limit)
+        return _assistant_env({"feedback": records, "count": len(records)})
+
+    # NOTE: /summary and /recommendations are declared BEFORE /{feedback_id} so the literal paths are not
+    # shadowed by the path-param route (FastAPI matches in declaration order).
+    @app.get("/api/assistant/feedback/summary")
+    def assistant_feedback_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _feedback_repo().summary()})
+
+    @app.get("/api/assistant/feedback/recommendations")
+    def assistant_feedback_recommendations(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                                           feedback_id: str | None = Query(default=None),
+                                           recommendation_type: str | None = Query(default=None)
+                                           ) -> dict[str, Any]:
+        del role
+        recs = _feedback_repo().list_recommendations(feedback_id, recommendation_type=recommendation_type,
+                                                     limit=limit)
+        return _assistant_env({"recommendations": recs, "count": len(recs)})
+
+    @app.get("/api/assistant/feedback/{feedback_id}")
+    def assistant_feedback_record(feedback_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _feedback_repo().get_feedback(feedback_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="feedback_not_found")
+        return _assistant_env({"feedback": record})
+
+    @app.get("/api/assistant/feedback/{feedback_id}/targets")
+    def assistant_feedback_targets(feedback_id: str, role: dict[str, str] = role_dep,
+                                   limit: int = Query(default=100)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _feedback_repo()
+        if repo.get_feedback(feedback_id) is None:
+            raise HTTPException(status_code=404, detail="feedback_not_found")
+        targets = repo.list_targets(feedback_id, limit=limit)
+        return _assistant_env({"feedback_id": feedback_id, "targets": targets, "count": len(targets)})
+
+    @app.get("/api/assistant/feedback/{feedback_id}/export")
+    def assistant_feedback_export(feedback_id: str, role: dict[str, str] = role_dep,
+                                  limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import feedback_service as fs
+        from hb_assistant.obsidian_mcp.feedback_models import FeedbackValidationError
+
+        try:
+            payload = fs.export_feedback(_feedback_repo(), feedback_id=feedback_id, limit=limit)
+        except FeedbackValidationError:
+            raise HTTPException(status_code=404, detail="feedback_not_found") from None
+        return _assistant_env(payload)
+
     # ----- N8C-15 read-only workflow contract + routing (local service surface) ------------------
     # Both GET, all-roles, read-only. `catalog` dumps the workflow registry (no DB). `route` resolves a
     # bounded workflow request to EXISTING N8C read surfaces and returns a normalized envelope. There is
