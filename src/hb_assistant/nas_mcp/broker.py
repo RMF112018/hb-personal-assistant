@@ -46,6 +46,7 @@ from .profile import (
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
+    assistant_workflows_enabled,
     blocked_write_tools,
     gate_status,
     safe_mode_enabled,
@@ -172,6 +173,64 @@ ASSISTANT_ANSWER_DRAFT_TOOLS = (
     "assistant_get_draft_export",
     "assistant_get_draft_summary",
 )
+
+# N8C-16 read-only LIVE workflow-consumption tools. They expose the N8C-15 deterministic workflow ROUTER to
+# MCP clients: resolve a bounded workflow request to EXISTING N8C read surfaces and return a bounded,
+# whitelisted routing/context envelope. Served from the same read-only DB snapshot (mode=ro&immutable=1 +
+# PRAGMA query_only=ON). They never write, build/apply, persist a run, generate a final answer, execute an
+# action, or read a live source file. Gated independently by ``assistant_workflows_enabled()``. The names
+# use route/context/policy/artifacts/summary verbs — none is a forbidden finality/action substring, so the
+# tool-registration finality guards keep passing unchanged.
+ASSISTANT_WORKFLOW_TOOLS = (
+    "assistant_list_workflows",
+    "assistant_route_workflow",
+    "assistant_get_workflow_context",
+    "assistant_get_workflow_artifacts",
+    "assistant_get_workflow_policy",
+    "assistant_get_workflow_summary",
+)
+
+# The five fixed no-execution policy fields carried by every N8C-15 workflow envelope.
+_WORKFLOW_POLICY_KEYS = (
+    "action_policy", "execution_policy", "review_policy", "citation_policy", "source_policy",
+)
+
+
+def _workflow_context_view(env: dict[str, Any]) -> dict[str, Any]:
+    """Bounded context slice of an already-bounded workflow envelope — SELECT only, no logic, no reads."""
+    keys = ("workflow_id", "workflow_type", "status", "selected_artifacts", "citations", "source_refs",
+            "review_labels", "open_questions", "risks_or_caveats", "deferred_capabilities",
+            "requires_operator_review", "advisory_next_steps", "warnings", *_WORKFLOW_POLICY_KEYS)
+    return {k: env[k] for k in keys if k in env}
+
+
+def _workflow_artifacts_view(env: dict[str, Any]) -> dict[str, Any]:
+    """Selected artifact REFERENCES only (ids/kinds/status/bounded metadata) — never full upstream payloads."""
+    artifacts = env.get("selected_artifacts", [])
+    keys = ("workflow_id", "workflow_type", "status", *_WORKFLOW_POLICY_KEYS)
+    out = {k: env[k] for k in keys if k in env}
+    out["selected_artifacts"] = artifacts
+    out["count"] = len(artifacts)
+    out["warnings"] = env.get("warnings", [])
+    return out
+
+
+def _workflow_policy_view(env: dict[str, Any]) -> dict[str, Any]:
+    """The fixed no-execution policy envelope + the bounded request echo — no artifact contents."""
+    keys = ("workflow_id", "workflow_type", "status", "request", *_WORKFLOW_POLICY_KEYS)
+    return {k: env[k] for k in keys if k in env}
+
+
+def _workflow_summary_view(env: dict[str, Any]) -> dict[str, Any]:
+    """Bounded, NON-FINAL route-metadata summary — counts + decision + policy only, no artifact/source/draft
+    contents and no answer-like prose."""
+    keys = ("workflow_id", "workflow_type", "status", "routing_decision", "deferred_capabilities",
+            "warnings", *_WORKFLOW_POLICY_KEYS)
+    out = {k: env[k] for k in keys if k in env}
+    out["counts"] = {name: len(env.get(name, [])) for name in (
+        "selected_artifacts", "citations", "source_refs", "review_labels", "open_questions",
+        "deferred_capabilities", "warnings")}
+    return out
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
     {
@@ -390,6 +449,10 @@ class NasMcpBroker:
                 "assistant_answer_draft_tools": (
                     list(ASSISTANT_ANSWER_DRAFT_TOOLS) if assistant_answer_drafts_enabled() else []
                 ),
+                "assistant_workflows_enabled": assistant_workflows_enabled(),
+                "assistant_workflow_tools": (
+                    list(ASSISTANT_WORKFLOW_TOOLS) if assistant_workflows_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -441,6 +504,10 @@ class NasMcpBroker:
             if not assistant_answer_drafts_enabled():
                 raise ValueError("assistant_answer_drafts_disabled")
             return self._invoke_assistant_answer_drafts(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_WORKFLOW_TOOLS:
+            if not assistant_workflows_enabled():
+                raise ValueError("assistant_workflows_disabled")
+            return self._invoke_assistant_workflows(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -970,6 +1037,49 @@ class NasMcpBroker:
                     raise ValueError(str(e)) from None
             if tool_name == "assistant_get_draft_summary":
                 return {"summary": repo.summary(conn=conn)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    _WORKFLOW_REQUEST_FIELDS = (
+        "workflow_type", "query", "objective", "domain", "project_key", "source_root_key",
+        "draft_id", "packet_id", "projection_id", "context_pack_id", "review_item_id",
+        "memory_node_id", "decision_id", "preference_id", "open_loop_id",
+    )
+
+    def _invoke_assistant_workflows(self, cfg: NasMcpConfig, tool_name: str,
+                                    arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-16 live workflow-consumption tool. Every routing tool runs the N8C-15
+        deterministic ``WorkflowRouter`` over a READ-ONLY DB snapshot (``mode=ro&immutable=1`` + ``PRAGMA
+        query_only=ON``, threaded via ``conn=``) — physically cannot write, no live-DB fallback. It returns a
+        bounded, whitelisted routing/context envelope built only from EXISTING N8C artifacts: no build/apply,
+        no persistence, no final-answer generation, no action, and no live source file read. Every input is
+        clamped by ``WorkflowRequest.from_inputs`` (text capped, ids trimmed). ``assistant_list_workflows``
+        returns the static registry catalog and needs no DB at all.
+        """
+        from hb_assistant.obsidian_mcp.workflow_models import WorkflowRequest
+        from hb_assistant.obsidian_mcp.workflow_registry import catalog as workflow_catalog
+        from hb_assistant.obsidian_mcp.workflow_router import WorkflowRouter
+
+        if tool_name == "assistant_list_workflows":
+            return {"catalog": workflow_catalog()}
+
+        request = WorkflowRequest.from_inputs(
+            requested_by="mcp", **{k: arguments.get(k) for k in self._WORKFLOW_REQUEST_FIELDS})
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            env = WorkflowRouter(str(cfg.db_path)).route(request, conn=conn)
+            if tool_name == "assistant_route_workflow":
+                return {"workflow": env}
+            if tool_name == "assistant_get_workflow_context":
+                return {"workflow_context": _workflow_context_view(env)}
+            if tool_name == "assistant_get_workflow_artifacts":
+                return {"workflow_artifacts": _workflow_artifacts_view(env)}
+            if tool_name == "assistant_get_workflow_policy":
+                return {"workflow_policy": _workflow_policy_view(env)}
+            if tool_name == "assistant_get_workflow_summary":
+                return {"workflow_summary": _workflow_summary_view(env)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

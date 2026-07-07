@@ -222,6 +222,21 @@ def assistant_answer_drafts_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_workflows_enabled() -> bool:
+    """N8C-16 read-only live workflow-consumption tools (``assistant_list_workflows`` /
+    ``assistant_route_workflow`` / ``assistant_get_workflow_context`` etc.).
+
+    Reads only — they expose the N8C-15 deterministic workflow ROUTER: they resolve a bounded workflow
+    request to EXISTING N8C read surfaces and return a bounded, whitelisted routing/context envelope. They
+    never write, build/apply, generate a final answer, execute an action, or read a live source file, so
+    they are independent of the three write gates and enabled by DEFAULT, like the N8C-3 nav … N8C-14
+    answer-draft tools. Origin auth still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_WORKFLOWS=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_WORKFLOWS")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -271,4 +286,5 @@ def gate_status() -> dict[str, object]:
         "assistant_research_packets_enabled": assistant_research_packets_enabled(),
         "assistant_source_connector_enabled": assistant_source_connector_enabled(),
         "assistant_answer_drafts_enabled": assistant_answer_drafts_enabled(),
+        "assistant_workflows_enabled": assistant_workflows_enabled(),
     }

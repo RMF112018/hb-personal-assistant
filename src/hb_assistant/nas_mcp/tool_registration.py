@@ -18,6 +18,7 @@ from .profile import (
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
+    assistant_workflows_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
 )
@@ -512,6 +513,118 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         def assistant_get_draft_summary() -> dict[str, Any]:
             """Bounded aggregate over persisted answer drafts (read-only counts by type/status)."""
             return _assistant_result("assistant_get_draft_summary", {})
+
+    # N8C-16 read-only LIVE workflow consumption. Reads only; enabled by default. These tools expose the
+    # N8C-15 deterministic workflow ROUTER to MCP clients: they retrieve bounded workflow routing/context
+    # artifacts over EXISTING N8C read surfaces. They do NOT generate final answers and do NOT execute
+    # actions — no build, apply, persist, send, schedule, remind, scan, reindex, or live source read is
+    # reachable. Served from the same read-only DB snapshot via the broker.
+    if assistant_workflows_enabled():
+
+        @mcp.tool()
+        def assistant_list_workflows() -> dict[str, Any]:
+            """List the workflow catalog (read-only): canonical workflow types, routing targets, and
+            deferred-capability markers. Retrieves routing metadata only — it does not generate a final
+            answer and does not execute an action."""
+            return _assistant_result("assistant_list_workflows", {})
+
+        @mcp.tool()
+        def assistant_route_workflow(
+            workflow_type: str | None = None, query: str | None = None, objective: str | None = None,
+            domain: str | None = None, project_key: str | None = None, source_root_key: str | None = None,
+            draft_id: str | None = None, packet_id: str | None = None, projection_id: str | None = None,
+            context_pack_id: str | None = None, review_item_id: str | None = None,
+            memory_node_id: str | None = None, decision_id: str | None = None,
+            preference_id: str | None = None, open_loop_id: str | None = None,
+        ) -> dict[str, Any]:
+            """Route a bounded workflow request via the N8C-15 router and return the normalized routing
+            envelope (read-only). This is selection/routing metadata over EXISTING N8C artifacts only — it
+            does not generate a final answer, build/apply/persist anything, execute an action, or read a live
+            source file. All inputs are clamped."""
+            return _assistant_result("assistant_route_workflow", {
+                "workflow_type": workflow_type, "query": query, "objective": objective, "domain": domain,
+                "project_key": project_key, "source_root_key": source_root_key, "draft_id": draft_id,
+                "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
+                "review_item_id": review_item_id, "memory_node_id": memory_node_id,
+                "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
+
+        @mcp.tool()
+        def assistant_get_workflow_context(
+            workflow_type: str | None = None, query: str | None = None, objective: str | None = None,
+            domain: str | None = None, project_key: str | None = None, source_root_key: str | None = None,
+            draft_id: str | None = None, packet_id: str | None = None, projection_id: str | None = None,
+            context_pack_id: str | None = None, review_item_id: str | None = None,
+            memory_node_id: str | None = None, decision_id: str | None = None,
+            preference_id: str | None = None, open_loop_id: str | None = None,
+        ) -> dict[str, Any]:
+            """Return bounded workflow CONTEXT for a request (read-only): selected artifact references,
+            citations, source refs, review labels, open questions, and policy. Whitelisted metadata only —
+            no full upstream payloads, raw prompts, raw bodies, or live source reads. It does not generate a
+            final answer and does not execute an action."""
+            return _assistant_result("assistant_get_workflow_context", {
+                "workflow_type": workflow_type, "query": query, "objective": objective, "domain": domain,
+                "project_key": project_key, "source_root_key": source_root_key, "draft_id": draft_id,
+                "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
+                "review_item_id": review_item_id, "memory_node_id": memory_node_id,
+                "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
+
+        @mcp.tool()
+        def assistant_get_workflow_artifacts(
+            workflow_type: str | None = None, query: str | None = None, objective: str | None = None,
+            domain: str | None = None, project_key: str | None = None, source_root_key: str | None = None,
+            draft_id: str | None = None, packet_id: str | None = None, projection_id: str | None = None,
+            context_pack_id: str | None = None, review_item_id: str | None = None,
+            memory_node_id: str | None = None, decision_id: str | None = None,
+            preference_id: str | None = None, open_loop_id: str | None = None,
+        ) -> dict[str, Any]:
+            """Return the selected artifact REFERENCES from a workflow routing result (read-only): ids,
+            kinds, statuses, bounded title/summary, citation ids, source refs, review labels, counts, and
+            warnings. Never full packet/draft/context-pack exports or raw payloads. It does not generate a
+            final answer and does not execute an action."""
+            return _assistant_result("assistant_get_workflow_artifacts", {
+                "workflow_type": workflow_type, "query": query, "objective": objective, "domain": domain,
+                "project_key": project_key, "source_root_key": source_root_key, "draft_id": draft_id,
+                "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
+                "review_item_id": review_item_id, "memory_node_id": memory_node_id,
+                "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
+
+        @mcp.tool()
+        def assistant_get_workflow_policy(
+            workflow_type: str | None = None, query: str | None = None, objective: str | None = None,
+            domain: str | None = None, project_key: str | None = None, source_root_key: str | None = None,
+            draft_id: str | None = None, packet_id: str | None = None, projection_id: str | None = None,
+            context_pack_id: str | None = None, review_item_id: str | None = None,
+            memory_node_id: str | None = None, decision_id: str | None = None,
+            preference_id: str | None = None, open_loop_id: str | None = None,
+        ) -> dict[str, Any]:
+            """Return the fixed no-execution POLICY envelope for a workflow request (read-only):
+            action_policy=no_execution, execution_policy=route_only, review/citation/source policies. It does
+            not generate a final answer and does not execute an action."""
+            return _assistant_result("assistant_get_workflow_policy", {
+                "workflow_type": workflow_type, "query": query, "objective": objective, "domain": domain,
+                "project_key": project_key, "source_root_key": source_root_key, "draft_id": draft_id,
+                "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
+                "review_item_id": review_item_id, "memory_node_id": memory_node_id,
+                "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
+
+        @mcp.tool()
+        def assistant_get_workflow_summary(
+            workflow_type: str | None = None, query: str | None = None, objective: str | None = None,
+            domain: str | None = None, project_key: str | None = None, source_root_key: str | None = None,
+            draft_id: str | None = None, packet_id: str | None = None, projection_id: str | None = None,
+            context_pack_id: str | None = None, review_item_id: str | None = None,
+            memory_node_id: str | None = None, decision_id: str | None = None,
+            preference_id: str | None = None, open_loop_id: str | None = None,
+        ) -> dict[str, Any]:
+            """Return a bounded, NON-FINAL summary of the route decision (read-only): workflow_type, status,
+            routing_decision, selected-artifact counts, deferred capabilities, warnings, and policy. Not a
+            final or operator-approved answer, not action guidance — route/context metadata only."""
+            return _assistant_result("assistant_get_workflow_summary", {
+                "workflow_type": workflow_type, "query": query, "objective": objective, "domain": domain,
+                "project_key": project_key, "source_root_key": source_root_key, "draft_id": draft_id,
+                "packet_id": packet_id, "projection_id": projection_id, "context_pack_id": context_pack_id,
+                "review_item_id": review_item_id, "memory_node_id": memory_node_id,
+                "decision_id": decision_id, "preference_id": preference_id, "open_loop_id": open_loop_id})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

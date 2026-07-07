@@ -244,10 +244,13 @@ def test_router_calls_no_writer_or_worker() -> None:
     assert not (imported & forbidden_imports), imported & forbidden_imports
 
 
-def test_no_mcp_workflow_tools_added() -> None:
-    for name in ("broker.py", "profile.py", "tool_registration.py"):
-        text = (_SRC / "nas_mcp" / name).read_text().lower()
-        assert "workflow" not in text, f"nas_mcp/{name} must not gain a workflow reference"
+def test_router_library_stays_mcp_agnostic() -> None:
+    # The workflow router/models/registry are a pure library: they must NOT import an MCP server, register
+    # remote tools, or reach into nas_mcp. (N8C-16 wraps them in nas_mcp; the router itself stays neutral.)
+    for name in ("workflow_router.py", "workflow_models.py", "workflow_registry.py"):
+        text = (_SRC / "obsidian_mcp" / name).read_text().lower()
+        for forbidden in ("register_nas_mcp_tools", "fastmcp", "@mcp.tool", "nas_mcp", "mcp.tool("):
+            assert forbidden not in text, f"obsidian_mcp/{name} must stay MCP-agnostic ({forbidden})"
 
 
 def test_convenience_route_request(tmp_path: Path) -> None:
