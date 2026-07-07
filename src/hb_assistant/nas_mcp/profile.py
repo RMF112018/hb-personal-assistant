@@ -182,6 +182,19 @@ def assistant_intelligence_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_research_packets_enabled() -> bool:
+    """N8C-11 read-only review-aware research-packet + citation tools
+    (``assistant_list_research_packets`` etc.).
+
+    Reads only — they never write (the build/apply writer is CLI-only and never exposed remotely) and they
+    never generate an answer or execute an action, so they are independent of the three write gates and
+    enabled by DEFAULT, like the N8C-3 nav … N8C-10 intelligence tools. Origin auth still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_RESEARCH_PACKETS=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_RESEARCH_PACKETS")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -228,4 +241,5 @@ def gate_status() -> dict[str, object]:
         "assistant_decision_memory_enabled": assistant_decision_memory_enabled(),
         "assistant_review_enabled": assistant_review_enabled(),
         "assistant_intelligence_enabled": assistant_intelligence_enabled(),
+        "assistant_research_packets_enabled": assistant_research_packets_enabled(),
     }

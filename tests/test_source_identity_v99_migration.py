@@ -23,12 +23,13 @@ def _old_file_sid(source_kind: str, rel_path: str) -> str:
     return hashlib.sha256(f"{source_kind}|file|{rel_path}".encode()).hexdigest()[:32]
 
 
-def test_latest_schema_version_is_106() -> None:
+def test_latest_schema_version_is_107() -> None:
     # v99 folded root_key into source_id; v100 (N8C-4) claim-extraction; v101 (N8C-5) enrichment
     # queue; v102 (N8C-6) context packs; v103 (N8C-7) memory-compiler tables; v104 (N8C-8)
     # decision/preference/open-loop memory tables; v105 (N8C-9) review-overlay tables; v106 (N8C-10)
-    # added the review-aware intelligence-projection tables.
-    assert LATEST_SCHEMA_VERSION == 106
+    # added the review-aware intelligence-projection tables; v107 (N8C-11) added the research-packet /
+    # citation-manifest / answer-context tables.
+    assert LATEST_SCHEMA_VERSION == 107
 
 
 def test_source_id_folds_in_root_key() -> None:

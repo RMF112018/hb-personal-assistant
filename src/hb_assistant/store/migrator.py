@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 106
+LATEST_SCHEMA_VERSION = 107
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6992,6 +6992,12 @@ class SQLiteMigrator:
 
         return V106_STATEMENTS
 
+    @staticmethod
+    def _v107_statements() -> list[str]:
+        from hb_assistant.store.assistant_research_packet_tables import V107_STATEMENTS
+
+        return V107_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8785,6 +8791,23 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (106, 'v106_assistant_intelligence_projection', ?)",
+                    (now,),
+                )
+
+            # v107 (NAS N8C-11): review-aware research packets + citation manifests + answer-context
+            # contracts — assistant_research_packets + _items + _citations + _receipts + _events. Durable,
+            # bounded, answer-context read PRODUCTS materialized from the N8C-10 intelligence projections.
+            # Additive, empty on create; nothing populates them on startup (no lifespan/scheduler/watcher/
+            # worker builds packets). Packet-owned only — never mutates a source advisory, review, OR
+            # projection table, never converts candidate → accepted truth, generates no final answer,
+            # executes no action, and does NOT duplicate the N8D bridge/job schema. Effective state is READ
+            # (already frozen into the projection items), never written back.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 107")
+            if cur.fetchone() is None:
+                for stmt in self._v107_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (107, 'v107_assistant_research_packet', ?)",
                     (now,),
                 )
 

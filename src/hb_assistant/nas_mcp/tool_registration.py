@@ -14,6 +14,7 @@ from .profile import (
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_research_packets_enabled,
     assistant_review_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
@@ -352,6 +353,47 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         @mcp.tool()
         def assistant_get_intelligence_summary() -> dict[str, Any]:
             return _assistant_result("assistant_get_intelligence_summary", {})
+
+    # N8C-11 read-only review-aware research-packet + citation tools. Reads only; enabled by default. The
+    # build/apply writer is CLI-only and is NEVER exposed remotely (no build/apply/answer/action tool is
+    # registered here). Served from the same read-only DB snapshot via the broker.
+    if assistant_research_packets_enabled():
+
+        @mcp.tool()
+        def assistant_list_research_packets(packet_type: str | None = None, status: str | None = None,
+                                            limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_research_packets",
+                                     {"packet_type": packet_type, "status": status, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_research_packet(packet_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_research_packet", {"packet_id": packet_id})
+
+        @mcp.tool()
+        def assistant_get_research_packet_items(packet_id: str, answer_role: str | None = None,
+                                                included_only: bool = False,
+                                                limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_get_research_packet_items",
+                                     {"packet_id": packet_id, "answer_role": answer_role,
+                                      "included_only": included_only, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_research_packet_citations(packet_id: str, packet_item_id: str | None = None,
+                                                    limit: int = 200) -> dict[str, Any]:
+            return _assistant_result("assistant_get_research_packet_citations",
+                                     {"packet_id": packet_id, "packet_item_id": packet_item_id,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_research_packet_export(packet_id: str, included_only: bool = True,
+                                                 limit: int = 200) -> dict[str, Any]:
+            return _assistant_result("assistant_get_research_packet_export",
+                                     {"packet_id": packet_id, "included_only": included_only,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_research_packet_summary() -> dict[str, Any]:
+            return _assistant_result("assistant_get_research_packet_summary", {})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

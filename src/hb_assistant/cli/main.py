@@ -33,6 +33,7 @@ from . import mcp_nas as mcp_nas_mod
 from . import memory as memory_mod
 from . import procore as procore_mod
 from . import qwen_worker as qwen_worker_mod
+from . import research_packet as research_packet_mod
 from . import review as review_mod
 from . import run as run_mod
 from . import scheduler as scheduler_mod
@@ -89,6 +90,7 @@ app.add_typer(memory_mod.app, name="memory")
 app.add_typer(decision_memory_mod.app, name="decision-memory")
 app.add_typer(review_mod.app, name="review")
 app.add_typer(intelligence_mod.app, name="intelligence")
+app.add_typer(research_packet_mod.app, name="research-packet")
 
 
 # Explicit thin stubs for remaining command groups

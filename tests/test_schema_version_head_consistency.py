@@ -254,6 +254,45 @@ def test_prior_assistant_tables_survive_v106(tmp_path: Path) -> None:
     assert {"assistant_review_items", "assistant_review_dispositions"} <= names
 
 
+def test_v107_migration_row_present(tmp_path: Path) -> None:
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        row = conn.execute("SELECT name FROM schema_migrations WHERE version = 107").fetchone()
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name LIKE 'assistant_research_packet%'"
+            )
+        }
+    assert row is not None
+    assert row[0] == "v107_assistant_research_packet"
+    assert tables == {
+        "assistant_research_packets",
+        "assistant_research_packet_items",
+        "assistant_research_packet_citations",
+        "assistant_research_packet_receipts",
+        "assistant_research_packet_events",
+    }
+
+
+def test_prior_assistant_tables_survive_v107(tmp_path: Path) -> None:
+    # V107 is additive: V100–V106 tables (claim / enrichment / context-pack / memory / decision-memory /
+    # review-overlay / intelligence-projection) must remain.
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        names = {
+            r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert {"assistant_claims", "assistant_enrichment_jobs"} <= names
+    assert {"assistant_context_packs", "assistant_memory_nodes"} <= names
+    assert {"assistant_decision_records", "assistant_open_loop_records"} <= names
+    assert {"assistant_review_items", "assistant_review_dispositions"} <= names
+    assert {"assistant_intelligence_projections", "assistant_intelligence_projection_items"} <= names
+
+
 def test_apply_is_idempotent(tmp_path: Path) -> None:
     # v98 is a destructive rebuild-and-rename guarded only by the outer
     # ``WHERE version = 98`` check; a second apply() must be a safe no-op.

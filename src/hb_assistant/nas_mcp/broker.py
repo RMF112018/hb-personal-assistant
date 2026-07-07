@@ -42,6 +42,7 @@ from .profile import (
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_research_packets_enabled,
     assistant_review_enabled,
     blocked_write_tools,
     gate_status,
@@ -127,6 +128,18 @@ ASSISTANT_INTELLIGENCE_TOOLS = (
     "assistant_get_intelligence_projection_items",
     "assistant_get_intelligence_projection_export",
     "assistant_get_intelligence_summary",
+)
+
+# N8C-11 read-only review-aware research-packet + citation tools (reads only; never write — the build/apply
+# writer is CLI-only and never exposed remotely; there is NO answer-generation or action tool). Served from
+# the same read-only DB snapshot. Gated independently by ``assistant_research_packets_enabled()``.
+ASSISTANT_RESEARCH_PACKET_TOOLS = (
+    "assistant_list_research_packets",
+    "assistant_get_research_packet",
+    "assistant_get_research_packet_items",
+    "assistant_get_research_packet_citations",
+    "assistant_get_research_packet_export",
+    "assistant_get_research_packet_summary",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -334,6 +347,10 @@ class NasMcpBroker:
                 "assistant_intelligence_tools": (
                     list(ASSISTANT_INTELLIGENCE_TOOLS) if assistant_intelligence_enabled() else []
                 ),
+                "assistant_research_packets_enabled": assistant_research_packets_enabled(),
+                "assistant_research_packet_tools": (
+                    list(ASSISTANT_RESEARCH_PACKET_TOOLS) if assistant_research_packets_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -373,6 +390,10 @@ class NasMcpBroker:
             if not assistant_intelligence_enabled():
                 raise ValueError("assistant_intelligence_disabled")
             return self._invoke_assistant_intelligence(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_RESEARCH_PACKET_TOOLS:
+            if not assistant_research_packets_enabled():
+                raise ValueError("assistant_research_packets_disabled")
+            return self._invoke_assistant_research_packets(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -745,6 +766,57 @@ class NasMcpBroker:
                 except ProjectionValidationError as e:
                     raise ValueError(str(e)) from None
             if tool_name == "assistant_get_intelligence_summary":
+                return {"summary": repo.summary(conn=conn)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_research_packets(self, cfg: NasMcpConfig, tool_name: str,
+                                           arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-11 research-packet/citation tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the packet
+        repository — physically cannot write, no live-DB fallback. No build/apply, answer-generation, or
+        action path is reachable remotely.
+        """
+        from hb_assistant.obsidian_mcp import research_packet_builder as PB
+        from hb_assistant.obsidian_mcp.research_packet_models import ResearchPacketValidationError
+        from hb_assistant.obsidian_mcp.research_packet_repository import ResearchPacketRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = ResearchPacketRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_research_packets":
+                recs = repo.list_research_packets(packet_type=arguments.get("packet_type"),
+                                                  status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"packets": recs, "count": len(recs)}
+            if tool_name == "assistant_get_research_packet":
+                rec = repo.get_research_packet(str(arguments["packet_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("packet_not_found")
+                return {"packet": rec}
+            if tool_name == "assistant_get_research_packet_items":
+                recs = repo.list_research_packet_items(
+                    str(arguments["packet_id"]), answer_role=arguments.get("answer_role"),
+                    included_only=bool(arguments.get("included_only", False)), limit=_limit(), conn=conn)
+                return {"packet_id": str(arguments["packet_id"]), "items": recs, "count": len(recs)}
+            if tool_name == "assistant_get_research_packet_citations":
+                recs = repo.list_research_packet_citations(
+                    str(arguments["packet_id"]), packet_item_id=arguments.get("packet_item_id"),
+                    limit=_limit(200), conn=conn)
+                return {"packet_id": str(arguments["packet_id"]), "citations": recs, "count": len(recs)}
+            if tool_name == "assistant_get_research_packet_export":
+                try:
+                    return PB.export_research_packet(
+                        repo, packet_id=str(arguments["packet_id"]),
+                        included_only=bool(arguments.get("included_only", True)), limit=_limit(200),
+                        conn=conn)
+                except ResearchPacketValidationError as e:
+                    raise ValueError(str(e)) from None
+            if tool_name == "assistant_get_research_packet_summary":
                 return {"summary": repo.summary(conn=conn)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:

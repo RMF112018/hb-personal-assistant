@@ -3058,6 +3058,90 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _assistant_env({"summary": _intelligence_repo().summary()})
 
+    # ----- N8C-11 read-only review-aware research packets + citations (local UI surface) --------
+    # All GET, all-roles, read-only. Packets are bounded, citation-backed answer-CONTEXT read products;
+    # there is intentionally NO write route and NO answer-generation route here — the build/apply writer is
+    # CLI-only (`hb-assistant research-packet build --apply`). Reading a packet never mutates a source /
+    # review / projection record, generates no answer, and executes nothing.
+    def _research_packet_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.research_packet_repository import ResearchPacketRepository
+
+        return ResearchPacketRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/research-packets")
+    def assistant_research_packets(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                                   packet_type: str | None = Query(default=None),
+                                   status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _research_packet_repo().list_research_packets(packet_type=packet_type, status=status,
+                                                               limit=limit)
+        return _assistant_env({"packets": records, "count": len(records)})
+
+    # NOTE: /summary is declared BEFORE /{packet_id} so the literal path is not shadowed by the
+    # path-param route (FastAPI matches in declaration order).
+    @app.get("/api/assistant/research-packets/summary")
+    def assistant_research_packets_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _research_packet_repo().summary()})
+
+    @app.get("/api/assistant/research-packets/{packet_id}")
+    def assistant_research_packet(packet_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _research_packet_repo().get_research_packet(packet_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="packet_not_found")
+        return _assistant_env({"packet": record})
+
+    @app.get("/api/assistant/research-packets/{packet_id}/items")
+    def assistant_research_packet_items(packet_id: str, role: dict[str, str] = role_dep,
+                                        limit: int = Query(default=100),
+                                        answer_role: str | None = Query(default=None),
+                                        included_only: bool = Query(default=False)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _research_packet_repo()
+        if repo.get_research_packet(packet_id) is None:
+            raise HTTPException(status_code=404, detail="packet_not_found")
+        items = repo.list_research_packet_items(packet_id, answer_role=answer_role,
+                                                included_only=included_only, limit=limit)
+        return _assistant_env({"packet_id": packet_id, "items": items, "count": len(items)})
+
+    @app.get("/api/assistant/research-packets/{packet_id}/citations")
+    def assistant_research_packet_citations(packet_id: str, role: dict[str, str] = role_dep,
+                                            limit: int = Query(default=200),
+                                            packet_item_id: str | None = Query(default=None)
+                                            ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _research_packet_repo()
+        if repo.get_research_packet(packet_id) is None:
+            raise HTTPException(status_code=404, detail="packet_not_found")
+        citations = repo.list_research_packet_citations(packet_id, packet_item_id=packet_item_id,
+                                                        limit=limit)
+        return _assistant_env({"packet_id": packet_id, "citations": citations, "count": len(citations)})
+
+    @app.get("/api/assistant/research-packets/{packet_id}/export")
+    def assistant_research_packet_export(packet_id: str, role: dict[str, str] = role_dep,
+                                         limit: int = Query(default=200),
+                                         included_only: bool = Query(default=True)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import research_packet_builder as pb
+        from hb_assistant.obsidian_mcp.research_packet_models import ResearchPacketValidationError
+
+        try:
+            payload = pb.export_research_packet(_research_packet_repo(), packet_id=packet_id,
+                                                included_only=included_only, limit=limit)
+        except ResearchPacketValidationError:
+            raise HTTPException(status_code=404, detail="packet_not_found") from None
+        return _assistant_env(payload)
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
