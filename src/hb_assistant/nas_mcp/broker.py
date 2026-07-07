@@ -200,7 +200,10 @@ def _workflow_context_view(env: dict[str, Any]) -> dict[str, Any]:
     """Bounded context slice of an already-bounded workflow envelope — SELECT only, no logic, no reads."""
     keys = ("workflow_id", "workflow_type", "status", "selected_artifacts", "citations", "source_refs",
             "review_labels", "open_questions", "risks_or_caveats", "deferred_capabilities",
-            "requires_operator_review", "advisory_next_steps", "warnings", *_WORKFLOW_POLICY_KEYS)
+            "requires_operator_review", "advisory_next_steps", "warnings",
+            # N8C-17 additive (read-only SELECT): bounded per-workflow context sections + the context-only
+            # policy marker. Pass-through of already-bounded envelope fields — no new logic, no reads.
+            "workflow_sections", "workflow_policy", *_WORKFLOW_POLICY_KEYS)
     return {k: env[k] for k in keys if k in env}
 
 

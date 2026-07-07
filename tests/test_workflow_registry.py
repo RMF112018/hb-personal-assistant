@@ -33,12 +33,15 @@ def test_action_draft_preparation_is_contract_only_deferred_to_n8c18() -> None:
     assert spec.implementation_deferred_to == "N8C-18"
 
 
-def test_context_workflows_marked_deferred_to_n8c17() -> None:
+def test_context_workflows_implemented_in_n8c17_actions_deferred_to_n8c18() -> None:
+    # N8C-17 implements these four as read-only context-assembly handlers. Only their action staging /
+    # delivery remains deferred (N8C-18) — never a "build_*" implementation marker.
     for wf in ("meeting_prep", "daily_brief_context", "project_intelligence_context", "open_loop_triage"):
         spec = get_spec(wf)
-        assert spec.implementation_deferred_to == "N8C-17"
-        assert spec.deferred_capabilities
-        assert spec.primary_targets  # still routes to targets
+        assert spec.implementation_deferred_to == "N8C-18"
+        assert spec.deferred_capabilities  # only genuine action-staging / delivery gaps remain
+        assert not any(cap.startswith("build_") for cap in spec.deferred_capabilities)
+        assert spec.primary_targets
 
 
 def test_catalog_notes_defer_ui_and_live_consumption() -> None:
@@ -46,6 +49,7 @@ def test_catalog_notes_defer_ui_and_live_consumption() -> None:
     assert cat["live_consumption_deferred_to"] == "N8C-16"
     assert cat["notes"]["operator_ui_deferred_to"] == "N8C-13"
     assert cat["notes"]["action_staging_deferred_to"] == "N8C-18"
+    assert cat["notes"]["context_workflows_implemented_in"] == "N8C-17"
 
 
 def test_get_spec_unknown_or_invalid_returns_none() -> None:

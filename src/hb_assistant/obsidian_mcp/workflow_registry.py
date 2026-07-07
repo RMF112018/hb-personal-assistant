@@ -3,10 +3,11 @@ existing N8C read surfaces, and their deferred-capability markers.
 
 Pure/deterministic (no DB, no LLM, no I/O). The registry is the single source of truth for WHICH existing
 artifact surfaces a workflow request may consult and WHAT is intentionally deferred to a later phase:
-  * ``action_draft_preparation`` is CONTRACT-ONLY in N8C-15 — it stages nothing; action staging is N8C-18.
+  * ``action_draft_preparation`` is CONTRACT-ONLY — it stages nothing; action staging is N8C-18.
   * ``meeting_prep`` / ``daily_brief_context`` / ``project_intelligence_context`` / ``open_loop_triage``
-    route to targets but their full workflow IMPLEMENTATION is deferred to N8C-17.
-  * Live remote (MCP/ChatGPT) workflow consumption is deferred to N8C-16 — N8C-15 adds no MCP tools.
+    are IMPLEMENTED in N8C-17 as read-only CONTEXT-assembly handlers; only their action staging / delivery
+    (task/reminder/agenda/invite/brief delivery/external sync) remains deferred to N8C-18.
+  * Live remote (MCP/ChatGPT) workflow consumption is N8C-16.
 """
 
 from __future__ import annotations
@@ -95,42 +96,48 @@ WORKFLOW_REGISTRY: dict[str, WorkflowSpec] = {
     ),
     WF_MEETING_PREP: WorkflowSpec(
         workflow_type=WF_MEETING_PREP,
-        summary="Route to supplied context packs / projections / packets / drafts. Full workflow "
-                "implementation deferred to N8C-17; no calendar or email side effects.",
+        summary="Assemble bounded meeting CONTEXT (supplied artifacts + prior decisions/preferences + open "
+                "loops + questions to resolve) read-only. No agenda, invite, calendar item, or task is "
+                "created — action staging is deferred to N8C-18.",
         primary_targets=(TARGET_CONTEXT_PACKS, TARGET_INTELLIGENCE_PROJECTIONS,
-                         TARGET_RESEARCH_PACKETS, TARGET_ANSWER_DRAFTS),
+                         TARGET_RESEARCH_PACKETS, TARGET_ANSWER_DRAFTS, TARGET_DECISION_MEMORY),
         id_fields=("context_pack_id", "projection_id", "packet_id", "draft_id"),
-        deferred_capabilities=("build_meeting_prep_context",),
-        implementation_deferred_to="N8C-17",
+        deferred_capabilities=("stage_meeting_actions",),
+        implementation_deferred_to="N8C-18",
     ),
     WF_DAILY_BRIEF_CONTEXT: WorkflowSpec(
         workflow_type=WF_DAILY_BRIEF_CONTEXT,
-        summary="Route to existing brief/context-pack artifacts if present. Full workflow implementation "
-                "deferred to N8C-17.",
-        primary_targets=(TARGET_CONTEXT_PACKS,),
+        summary="Assemble bounded recent-context sections (trusted/candidate updates + open loops + "
+                "review-needed) read-only. Not a final brief; nothing is delivered, scheduled, or created — "
+                "delivery/action staging is deferred to N8C-18.",
+        primary_targets=(TARGET_CONTEXT_PACKS, TARGET_INTELLIGENCE_PROJECTIONS, TARGET_DECISION_MEMORY,
+                         TARGET_OPEN_LOOPS),
         fallback_targets=(TARGET_INTELLIGENCE_PROJECTIONS,),
         id_fields=("context_pack_id",),
-        deferred_capabilities=("build_daily_brief_context",),
-        implementation_deferred_to="N8C-17",
+        deferred_capabilities=("stage_brief_actions",),
+        implementation_deferred_to="N8C-18",
     ),
     WF_PROJECT_INTELLIGENCE_CONTEXT: WorkflowSpec(
         workflow_type=WF_PROJECT_INTELLIGENCE_CONTEXT,
-        summary="Route to source connector + memory + decision memory + projections where scoped. Full "
-                "workflow implementation deferred to N8C-17.",
+        summary="Assemble bounded project CONTEXT (trusted facts / candidate findings + decisions/"
+                "preferences + open loops + INDEXED source-file references) read-only. No live source-file "
+                "read, no scan/reindex, and no external (Procore/Sage/Graph) sync happens here.",
         primary_targets=(TARGET_INTELLIGENCE_PROJECTIONS, TARGET_MEMORY, TARGET_DECISION_MEMORY,
                          TARGET_SOURCE_CONNECTOR),
         id_fields=("projection_id", "memory_node_id"),
-        deferred_capabilities=("build_project_intelligence_context",),
-        implementation_deferred_to="N8C-17",
+        deferred_capabilities=("stage_project_actions", "external_source_sync"),
+        implementation_deferred_to="N8C-18",
     ),
     WF_OPEN_LOOP_TRIAGE: WorkflowSpec(
         workflow_type=WF_OPEN_LOOP_TRIAGE,
-        summary="Route to open-loop records + review/effective state. No task/reminder creation. Full "
-                "workflow implementation deferred to N8C-17.",
-        primary_targets=(TARGET_OPEN_LOOPS, TARGET_REVIEW_QUEUE),
+        summary="Triage existing open-loop records into active / candidate / blocked-or-waiting / "
+                "review-needed / stale-or-superseded sections + related decisions, read-only. No task, "
+                "reminder, or disposition is created, closed, reopened, or deferred — action staging is "
+                "deferred to N8C-18.",
+        primary_targets=(TARGET_OPEN_LOOPS, TARGET_REVIEW_QUEUE, TARGET_DECISION_MEMORY),
         id_fields=("open_loop_id", "review_item_id"),
-        deferred_capabilities=("build_open_loop_triage",),
-        implementation_deferred_to="N8C-17",
+        deferred_capabilities=("stage_open_loop_actions",),
+        implementation_deferred_to="N8C-18",
     ),
     WF_DECISION_PREFERENCE_LOOKUP: WorkflowSpec(
         workflow_type=WF_DECISION_PREFERENCE_LOOKUP,
@@ -187,7 +194,8 @@ def catalog() -> dict[str, Any]:
         "live_consumption_deferred_to": LIVE_CONSUMPTION_DEFERRED_TO,
         "notes": {
             "action_staging_deferred_to": "N8C-18",
-            "full_workflow_implementation_deferred_to": "N8C-17",
+            "context_workflows_implemented_in": "N8C-17",
+            "context_workflow_actions_deferred_to": "N8C-18",
             "operator_ui_deferred_to": "N8C-13",
         },
     }

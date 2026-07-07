@@ -138,21 +138,35 @@ def test_missing_required_artifact_not_built(tmp_path: Path) -> None:
     assert env["deferred_capabilities"]  # gap reported, never built
 
 
-def test_meeting_prep_routes_but_marks_deferred(tmp_path: Path) -> None:
+def test_meeting_prep_assembles_context_sections(tmp_path: Path) -> None:
+    # N8C-17: meeting_prep is IMPLEMENTED (context assembly), not a deferred stub. Only action staging
+    # (agenda/invite/task) remains deferred to N8C-18 — never a "build_*" marker.
     db = _db(tmp_path)
     _seed_packet(db)
+    _seed_decision(db)
     env = WorkflowRouter(db).route(WorkflowRequest.from_inputs(
-        workflow_type="meeting_prep", packet_id="P1"))
+        workflow_type="meeting_prep", packet_id="P1", objective="scope review"))
     assert env["status"] == "routed"
-    assert "build_meeting_prep_context" in env["deferred_capabilities"]
+    assert env["workflow_policy"] == "context_only"
+    assert env["workflow_sections"]  # non-empty named sections
+    assert "trusted_context" in env["workflow_sections"]
+    assert not any(cap.startswith("build_") for cap in env["deferred_capabilities"])
+    assert env["deferred_capabilities"] == ["stage_meeting_actions"]
 
 
-def test_daily_brief_and_project_context_mark_deferred(tmp_path: Path) -> None:
-    r = _router(tmp_path)
+def test_daily_brief_and_project_context_are_implemented(tmp_path: Path) -> None:
+    # N8C-17: these workflows now assemble bounded context sections rather than marking themselves deferred.
+    db = _db(tmp_path)
+    _seed_decision(db)
+    _seed_open_loop(db)
+    r = WorkflowRouter(db)
     for wf in ("daily_brief_context", "project_intelligence_context"):
-        env = r.route(WorkflowRequest.from_inputs(workflow_type=wf))
-        assert env["deferred_capabilities"]
-        assert any("deferred to N8C-17" in s for s in env["advisory_next_steps"])
+        env = r.route(WorkflowRequest.from_inputs(workflow_type=wf, query="rfi risk", project_key="TWN"))
+        assert env["status"] == "routed"
+        assert env["workflow_policy"] == "context_only"
+        assert env["workflow_sections"]
+        assert not any(cap.startswith("build_") for cap in env["deferred_capabilities"])
+        assert not any("deferred to N8C-17" in s for s in env["advisory_next_steps"])
 
 
 def test_open_loop_triage_routes_without_task_creation(tmp_path: Path) -> None:
@@ -205,8 +219,10 @@ def test_envelope_has_fixed_policies_and_is_bounded(tmp_path: Path) -> None:
     for key in ("workflow_type", "request", "routing_decision", "selected_artifacts", "trusted_items",
                 "candidate_items", "excluded_items", "citations", "source_refs", "review_labels",
                 "open_questions", "risks_or_caveats", "deferred_capabilities", "advisory_next_steps",
-                "requires_operator_review", "status", "warnings", "metadata"):
+                "requires_operator_review", "status", "warnings", "metadata", "workflow_sections",
+                "workflow_policy"):
         assert key in env
+    assert env["workflow_policy"] == "context_only"
 
 
 def test_no_suggested_next_steps_field_uses_advisory(tmp_path: Path) -> None:
@@ -241,6 +257,24 @@ def test_router_calls_no_writer_or_worker() -> None:
     }
     assert not (called_attrs & forbidden_calls), called_attrs & forbidden_calls
     forbidden_imports = {"SourceContentProvider", "answer_draft_builder", "research_packet_builder"}
+    assert not (imported & forbidden_imports), imported & forbidden_imports
+
+
+def test_handlers_call_no_writer_or_worker() -> None:
+    # N8C-17 context handlers are read-only: no writer/build/apply, no source read, no scan/reindex.
+    import ast
+
+    tree = ast.parse((_SRC / "obsidian_mcp" / "workflow_handlers.py").read_text())
+    called_attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
+    forbidden_calls = {
+        "upsert_draft", "upsert_packet", "upsert_projection", "persist_pack", "persist_compilation",
+        "record_disposition", "mark_open_loop_stale", "build_answer_draft", "build_research_packet",
+        "read_source_file", "source_file_read", "reindex", "scan", "list_source_files",
+    }
+    assert not (called_attrs & forbidden_calls), called_attrs & forbidden_calls
+    forbidden_imports = {"SourceContentProvider", "answer_draft_builder", "research_packet_builder",
+                         "list_source_files"}
     assert not (imported & forbidden_imports), imported & forbidden_imports
 
 

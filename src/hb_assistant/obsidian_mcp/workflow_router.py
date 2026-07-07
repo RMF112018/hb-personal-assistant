@@ -34,11 +34,8 @@ from .workflow_models import (
     STATUS_NEEDS_CLARIFICATION,
     STATUS_ROUTED,
     TARGET_ANSWER_DRAFTS,
-    TARGET_CONTEXT_PACKS,
     TARGET_DECISION_MEMORY,
     TARGET_INTELLIGENCE_PROJECTIONS,
-    TARGET_MEMORY,
-    TARGET_OPEN_LOOPS,
     TARGET_RESEARCH_PACKETS,
     TARGET_SOURCE_CONNECTOR,
     TARGET_UNKNOWN,
@@ -53,6 +50,7 @@ from .workflow_models import (
     WF_RESEARCH_ANSWER,
     WF_SOURCE_FILE_LOOKUP,
     WF_UNKNOWN,
+    WORKFLOW_POLICY_CONTEXT_ONLY,
     WORKFLOW_ROUTER_VERSION,
     WORKFLOW_TYPES,
     RoutingDecision,
@@ -84,6 +82,12 @@ _NODE_WL = ("node_id", "node_type", "canonical_name", "domain", "status", "revie
 _CITATION_WL = ("draft_citation_id", "citation_id", "packet_citation_id", "citation_type", "citation_label",
                 "label", "target_kind", "review_state", "effective_state", "inclusion_state")
 _SOURCE_REF_WL = ("source_ref", "source_root_key", "rel_path", "note_rel_path", "source_id")
+# Claim refs carry NO claim_text / evidence_excerpt (bounded pointers only — clarification #4).
+_CLAIM_WL = ("claim_id", "claim_type", "status", "review_state", "source_state", "confidence", "card_id",
+             "source_id", "source_root_key", "source_rel_path", "note_rel_path", "created_at")
+# Bounded source-FILE ref (index metadata only; never a snippet/body — clarification #7).
+_SOURCE_FILE_WL = ("source_ref", "source_id", "source_root_key", "rel_path", "source_kind", "extension",
+                   "mime_type")
 
 
 class WorkflowRouter:
@@ -186,44 +190,23 @@ class WorkflowRouter:
                                         "routed query/source_root_key to locate files."],
                 "deferred_capabilities": list(spec.deferred_capabilities)}
 
+    # N8C-17: the four context-assembly workflows delegate to deterministic, read-only handlers that build
+    # bounded ``workflow_sections`` over existing N8C artifacts (no execution, no persistence, no source read).
     def _handle_meeting_prep(self, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
-        return self._route_deferred_context(WF_MEETING_PREP, req, conn)
+        from . import workflow_handlers
+        return workflow_handlers.assemble_meeting_prep(self, req, conn)
 
     def _handle_daily_brief_context(self, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
-        return self._route_deferred_context(WF_DAILY_BRIEF_CONTEXT, req, conn)
+        from . import workflow_handlers
+        return workflow_handlers.assemble_daily_brief_context(self, req, conn)
 
     def _handle_project_intelligence_context(self, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
-        return self._route_deferred_context(WF_PROJECT_INTELLIGENCE_CONTEXT, req, conn)
+        from . import workflow_handlers
+        return workflow_handlers.assemble_project_intelligence_context(self, req, conn)
 
     def _handle_open_loop_triage(self, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
-        spec = get_spec(WF_OPEN_LOOP_TRIAGE)
-        selected: list[dict[str, Any]] = []
-        review_labels: list[str] = []
-        if req.open_loop_id:
-            rec = self._get_open_loop(req.open_loop_id, conn)
-            if rec is None:
-                return self._missing(WF_OPEN_LOOP_TRIAGE, TARGET_OPEN_LOOPS, "open_loop", req.open_loop_id,
-                                     spec)
-            selected.append(self._artifact(TARGET_OPEN_LOOPS, "open_loop", req.open_loop_id, rec, _OPEN_LOOP_WL))
-            if rec.get("review_state"):
-                review_labels.append(str(rec["review_state"]))
-            # Read (not mutate) any review effective-state for this open loop.
-            for es in self._effective_state_for("open_loop", req.open_loop_id, conn):
-                if es.get("effective_state"):
-                    review_labels.append(str(es["effective_state"]))
-        else:
-            for rec in self._list_open_loops(conn):
-                selected.append(self._artifact(TARGET_OPEN_LOOPS, "open_loop",
-                                               rec.get("open_loop_id", ""), rec, _OPEN_LOOP_WL))
-        decision = RoutingDecision(WF_OPEN_LOOP_TRIAGE, "explicit" if req.workflow_type else
-                                   "keyword_fallback", TARGET_OPEN_LOOPS, list(spec.primary_targets),
-                                   "route to open-loop records + review/effective state (no task creation)")
-        return {"routing_decision": decision, "status": STATUS_ROUTED,
-                "selected_artifacts": selected[:MAX_SELECTED_ARTIFACTS],
-                "review_labels": _dedupe(review_labels)[:MAX_REVIEW_LABELS],
-                "deferred_capabilities": list(spec.deferred_capabilities),
-                "advisory_next_steps": ["Review open loops and their effective state; N8C-17 will build the "
-                                        "full triage. No task/reminder is created here."]}
+        from . import workflow_handlers
+        return workflow_handlers.assemble_open_loop_triage(self, req, conn)
 
     def _handle_decision_preference_lookup(self, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
         spec = get_spec(WF_DECISION_PREFERENCE_LOOKUP)
@@ -290,40 +273,6 @@ class WorkflowRouter:
                 "requires_operator_review": True}
 
     # -- shared handler helpers ----------------------------------------------------------
-    def _route_deferred_context(self, wf_type: str, req: WorkflowRequest, conn: Any) -> dict[str, Any]:
-        """meeting_prep / daily_brief_context / project_intelligence_context: route to supplied artifacts,
-        confirm existence, mark full implementation deferred to N8C-17."""
-        spec = get_spec(wf_type)
-        selected: list[dict[str, Any]] = []
-        warnings: list[str] = []
-        checks = (
-            ("context_pack_id", TARGET_CONTEXT_PACKS, "context_pack", self._get_context_pack, _PACK_WL),
-            ("projection_id", TARGET_INTELLIGENCE_PROJECTIONS, "projection", self._get_projection,
-             _PROJECTION_WL),
-            ("packet_id", TARGET_RESEARCH_PACKETS, "packet", self._get_packet, _PACKET_WL),
-            ("draft_id", TARGET_ANSWER_DRAFTS, "draft", self._get_draft, _DRAFT_WL),
-            ("memory_node_id", TARGET_MEMORY, "memory_node", self._get_memory_node, _NODE_WL),
-        )
-        for field_name, target, kind, getter, wl in checks:
-            art_id = getattr(req, field_name)
-            if not art_id:
-                continue
-            rec = getter(art_id, conn)
-            if rec is None:
-                warnings.append(f"missing_{kind}")
-                continue
-            selected.append(self._artifact(target, kind, art_id, rec, wl))
-        status = STATUS_ROUTED if selected else STATUS_INSUFFICIENT_CONTEXT
-        decision = RoutingDecision(wf_type, "explicit" if req.workflow_type else "keyword_fallback",
-                                   spec.primary_targets[0] if spec.primary_targets else TARGET_UNKNOWN,
-                                   list(spec.primary_targets), "route to supplied context artifacts; full "
-                                   f"implementation deferred to {spec.implementation_deferred_to}")
-        return {"routing_decision": decision, "status": status, "selected_artifacts": selected,
-                "warnings": warnings, "deferred_capabilities": list(spec.deferred_capabilities),
-                "advisory_next_steps": [f"Full {wf_type} implementation is deferred to "
-                                        f"{spec.implementation_deferred_to}; no side effects here."],
-                "requires_operator_review": not selected}
-
     def _route_single(self, wf_type: str, target: str, kind: str, art_id: str, rec: dict[str, Any] | None,
                       whitelist: tuple[str, ...], spec: Any) -> dict[str, Any]:
         """Route to one explicit artifact; missing → missing_required_artifact (never build it)."""
@@ -450,13 +399,88 @@ class WorkflowRouter:
     def _get_open_loop(self, open_loop_id: str, conn: Any) -> dict[str, Any] | None:
         return self._guard_one(lambda: self._decision_repo().get_open_loop(open_loop_id, conn=conn))
 
-    def _list_open_loops(self, conn: Any) -> list[dict[str, Any]]:
-        return self._guard_many(lambda: self._decision_repo().list_open_loops(limit=MAX_ITEMS, conn=conn))
+    def _list_open_loops(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: self._decision_repo().list_open_loops(limit=limit, conn=conn))
 
     def _effective_state_for(self, target_kind: str, target_id: str, conn: Any) -> list[dict[str, Any]]:
         from .review_repository import ReviewRepository
         return self._guard_many(lambda: ReviewRepository(self.db_path).effective_state_for_target(
             target_kind, target_id, conn=conn))
+
+    # -- N8C-17 bounded LIST accessors (read-only; each caps input+output; guarded on unmigrated DB) -------
+    def _list_context_packs(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .context_pack_repository import ContextPackRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: ContextPackRepository(self.db_path).list_packs(limit=limit, conn=conn))
+
+    def _list_projections(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .intelligence_projection_repository import IntelligenceProjectionRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(
+            lambda: IntelligenceProjectionRepository(self.db_path).list_projections(limit=limit, conn=conn))
+
+    def _list_research_packets(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .research_packet_repository import ResearchPacketRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(
+            lambda: ResearchPacketRepository(self.db_path).list_research_packets(limit=limit, conn=conn))
+
+    def _list_drafts(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: self._draft_repo().list_answer_drafts(limit=limit, conn=conn))
+
+    def _list_decisions(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: self._decision_repo().list_decisions(limit=limit, conn=conn))
+
+    def _list_preferences(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: self._decision_repo().list_preferences(limit=limit, conn=conn))
+
+    def _list_nodes(self, conn: Any, *, domain: str | None = None,
+                    limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .memory_repository import MemoryRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(
+            lambda: MemoryRepository(self.db_path).list_nodes(domain=domain or None, limit=limit, conn=conn))
+
+    def _list_review_items(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .review_repository import ReviewRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(
+            lambda: ReviewRepository(self.db_path).list_review_items(limit=limit, conn=conn))
+
+    def _list_claims(self, conn: Any, *, limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        from .claim_repository import ClaimRepository
+        limit = _bounded_limit(limit)
+        return self._guard_many(lambda: ClaimRepository(self.db_path).list_claims(limit=limit, conn=conn))
+
+    def _packet_citations(self, packet_id: str, conn: Any) -> list[dict[str, Any]]:
+        from .research_packet_repository import ResearchPacketRepository
+        return self._guard_many(lambda: ResearchPacketRepository(self.db_path)
+                                .list_research_packet_citations(packet_id, limit=MAX_CITATIONS, conn=conn))
+
+    def _search_source_files(self, query: str, conn: Any, *, source_root_key: str | None = None,
+                             limit: int = MAX_ITEMS) -> list[dict[str, Any]]:
+        """Indexed FTS search over source FILES (metadata only; NO live filesystem read, NO snippet copied).
+        Returns bounded index rows; empty when the index is absent/disabled or the query is blank."""
+        if not query:
+            return []
+        limit = _bounded_limit(limit)
+
+        def _call() -> list[dict[str, Any]]:
+            from .config import ObsidianMcpConfig
+            from .source_connector_service import search_source_files as _svc_search
+            from .source_index_repository import SourceIndexRepository
+            env = _svc_search(SourceIndexRepository(self.db_path), ObsidianMcpConfig(), query=query,
+                              source_root_key=source_root_key or None, limit=limit, conn=conn)
+            return list(env.get("items") or [])
+
+        try:
+            return self._guard_many(_call)
+        except Exception:  # noqa: BLE001 — index disabled / invalid input degrades to no source files.
+            return []
 
     # -- envelope assembly ---------------------------------------------------------------
     def _envelope(self, request: WorkflowRequest, wf_type: str, decision: RoutingDecision, *,
@@ -467,7 +491,9 @@ class WorkflowRouter:
                   open_questions: list[str] | None = None, risks_or_caveats: list[str] | None = None,
                   deferred_capabilities: list[str] | None = None,
                   advisory_next_steps: list[str] | None = None,
-                  requires_operator_review: bool = False, warnings: list[str] | None = None
+                  requires_operator_review: bool = False, warnings: list[str] | None = None,
+                  workflow_sections: dict[str, list[Any]] | None = None,
+                  workflow_policy: str = WORKFLOW_POLICY_CONTEXT_ONLY,
                   ) -> dict[str, Any]:
         """Assemble the normalized, bounded, no-execution workflow-result envelope."""
         return {
@@ -490,7 +516,11 @@ class WorkflowRouter:
             "requires_operator_review": bool(requires_operator_review),
             "status": status,
             "warnings": (warnings or [])[:MAX_ITEMS],
+            # N8C-17: named, bounded per-workflow context sections (each capped; non-list values dropped).
+            "workflow_sections": _bound_sections(workflow_sections),
             "metadata": {"router_version": WORKFLOW_ROUTER_VERSION, "resolution": decision.resolution},
+            # Additive, more-specific marker: this layer assembles CONTEXT only (never a final answer/action).
+            "workflow_policy": workflow_policy,
             **POLICY_BLOCK,
         }
 
@@ -506,6 +536,27 @@ class WorkflowRouter:
         WF_DRAFT_REVIEW: _handle_draft_review,
         WF_ACTION_DRAFT_PREPARATION: _handle_action_draft_preparation,
     }
+
+
+def _bounded_limit(limit: Any) -> int:
+    """Clamp a list-accessor limit into [1, MAX_ITEMS] (never let a caller request an unbounded read)."""
+    try:
+        n = int(limit)
+    except (TypeError, ValueError):
+        return MAX_ITEMS
+    return max(1, min(MAX_ITEMS, n))
+
+
+def _bound_sections(sections: dict[str, list[Any]] | None) -> dict[str, list[Any]]:
+    """Bound the per-workflow sections map: keep only list values, cap each list to MAX_ITEMS, cap the
+    number of sections. Non-list section values are dropped (defense-in-depth for the bounded rule)."""
+    if not sections:
+        return {}
+    out: dict[str, list[Any]] = {}
+    for name, items in list(sections.items())[:MAX_ITEMS]:
+        if isinstance(items, list):
+            out[str(name)] = items[:MAX_ITEMS]
+    return out
 
 
 def _dedupe(items: list[str]) -> list[str]:

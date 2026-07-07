@@ -109,6 +109,14 @@ MAX_NEXT_STEPS = 25
 MAX_WARNINGS = 50
 MAX_DEFERRED = 25
 _MAX_META_VALUE_CAP = 300
+# N8C-17 additive caps for the context-assembly handlers.
+MAX_ATTENDEES = 25
+MAX_SECTION_ITEMS = 25
+DEFAULT_ASSEMBLY_LIMIT = 25
+
+# N8C-17 additive policy field: these workflows assemble CONTEXT only (never a final answer, never an
+# action). execution_policy stays route_only; this is an extra, more specific marker.
+WORKFLOW_POLICY_CONTEXT_ONLY = "context_only"
 
 
 class WorkflowValidationError(ValueError):
@@ -126,6 +134,31 @@ def _clean_id(value: Any) -> str | None:
         return None
     text = bound_text(str(value).strip(), ID_HARD_CAP)
     return text or None
+
+
+def _clean_str_list(value: Any, *, cap_count: int = MAX_ATTENDEES, cap_len: int = TEXT_FIELD_CAP) -> list[str]:
+    """Bound a list-of-strings input: cap the item count AND each item's length; drop blanks."""
+    if not value:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    out: list[str] = []
+    for item in list(value)[:cap_count]:
+        text = bound_text(str(item).strip(), cap_len)
+        if text:
+            out.append(text)
+    return out
+
+
+def _clean_limit(value: Any, *, default: int = DEFAULT_ASSEMBLY_LIMIT, hi: int = MAX_ITEMS) -> int:
+    """Clamp a caller-supplied limit into [1, hi]; missing/non-numeric → default."""
+    if value is None:
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(hi, n))
 
 
 # Fields that carry an explicit artifact id, in router-preference order per workflow type.
@@ -154,6 +187,14 @@ class WorkflowRequest:
     decision_id: str | None = None
     preference_id: str | None = None
     open_loop_id: str | None = None
+    # N8C-17 additive context-assembly inputs (all bounded; backward-compatible — default to empty).
+    since: str | None = None
+    until: str | None = None
+    priority: str | None = None
+    meeting_title: str | None = None
+    attendee_names: list[str] = field(default_factory=list)
+    attendee_orgs: list[str] = field(default_factory=list)
+    limit: int = DEFAULT_ASSEMBLY_LIMIT
     requested_by: str = "system"
 
     @classmethod
@@ -178,6 +219,13 @@ class WorkflowRequest:
             decision_id=_clean_id(kwargs.get("decision_id")),
             preference_id=_clean_id(kwargs.get("preference_id")),
             open_loop_id=_clean_id(kwargs.get("open_loop_id")),
+            since=bound_text(kwargs.get("since"), TEXT_FIELD_CAP) or None,
+            until=bound_text(kwargs.get("until"), TEXT_FIELD_CAP) or None,
+            priority=bound_text(kwargs.get("priority"), TEXT_FIELD_CAP) or None,
+            meeting_title=bound_text(kwargs.get("meeting_title"), TEXT_FIELD_CAP) or None,
+            attendee_names=_clean_str_list(kwargs.get("attendee_names")),
+            attendee_orgs=_clean_str_list(kwargs.get("attendee_orgs")),
+            limit=_clean_limit(kwargs.get("limit")),
             requested_by=bound_text(kwargs.get("requested_by") or "system", ID_HARD_CAP) or "system",
         )
 
@@ -192,17 +240,26 @@ class WorkflowRequest:
 
     def to_public_dict(self) -> dict[str, Any]:
         """Bounded echo of the request for the response envelope (no unbounded fields exist here)."""
-        d = {
+        d: dict[str, Any] = {
             "workflow_type": self.workflow_type,
             "query": self.query,
             "objective": self.objective,
             "domain": self.domain,
             "project_key": self.project_key,
             "source_root_key": self.source_root_key,
+            "since": self.since,
+            "until": self.until,
+            "priority": self.priority,
+            "meeting_title": self.meeting_title,
             "requested_by": self.requested_by,
         }
         d.update(self.artifact_ids())
-        return {k: v for k, v in d.items() if v is not None}
+        out = {k: v for k, v in d.items() if v is not None}
+        if self.attendee_names:
+            out["attendee_names"] = self.attendee_names
+        if self.attendee_orgs:
+            out["attendee_orgs"] = self.attendee_orgs
+        return out
 
 
 def compute_workflow_id(workflow_type: str, request: WorkflowRequest) -> str:

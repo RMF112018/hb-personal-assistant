@@ -63,6 +63,18 @@ def _seed_draft(db: str, draft_id: str = "D1") -> None:
         conn.close()
 
 
+def _seed_open_loop(db: str, open_loop_id: str = "OL1") -> None:
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute("INSERT INTO assistant_open_loop_records (open_loop_id, identity_key, open_loop_type, "
+                     "status, review_state, source_id) VALUES (?,?,?,?,?,?)",
+                     (open_loop_id, "k-" + open_loop_id, "commitment", "open", "needs_review", "S1"))
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+
 @pytest.fixture()
 def mcp_env(tmp_path: Path):
     db = str(tmp_path / "db.sqlite")
@@ -76,6 +88,7 @@ def mcp_env(tmp_path: Path):
         roots={"vault": RootSpec("vault", vault, "read_write")},
         obsidian=NasObsidianConfig(vault_root=vault, backup_dir=audit / "bk", support_dir=audit / "support"),
     )
+    _seed_open_loop(db)
     return {"broker": NasMcpBroker(cfg), "db": db}
 
 
@@ -204,6 +217,34 @@ def test_summary_is_nonfinal_route_metadata(mcp_env) -> None:
     blob = json.dumps(res).lower()
     for field in _FINALITY_FIELDS:
         assert field not in blob
+
+
+def test_route_and_context_return_workflow_sections_for_implemented_workflows(mcp_env) -> None:
+    # N8C-17 clarification #11: the UNCHANGED N8C-16 tool names now surface the richer context. Both
+    # assistant_route_workflow and assistant_get_workflow_context return non-empty workflow_sections for an
+    # implemented context workflow (open_loop_triage has a seeded open loop).
+    routed = _ok(mcp_env["broker"].dispatch("assistant_route_workflow",
+                                            {"workflow_type": "open_loop_triage"}))["workflow"]
+    assert routed["status"] == "routed"
+    assert routed["workflow_policy"] == "context_only"
+    assert routed["workflow_sections"].get("active_open_loops")  # non-empty section
+
+    ctx = _ok(mcp_env["broker"].dispatch("assistant_get_workflow_context",
+                                         {"workflow_type": "open_loop_triage"}))["workflow_context"]
+    assert "workflow_sections" in ctx and ctx["workflow_sections"].get("active_open_loops")
+    assert ctx["workflow_policy"] == "context_only"
+    # still bounded — no raw bodies/blobs leak through the context slice
+    blob = json.dumps(ctx)
+    for forbidden in ("_json", "section_body", "evidence_excerpt", "claim_text", "result_json"):
+        assert forbidden not in blob
+
+
+def test_daily_brief_route_carries_sections(mcp_env) -> None:
+    # daily_brief_context assembles bounded recent-context sections from the seeded draft + open loop.
+    env = _ok(mcp_env["broker"].dispatch("assistant_route_workflow",
+                                         {"workflow_type": "daily_brief_context"}))["workflow"]
+    assert env["status"] == "routed"
+    assert any(env["workflow_sections"].get(s) for s in ("candidate_updates", "open_loops"))
 
 
 def test_inputs_are_clamped(mcp_env) -> None:
