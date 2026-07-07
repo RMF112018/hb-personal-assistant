@@ -9,10 +9,14 @@
 set -eu
 
 DB="${HB_DB_PATH:-/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite}"
-EXPECTED_SCHEMA="${HB_EXPECTED_SCHEMA:-98}"
-EXPECTED_TABLE_COUNT="${HB_EXPECTED_TABLE_COUNT:-505}"
+# Expected posture at the current head. Bumped for the NAS second-brain N8C stack (V99..V111): schema head is
+# now 111 and a fresh-migrated DB carries 548 base tables + 2 views = 550 schema objects. These are the
+# deterministic fresh-migrate counts (all objects are DDL, so production at the same head matches). All
+# overridable via env for a NAS with a different expected head. Read-only check only — no writes/migrations.
+EXPECTED_SCHEMA="${HB_EXPECTED_SCHEMA:-111}"
+EXPECTED_TABLE_COUNT="${HB_EXPECTED_TABLE_COUNT:-548}"
 EXPECTED_VIEW_COUNT="${HB_EXPECTED_VIEW_COUNT:-2}"
-EXPECTED_OBJECT_COUNT="${HB_EXPECTED_SCHEMA_OBJECT_COUNT:-507}"
+EXPECTED_OBJECT_COUNT="${HB_EXPECTED_SCHEMA_OBJECT_COUNT:-550}"
 SVC_USER="${HB_DB_SVC_USER:-personal-assistant-svc}"
 
 if [ ! -f "$DB" ]; then

@@ -1,0 +1,28 @@
+== n8c-mcp-smoke (LOCAL, READ-ONLY, temp DB only) ==
+python=<redacted>
+  PASS fresh temp DB migrates to head 111
+  PASS 78 assistant tools registered (13 groups)
+  PASS finality guard: no assistant tool has a forbidden verb
+  PASS ai_outputs_card_upsert is the only non-plan write tool
+  PASS hb_mcp_status advertises 13 assistant groups
+  PASS read-only dispatch ok: assistant_search_sources
+  PASS read-only dispatch ok: assistant_list_context_packs
+  PASS read-only dispatch ok: assistant_list_memory_nodes
+  PASS read-only dispatch ok: assistant_list_decisions
+  PASS read-only dispatch ok: assistant_list_review_items
+  PASS read-only dispatch ok: assistant_list_intelligence_projections
+  PASS read-only dispatch ok: assistant_list_research_packets
+  PASS read-only dispatch ok: assistant_list_drafts
+  PASS read-only dispatch ok: assistant_source_roots_list
+  PASS read-only dispatch ok: assistant_list_feedback
+  PASS read-only dispatch ok: assistant_list_action_stages
+  PASS read-only dispatch ok: assistant_list_quality
+  PASS denied: raw_sql
+  PASS denied: sql
+  PASS denied: shell
+  PASS denied: exec
+  PASS denied: read_file_absolute
+  PASS denied: hb_output_delete
+
+n8c-mcp-smoke: PASS (read-only, temp DB, no writes, no finality-verb tools)
+n8c-mcp-smoke: done (static + read-only; production DB / backend / tunnel untouched).
