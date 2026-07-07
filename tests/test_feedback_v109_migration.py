@@ -120,14 +120,15 @@ def test_recommendation_policy_pinned(tmp_path: Path) -> None:
                   "VALUES ('r','f','suggest_review','accept')")
 
 
-def test_no_action_stage_tables(tmp_path: Path) -> None:
-    # N8C-18 is feedback-only. Action staging is a SEPARATE later phase (N8C-19); no such table here.
-    db = tmp_path / "h.db"
-    _migrate(db)
-    with sqlite3.connect(db) as c:
-        tables = {r[0] for r in c.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'assistant_action%'")}
-    assert tables == set()
+def test_v109_statements_create_no_action_stage_tables() -> None:
+    # N8C-18 is feedback-only. Action staging is a SEPARATE later phase (N8C-19). Assert the V109 migration
+    # STATEMENTS themselves define no action-stage table — head-agnostic (later phases may add such tables at
+    # a higher schema version without invalidating N8C-18's scope guarantee).
+    from hb_assistant.store.assistant_feedback_tables import V109_STATEMENTS
+
+    joined = " ".join(V109_STATEMENTS).lower()
+    assert "assistant_action" not in joined
+    assert "assistant_feedback" in joined
 
 
 def test_no_finality_or_disposition_columns_on_feedback_tables(tmp_path: Path) -> None:

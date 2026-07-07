@@ -9,6 +9,7 @@ from .broker import NasMcpBroker
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
+    assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
@@ -676,6 +677,53 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             recommendations). Advisory review-loop input only — no state change, no action."""
             return _assistant_result("assistant_get_feedback_export",
                                      {"feedback_id": feedback_id, "limit": limit})
+
+    # N8C-19 read-only action-stage inspection — default-ON; independent kill switch
+    # HB_MCP_ASSISTANT_ACTION_STAGES. Staging is NOT execution: every item is a candidate/blocked follow-up
+    # pinned to not_executed / external_system=none / requires_operator_review=1. There is NO write/build/
+    # apply/execute tool here (the `action-stage build --apply` writer is CLI-only).
+    if assistant_action_stages_enabled():
+
+        @mcp.tool()
+        def assistant_list_action_stages(stage_type: str | None = None, status: str | None = None,
+                                         workflow_type: str | None = None, limit: int = 25) -> dict[str, Any]:
+            """List persisted ACTION STAGES (read-only). A stage bundles proposed follow-up CANDIDATES for
+            operator review only — it executes nothing and changes no review state."""
+            return _assistant_result("assistant_list_action_stages",
+                                     {"stage_type": stage_type, "status": status,
+                                      "workflow_type": workflow_type, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_action_stage(stage_id: str) -> dict[str, Any]:
+            """Get one ACTION STAGE header (read-only). Staged candidates only — never executed."""
+            return _assistant_result("assistant_get_action_stage", {"stage_id": stage_id})
+
+        @mcp.tool()
+        def assistant_get_action_stage_items(stage_id: str, staged_state: str | None = None,
+                                             limit: int = 100) -> dict[str, Any]:
+            """List a stage's proposed follow-up items (read-only). Every item is pinned to not_executed /
+            external_system=none / requires_operator_review=1; staged_state is candidate or blocked only."""
+            return _assistant_result("assistant_get_action_stage_items",
+                                     {"stage_id": stage_id, "staged_state": staged_state, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_action_stage_citations(stage_id: str, limit: int = 100) -> dict[str, Any]:
+            """List a stage's provenance citations (read-only). Bounded ids/metadata only — no raw bodies,
+            no live source read."""
+            return _assistant_result("assistant_get_action_stage_citations",
+                                     {"stage_id": stage_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_action_stage_summary() -> dict[str, Any]:
+            """Bounded aggregate over persisted stages (read-only counts by type/status)."""
+            return _assistant_result("assistant_get_action_stage_summary", {})
+
+        @mcp.tool()
+        def assistant_get_action_stage_export(stage_id: str, limit: int = 200) -> dict[str, Any]:
+            """Bounded JSON export of a persisted ACTION STAGE (read-only; header + items + citations). Staged
+            follow-up candidates only — no execution field, no external ref, no state change."""
+            return _assistant_result("assistant_get_action_stage_export",
+                                     {"stage_id": stage_id, "limit": limit})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

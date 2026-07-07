@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 109
+LATEST_SCHEMA_VERSION = 110
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7010,6 +7010,12 @@ class SQLiteMigrator:
 
         return V109_STATEMENTS
 
+    @staticmethod
+    def _v110_statements() -> list[str]:
+        from hb_assistant.store.assistant_action_stage_tables import V110_STATEMENTS
+
+        return V110_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8857,6 +8863,24 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (109, 'v109_assistant_feedback', ?)",
+                    (now,),
+                )
+
+            # v110 (NAS N8C-19): Action Staging, Not Action Execution — assistant_action_stages +
+            # _stage_items + _stage_citations + _stage_receipts + _stage_events. Durable, source-backed,
+            # operator-review-required staging of proposed follow-up CANDIDATES derived from the N8C-17
+            # workflow CONTEXT envelope + N8C-18 ADVISORY feedback recommendations (both read-only). Additive,
+            # empty on create; nothing populates them on startup. Stage-owned only — every item is pinned to
+            # not_executed / external_system=none / external_ref NULL / requires_operator_review=1 by CHECK.
+            # Never executes an action, never contacts an external system, never changes a review state, and
+            # never mutates the workflow/feedback/review/source/draft/packet/projection/context-pack/decision/
+            # preference/open-loop records it reads. Not the N8D bridge/job schema.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 110")
+            if cur.fetchone() is None:
+                for stmt in self._v110_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (110, 'v110_assistant_action_stage', ?)",
                     (now,),
                 )
 

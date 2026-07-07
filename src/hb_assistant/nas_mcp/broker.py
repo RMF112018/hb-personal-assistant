@@ -37,6 +37,7 @@ from .overrides import OverrideStore
 from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
+    assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
@@ -204,6 +205,21 @@ ASSISTANT_FEEDBACK_TOOLS = (
     "assistant_get_feedback_recommendations",
     "assistant_get_feedback_summary",
     "assistant_get_feedback_export",
+)
+
+# N8C-19 read-only action-stage inspection tools: retrieve bounded staged follow-up CANDIDATES (every item
+# pinned to not_executed / external_system=none / requires_operator_review=1) + their provenance citations
+# from the five N8C-19 stage tables — never executes, never contacts an external system, no write/build/apply.
+# Served from the same read-only DB snapshot (mode=ro&immutable=1 + PRAGMA query_only=ON). Gated independently
+# by ``assistant_action_stages_enabled()``. The names use list/get/items/citations/summary/export verbs — none
+# is a forbidden finality/action substring, so the tool-registration finality guards keep passing unchanged.
+ASSISTANT_ACTION_STAGE_TOOLS = (
+    "assistant_list_action_stages",
+    "assistant_get_action_stage",
+    "assistant_get_action_stage_items",
+    "assistant_get_action_stage_citations",
+    "assistant_get_action_stage_summary",
+    "assistant_get_action_stage_export",
 )
 
 # The five fixed no-execution policy fields carried by every N8C-15 workflow envelope.
@@ -476,6 +492,10 @@ class NasMcpBroker:
                 "assistant_feedback_tools": (
                     list(ASSISTANT_FEEDBACK_TOOLS) if assistant_feedback_enabled() else []
                 ),
+                "assistant_action_stages_enabled": assistant_action_stages_enabled(),
+                "assistant_action_stage_tools": (
+                    list(ASSISTANT_ACTION_STAGE_TOOLS) if assistant_action_stages_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -535,6 +555,10 @@ class NasMcpBroker:
             if not assistant_feedback_enabled():
                 raise ValueError("assistant_feedback_disabled")
             return self._invoke_assistant_feedback(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_ACTION_STAGE_TOOLS:
+            if not assistant_action_stages_enabled():
+                raise ValueError("assistant_action_stages_disabled")
+            return self._invoke_assistant_action_stages(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -1112,6 +1136,56 @@ class NasMcpBroker:
                     return FS.export_feedback(repo, feedback_id=str(arguments["feedback_id"]),
                                               limit=_limit(200), conn=conn)
                 except FeedbackValidationError as e:
+                    raise ValueError(str(e)) from None
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_action_stages(self, cfg: NasMcpConfig, tool_name: str,
+                                        arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-19 action-stage tool over a READ-ONLY DB snapshot (``mode=ro&immutable=1``
+        + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the stage repository — physically cannot
+        write, no live-DB fallback. These retrieve bounded staged follow-up CANDIDATES (every item pinned to
+        not_executed / external_system=none / requires_operator_review=1) + provenance citations only; no
+        write, no build/apply, no execution, no external system, and no action path is reachable remotely (the
+        ``action-stage build --apply`` writer is CLI-only)."""
+        from hb_assistant.obsidian_mcp import action_stage_builder as ASB
+        from hb_assistant.obsidian_mcp.action_stage_models import ActionStageValidationError
+        from hb_assistant.obsidian_mcp.action_stage_repository import ActionStageRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = ActionStageRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_action_stages":
+                stages = repo.list_stages(stage_type=arguments.get("stage_type"),
+                                          status=arguments.get("status"),
+                                          workflow_type=arguments.get("workflow_type"), limit=_limit(),
+                                          conn=conn)
+                return {"stages": stages, "count": len(stages)}
+            if tool_name == "assistant_get_action_stage":
+                stage = repo.get_stage(str(arguments["stage_id"]), conn=conn)
+                if stage is None:
+                    raise ValueError("stage_not_found")
+                return {"stage": stage}
+            if tool_name == "assistant_get_action_stage_items":
+                items = repo.list_items(str(arguments["stage_id"]),
+                                        staged_state=arguments.get("staged_state"), limit=_limit(100),
+                                        conn=conn)
+                return {"stage_id": str(arguments["stage_id"]), "items": items, "count": len(items)}
+            if tool_name == "assistant_get_action_stage_citations":
+                cits = repo.list_citations(str(arguments["stage_id"]), limit=_limit(100), conn=conn)
+                return {"stage_id": str(arguments["stage_id"]), "citations": cits, "count": len(cits)}
+            if tool_name == "assistant_get_action_stage_summary":
+                return {"summary": repo.summary(conn=conn)}
+            if tool_name == "assistant_get_action_stage_export":
+                try:
+                    return ASB.export_action_stage(repo, stage_id=str(arguments["stage_id"]),
+                                                   limit=_limit(200), conn=conn)
+                except ActionStageValidationError as e:
                     raise ValueError(str(e)) from None
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:

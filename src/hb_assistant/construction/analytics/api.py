@@ -3403,6 +3403,85 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="feedback_not_found") from None
         return _assistant_env(payload)
 
+    # ----- N8C-19 read-only action-stage surface (local UI surface) -----------------------------
+    # All GET, all-roles, read-only. An action stage is a bounded set of proposed follow-up CANDIDATES
+    # derived from the N8C-17 workflow context + N8C-18 advisory feedback; every staged item is pinned to
+    # not_executed / external_system=none / requires_operator_review=1. There is intentionally NO write route
+    # and NO build/apply/execute route here — the `action-stage build --apply` writer is CLI-only. Reading a
+    # stage never executes anything, never contacts an external system, and never mutates an upstream record.
+    def _action_stage_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.action_stage_repository import ActionStageRepository
+
+        return ActionStageRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/action-stages")
+    def assistant_action_stages(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                                stage_type: str | None = Query(default=None),
+                                status: str | None = Query(default=None),
+                                workflow_type: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        stages = _action_stage_repo().list_stages(stage_type=stage_type, status=status,
+                                                  workflow_type=workflow_type, limit=limit)
+        return _assistant_env({"stages": stages, "count": len(stages)})
+
+    # NOTE: /summary is declared BEFORE /{stage_id} so the literal path is not shadowed by the path-param
+    # route (FastAPI matches in declaration order).
+    @app.get("/api/assistant/action-stages/summary")
+    def assistant_action_stages_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _action_stage_repo().summary()})
+
+    @app.get("/api/assistant/action-stages/{stage_id}")
+    def assistant_action_stage_record(stage_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        stage = _action_stage_repo().get_stage(stage_id)
+        if stage is None:
+            raise HTTPException(status_code=404, detail="stage_not_found")
+        return _assistant_env({"stage": stage})
+
+    @app.get("/api/assistant/action-stages/{stage_id}/items")
+    def assistant_action_stage_items(stage_id: str, role: dict[str, str] = role_dep,
+                                     staged_state: str | None = Query(default=None),
+                                     limit: int = Query(default=100)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _action_stage_repo()
+        if repo.get_stage(stage_id) is None:
+            raise HTTPException(status_code=404, detail="stage_not_found")
+        items = repo.list_items(stage_id, staged_state=staged_state, limit=limit)
+        return _assistant_env({"stage_id": stage_id, "items": items, "count": len(items)})
+
+    @app.get("/api/assistant/action-stages/{stage_id}/citations")
+    def assistant_action_stage_citations(stage_id: str, role: dict[str, str] = role_dep,
+                                         limit: int = Query(default=100)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _action_stage_repo()
+        if repo.get_stage(stage_id) is None:
+            raise HTTPException(status_code=404, detail="stage_not_found")
+        citations = repo.list_citations(stage_id, limit=limit)
+        return _assistant_env({"stage_id": stage_id, "citations": citations, "count": len(citations)})
+
+    @app.get("/api/assistant/action-stages/{stage_id}/export")
+    def assistant_action_stage_export(stage_id: str, role: dict[str, str] = role_dep,
+                                      limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import action_stage_builder as asb
+        from hb_assistant.obsidian_mcp.action_stage_models import ActionStageValidationError
+
+        try:
+            payload = asb.export_action_stage(_action_stage_repo(), stage_id=stage_id, limit=limit)
+        except ActionStageValidationError:
+            raise HTTPException(status_code=404, detail="stage_not_found") from None
+        return _assistant_env(payload)
+
     # ----- N8C-15 read-only workflow contract + routing (local service surface) ------------------
     # Both GET, all-roles, read-only. `catalog` dumps the workflow registry (no DB). `route` resolves a
     # bounded workflow request to EXISTING N8C read surfaces and returns a normalized envelope. There is

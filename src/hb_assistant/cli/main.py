@@ -17,6 +17,7 @@ import typer
 
 from hb_assistant import __version__
 
+from . import action_stage as action_stage_mod
 from . import actions as actions_mod
 from . import answer_draft as answer_draft_mod
 from . import auth as auth_mod
@@ -99,6 +100,7 @@ app.add_typer(research_packet_mod.app, name="research-packet")
 app.add_typer(source_connector_mod.app, name="source-connector")
 app.add_typer(workflow_mod.app, name="workflow")
 app.add_typer(feedback_mod.app, name="feedback")
+app.add_typer(action_stage_mod.app, name="action-stage")
 
 
 # Explicit thin stubs for remaining command groups

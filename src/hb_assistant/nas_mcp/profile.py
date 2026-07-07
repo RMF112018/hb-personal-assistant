@@ -252,6 +252,22 @@ def assistant_feedback_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_action_stages_enabled() -> bool:
+    """N8C-19 read-only action-stage inspection tools (``assistant_list_action_stages`` /
+    ``assistant_get_action_stage`` / ``assistant_get_action_stage_items`` etc.).
+
+    Reads only — they retrieve bounded staged follow-up CANDIDATES (every item pinned to not_executed /
+    external_system=none / requires_operator_review=1) + their provenance citations. They never write (the
+    ``action-stage build --apply`` writer is CLI-only and never exposed remotely), never execute an action,
+    never contact an external system, never change a review state, and never mutate an upstream record, so
+    they are independent of the three write gates and enabled by DEFAULT, like the N8C-3 nav … N8C-18 feedback
+    tools. Origin auth still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_ACTION_STAGES=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_ACTION_STAGES")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -303,4 +319,5 @@ def gate_status() -> dict[str, object]:
         "assistant_answer_drafts_enabled": assistant_answer_drafts_enabled(),
         "assistant_workflows_enabled": assistant_workflows_enabled(),
         "assistant_feedback_enabled": assistant_feedback_enabled(),
+        "assistant_action_stages_enabled": assistant_action_stages_enabled(),
     }
