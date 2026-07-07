@@ -3327,6 +3327,51 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="draft_not_found") from None
         return _assistant_env(payload)
 
+    # ----- N8C-15 read-only workflow contract + routing (local service surface) ------------------
+    # Both GET, all-roles, read-only. `catalog` dumps the workflow registry (no DB). `route` resolves a
+    # bounded workflow request to EXISTING N8C read surfaces and returns a normalized envelope. There is
+    # intentionally NO POST/PUT/PATCH/DELETE, NO build/apply/execute route, and NO workflow-run persistence:
+    # routing reads existing artifacts only, executes nothing, and writes nothing (N8C-15 adds no schema).
+    @app.get("/api/assistant/workflows/catalog")
+    def assistant_workflows_catalog(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp.workflow_registry import catalog as _wf_catalog
+
+        return _assistant_env({"catalog": _wf_catalog()})
+
+    @app.get("/api/assistant/workflows/route")
+    def assistant_workflows_route(
+        role: dict[str, str] = role_dep,
+        workflow_type: str | None = Query(default=None),
+        query: str | None = Query(default=None),
+        objective: str | None = Query(default=None),
+        domain: str | None = Query(default=None),
+        project_key: str | None = Query(default=None),
+        source_root_key: str | None = Query(default=None),
+        draft_id: str | None = Query(default=None),
+        packet_id: str | None = Query(default=None),
+        projection_id: str | None = Query(default=None),
+        context_pack_id: str | None = Query(default=None),
+        review_item_id: str | None = Query(default=None),
+        memory_node_id: str | None = Query(default=None),
+        decision_id: str | None = Query(default=None),
+        preference_id: str | None = Query(default=None),
+        open_loop_id: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.workflow_models import WorkflowRequest
+        from hb_assistant.obsidian_mcp.workflow_router import WorkflowRouter
+
+        request = WorkflowRequest.from_inputs(
+            workflow_type=workflow_type, query=query, objective=objective, domain=domain,
+            project_key=project_key, source_root_key=source_root_key, draft_id=draft_id,
+            packet_id=packet_id, projection_id=projection_id, context_pack_id=context_pack_id,
+            review_item_id=review_item_id, memory_node_id=memory_node_id, decision_id=decision_id,
+            preference_id=preference_id, open_loop_id=open_loop_id, requested_by="api")
+        router = WorkflowRouter(db_path or str(PathPolicy().get_db_path()))
+        return _assistant_env({"workflow": router.route(request)})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)
