@@ -1,4 +1,4 @@
-"""V105 review-overlay migration (N8C-9): additive, idempotent, prior rows survive, CHECK enforced."""
+"""V106 intelligence-projection migration (N8C-10): additive, idempotent, prior rows survive, CHECK."""
 
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ import pytest
 
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
-_REVIEW_TABLES = {
-    "assistant_review_items",
-    "assistant_review_dispositions",
-    "assistant_review_events",
+_PROJECTION_TABLES = {
+    "assistant_intelligence_projections",
+    "assistant_intelligence_projection_items",
+    "assistant_intelligence_projection_receipts",
+    "assistant_intelligence_projection_events",
 }
 
 
@@ -21,21 +22,15 @@ def _tables(db: str) -> set[str]:
         return {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
 
-def test_v105_present_and_head_at_least_105(tmp_path: Path) -> None:
-    # V105 is additive; later migrations (V106+) advance the head without removing it.
-    assert LATEST_SCHEMA_VERSION >= 105
-    db = str(tmp_path / "db.sqlite")
-    SQLiteMigrator(db_path=db).apply()
-    with sqlite3.connect(db) as c:
-        row = c.execute("SELECT name FROM schema_migrations WHERE version = 105").fetchone()
-    assert row is not None and row[0] == "v105_assistant_review_queue"
+def test_head_is_106() -> None:
+    assert LATEST_SCHEMA_VERSION == 106
 
 
-def test_apply_creates_three_review_tables(tmp_path: Path) -> None:
+def test_apply_creates_four_projection_tables(tmp_path: Path) -> None:
     db = str(tmp_path / "db.sqlite")
     head = SQLiteMigrator(db_path=db).apply()
     assert head == LATEST_SCHEMA_VERSION
-    assert _tables(db) >= _REVIEW_TABLES
+    assert _tables(db) >= _PROJECTION_TABLES
 
 
 def test_reapply_idempotent(tmp_path: Path) -> None:
@@ -43,7 +38,7 @@ def test_reapply_idempotent(tmp_path: Path) -> None:
     assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     with sqlite3.connect(db) as c:
-        n = c.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 105").fetchone()[0]
+        n = c.execute("SELECT COUNT(*) FROM schema_migrations WHERE version = 106").fetchone()[0]
     assert n == 1
 
 
@@ -51,11 +46,11 @@ def test_prior_version_rows_survive(tmp_path: Path) -> None:
     db = str(tmp_path / "db.sqlite")
     SQLiteMigrator(db_path=db).apply()
     tabs = _tables(db)
-    # V100..V104 tables must remain after the additive V105 migration.
+    # V100..V105 tables must remain after the additive V106 migration.
     assert {"assistant_claims", "assistant_enrichment_jobs"} <= tabs
     assert {"assistant_context_packs", "assistant_memory_nodes"} <= tabs
-    assert {"assistant_decision_records", "assistant_preference_records",
-            "assistant_open_loop_records"} <= tabs
+    assert {"assistant_decision_records", "assistant_open_loop_records"} <= tabs
+    assert {"assistant_review_items", "assistant_review_dispositions", "assistant_review_events"} <= tabs
 
 
 def test_provenance_check_rejects_anchorless_item(tmp_path: Path) -> None:
@@ -63,7 +58,8 @@ def test_provenance_check_rejects_anchorless_item(tmp_path: Path) -> None:
     SQLiteMigrator(db_path=db).apply()
     with sqlite3.connect(db) as c, pytest.raises(sqlite3.IntegrityError):
         c.execute(
-            "INSERT INTO assistant_review_items "
-            "(review_item_id, target_kind, target_id, review_type) VALUES (?,?,?,?)",
-            ("x", "claim", "t1", "claim_review"),
+            "INSERT INTO assistant_intelligence_projection_items "
+            "(projection_item_id, projection_id, target_kind, target_id, inclusion_state) "
+            "VALUES (?,?,?,?,?)",
+            ("x", "p1", "claim", "t1", "candidate"),
         )

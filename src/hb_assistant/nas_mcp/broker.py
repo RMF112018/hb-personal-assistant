@@ -39,6 +39,7 @@ from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
+    assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
     assistant_review_enabled,
@@ -115,6 +116,17 @@ ASSISTANT_REVIEW_TOOLS = (
     "assistant_get_review_dispositions",
     "assistant_get_effective_review_state",
     "assistant_get_review_summary",
+)
+
+# N8C-10 read-only review-aware intelligence-projection tools (reads only; never write — the build/apply
+# writer is CLI-only and never exposed remotely). Served from the same read-only DB snapshot. Gated
+# independently by ``assistant_intelligence_enabled()``.
+ASSISTANT_INTELLIGENCE_TOOLS = (
+    "assistant_list_intelligence_projections",
+    "assistant_get_intelligence_projection",
+    "assistant_get_intelligence_projection_items",
+    "assistant_get_intelligence_projection_export",
+    "assistant_get_intelligence_summary",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -318,6 +330,10 @@ class NasMcpBroker:
                 "assistant_review_tools": (
                     list(ASSISTANT_REVIEW_TOOLS) if assistant_review_enabled() else []
                 ),
+                "assistant_intelligence_enabled": assistant_intelligence_enabled(),
+                "assistant_intelligence_tools": (
+                    list(ASSISTANT_INTELLIGENCE_TOOLS) if assistant_intelligence_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -353,6 +369,10 @@ class NasMcpBroker:
             if not assistant_review_enabled():
                 raise ValueError("assistant_review_disabled")
             return self._invoke_assistant_review(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_INTELLIGENCE_TOOLS:
+            if not assistant_intelligence_enabled():
+                raise ValueError("assistant_intelligence_disabled")
+            return self._invoke_assistant_intelligence(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -674,6 +694,57 @@ class NasMcpBroker:
                         "target_id": str(arguments["target_id"]), "effective_states": states,
                         "count": len(states)}
             if tool_name == "assistant_get_review_summary":
+                return {"summary": repo.summary(conn=conn)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_intelligence(self, cfg: NasMcpConfig, tool_name: str,
+                                       arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-10 intelligence-projection tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the projection
+        repository — physically cannot write, no live-DB fallback. No build/apply path is reachable
+        remotely.
+        """
+        from hb_assistant.obsidian_mcp import intelligence_projection_builder as IB
+        from hb_assistant.obsidian_mcp.intelligence_projection_models import (
+            ProjectionValidationError,
+        )
+        from hb_assistant.obsidian_mcp.intelligence_projection_repository import (
+            IntelligenceProjectionRepository,
+        )
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = IntelligenceProjectionRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_intelligence_projections":
+                recs = repo.list_projections(projection_type=arguments.get("projection_type"),
+                                             status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"projections": recs, "count": len(recs)}
+            if tool_name == "assistant_get_intelligence_projection":
+                rec = repo.get_projection(str(arguments["projection_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("projection_not_found")
+                return {"projection": rec}
+            if tool_name == "assistant_get_intelligence_projection_items":
+                recs = repo.list_projection_items(
+                    str(arguments["projection_id"]), inclusion_state=arguments.get("inclusion_state"),
+                    included_only=bool(arguments.get("included_only", False)), limit=_limit(), conn=conn)
+                return {"projection_id": str(arguments["projection_id"]), "items": recs,
+                        "count": len(recs)}
+            if tool_name == "assistant_get_intelligence_projection_export":
+                try:
+                    return IB.export_intelligence_projection(
+                        repo, projection_id=str(arguments["projection_id"]),
+                        included_only=bool(arguments.get("included_only", True)), limit=_limit(200),
+                        conn=conn)
+                except ProjectionValidationError as e:
+                    raise ValueError(str(e)) from None
+            if tool_name == "assistant_get_intelligence_summary":
                 return {"summary": repo.summary(conn=conn)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:

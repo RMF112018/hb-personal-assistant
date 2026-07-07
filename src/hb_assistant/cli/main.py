@@ -27,6 +27,7 @@ from . import diagnostics as diag_mod
 from . import email_calendar as email_calendar_mod
 from . import files as files_mod
 from . import graph as graph_mod
+from . import intelligence as intelligence_mod
 from . import launcher as launcher_mod
 from . import mcp_nas as mcp_nas_mod
 from . import memory as memory_mod
@@ -87,6 +88,7 @@ app.add_typer(context_pack_mod.app, name="context-pack")
 app.add_typer(memory_mod.app, name="memory")
 app.add_typer(decision_memory_mod.app, name="decision-memory")
 app.add_typer(review_mod.app, name="review")
+app.add_typer(intelligence_mod.app, name="intelligence")
 
 
 # Explicit thin stubs for remaining command groups

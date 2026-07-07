@@ -2984,6 +2984,80 @@ def create_app(*, db_path: str | None = None) -> Any:
         del role
         return _assistant_env({"summary": _review_repo().summary()})
 
+    # ----- N8C-10 read-only review-aware intelligence projections (local UI surface) -----------
+    # All GET, all-roles, read-only. Projections are materialized review-aware READ PRODUCTS; there is
+    # intentionally NO write route here — the build/apply writer is CLI-only (`hb-assistant intelligence
+    # build --apply`). Reading a projection never mutates a source/review record or executes an action.
+    def _intelligence_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.intelligence_projection_repository import (
+            IntelligenceProjectionRepository,
+        )
+
+        return IntelligenceProjectionRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/intelligence/projections")
+    def assistant_intelligence_projections(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                                           projection_type: str | None = Query(default=None),
+                                           status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _intelligence_repo().list_projections(projection_type=projection_type, status=status,
+                                                        limit=limit)
+        return _assistant_env({"projections": records, "count": len(records)})
+
+    @app.get("/api/assistant/intelligence/projections/{projection_id}")
+    def assistant_intelligence_projection(projection_id: str,
+                                          role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _intelligence_repo().get_projection(projection_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="projection_not_found")
+        return _assistant_env({"projection": record})
+
+    @app.get("/api/assistant/intelligence/projections/{projection_id}/items")
+    def assistant_intelligence_projection_items(projection_id: str, role: dict[str, str] = role_dep,
+                                                limit: int = Query(default=100),
+                                                inclusion_state: str | None = Query(default=None),
+                                                included_only: bool = Query(default=False)
+                                                ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _intelligence_repo()
+        if repo.get_projection(projection_id) is None:
+            raise HTTPException(status_code=404, detail="projection_not_found")
+        items = repo.list_projection_items(projection_id, inclusion_state=inclusion_state,
+                                           included_only=included_only, limit=limit)
+        return _assistant_env({"projection_id": projection_id, "items": items, "count": len(items)})
+
+    @app.get("/api/assistant/intelligence/projections/{projection_id}/export")
+    def assistant_intelligence_projection_export(projection_id: str, role: dict[str, str] = role_dep,
+                                                 limit: int = Query(default=200),
+                                                 included_only: bool = Query(default=True)
+                                                 ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import intelligence_projection_builder as ib
+        from hb_assistant.obsidian_mcp.intelligence_projection_models import (
+            ProjectionValidationError,
+        )
+
+        try:
+            payload = ib.export_intelligence_projection(_intelligence_repo(),
+                                                        projection_id=projection_id,
+                                                        included_only=included_only, limit=limit)
+        except ProjectionValidationError:
+            raise HTTPException(status_code=404, detail="projection_not_found") from None
+        return _assistant_env(payload)
+
+    @app.get("/api/assistant/intelligence/summary")
+    def assistant_intelligence_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _intelligence_repo().summary()})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

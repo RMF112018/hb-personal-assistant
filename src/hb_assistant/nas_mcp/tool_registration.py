@@ -11,6 +11,7 @@ from .profile import (
     ai_outputs_write_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
+    assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
     assistant_review_enabled,
@@ -313,6 +314,44 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         @mcp.tool()
         def assistant_get_review_summary() -> dict[str, Any]:
             return _assistant_result("assistant_get_review_summary", {})
+
+    # N8C-10 read-only review-aware intelligence-projection tools. Reads only; enabled by default. The
+    # build/apply writer is CLI-only and is NEVER exposed remotely (no build/apply/action tool is
+    # registered here). Served from the same read-only DB snapshot via the broker.
+    if assistant_intelligence_enabled():
+
+        @mcp.tool()
+        def assistant_list_intelligence_projections(projection_type: str | None = None,
+                                                    status: str | None = None,
+                                                    limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_intelligence_projections",
+                                     {"projection_type": projection_type, "status": status,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_intelligence_projection(projection_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_intelligence_projection",
+                                     {"projection_id": projection_id})
+
+        @mcp.tool()
+        def assistant_get_intelligence_projection_items(projection_id: str,
+                                                       inclusion_state: str | None = None,
+                                                       included_only: bool = False,
+                                                       limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_get_intelligence_projection_items",
+                                     {"projection_id": projection_id, "inclusion_state": inclusion_state,
+                                      "included_only": included_only, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_intelligence_projection_export(projection_id: str, included_only: bool = True,
+                                                        limit: int = 200) -> dict[str, Any]:
+            return _assistant_result("assistant_get_intelligence_projection_export",
+                                     {"projection_id": projection_id, "included_only": included_only,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_intelligence_summary() -> dict[str, Any]:
+            return _assistant_result("assistant_get_intelligence_summary", {})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).
