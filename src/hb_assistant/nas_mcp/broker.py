@@ -45,6 +45,7 @@ from .profile import (
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_quality_enabled,
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
@@ -220,6 +221,23 @@ ASSISTANT_ACTION_STAGE_TOOLS = (
     "assistant_get_action_stage_citations",
     "assistant_get_action_stage_summary",
     "assistant_get_action_stage_export",
+)
+
+# N8C-20 read-only quality/evaluation inspection tools: retrieve bounded ADVISORY quality findings over
+# existing N8C records (freshness / citation coverage / review-state consistency / source-ref validity /
+# policy compliance / duplication / boundedness) from the five N8C-20 ``assistant_quality_*`` tables — never
+# repairs, never executes, never accepts/rejects/defers a review disposition, never contacts an external
+# system, no write/build/apply/evaluate. Served from the same read-only DB snapshot (mode=ro&immutable=1 +
+# PRAGMA query_only=ON). Gated independently by ``assistant_quality_enabled()``. The names use list/get/
+# findings/targets/summary/export verbs — none is a forbidden finality/action substring, so the
+# tool-registration finality guards keep passing unchanged.
+ASSISTANT_QUALITY_TOOLS = (
+    "assistant_list_quality",
+    "assistant_get_quality",
+    "assistant_get_quality_findings",
+    "assistant_get_quality_targets",
+    "assistant_get_quality_summary",
+    "assistant_get_quality_export",
 )
 
 # The five fixed no-execution policy fields carried by every N8C-15 workflow envelope.
@@ -496,6 +514,10 @@ class NasMcpBroker:
                 "assistant_action_stage_tools": (
                     list(ASSISTANT_ACTION_STAGE_TOOLS) if assistant_action_stages_enabled() else []
                 ),
+                "assistant_quality_enabled": assistant_quality_enabled(),
+                "assistant_quality_tools": (
+                    list(ASSISTANT_QUALITY_TOOLS) if assistant_quality_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -559,6 +581,10 @@ class NasMcpBroker:
             if not assistant_action_stages_enabled():
                 raise ValueError("assistant_action_stages_disabled")
             return self._invoke_assistant_action_stages(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_QUALITY_TOOLS:
+            if not assistant_quality_enabled():
+                raise ValueError("assistant_quality_disabled")
+            return self._invoke_assistant_quality(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -1186,6 +1212,58 @@ class NasMcpBroker:
                     return ASB.export_action_stage(repo, stage_id=str(arguments["stage_id"]),
                                                    limit=_limit(200), conn=conn)
                 except ActionStageValidationError as e:
+                    raise ValueError(str(e)) from None
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_quality(self, cfg: NasMcpConfig, tool_name: str,
+                                  arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-20 quality/evaluation tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the quality
+        repository — physically cannot write, no live-DB fallback. These retrieve bounded ADVISORY quality
+        findings over existing N8C records only; no write, no build/apply/evaluate, no repair, no execution,
+        no external system, and no review-disposition path is reachable remotely (the ``quality build
+        --apply`` evaluator writer is CLI-only)."""
+        from hb_assistant.obsidian_mcp import quality_evaluator as QE
+        from hb_assistant.obsidian_mcp.quality_models import QualityValidationError
+        from hb_assistant.obsidian_mcp.quality_repository import QualityRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = QualityRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_quality":
+                runs = repo.list_quality_runs(target_kind=arguments.get("target_kind"),
+                                              target_id=arguments.get("target_id"),
+                                              status=arguments.get("status"), limit=_limit(), conn=conn)
+                return {"quality_runs": runs, "count": len(runs)}
+            if tool_name == "assistant_get_quality":
+                run = repo.get_quality_run(str(arguments["quality_run_id"]), conn=conn)
+                if run is None:
+                    raise ValueError("quality_run_not_found")
+                return {"run": run}
+            if tool_name == "assistant_get_quality_findings":
+                findings = repo.list_findings(str(arguments["quality_run_id"]),
+                                              finding_type=arguments.get("finding_type"),
+                                              severity=arguments.get("severity"), limit=_limit(200),
+                                              conn=conn)
+                return {"quality_run_id": str(arguments["quality_run_id"]), "findings": findings,
+                        "count": len(findings)}
+            if tool_name == "assistant_get_quality_targets":
+                targets = repo.list_targets(str(arguments["quality_run_id"]), limit=_limit(200), conn=conn)
+                return {"quality_run_id": str(arguments["quality_run_id"]), "targets": targets,
+                        "count": len(targets)}
+            if tool_name == "assistant_get_quality_summary":
+                return {"summary": repo.summary(conn=conn)}
+            if tool_name == "assistant_get_quality_export":
+                try:
+                    return QE.export_quality(repo, quality_run_id=str(arguments["quality_run_id"]),
+                                             limit=_limit(200), conn=conn)
+                except QualityValidationError as e:
                     raise ValueError(str(e)) from None
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:

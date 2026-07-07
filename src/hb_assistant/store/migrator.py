@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 110
+LATEST_SCHEMA_VERSION = 111
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7016,6 +7016,12 @@ class SQLiteMigrator:
 
         return V110_STATEMENTS
 
+    @staticmethod
+    def _v111_statements() -> list[str]:
+        from hb_assistant.store.assistant_quality_tables import V111_STATEMENTS
+
+        return V111_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8881,6 +8887,24 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (110, 'v110_assistant_action_stage', ?)",
+                    (now,),
+                )
+
+            # v111 (NAS N8C-20): Maintenance, Freshness, Quality Loops, and Workflow Evaluation —
+            # assistant_quality_runs + _findings + _targets + _receipts + _events. Deterministic, read-only
+            # EVALUATION over existing N8C records producing ADVISORY quality findings (freshness / citation
+            # coverage / review-state consistency / source-ref validity / policy compliance / duplication /
+            # boundedness). Additive, empty on create; nothing populates them on startup. Quality-owned only —
+            # every finding pinned to no_execution / evaluate_only / advisory_review_loop /
+            # requires_operator_review=1 by CHECK. Never rebuilds an artifact, repairs, executes, stages,
+            # writes a review disposition, mutates any upstream record, contacts an external system, reads a
+            # source file, or calls an LLM. Not the N8D bridge/job schema.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 111")
+            if cur.fetchone() is None:
+                for stmt in self._v111_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (111, 'v111_assistant_quality', ?)",
                     (now,),
                 )
 

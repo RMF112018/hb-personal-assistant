@@ -268,6 +268,23 @@ def assistant_action_stages_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_quality_enabled() -> bool:
+    """N8C-20 read-only quality/evaluation inspection tools (``assistant_list_quality`` /
+    ``assistant_get_quality`` / ``assistant_get_quality_findings`` etc.).
+
+    Reads only — they retrieve bounded ADVISORY quality findings over existing N8C records (freshness /
+    citation coverage / review-state consistency / source-ref validity / policy compliance / duplication /
+    boundedness). They never write (the ``quality build --apply`` evaluator writer is CLI-only and never
+    exposed remotely), never repair/execute anything, never accept/reject/defer/dispose a review disposition,
+    never contact an external system, and never mutate an upstream record, so they are independent of the
+    three write gates and enabled by DEFAULT, like the N8C-3 nav … N8C-19 action-stage tools. Origin auth
+    still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_QUALITY=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_QUALITY")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -320,4 +337,5 @@ def gate_status() -> dict[str, object]:
         "assistant_workflows_enabled": assistant_workflows_enabled(),
         "assistant_feedback_enabled": assistant_feedback_enabled(),
         "assistant_action_stages_enabled": assistant_action_stages_enabled(),
+        "assistant_quality_enabled": assistant_quality_enabled(),
     }

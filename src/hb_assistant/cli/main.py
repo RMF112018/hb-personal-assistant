@@ -35,6 +35,7 @@ from . import launcher as launcher_mod
 from . import mcp_nas as mcp_nas_mod
 from . import memory as memory_mod
 from . import procore as procore_mod
+from . import quality as quality_mod
 from . import qwen_worker as qwen_worker_mod
 from . import research_packet as research_packet_mod
 from . import review as review_mod
@@ -101,6 +102,7 @@ app.add_typer(source_connector_mod.app, name="source-connector")
 app.add_typer(workflow_mod.app, name="workflow")
 app.add_typer(feedback_mod.app, name="feedback")
 app.add_typer(action_stage_mod.app, name="action-stage")
+app.add_typer(quality_mod.app, name="quality")
 
 
 # Explicit thin stubs for remaining command groups

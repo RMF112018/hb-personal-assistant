@@ -17,6 +17,7 @@ from .profile import (
     assistant_intelligence_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_quality_enabled,
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
@@ -724,6 +725,55 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             follow-up candidates only — no execution field, no external ref, no state change."""
             return _assistant_result("assistant_get_action_stage_export",
                                      {"stage_id": stage_id, "limit": limit})
+
+    # N8C-20 read-only quality/evaluation inspection — registered only when the quality gate is on
+    # (default-ON). Advisory findings over existing N8C records; no build/apply/evaluate/repair tool here.
+    if assistant_quality_enabled():
+
+        @mcp.tool()
+        def assistant_list_quality(target_kind: str | None = None, target_id: str | None = None,
+                                   status: str | None = None, limit: int = 25) -> dict[str, Any]:
+            """List persisted QUALITY RUNS (read-only). A quality run is an ADVISORY evaluation of one existing
+            N8C record — it repairs nothing, executes nothing, and changes no review disposition."""
+            return _assistant_result("assistant_list_quality",
+                                     {"target_kind": target_kind, "target_id": target_id,
+                                      "status": status, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_quality(quality_run_id: str) -> dict[str, Any]:
+            """Get one QUALITY RUN header (read-only). Advisory evaluation only; ``evaluated`` is a run-record
+            lifecycle status and implies no repair, acceptance, rejection, or application."""
+            return _assistant_result("assistant_get_quality", {"quality_run_id": quality_run_id})
+
+        @mcp.tool()
+        def assistant_get_quality_findings(quality_run_id: str, finding_type: str | None = None,
+                                           severity: str | None = None, limit: int = 200) -> dict[str, Any]:
+            """List a quality run's ADVISORY findings (read-only). Each finding may recommend operator review
+            but never sets or mutates a review disposition; every finding is evaluate_only /
+            requires_operator_review=1."""
+            return _assistant_result("assistant_get_quality_findings",
+                                     {"quality_run_id": quality_run_id, "finding_type": finding_type,
+                                      "severity": severity, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_quality_targets(quality_run_id: str, limit: int = 200) -> dict[str, Any]:
+            """List the evaluated target(s) for a quality run (read-only). Bounded ids/state only — no raw
+            bodies, no live source read, no upstream mutation."""
+            return _assistant_result("assistant_get_quality_targets",
+                                     {"quality_run_id": quality_run_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_quality_summary() -> dict[str, Any]:
+            """Bounded aggregate over quality runs (read-only counts by target kind / status / finding type /
+            severity)."""
+            return _assistant_result("assistant_get_quality_summary", {})
+
+        @mcp.tool()
+        def assistant_get_quality_export(quality_run_id: str, limit: int = 200) -> dict[str, Any]:
+            """Bounded JSON export of a persisted QUALITY RUN (read-only; header + advisory findings +
+            evaluated targets). No raw bodies, no repair/execution field, no state change."""
+            return _assistant_result("assistant_get_quality_export",
+                                     {"quality_run_id": quality_run_id, "limit": limit})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

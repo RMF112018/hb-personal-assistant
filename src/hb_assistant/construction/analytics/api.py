@@ -3482,6 +3482,86 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="stage_not_found") from None
         return _assistant_env(payload)
 
+    # ----- N8C-20 read-only quality/evaluation surface (advisory findings) -----------------------
+    # GET-only. Findings are ADVISORY: reading a quality run never accepts/rejects/defers/disposes/repairs
+    # anything, never executes, never contacts an external system, and never mutates an upstream record.
+    # There is NO build/apply/evaluate/repair route here — the `quality build --apply` writer is CLI-only,
+    # and it writes only the five `assistant_quality_*` tables.
+    def _quality_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.quality_repository import QualityRepository
+
+        return QualityRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/quality")
+    def assistant_quality(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                          target_kind: str | None = Query(default=None),
+                          target_id: str | None = Query(default=None),
+                          status: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        runs = _quality_repo().list_quality_runs(target_kind=target_kind, target_id=target_id,
+                                                 status=status, limit=limit)
+        return _assistant_env({"quality_runs": runs, "count": len(runs)})
+
+    # NOTE: /summary is declared BEFORE /{quality_run_id} so the literal path is not shadowed.
+    @app.get("/api/assistant/quality/summary")
+    def assistant_quality_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _quality_repo().summary()})
+
+    @app.get("/api/assistant/quality/{quality_run_id}")
+    def assistant_quality_record(quality_run_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        run = _quality_repo().get_quality_run(quality_run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="quality_run_not_found")
+        return _assistant_env({"run": run})
+
+    @app.get("/api/assistant/quality/{quality_run_id}/findings")
+    def assistant_quality_findings(quality_run_id: str, role: dict[str, str] = role_dep,
+                                   finding_type: str | None = Query(default=None),
+                                   severity: str | None = Query(default=None),
+                                   limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _quality_repo()
+        if repo.get_quality_run(quality_run_id) is None:
+            raise HTTPException(status_code=404, detail="quality_run_not_found")
+        findings = repo.list_findings(quality_run_id, finding_type=finding_type, severity=severity,
+                                      limit=limit)
+        return _assistant_env({"quality_run_id": quality_run_id, "findings": findings,
+                               "count": len(findings)})
+
+    @app.get("/api/assistant/quality/{quality_run_id}/targets")
+    def assistant_quality_targets(quality_run_id: str, role: dict[str, str] = role_dep,
+                                  limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _quality_repo()
+        if repo.get_quality_run(quality_run_id) is None:
+            raise HTTPException(status_code=404, detail="quality_run_not_found")
+        targets = repo.list_targets(quality_run_id, limit=limit)
+        return _assistant_env({"quality_run_id": quality_run_id, "targets": targets, "count": len(targets)})
+
+    @app.get("/api/assistant/quality/{quality_run_id}/export")
+    def assistant_quality_export(quality_run_id: str, role: dict[str, str] = role_dep,
+                                 limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import quality_evaluator as qe
+        from hb_assistant.obsidian_mcp.quality_models import QualityValidationError
+
+        try:
+            payload = qe.export_quality(_quality_repo(), quality_run_id=quality_run_id, limit=limit)
+        except QualityValidationError:
+            raise HTTPException(status_code=404, detail="quality_run_not_found") from None
+        return _assistant_env(payload)
+
     # ----- N8C-15 read-only workflow contract + routing (local service surface) ------------------
     # Both GET, all-roles, read-only. `catalog` dumps the workflow registry (no DB). `route` resolves a
     # bounded workflow request to EXISTING N8C read surfaces and returns a normalized envelope. There is
