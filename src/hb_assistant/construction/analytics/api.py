@@ -3245,6 +3245,88 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise _source_connector_error(e) from None
         return _assistant_env(payload)
 
+    # ----- N8C-14 read-only citation-safe answer drafts (local UI surface) ---------------------
+    # All GET, all-roles, read-only. Drafts are bounded, citation-safe DRAFT artifacts built from N8C-11
+    # research packets; there is intentionally NO write route, NO build/apply route, and NO answer-generation
+    # route here — the build/apply writer is CLI-only (`hb-assistant answer-draft build --apply`). Reading a
+    # draft never mutates a packet / projection / review / source record, generates no final/authoritative
+    # answer, performs no live source file read, and executes nothing.
+    def _answer_draft_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.answer_draft_repository import AnswerDraftRepository
+
+        return AnswerDraftRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/answer-drafts")
+    def assistant_answer_drafts(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                                draft_type: str | None = Query(default=None),
+                                status: str | None = Query(default=None),
+                                packet_id: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        records = _answer_draft_repo().list_answer_drafts(draft_type=draft_type, status=status,
+                                                          packet_id=packet_id, limit=limit)
+        return _assistant_env({"drafts": records, "count": len(records)})
+
+    # NOTE: /summary is declared BEFORE /{draft_id} so the literal path is not shadowed by the
+    # path-param route (FastAPI matches in declaration order).
+    @app.get("/api/assistant/answer-drafts/summary")
+    def assistant_answer_drafts_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _answer_draft_repo().summary()})
+
+    @app.get("/api/assistant/answer-drafts/{draft_id}")
+    def assistant_answer_draft(draft_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _answer_draft_repo().get_answer_draft(draft_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="draft_not_found")
+        return _assistant_env({"draft": record})
+
+    @app.get("/api/assistant/answer-drafts/{draft_id}/sections")
+    def assistant_answer_draft_sections(draft_id: str, role: dict[str, str] = role_dep,
+                                        limit: int = Query(default=100),
+                                        section_type: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _answer_draft_repo()
+        if repo.get_answer_draft(draft_id) is None:
+            raise HTTPException(status_code=404, detail="draft_not_found")
+        sections = repo.list_answer_draft_sections(draft_id, section_type=section_type, limit=limit)
+        return _assistant_env({"draft_id": draft_id, "sections": sections, "count": len(sections)})
+
+    @app.get("/api/assistant/answer-drafts/{draft_id}/citations")
+    def assistant_answer_draft_citations(draft_id: str, role: dict[str, str] = role_dep,
+                                         limit: int = Query(default=200),
+                                         draft_section_id: str | None = Query(default=None)
+                                         ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _answer_draft_repo()
+        if repo.get_answer_draft(draft_id) is None:
+            raise HTTPException(status_code=404, detail="draft_not_found")
+        citations = repo.list_answer_draft_citations(draft_id, draft_section_id=draft_section_id,
+                                                     limit=limit)
+        return _assistant_env({"draft_id": draft_id, "citations": citations, "count": len(citations)})
+
+    @app.get("/api/assistant/answer-drafts/{draft_id}/export")
+    def assistant_answer_draft_export(draft_id: str, role: dict[str, str] = role_dep,
+                                      limit: int = Query(default=200)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        from hb_assistant.obsidian_mcp import answer_draft_builder as ab
+        from hb_assistant.obsidian_mcp.answer_draft_models import AnswerDraftValidationError
+
+        try:
+            payload = ab.export_answer_draft(_answer_draft_repo(), draft_id=draft_id, limit=limit)
+        except AnswerDraftValidationError:
+            raise HTTPException(status_code=404, detail="draft_not_found") from None
+        return _assistant_env(payload)
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

@@ -9,6 +9,7 @@ from .broker import NasMcpBroker
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
+    assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
     assistant_intelligence_enabled,
@@ -458,6 +459,59 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             return _assistant_result("assistant_source_file_read",
                                      {"source_id": source_id, "source_ref": source_ref,
                                       "max_chars": max_chars, "prefer_live": prefer_live})
+
+    # N8C-14 read-only citation-safe answer drafts. Reads only; enabled by default. These tools RETRIEVE
+    # bounded, citation-safe DRAFT artifacts built from N8C-11 research packets — cited sections that preserve
+    # review labels + source provenance + excluded-content rules + a no-execution policy. They do NOT
+    # generate a final/authoritative answer and do NOT execute actions: no build/apply, answer-generation,
+    # send, or action tool is registered. Served from the same read-only DB snapshot via the broker.
+    if assistant_answer_drafts_enabled():
+
+        @mcp.tool()
+        def assistant_list_drafts(draft_type: str | None = None, status: str | None = None,
+                                  packet_id: str | None = None, limit: int = 25) -> dict[str, Any]:
+            """List persisted citation-safe answer DRAFTS (read-only). Drafts are guidance artifacts, not
+            final answers; this retrieves draft artifacts only — it never builds a draft or generates an
+            answer."""
+            return _assistant_result("assistant_list_drafts",
+                                     {"draft_type": draft_type, "status": status, "packet_id": packet_id,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_draft(draft_id: str) -> dict[str, Any]:
+            """Get one citation-safe answer DRAFT header (read-only). A draft is guidance, never a final or
+            operator-approved answer."""
+            return _assistant_result("assistant_get_draft", {"draft_id": draft_id})
+
+        @mcp.tool()
+        def assistant_get_draft_sections(draft_id: str, section_type: str | None = None,
+                                         limit: int = 100) -> dict[str, Any]:
+            """List a draft's bounded, cited DRAFT sections (read-only). Section bodies are bounded
+            restatements with review labels — not final authoritative answer prose."""
+            return _assistant_result("assistant_get_draft_sections",
+                                     {"draft_id": draft_id, "section_type": section_type, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_draft_citations(draft_id: str, draft_section_id: str | None = None,
+                                          limit: int = 200) -> dict[str, Any]:
+            """List a draft's provenance-anchored citations (read-only). Retrieves citation metadata only;
+            performs no live source file read."""
+            return _assistant_result("assistant_get_draft_citations",
+                                     {"draft_id": draft_id, "draft_section_id": draft_section_id,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_draft_export(draft_id: str, limit: int = 200) -> dict[str, Any]:
+            """Bounded JSON export of a persisted DRAFT (read-only; header + bounded sections + bounded
+            citations). Returns a citation-safe draft artifact only — no final answer, no answer prose, no
+            action."""
+            return _assistant_result("assistant_get_draft_export",
+                                     {"draft_id": draft_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_draft_summary() -> dict[str, Any]:
+            """Bounded aggregate over persisted answer drafts (read-only counts by type/status)."""
+            return _assistant_result("assistant_get_draft_summary", {})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

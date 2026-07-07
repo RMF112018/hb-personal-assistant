@@ -18,6 +18,7 @@ import typer
 from hb_assistant import __version__
 
 from . import actions as actions_mod
+from . import answer_draft as answer_draft_mod
 from . import auth as auth_mod
 from . import automation as auto_mod
 from . import construction as construction_mod
@@ -91,6 +92,7 @@ app.add_typer(memory_mod.app, name="memory")
 app.add_typer(decision_memory_mod.app, name="decision-memory")
 app.add_typer(review_mod.app, name="review")
 app.add_typer(intelligence_mod.app, name="intelligence")
+app.add_typer(answer_draft_mod.app, name="answer-draft")
 app.add_typer(research_packet_mod.app, name="research-packet")
 app.add_typer(source_connector_mod.app, name="source-connector")
 

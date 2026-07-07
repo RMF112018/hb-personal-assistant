@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 107
+LATEST_SCHEMA_VERSION = 108
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6998,6 +6998,12 @@ class SQLiteMigrator:
 
         return V107_STATEMENTS
 
+    @staticmethod
+    def _v108_statements() -> list[str]:
+        from hb_assistant.store.assistant_answer_draft_tables import V108_STATEMENTS
+
+        return V108_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8808,6 +8814,25 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (107, 'v107_assistant_research_packet', ?)",
+                    (now,),
+                )
+
+            # v108 (NAS N8C-14): citation-safe answer DRAFTS — assistant_answer_drafts + _sections +
+            # _citations + _receipts + _events. Durable, bounded, citation-safe DRAFT read products
+            # materialized from the N8C-11 research packets: cited sections that preserve review labels,
+            # source provenance, excluded-content rules, and the packet's no-execution policy. Additive,
+            # empty on create; nothing populates them on startup (no lifespan/scheduler/watcher/worker builds
+            # drafts). Draft-owned only — never mutates a packet, projection, review, OR source table, never
+            # converts candidate → accepted truth, generates NO final/authoritative answer (there is no
+            # final_answer/answer_text/generated_answer/operator_approved_answer field), executes no action,
+            # and does NOT duplicate the N8D bridge/job/action schema. Effective/review state is READ
+            # (already frozen into the packet items/citations), never written back.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 108")
+            if cur.fetchone() is None:
+                for stmt in self._v108_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (108, 'v108_assistant_answer_draft', ?)",
                     (now,),
                 )
 

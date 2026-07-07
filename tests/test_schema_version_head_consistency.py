@@ -293,6 +293,43 @@ def test_prior_assistant_tables_survive_v107(tmp_path: Path) -> None:
     assert {"assistant_intelligence_projections", "assistant_intelligence_projection_items"} <= names
 
 
+def test_v108_migration_row_present(tmp_path: Path) -> None:
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        row = conn.execute("SELECT name FROM schema_migrations WHERE version = 108").fetchone()
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name LIKE 'assistant_answer_draft%'"
+            )
+        }
+    assert row is not None
+    assert row[0] == "v108_assistant_answer_draft"
+    assert tables == {
+        "assistant_answer_drafts",
+        "assistant_answer_draft_sections",
+        "assistant_answer_draft_citations",
+        "assistant_answer_draft_receipts",
+        "assistant_answer_draft_events",
+    }
+
+
+def test_prior_assistant_tables_survive_v108(tmp_path: Path) -> None:
+    # V108 is additive: the V107 research-packet tables it reads from (and all earlier V100–V106 tables)
+    # must remain.
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        names = {
+            r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+    assert {"assistant_research_packets", "assistant_research_packet_citations"} <= names
+    assert {"assistant_intelligence_projections", "assistant_review_items"} <= names
+    assert {"assistant_claims", "assistant_context_packs"} <= names
+
+
 def test_apply_is_idempotent(tmp_path: Path) -> None:
     # v98 is a destructive rebuild-and-rename guarded only by the outer
     # ``WHERE version = 98`` check; a second apply() must be a safe no-op.

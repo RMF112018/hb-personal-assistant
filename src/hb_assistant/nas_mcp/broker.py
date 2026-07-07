@@ -37,6 +37,7 @@ from .overrides import OverrideStore
 from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
+    assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
     assistant_decision_memory_enabled,
     assistant_intelligence_enabled,
@@ -155,6 +156,21 @@ ASSISTANT_SOURCE_CONNECTOR_TOOLS = (
     "assistant_source_file_search",
     "assistant_source_file_metadata",
     "assistant_source_file_read",
+)
+
+# N8C-14 read-only citation-safe answer-draft tools (reads only; never write). They retrieve bounded,
+# citation-safe DRAFT artifacts built from N8C-11 research packets — never a final/authoritative answer, no
+# build/apply, no answer-generation, no action. Served from the same read-only DB snapshot. Gated
+# independently by ``assistant_answer_drafts_enabled()``. Tool names deliberately use ``draft`` (not
+# ``answer``) so the remote surface carries no answer-generation verb — the finality guard in the
+# tool-registration tests forbids the substring ``answer`` (as well as build/generate/send) in any tool name.
+ASSISTANT_ANSWER_DRAFT_TOOLS = (
+    "assistant_list_drafts",
+    "assistant_get_draft",
+    "assistant_get_draft_sections",
+    "assistant_get_draft_citations",
+    "assistant_get_draft_export",
+    "assistant_get_draft_summary",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -370,6 +386,10 @@ class NasMcpBroker:
                 "assistant_source_connector_tools": (
                     list(ASSISTANT_SOURCE_CONNECTOR_TOOLS) if assistant_source_connector_enabled() else []
                 ),
+                "assistant_answer_drafts_enabled": assistant_answer_drafts_enabled(),
+                "assistant_answer_draft_tools": (
+                    list(ASSISTANT_ANSWER_DRAFT_TOOLS) if assistant_answer_drafts_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -417,6 +437,10 @@ class NasMcpBroker:
             if not assistant_source_connector_enabled():
                 raise ValueError("assistant_source_connector_disabled")
             return self._invoke_assistant_source_connector(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_ANSWER_DRAFT_TOOLS:
+            if not assistant_answer_drafts_enabled():
+                raise ValueError("assistant_answer_drafts_disabled")
+            return self._invoke_assistant_answer_drafts(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -894,6 +918,58 @@ class NasMcpBroker:
                         prefer_live=bool(arguments.get("prefer_live", True)), conn=conn)
             except SourceConnectorValidationError as e:
                 raise ValueError(str(e)) from None
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_answer_drafts(self, cfg: NasMcpConfig, tool_name: str,
+                                        arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-14 answer-draft tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the draft
+        repository — physically cannot write, no live-DB fallback. These retrieve bounded, citation-safe
+        DRAFT artifacts only; no build/apply, final-answer generation, or action path is reachable remotely
+        (the export is a bounded read of already-persisted rows, and performs no live source file read).
+        """
+        from hb_assistant.obsidian_mcp import answer_draft_builder as AB
+        from hb_assistant.obsidian_mcp.answer_draft_models import AnswerDraftValidationError
+        from hb_assistant.obsidian_mcp.answer_draft_repository import AnswerDraftRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = AnswerDraftRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_drafts":
+                recs = repo.list_answer_drafts(draft_type=arguments.get("draft_type"),
+                                               status=arguments.get("status"),
+                                               packet_id=arguments.get("packet_id"), limit=_limit(),
+                                               conn=conn)
+                return {"drafts": recs, "count": len(recs)}
+            if tool_name == "assistant_get_draft":
+                rec = repo.get_answer_draft(str(arguments["draft_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("draft_not_found")
+                return {"draft": rec}
+            if tool_name == "assistant_get_draft_sections":
+                recs = repo.list_answer_draft_sections(
+                    str(arguments["draft_id"]), section_type=arguments.get("section_type"),
+                    limit=_limit(), conn=conn)
+                return {"draft_id": str(arguments["draft_id"]), "sections": recs, "count": len(recs)}
+            if tool_name == "assistant_get_draft_citations":
+                recs = repo.list_answer_draft_citations(
+                    str(arguments["draft_id"]), draft_section_id=arguments.get("draft_section_id"),
+                    limit=_limit(200), conn=conn)
+                return {"draft_id": str(arguments["draft_id"]), "citations": recs, "count": len(recs)}
+            if tool_name == "assistant_get_draft_export":
+                try:
+                    return AB.export_answer_draft(repo, draft_id=str(arguments["draft_id"]),
+                                                  limit=_limit(200), conn=conn)
+                except AnswerDraftValidationError as e:
+                    raise ValueError(str(e)) from None
+            if tool_name == "assistant_get_draft_summary":
+                return {"summary": repo.summary(conn=conn)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

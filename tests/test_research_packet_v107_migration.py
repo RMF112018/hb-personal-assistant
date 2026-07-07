@@ -23,10 +23,11 @@ def _migrate(db: Path) -> int:
     return SQLiteMigrator(db_path=str(db)).apply()
 
 
-def test_head_is_107(tmp_path: Path) -> None:
+def test_v107_present_and_head_at_least_107(tmp_path: Path) -> None:
+    # V107 is additive; later migrations (V108+) advance the head without removing it.
     db = tmp_path / "h.db"
-    assert _migrate(db) == 107
-    assert LATEST_SCHEMA_VERSION == 107
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert LATEST_SCHEMA_VERSION >= 107
 
 
 def test_five_packet_tables_created(tmp_path: Path) -> None:
@@ -40,8 +41,8 @@ def test_five_packet_tables_created(tmp_path: Path) -> None:
 
 def test_migration_is_idempotent(tmp_path: Path) -> None:
     db = tmp_path / "h.db"
-    assert _migrate(db) == 107
-    assert _migrate(db) == 107  # re-apply is a no-op
+    assert _migrate(db) == LATEST_SCHEMA_VERSION
+    assert _migrate(db) == LATEST_SCHEMA_VERSION  # re-apply is a no-op
     with sqlite3.connect(db) as c:
         row = c.execute("SELECT name FROM schema_migrations WHERE version=107").fetchone()
     assert row[0] == "v107_assistant_research_packet"
