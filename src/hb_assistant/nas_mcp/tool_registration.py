@@ -16,6 +16,7 @@ from .profile import (
     assistant_nav_enabled,
     assistant_research_packets_enabled,
     assistant_review_enabled,
+    assistant_source_connector_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
 )
@@ -394,6 +395,69 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         @mcp.tool()
         def assistant_get_research_packet_summary() -> dict[str, Any]:
             return _assistant_result("assistant_get_research_packet_summary", {})
+
+    # N8C-12 read-only NAS source-root file connector. Reads only; enabled by default. These tools search /
+    # list / inspect / bounded-READ indexed original SOURCE FILES (PDFs, contracts, invoices, drawings,
+    # proposals, spreadsheets) under configured NAS source roots — distinct from vault notes and generated
+    # source cards. No scan/reindex, card-generation, answer, or action tool is registered. Served from the
+    # same read-only DB snapshot via the broker; the bounded read opens exactly one configured file.
+    if assistant_source_connector_enabled():
+
+        @mcp.tool()
+        def assistant_source_status() -> dict[str, Any]:
+            """NAS source-index status + configured source-root summary (indexed source FILES, not vault
+            notes). Use to see how many source files are indexed and which source roots exist."""
+            return _assistant_result("assistant_source_status", {})
+
+        @mcp.tool()
+        def assistant_source_roots_list() -> dict[str, Any]:
+            """List configured NAS source roots (source_root_key + indexed file counts). Use to show the
+            structure/top level of the user's source FILE folders before searching or listing files — these
+            are NAS source files, not Obsidian vault notes or generated source cards."""
+            return _assistant_result("assistant_source_roots_list", {})
+
+        @mcp.tool()
+        def assistant_source_files_list(source_root_key: str, prefix: str | None = None,
+                                        limit: int = 25, cursor: str | None = None) -> dict[str, Any]:
+            """List indexed NAS source FILES under a source_root_key (optional rel_path prefix/folder),
+            with cursor paging. Use to browse original files in a NAS project/source folder — not vault
+            notes. Pass ``cursor`` for the next page."""
+            return _assistant_result("assistant_source_files_list",
+                                     {"source_root_key": source_root_key, "prefix": prefix,
+                                      "limit": limit, "cursor": cursor})
+
+        @mcp.tool()
+        def assistant_source_file_search(query: str, source_root_key: str | None = None,
+                                         file_ext: str | None = None, limit: int = 25,
+                                         cursor: str | None = None) -> dict[str, Any]:
+            """Full-text search indexed NAS source FILE contents. Use when the user asks to find files in
+            NAS source folders / project folders / documents — PDFs, contracts, invoices, drawings,
+            proposals, spreadsheets. Results carry source_root_key + source_ref for follow-up. Filter by
+            ``source_root_key``/``file_ext``; page with ``cursor``. NOT for Obsidian vault notes."""
+            return _assistant_result("assistant_source_file_search",
+                                     {"query": query, "source_root_key": source_root_key,
+                                      "file_ext": file_ext, "limit": limit, "cursor": cursor})
+
+        @mcp.tool()
+        def assistant_source_file_metadata(source_id: str | None = None,
+                                           source_ref: str | None = None) -> dict[str, Any]:
+            """Metadata for one NAS source FILE by source_id/source_ref: root/rel_path/extension/size +
+            whether a generated source card exists (supplemental). Use after a search/list result. The
+            original source file is the primary object; the generated card is only supplemental."""
+            return _assistant_result("assistant_source_file_metadata",
+                                     {"source_id": source_id, "source_ref": source_ref})
+
+        @mcp.tool()
+        def assistant_source_file_read(source_id: str | None = None, source_ref: str | None = None,
+                                       max_chars: int = 4000,
+                                       prefer_live: bool = True) -> dict[str, Any]:
+            """Bounded, extension-gated read of one NAS source FILE by source_id/source_ref. Returns a
+            live bounded extract when permitted, else the indexed excerpt (labelled
+            ``indexed_excerpt_fallback``). Use to read an original source file's content — not a vault
+            note or source card. Never returns a full raw file or an absolute path."""
+            return _assistant_result("assistant_source_file_read",
+                                     {"source_id": source_id, "source_ref": source_ref,
+                                      "max_chars": max_chars, "prefer_live": prefer_live})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

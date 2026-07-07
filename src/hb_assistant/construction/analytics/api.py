@@ -3142,6 +3142,109 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="packet_not_found") from None
         return _assistant_env(payload)
 
+    # ----- N8C-12 read-only NAS source-root file connector (local UI surface) -----------------
+    # All GET, all-roles, read-only. These expose INDEXED original source FILES (root-aware, cursor-paged,
+    # bounded reads) — distinct from vault notes and generated source cards. There is intentionally NO
+    # scan/reindex, card-generation, or write route here; reading never mutates a source/index record and
+    # never triggers a live recursive filesystem scan (a bounded read opens exactly one configured file).
+    def _source_connector_ctx() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.config import load_config
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        repo = SourceIndexRepository(db_path or str(PathPolicy().get_db_path()))
+        return repo, load_config()
+
+    def _source_connector_error(exc: Exception) -> Any:
+        from fastapi import HTTPException
+
+        code = 404 if str(exc) == "source_not_found" else 400
+        return HTTPException(status_code=code, detail=str(exc))
+
+    # NOTE: ``/source-index/status`` (not ``/sources/status``) — the ``/sources/{source_id}`` nav route
+    # (N8C-3) is declared earlier and would shadow a literal ``/sources/status``.
+    @app.get("/api/assistant/source-index/status")
+    def assistant_sources_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+
+        repo, config = _source_connector_ctx()
+        return _assistant_env(svc.source_status(repo, config))
+
+    @app.get("/api/assistant/source-roots")
+    def assistant_source_roots(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+
+        repo, config = _source_connector_ctx()
+        return _assistant_env(svc.list_source_roots(repo, config))
+
+    @app.get("/api/assistant/source-files/search")
+    def assistant_source_files_search(role: dict[str, str] = role_dep, query: str = Query(default=""),
+                                      source_root_key: str | None = Query(default=None),
+                                      file_ext: str | None = Query(default=None),
+                                      limit: int = Query(default=25),
+                                      cursor: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+        from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+
+        repo, config = _source_connector_ctx()
+        try:
+            payload = svc.search_source_files(repo, config, query=query, source_root_key=source_root_key,
+                                              file_ext=file_ext, limit=limit, cursor=cursor)
+        except SourceConnectorValidationError as e:
+            raise _source_connector_error(e) from None
+        return _assistant_env(payload)
+
+    @app.get("/api/assistant/source-files")
+    def assistant_source_files_list(role: dict[str, str] = role_dep,
+                                    source_root_key: str = Query(...),
+                                    prefix: str | None = Query(default=None),
+                                    limit: int = Query(default=25),
+                                    cursor: str | None = Query(default=None)) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+        from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+
+        repo, config = _source_connector_ctx()
+        try:
+            payload = svc.list_source_files(repo, config, source_root_key=source_root_key,
+                                            prefix=prefix, limit=limit, cursor=cursor)
+        except SourceConnectorValidationError as e:
+            raise _source_connector_error(e) from None
+        return _assistant_env(payload)
+
+    @app.get("/api/assistant/source-files/{source_id}")
+    def assistant_source_file_metadata(source_id: str,
+                                       role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+        from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+
+        repo, config = _source_connector_ctx()
+        try:
+            payload = svc.source_file_metadata(repo, config, source_id=source_id)
+        except SourceConnectorValidationError as e:
+            raise _source_connector_error(e) from None
+        return _assistant_env(payload)
+
+    @app.get("/api/assistant/source-files/{source_id}/read")
+    def assistant_source_file_read(source_id: str, role: dict[str, str] = role_dep,
+                                   max_chars: int = Query(default=4000),
+                                   prefer_live: bool = Query(default=True)) -> dict[str, Any]:
+        del role
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+        from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+
+        repo, config = _source_connector_ctx()
+        try:
+            payload = svc.read_source_file(repo, config, source_id=source_id, max_chars=max_chars,
+                                           prefer_live=prefer_live)
+        except SourceConnectorValidationError as e:
+            raise _source_connector_error(e) from None
+        return _assistant_env(payload)
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

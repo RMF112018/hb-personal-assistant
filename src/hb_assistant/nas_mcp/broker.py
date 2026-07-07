@@ -44,6 +44,7 @@ from .profile import (
     assistant_nav_enabled,
     assistant_research_packets_enabled,
     assistant_review_enabled,
+    assistant_source_connector_enabled,
     blocked_write_tools,
     gate_status,
     safe_mode_enabled,
@@ -140,6 +141,20 @@ ASSISTANT_RESEARCH_PACKET_TOOLS = (
     "assistant_get_research_packet_citations",
     "assistant_get_research_packet_export",
     "assistant_get_research_packet_summary",
+)
+
+# N8C-12 read-only NAS source-root file connector tools (reads only; never write). Indexed original
+# SOURCE FILES — searchable/listable/inspectable + bounded single-file reads — distinct from vault notes
+# and generated source cards. No scan/reindex/card-generation/answer/action tool is exposed. Served from
+# the same read-only DB snapshot; the bounded read opens exactly one configured file. Gated independently
+# by ``assistant_source_connector_enabled()``.
+ASSISTANT_SOURCE_CONNECTOR_TOOLS = (
+    "assistant_source_status",
+    "assistant_source_roots_list",
+    "assistant_source_files_list",
+    "assistant_source_file_search",
+    "assistant_source_file_metadata",
+    "assistant_source_file_read",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -351,6 +366,10 @@ class NasMcpBroker:
                 "assistant_research_packet_tools": (
                     list(ASSISTANT_RESEARCH_PACKET_TOOLS) if assistant_research_packets_enabled() else []
                 ),
+                "assistant_source_connector_enabled": assistant_source_connector_enabled(),
+                "assistant_source_connector_tools": (
+                    list(ASSISTANT_SOURCE_CONNECTOR_TOOLS) if assistant_source_connector_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -394,6 +413,10 @@ class NasMcpBroker:
             if not assistant_research_packets_enabled():
                 raise ValueError("assistant_research_packets_disabled")
             return self._invoke_assistant_research_packets(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_SOURCE_CONNECTOR_TOOLS:
+            if not assistant_source_connector_enabled():
+                raise ValueError("assistant_source_connector_disabled")
+            return self._invoke_assistant_source_connector(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -818,6 +841,59 @@ class NasMcpBroker:
                     raise ValueError(str(e)) from None
             if tool_name == "assistant_get_research_packet_summary":
                 return {"summary": repo.summary(conn=conn)}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_source_connector(self, cfg: NasMcpConfig, tool_name: str,
+                                           arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-12 source-root file connector tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the source-index
+        repository. Search/list read indexed rows only — no live recursive scan; the bounded ``read`` opens
+        exactly one configured file (extension-gated, size-bounded, indexed-excerpt fallback). No
+        scan/reindex, card-generation, answer, or action path is reachable.
+        """
+        from hb_assistant.obsidian_mcp import source_connector_service as svc
+        from hb_assistant.obsidian_mcp.config import load_config
+        from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+        from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        config = load_config()
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = SourceIndexRepository(str(cfg.db_path))
+            try:
+                if tool_name == "assistant_source_status":
+                    return svc.source_status(repo, config, conn=conn)
+                if tool_name == "assistant_source_roots_list":
+                    return svc.list_source_roots(repo, config, conn=conn)
+                if tool_name == "assistant_source_files_list":
+                    return svc.list_source_files(
+                        repo, config, source_root_key=str(arguments["source_root_key"]),
+                        prefix=arguments.get("prefix"), limit=_limit(),
+                        cursor=arguments.get("cursor"), conn=conn)
+                if tool_name == "assistant_source_file_search":
+                    return svc.search_source_files(
+                        repo, config, query=str(arguments.get("query", "")),
+                        source_root_key=arguments.get("source_root_key"),
+                        file_ext=arguments.get("file_ext"), limit=_limit(),
+                        cursor=arguments.get("cursor"), conn=conn)
+                if tool_name == "assistant_source_file_metadata":
+                    return svc.source_file_metadata(
+                        repo, config, source_id=arguments.get("source_id"),
+                        source_ref=arguments.get("source_ref"), conn=conn)
+                if tool_name == "assistant_source_file_read":
+                    return svc.read_source_file(
+                        repo, config, source_id=arguments.get("source_id"),
+                        source_ref=arguments.get("source_ref"),
+                        max_chars=arguments.get("max_chars"),
+                        prefer_live=bool(arguments.get("prefer_live", True)), conn=conn)
+            except SourceConnectorValidationError as e:
+                raise ValueError(str(e)) from None
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

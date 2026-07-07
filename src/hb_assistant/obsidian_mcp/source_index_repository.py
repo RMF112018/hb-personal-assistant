@@ -788,6 +788,100 @@ class SourceIndexRepository:
             for r in rows
         ]
 
+    # ----- N8C-12 source-root connector reads (root-aware, keyset-paged) ----------------------
+    def search_source_files(self, query: str, *, source_root_key: str | None = None,
+                            file_ext: str | None = None, limit: int = 25,
+                            after: tuple[float, str, str, str] | None = None,
+                            conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """FTS search over indexed external source files, root-aware and keyset-pageable.
+
+        Unlike ``search_sources`` (N8C-3) this ALWAYS returns ``source_root_key`` + ``file_ext`` in each
+        row and supports deterministic keyset continuation. Order is ``bm25 rank`` ascending (best first),
+        tie-broken by ``(source_root_key, rel_path, source_id)`` so equal-rank rows have a total order.
+        ``after`` is the prior page's last ``(rank, source_root_key, rel_path, source_id)`` tuple; the
+        caller fetches ``limit+1`` to detect more pages. Read-only.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            if not self._fts_available(c):
+                return []
+            sql = (
+                "SELECT src_root, rel, sid, ext, rank, snip FROM ("
+                " SELECT COALESCE(s.source_root_key,'') AS src_root, COALESCE(s.rel_path,'') AS rel, "
+                "  s.source_id AS sid, m.file_ext AS ext, bm25(source_intelligence_fts) AS rank, "
+                "  snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip "
+                " FROM source_intelligence_fts f "
+                " JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
+                " JOIN source_intelligence_sources s ON s.source_id = m.source_id "
+                " WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
+            )
+            params: list[Any] = [query]
+            if source_root_key is not None:
+                sql += " AND s.source_root_key = ? "
+                params.append(source_root_key)
+            if file_ext:
+                sql += " AND m.file_ext = ? "
+                params.append(str(file_ext).lower().lstrip("."))
+            sql += ")"
+            if after is not None:
+                ar, aroot, arel, asid = after
+                sql += (
+                    " WHERE rank > ? OR (rank = ? AND src_root > ?) "
+                    " OR (rank = ? AND src_root = ? AND rel > ?) "
+                    " OR (rank = ? AND src_root = ? AND rel = ? AND sid > ?)"
+                )
+                params += [ar, ar, aroot, ar, aroot, arel, ar, aroot, arel, asid]
+            sql += " ORDER BY rank, src_root, rel, sid LIMIT ?"
+            params.append(int(limit))
+            rows = c.execute(sql, params).fetchall()
+        return [
+            {"source_root_key": r[0], "rel_path": r[1], "source_id": r[2], "file_ext": r[3],
+             "score": float(r[4]), "snippet": r[5]}
+            for r in rows
+        ]
+
+    def list_source_files(self, source_root_key: str, *, prefix: str | None = None, limit: int = 25,
+                          after: tuple[str, str] | None = None,
+                          conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
+        """Index-backed listing of external source files under one root (optionally a rel_path prefix).
+
+        Stable order ``(rel_path, source_id)`` with keyset ``after`` = the prior page's last
+        ``(rel_path, source_id)``. NOT a filesystem scan — reads only indexed rows. Read-only.
+        """
+        sql = (
+            "SELECT s.source_root_key, s.rel_path, s.source_id, m.file_ext "
+            "FROM source_intelligence_sources s "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+            "WHERE s.source_kind='external_file' AND s.deleted=0 AND s.source_root_key = ? "
+            "AND s.rel_path IS NOT NULL "
+        )
+        params: list[Any] = [source_root_key]
+        if prefix:
+            escaped = str(prefix).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            sql += "AND s.rel_path LIKE ? ESCAPE '\\' "
+            params.append(f"{escaped}%")
+        if after is not None:
+            arel, asid = after
+            sql += "AND (s.rel_path > ? OR (s.rel_path = ? AND s.source_id > ?)) "
+            params += [arel, arel, asid]
+        sql += "ORDER BY s.rel_path, s.source_id LIMIT ?"
+        params.append(int(limit))
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(sql, params).fetchall()
+        return [{"source_root_key": r[0], "rel_path": r[1], "source_id": r[2], "file_ext": r[3]}
+                for r in rows]
+
+    def count_source_files(self, source_root_key: str | None = None, *,
+                           conn: sqlite3.Connection | None = None) -> int:
+        """Count of active indexed external source files (optionally scoped to one root)."""
+        sql = ("SELECT COUNT(*) FROM source_intelligence_sources "
+               "WHERE source_kind='external_file' AND deleted=0")
+        params: list[Any] = []
+        if source_root_key is not None:
+            sql += " AND source_root_key = ?"
+            params.append(source_root_key)
+        with borrow_connection(conn, self.db_path) as c:
+            return int(c.execute(sql, params).fetchone()[0])
+
     # ----- status ----------------------------------------------------------------------------
     def index_status(self, *, conn: sqlite3.Connection | None = None) -> dict[str, Any]:
         with borrow_connection(conn, self.db_path) as c:

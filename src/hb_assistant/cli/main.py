@@ -39,6 +39,7 @@ from . import run as run_mod
 from . import scheduler as scheduler_mod
 from . import search as search_mod
 from . import second_brain as second_brain_mod
+from . import source_connector as source_connector_mod
 
 app = typer.Typer(
     name="hb-assistant",
@@ -91,6 +92,7 @@ app.add_typer(decision_memory_mod.app, name="decision-memory")
 app.add_typer(review_mod.app, name="review")
 app.add_typer(intelligence_mod.app, name="intelligence")
 app.add_typer(research_packet_mod.app, name="research-packet")
+app.add_typer(source_connector_mod.app, name="source-connector")
 
 
 # Explicit thin stubs for remaining command groups

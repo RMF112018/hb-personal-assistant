@@ -195,6 +195,19 @@ def assistant_research_packets_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_source_connector_enabled() -> bool:
+    """N8C-12 read-only NAS source-root file connector tools
+    (``assistant_source_status`` / ``assistant_source_file_search`` etc.).
+
+    Read-only: they search/list/inspect and bounded-READ indexed NAS source-root FILES — they never scan a
+    root, reindex, generate a card, or mutate anything, so they are independent of the three write gates and
+    enabled by DEFAULT, like the N8C-3 nav … N8C-11 research-packet tools. Origin auth still applies.
+    Kill-switch: ``HB_MCP_ASSISTANT_SOURCE_CONNECTOR=0``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_SOURCE_CONNECTOR")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -242,4 +255,5 @@ def gate_status() -> dict[str, object]:
         "assistant_review_enabled": assistant_review_enabled(),
         "assistant_intelligence_enabled": assistant_intelligence_enabled(),
         "assistant_research_packets_enabled": assistant_research_packets_enabled(),
+        "assistant_source_connector_enabled": assistant_source_connector_enabled(),
     }
