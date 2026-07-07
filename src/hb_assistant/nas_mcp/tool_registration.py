@@ -13,6 +13,7 @@ from .profile import (
     assistant_decision_memory_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_review_enabled,
     blocked_write_tools,
     scratch_output_write_enabled,
 )
@@ -276,6 +277,42 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         @mcp.tool()
         def assistant_get_open_loop(open_loop_id: str) -> dict[str, Any]:
             return _assistant_result("assistant_get_open_loop", {"open_loop_id": open_loop_id})
+
+    # N8C-9 read-only review-overlay tools. Reads only; enabled by default. The build/apply and
+    # disposition/apply writers are CLI-only and are NEVER exposed remotely (no build/apply/disposition/
+    # action tool is registered here). Served from the same read-only DB snapshot via the broker.
+    if assistant_review_enabled():
+
+        @mcp.tool()
+        def assistant_list_review_items(target_kind: str | None = None, review_type: str | None = None,
+                                        review_state: str | None = None,
+                                        effective_state: str | None = None,
+                                        include_superseded: bool = False,
+                                        limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_list_review_items",
+                                     {"target_kind": target_kind, "review_type": review_type,
+                                      "review_state": review_state, "effective_state": effective_state,
+                                      "include_superseded": include_superseded, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_review_item(review_item_id: str) -> dict[str, Any]:
+            return _assistant_result("assistant_get_review_item", {"review_item_id": review_item_id})
+
+        @mcp.tool()
+        def assistant_get_review_dispositions(review_item_id: str, limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_get_review_dispositions",
+                                     {"review_item_id": review_item_id, "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_effective_review_state(target_kind: str, target_id: str,
+                                                 limit: int = 25) -> dict[str, Any]:
+            return _assistant_result("assistant_get_effective_review_state",
+                                     {"target_kind": target_kind, "target_id": target_id,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_get_review_summary() -> dict[str, Any]:
+            return _assistant_result("assistant_get_review_summary", {})
 
     # Local-scratch output writers — registered only when the scratch gate is on
     # (always off in the remote_cloudflare profile).

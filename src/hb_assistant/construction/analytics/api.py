@@ -2923,6 +2923,67 @@ def create_app(*, db_path: str | None = None) -> Any:
             raise HTTPException(status_code=404, detail="open_loop_not_found")
         return _assistant_env({"open_loop": record})
 
+    # ----- N8C-9 read-only review queue / disposition ledger / effective state (local UI surface) ---
+    # All GET, all-roles, read-only. Review items are review-OVERLAY snapshots over the advisory records;
+    # dispositions are an append-only local ledger. There is intentionally NO write route here — the
+    # build/apply and disposition/apply writers are CLI-only (`hb-assistant review build|disposition
+    # --apply`). Reading a review item never mutates a source record or executes an action.
+    def _review_repo() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.review_repository import ReviewRepository
+
+        return ReviewRepository(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/review/items")
+    def assistant_review_items(role: dict[str, str] = role_dep, limit: int = Query(default=50),
+                               target_kind: str | None = Query(default=None),
+                               review_type: str | None = Query(default=None),
+                               review_state: str | None = Query(default=None),
+                               effective_state: str | None = Query(default=None),
+                               include_superseded: bool = Query(default=False)) -> dict[str, Any]:
+        del role
+        records = _review_repo().list_review_items(
+            target_kind=target_kind, review_type=review_type, review_state=review_state,
+            effective_state=effective_state, include_superseded=include_superseded, limit=limit)
+        return _assistant_env({"review_items": records, "count": len(records)})
+
+    @app.get("/api/assistant/review/items/{review_item_id}")
+    def assistant_review_item(review_item_id: str, role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        record = _review_repo().get_review_item(review_item_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="review_item_not_found")
+        return _assistant_env({"review_item": record})
+
+    @app.get("/api/assistant/review/items/{review_item_id}/dispositions")
+    def assistant_review_item_dispositions(review_item_id: str, role: dict[str, str] = role_dep,
+                                           limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        repo = _review_repo()
+        if repo.get_review_item(review_item_id) is None:
+            raise HTTPException(status_code=404, detail="review_item_not_found")
+        records = repo.list_dispositions(review_item_id, limit=limit)
+        return _assistant_env({"review_item_id": review_item_id, "dispositions": records,
+                               "count": len(records)})
+
+    @app.get("/api/assistant/review/effective-state/{target_kind}/{target_id}")
+    def assistant_review_effective_state(target_kind: str, target_id: str,
+                                         role: dict[str, str] = role_dep,
+                                         limit: int = Query(default=50)) -> dict[str, Any]:
+        del role
+        states = _review_repo().effective_state_for_target(target_kind, target_id, limit=limit)
+        return _assistant_env({"target_kind": target_kind, "target_id": target_id,
+                               "effective_states": states, "count": len(states)})
+
+    @app.get("/api/assistant/review/summary")
+    def assistant_review_summary(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env({"summary": _review_repo().summary()})
+
     @app.post("/api/settings/obsidian-mcp/source-index/rebuild")
     def settings_obsidian_mcp_source_index_rebuild(role: dict[str, str] = role_dep) -> dict[str, Any]:
         require_operator_role(role)

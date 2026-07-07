@@ -41,6 +41,7 @@ from .profile import (
     assistant_decision_memory_enabled,
     assistant_memory_enabled,
     assistant_nav_enabled,
+    assistant_review_enabled,
     blocked_write_tools,
     gate_status,
     safe_mode_enabled,
@@ -103,6 +104,17 @@ ASSISTANT_DECISION_MEMORY_TOOLS = (
     "assistant_get_preference",
     "assistant_list_open_loops",
     "assistant_get_open_loop",
+)
+
+# N8C-9 read-only review-overlay tools (reads only; never write — the build/apply and disposition/apply
+# writers are CLI-only and never exposed remotely). Served from the same read-only DB snapshot. Gated
+# independently by ``assistant_review_enabled()``.
+ASSISTANT_REVIEW_TOOLS = (
+    "assistant_list_review_items",
+    "assistant_get_review_item",
+    "assistant_get_review_dispositions",
+    "assistant_get_effective_review_state",
+    "assistant_get_review_summary",
 )
 
 OBSIDIAN_WRITE_TOOLS = frozenset(
@@ -302,6 +314,10 @@ class NasMcpBroker:
                 "assistant_decision_memory_tools": (
                     list(ASSISTANT_DECISION_MEMORY_TOOLS) if assistant_decision_memory_enabled() else []
                 ),
+                "assistant_review_enabled": assistant_review_enabled(),
+                "assistant_review_tools": (
+                    list(ASSISTANT_REVIEW_TOOLS) if assistant_review_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -333,6 +349,10 @@ class NasMcpBroker:
             if not assistant_decision_memory_enabled():
                 raise ValueError("assistant_decision_memory_disabled")
             return self._invoke_assistant_decision_memory(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_REVIEW_TOOLS:
+            if not assistant_review_enabled():
+                raise ValueError("assistant_review_disabled")
+            return self._invoke_assistant_review(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -608,6 +628,53 @@ class NasMcpBroker:
                 if rec is None:
                     raise ValueError("open_loop_not_found")
                 return {"open_loop": rec}
+            raise KeyError(f"tool_not_registered: {tool_name}")
+        finally:
+            conn.close()
+
+    def _invoke_assistant_review(self, cfg: NasMcpConfig, tool_name: str,
+                                 arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only N8C-9 review-overlay tool over a READ-ONLY DB snapshot
+        (``mode=ro&immutable=1`` + ``PRAGMA query_only=ON``), threaded via ``conn=`` into the review
+        repository — physically cannot write, no live-DB fallback. No build/apply or disposition/apply
+        path is reachable remotely.
+        """
+        from hb_assistant.obsidian_mcp.review_repository import ReviewRepository
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
+        conn.execute("PRAGMA query_only=ON")
+        try:
+            repo = ReviewRepository(str(cfg.db_path))
+            if tool_name == "assistant_list_review_items":
+                recs = repo.list_review_items(
+                    target_kind=arguments.get("target_kind"), review_type=arguments.get("review_type"),
+                    review_state=arguments.get("review_state"),
+                    effective_state=arguments.get("effective_state"),
+                    include_superseded=bool(arguments.get("include_superseded", False)),
+                    limit=_limit(), conn=conn)
+                return {"review_items": recs, "count": len(recs)}
+            if tool_name == "assistant_get_review_item":
+                rec = repo.get_review_item(str(arguments["review_item_id"]), conn=conn)
+                if rec is None:
+                    raise ValueError("review_item_not_found")
+                return {"review_item": rec}
+            if tool_name == "assistant_get_review_dispositions":
+                recs = repo.list_dispositions(str(arguments["review_item_id"]), limit=_limit(),
+                                              conn=conn)
+                return {"review_item_id": str(arguments["review_item_id"]), "dispositions": recs,
+                        "count": len(recs)}
+            if tool_name == "assistant_get_effective_review_state":
+                states = repo.effective_state_for_target(
+                    str(arguments["target_kind"]), str(arguments["target_id"]), limit=_limit(),
+                    conn=conn)
+                return {"target_kind": str(arguments["target_kind"]),
+                        "target_id": str(arguments["target_id"]), "effective_states": states,
+                        "count": len(states)}
+            if tool_name == "assistant_get_review_summary":
+                return {"summary": repo.summary(conn=conn)}
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()

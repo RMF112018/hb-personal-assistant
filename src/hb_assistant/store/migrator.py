@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 104
+LATEST_SCHEMA_VERSION = 105
 
 
 class StaffingMigrationError(RuntimeError):
@@ -6980,6 +6980,12 @@ class SQLiteMigrator:
 
         return V104_STATEMENTS
 
+    @staticmethod
+    def _v105_statements() -> list[str]:
+        from hb_assistant.store.assistant_review_tables import V105_STATEMENTS
+
+        return V105_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8740,6 +8746,22 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (104, 'v104_assistant_decision_memory', ?)",
+                    (now,),
+                )
+
+            # v105 (NAS N8C-9): unified review overlay — assistant_review_items +
+            # assistant_review_dispositions + assistant_review_events. Source-backed review-queue snapshots
+            # + an append-only local disposition ledger + a lifecycle event log over the N8C-4…N8C-8
+            # advisory records. Additive, empty on create; nothing populates them on startup (no lifespan/
+            # scheduler/watcher/worker builds review items or records dispositions). Review-overlay only —
+            # never mutates a source advisory table, executes an action, or duplicates the N8D bridge/job
+            # schema. Effective state is COMPUTED from item + latest disposition, never written back.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 105")
+            if cur.fetchone() is None:
+                for stmt in self._v105_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (105, 'v105_assistant_review_queue', ?)",
                     (now,),
                 )
 
