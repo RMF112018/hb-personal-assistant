@@ -5,6 +5,8 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
+from mcp.types import ToolAnnotations
+
 from .broker import (
     ALL_ASSISTANT_TOOLS,
     ASSISTANT_TOOL_GROUPS,
@@ -130,6 +132,45 @@ def _reject_unbounded_gateway_args(arguments: dict[str, Any]) -> None:
             continue
         if isinstance(val, int) and val > cap:
             raise ValueError(f"limit_exceeds_max:{key}:{val}>{cap}")
+
+
+# Gateway proxy that can route to a canonical write tool. The broker classifies its own access mode
+# as "read" (it holds no write verb), but for connector safety-annotation purposes it is treated as
+# write-capable so a client's safety layer does not present it as an unconditionally-safe read. Any
+# write actually routed through it still passes the full broker gate chain regardless of this hint.
+_GATEWAY_PROXY_WRITE_TOOLS: frozenset[str] = frozenset({"hb_assistant_tool_query"})
+
+
+def _is_write_tool(tool_name: str) -> bool:
+    """Read/write classification for MCP tool annotations. Mirrors ``broker._access_mode`` (the single
+    source of truth for what counts as a write) plus the gateway proxy, so annotations never drift from
+    the gate chain."""
+    if NasMcpBroker._access_mode(tool_name) == "write":
+        return True
+    return tool_name in _GATEWAY_PROXY_WRITE_TOOLS
+
+
+def _stamp_tool_annotations(mcp: Any) -> None:
+    """Stamp MCP ``ToolAnnotations`` (readOnlyHint / destructiveHint) on every registered tool so a
+    connected client's safety layer can tell safe reads from writes.
+
+    Additive metadata only: the broker gate chain, safe mode, scope enforcement, and the gateway remain
+    the real controls — a tool's annotation never widens or narrows what the broker allows. The read/write
+    split reuses ``_is_write_tool`` (which mirrors ``broker._access_mode``). Called once, after all
+    conditional tool registration, over the live FastMCP tool objects (FastMCP ``list_tools`` serializes
+    ``annotations``/``meta`` straight into the ``tools/list`` response).
+
+    No-op on stubs that do not expose a FastMCP tool manager (test doubles register tools without one)."""
+    manager = getattr(mcp, "_tool_manager", None)
+    if manager is None or not hasattr(manager, "list_tools"):
+        return
+    for tool in manager.list_tools():
+        write = _is_write_tool(tool.name)
+        tool.annotations = ToolAnnotations(readOnlyHint=not write, destructiveHint=write)
+        meta = dict(tool.meta or {})
+        meta.setdefault("openai/toolInvocation/invoking", f"Running {tool.name}")
+        meta.setdefault("openai/toolInvocation/invoked", f"Completed {tool.name}")
+        tool.meta = meta
 
 
 def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
@@ -1406,3 +1447,8 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             """Check whether the live tool surface (tools, families, classes, gateway scope) still matches
             the routing manifest. Reads warn on drift; write/promotion/archive routes fail closed. Read-only."""
             return _assistant_result("pa_tool_surface_freshness_check", {})
+
+    # Stamp read-only / destructive annotations on every registered tool (after all conditional
+    # registration so the full surface is covered). Purely additive metadata for connected-client
+    # safety layers; the broker gate chain remains the enforcing control.
+    _stamp_tool_annotations(mcp)

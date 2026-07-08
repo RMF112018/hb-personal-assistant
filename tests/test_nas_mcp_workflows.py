@@ -313,7 +313,10 @@ def test_no_workflow_persistence_tables_written(mcp_env) -> None:
     with sqlite3.connect(db) as c:
         after = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert before == after
-    assert not any("workflow" in t for t in after)
+    # Routing creates no workflow *persistence* table. The static prompt-routing manifest table
+    # (``pa_prompt_workflow_recipes``, V114) is a migration-created read-only recipe store, not written
+    # by routing — so guard that routing adds no workflow-named table rather than that none exists.
+    assert {t for t in after if "workflow" in t} == {t for t in before if "workflow" in t}
 
 
 def test_ai_outputs_remains_only_write(mcp_env, monkeypatch) -> None:
