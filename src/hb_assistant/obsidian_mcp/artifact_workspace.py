@@ -111,14 +111,25 @@ def _insert(c: Any, table: str, row: dict[str, Any]) -> None:
 
 class ArtifactWorkspaceRepository:
     def __init__(self, db_path: str | None = None) -> None:
-        self.db_path = db_path
-        # Reads open the snapshot immutable/read-only on the internet-facing profile; staged writes
-        # cannot persist to a read-only snapshot mount, so they fail closed with an honest error.
-        self._readonly = db_readonly()
+        # Internet-facing profile: the authoritative DB is a read-only snapshot, so route this
+        # repo's self-contained staging tables to the writable workspace DB (the snapshot stays
+        # read-only). Local/ingest hosts keep using the ambient writable managed DB.
+        if db_readonly():
+            from hb_assistant.store.workspace import ensure_workspace_db  # noqa: PLC0415
+
+            self.db_path = str(ensure_workspace_db())
+        else:
+            self.db_path = db_path
+        # Both branches resolve to a writable DB (workspace or ambient), so reads open a normal
+        # read-write connection and staged writes persist.
+        self._readonly = False
 
     def _guard_writable(self) -> None:
+        # Safety net only: _readonly is False on every supported profile now that writes route to a
+        # writable DB. Kept fail-closed for any future genuinely read-only surface; the recovery
+        # tool for direct vault artifacts is pa_artifact_author (not the removed pa_artifact_create).
         if self._readonly:
-            raise ArtifactWorkspaceError("read_only_db_surface:use pa_artifact_create")
+            raise ArtifactWorkspaceError("read_only_db_surface:use pa_artifact_author")
 
     # ---- session capture ----
     def stage_session_capture(self, payload: dict[str, Any]) -> dict[str, Any]:

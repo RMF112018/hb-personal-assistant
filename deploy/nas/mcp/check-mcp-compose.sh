@@ -41,6 +41,10 @@ echo "$ACTIVE" | grep -q ':/app-support/audit/mcp:rw' || fail "audit mount must 
 # DB is a READ-ONLY snapshot mount (never the live DB); canonical path satisfies the guard.
 echo "$ACTIVE" | grep -q ':/volume2/personal-assistant/app-support/mcp-snapshot/db:ro' || fail "db must be the read-only snapshot mount /volume2/personal-assistant/app-support/mcp-snapshot/db:ro"
 echo "$ACTIVE" | grep -qE ':/(volume2/personal-assistant/app-support|app-support)/db:(ro|rw)' && fail "live DB dir must NOT be mounted into the internet-facing MCP (use the snapshot)" || true
+# Writable staging workspace DB (isolated from the RO snapshot; NOT the live DB dir). Holds only the
+# connected-client staging tables; env must pin it under this RW mount.
+echo "$ACTIVE" | grep -q ':/volume2/personal-assistant/app-support/mcp-workspace/db:rw' || fail "staging workspace DB mount /volume2/personal-assistant/app-support/mcp-workspace/db:rw required"
+echo "$ACTIVE" | grep -q 'HB_ASSISTANT_WORKSPACE_DB:[[:space:]]*/volume2/personal-assistant/app-support/mcp-workspace/db/hb-personal-assistant.sqlite' || fail "HB_ASSISTANT_WORKSPACE_DB must pin the workspace DB under the RW workspace mount"
 echo "$ACTIVE" | grep -q ':/volume2/personal-assistant/app-support/analytics:rw' || fail "analytics mount (writable plan store) required"
 
 pass "compose-mcp.yaml static guards"

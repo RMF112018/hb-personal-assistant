@@ -285,8 +285,22 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
     if tool_name == "pa_tool_manifest_get":
         active = mrepo.get_active()
         if not active:
-            # Build (in-memory) from the live surface so a get always returns a usable manifest.
-            return build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now())
+            # No manifest has been persisted yet (the manifest tables start empty until an operator
+            # runs pa_tool_manifest_refresh_promote). Return a usable manifest built from the LIVE tool
+            # surface, but label it honestly as ephemeral/unpersisted so it AGREES with
+            # pa_tool_manifest_freshness_check and hb_mcp_status instead of claiming active/fresh
+            # (that fabrication was the source of the cross-surface manifest contradiction).
+            ephemeral = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now())
+            ephemeral.update({
+                "manifest_status": "ephemeral_live_surface",
+                "staleness_state": "no_persisted_manifest",
+                "persisted": False,
+                "review_required": True,
+                "note": "Built from the live tool surface; NOT persisted. Run pa_tool_manifest_refresh_stage "
+                        "then pa_tool_manifest_refresh_promote (operator-approved) to persist an active manifest.",
+            })
+            return ephemeral
+        active["persisted"] = True
         return active
     if tool_name == "pa_tool_manifest_tool_help":
         name = str(_require(a, "tool_name"))

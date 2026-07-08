@@ -9,6 +9,10 @@ mcp:
   # storage guard (/volume2/personal-assistant/.../db/hb-personal-assistant.sqlite). Refresh
   # with deploy/nas/scripts/snapshot-mcp-db.sh; db_tools opens it mode=ro&immutable=1.
   db_path: /volume2/personal-assistant/app-support/mcp-snapshot/db/hb-personal-assistant.sqlite
+  # The connected-client staging pipeline writes to a SEPARATE writable workspace DB, pinned via the
+  # HB_ASSISTANT_WORKSPACE_DB env in compose (default
+  # /volume2/personal-assistant/app-support/mcp-workspace/db/hb-personal-assistant.sqlite). It is
+  # isolated from this read-only snapshot; the live prod DB is still never mounted here.
   audit_dir: /app-support/audit/mcp
   limits:
     max_excerpt_bytes: 16384

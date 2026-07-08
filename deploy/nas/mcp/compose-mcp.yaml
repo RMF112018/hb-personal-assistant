@@ -6,8 +6,10 @@
 #   * Container process binds 0.0.0.0:8765 inside namespace
 #   * Does NOT start hb-personal-assistant-backend or port 8000
 #   * No auth/security/token mounts
-#   * Vault + outputs RW; home/work RO; DB RO SNAPSHOT (live prod DB never mounted here);
-#     audit RW under /app-support/audit/mcp; analytics RW (writable plan store)
+#   * Vault + outputs RW; home/work RO; authoritative DB RO SNAPSHOT (live prod DB never mounted here);
+#     audit RW under /app-support/audit/mcp; analytics RW (writable plan store);
+#     staging workspace DB RW under /app-support/mcp-workspace/db (isolated from the RO snapshot —
+#     holds only the connected-client staging tables; the live prod DB is still never mounted here)
 
 networks:
   hb-mcp-internal:
@@ -32,6 +34,12 @@ services:
       HB_MCP_PROFILE: "remote_cloudflare"
       HB_EVIDENCE_DISABLE_BACKGROUND_WORKERS: "1"
       HB_ASSISTANT_DB_READONLY: "1"
+      # The authoritative DB above is a strictly read-only snapshot, so the connected-client STAGING
+      # pipeline (session capture → artifact proposal → review → promotion, generated-output
+      # stage/commit, tool-manifest refresh) writes its self-contained tables to a SEPARATE writable
+      # workspace DB on the RW mount below. The live prod DB is still never mounted here and the
+      # snapshot stays read-only; a later operator-run workspace→live merge folds promoted rows in.
+      HB_ASSISTANT_WORKSPACE_DB: /volume2/personal-assistant/app-support/mcp-workspace/db/hb-personal-assistant.sqlite
       # N8B origin-auth token + operator-override stores. The config default resolves to
       # <app_support>/origin-auth/... which is a HOST path NOT mounted into the container;
       # pin both under the RW-mounted audit dir so tokens persist across restarts and are
@@ -71,6 +79,12 @@ services:
       # it mode=ro&immutable=1 — immutable is safe (snapshot is stable between refreshes)
       # and required to open a DB on a read-only mount. Keep config mcp.db_path in sync.
       - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/mcp-snapshot/db:/volume2/personal-assistant/app-support/mcp-snapshot/db:ro"
+      # Writable workspace DB (HB_ASSISTANT_WORKSPACE_DB) for the connected-client staging pipeline —
+      # ISOLATED from the read-only snapshot above and from the live prod DB (never mounted here). Holds
+      # only the self-contained staging tables (session capture / artifact proposal / promotion /
+      # generated-output / tool-manifest). Managed filename + `db` parent under the NAS volume so it
+      # satisfies the DB-storage guard unchanged. Host dir must be writable by the runtime user (1028:100).
+      - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/mcp-workspace/db:/volume2/personal-assistant/app-support/mcp-workspace/db:rw"
       - "${HB_APP_SUPPORT_DIR:-/volume2/personal-assistant/app-support}/audit/mcp:/app-support/audit/mcp:rw"
       # Writable plan store: the vault_*_plan tools persist server-generated plans under
       # <app_support>/analytics/obsidian_mcp/plans (PathPolicy). app_support resolves to

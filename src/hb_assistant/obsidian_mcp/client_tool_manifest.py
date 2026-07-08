@@ -185,12 +185,22 @@ def render_manifest_md(manifest: dict[str, Any]) -> str:
 
 class ClientToolManifestRepository:
     def __init__(self, db_path: str | None = None) -> None:
-        self.db_path = db_path
-        # Reads open the snapshot read-only on the internet-facing profile; the staged manifest
-        # refresh writes cannot persist to a read-only snapshot mount, so they fail closed.
-        self._readonly = db_readonly()
+        # Internet-facing profile: the authoritative DB is a read-only snapshot, so route this
+        # repo's self-contained manifest tables to the writable workspace DB (the snapshot stays
+        # read-only). Persisting a manifest here is what lets the get/freshness/status surfaces
+        # agree instead of one synthesizing an "active" manifest the others don't see. Local/ingest
+        # hosts keep using the ambient writable managed DB.
+        if db_readonly():
+            from hb_assistant.store.workspace import ensure_workspace_db  # noqa: PLC0415
+
+            self.db_path = str(ensure_workspace_db())
+        else:
+            self.db_path = db_path
+        self._readonly = False
 
     def _guard_writable(self) -> None:
+        # Safety net only: _readonly is False on every supported profile now that writes route to a
+        # writable DB. Kept fail-closed for any future genuinely read-only surface.
         if self._readonly:
             raise ArtifactWorkspaceError("read_only_db_surface:manifest_refresh_unavailable")
 
