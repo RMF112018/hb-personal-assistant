@@ -1226,6 +1226,14 @@ class NasMcpBroker:
             return int(arguments.get("limit", default) or default)
 
         config = load_config()
+        # load_config() reads the generic persisted Obsidian config (absent on the NAS → defaults with
+        # external_sources=[]), so live source reads would degrade to indexed excerpts (root_unavailable).
+        # Inject the NAS root→mount mapping (syn-home/syn-work → /mnt/roots/*) so SourceContentProvider
+        # can resolve live files. Only fills when empty, so an explicit persisted config still wins.
+        if not config.external_sources:
+            from .obsidian_config import resolve_external_sources  # noqa: PLC0415
+
+            config = config.model_copy(update={"external_sources": resolve_external_sources(cfg)})
         conn = sqlite3.connect(_ro_uri(str(cfg.db_path)), uri=True, timeout=5.0)
         conn.execute("PRAGMA query_only=ON")
         try:

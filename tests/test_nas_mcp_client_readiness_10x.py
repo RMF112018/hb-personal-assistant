@@ -84,6 +84,10 @@ def test_plan_archive_returns_reusable_operator_approval_id(tmp_path: Path) -> N
     done = repo.commit_archive_output(output_id=s["output_id"],
                                       operator_approval_id=plan["operator_approval_id"])
     assert done["status"] == "archived" and done["deletes"] is False
+    # path_display must track the archive move, not stay on the stale pending path.
+    meta = repo.get_output_metadata(s["output_id"])
+    assert meta["relative_path"] == done["archive_relative_path"]
+    assert meta["path_display"].endswith(done["archive_relative_path"])
 
 
 # ======================================================================================
