@@ -405,7 +405,11 @@ class ArtifactWorkspaceRepository:
             "promotion_bundle_id": promotion_bundle_id, "validation_hash": validation_hash,
             "operator_approval_id": operator_approval_id, "idempotency_key": idempotency_key,
             "validation_receipt_id": validation_receipt_id, "passed": True,
-            "would_create": plan["would_create"], "duplicate_warnings": plan["duplicate_warnings"], "writes": False,
+            "would_create": plan["would_create"], "duplicate_warnings": plan["duplicate_warnings"],
+            # Validation writes NO vault/canonical content, but it DOES persist workspace DB rows (the
+            # promotion bundle + validation receipt) and mints an approval — so it is a staged workspace
+            # write (gated by safe mode), not a pure read. `vault_writes` is the honest label.
+            "vault_writes": False, "persists_workspace_rows": True,
         }
 
     def recompute_validation_hash(self, promotion_bundle_id: str, *, conn: Any = None) -> str:

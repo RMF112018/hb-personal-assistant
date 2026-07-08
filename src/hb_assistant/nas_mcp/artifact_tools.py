@@ -54,10 +54,12 @@ PA_MANIFEST_TOOLS: tuple[str, ...] = (
 PA_CANONICAL_WRITE_TOOLS: frozenset[str] = frozenset(
     {"pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote"}
 )
-# Staged writes (workspace DB only; never the vault).
+# Staged writes (workspace DB only; never the vault). Includes pa_artifact_promotion_validate: it persists
+# promotion-bundle + validation-receipt rows and mints an operator_approval_id, so it is a workspace DB write
+# and must be gated by safe mode / classified as a write like the other staged tools.
 PA_STAGED_WRITE_TOOLS: frozenset[str] = frozenset(
     {"pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_revise",
-     "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage"}
+     "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage", "pa_artifact_promotion_validate"}
 )
 
 ALL_PA_TOOLS: tuple[str, ...] = PA_ARTIFACT_TOOLS + PA_MANIFEST_TOOLS

@@ -98,6 +98,36 @@ def test_safe_mode_denies_ai_outputs_and_mutations(tmp_path: Path, monkeypatch: 
     assert v["ok"] is False and v["error"].startswith("safe_mode_active:")
 
 
+def test_safe_mode_denies_pa_staged_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PA staged workspace writes (incl. promotion-validate, which persists rows + mints an approval) must be
+    denied by safe mode. The deny short-circuits at the broker on write_attempted, before dispatch — so no
+    valid bundle/args are needed to prove the gate."""
+    from hb_assistant.nas_mcp.artifact_tools import PA_STAGED_WRITE_TOOLS
+
+    broker = NasMcpBroker(_cfg(tmp_path))
+    monkeypatch.setenv("HB_MCP_SAFE_MODE", "1")
+    assert "pa_artifact_promotion_validate" in PA_STAGED_WRITE_TOOLS  # the newly-covered mutator
+    for tool in sorted(PA_STAGED_WRITE_TOOLS):
+        r = broker.dispatch(tool, {})
+        assert r["ok"] is False, tool
+        assert r["error"] == f"safe_mode_active:{tool}", (tool, r["error"])
+
+
+def test_pa_staged_writes_classified_as_writes(tmp_path: Path) -> None:
+    """Regression guard: every PA staged-write tool is flagged write_attempted (tier 3, access_mode=write),
+    so a future staged tool cannot silently bypass safe mode."""
+    from hb_assistant.nas_mcp.artifact_tools import PA_STAGED_WRITE_TOOLS
+    from hb_assistant.nas_mcp.broker import _capability_tier
+
+    for tool in PA_STAGED_WRITE_TOOLS:
+        assert _capability_tier(tool, True) == 3, tool
+        assert NasMcpBroker._access_mode(tool) == "write", tool
+    # read-only advisory neighbours must NOT be misclassified as writes
+    for tool in ("pa_artifact_proposal_plan_promotion", "pa_tool_manifest_review_plan",
+                 "pa_session_capture_get"):
+        assert NasMcpBroker._access_mode(tool) == "read", tool
+
+
 def test_safe_mode_denial_is_audited(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = _cfg(tmp_path)
     broker = NasMcpBroker(cfg)

@@ -13,6 +13,7 @@ from .artifact_tools import (
     ALL_PA_TOOLS,
     PA_CANONICAL_WRITE_TOOLS,
     PA_MANIFEST_TOOLS,
+    PA_STAGED_WRITE_TOOLS,
     artifact_workspace_status,
     dispatch_artifact_tool,
 )
@@ -433,7 +434,12 @@ def _capability_tier(tool_name: str, write_attempted: bool) -> int:
         return 5
     if tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_write") or tool_name == "hb_output_create_dir":
         return 4
-    if tool_name == AI_OUTPUTS_WRITE_TOOL or tool_name in PA_CANONICAL_WRITE_TOOLS or tool_name in CLIENT_OUTPUT_WRITE_TOOLS:
+    if (
+        tool_name == AI_OUTPUTS_WRITE_TOOL
+        or tool_name in PA_CANONICAL_WRITE_TOOLS
+        or tool_name in PA_STAGED_WRITE_TOOLS
+        or tool_name in CLIENT_OUTPUT_WRITE_TOOLS
+    ):
         return 3
     if tool_name in FRESHNESS_TOOLS or tool_name == "hb_mcp_status":
         return 0
@@ -459,6 +465,7 @@ class NasMcpBroker:
             or tool_name.startswith("hb_output_")
             or tool_name == AI_OUTPUTS_WRITE_TOOL
             or tool_name in PA_CANONICAL_WRITE_TOOLS
+            or tool_name in PA_STAGED_WRITE_TOOLS
             or tool_name in CLIENT_OUTPUT_WRITE_TOOLS
         )
         auth = get_auth_context()
@@ -556,6 +563,9 @@ class NasMcpBroker:
             or tool_name.startswith("hb_output_write")
             or tool_name == "hb_output_create_dir"
             or tool_name == AI_OUTPUTS_WRITE_TOOL
+            or tool_name in PA_CANONICAL_WRITE_TOOLS
+            or tool_name in PA_STAGED_WRITE_TOOLS
+            or tool_name in CLIENT_OUTPUT_WRITE_TOOLS
         ):
             return "write"
         return "read"

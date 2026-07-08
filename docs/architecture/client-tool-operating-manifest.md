@@ -16,7 +16,9 @@ tool surface and produces:
   `find_source_file`, `retrieve_decision`, `check_tool_manifest_freshness`.
 - **Replacement map** — preferred tool for a given intent over deprecated/blocked alternatives.
 - **Negative instructions** — e.g. never invent an approval id, never expect a raw transcript to be
-  accepted, never route `pa_*` tools through the assistant gateway.
+  accepted. (Note: `pa_*` tools **are** gateway-reachable as of the N8C-24 gateway expansion — see the
+  "Gateway allowlist change" section below; an earlier "never route `pa_*` through the gateway" instruction
+  was superseded and removed.)
 - **Freshness block** — checksum, `generated_from_runtime_commit`, `staleness_state`, review cadence.
 
 `render_manifest_md` renders the human-readable card. Content is organization-neutral.
