@@ -66,7 +66,8 @@ ALL_PA_TOOLS: tuple[str, ...] = PA_ARTIFACT_TOOLS + PA_MANIFEST_TOOLS
 def current_tool_names(config: Any) -> set[str]:
     """The current registered client tool surface (for manifest build + freshness). Lazy imports avoid a cycle."""
     from .broker import ALL_ASSISTANT_TOOLS  # noqa: PLC0415
-    from .profile import ai_outputs_write_enabled  # noqa: PLC0415
+    from .client_output_tools import PA_OUTPUT_READ_TOOLS, PA_OUTPUT_WRITE_TOOLS  # noqa: PLC0415
+    from .profile import ai_outputs_write_enabled, client_output_write_enabled  # noqa: PLC0415
     from .tool_registration import CLIENT_BRIDGE_HELPER_TOOLS  # noqa: PLC0415
 
     names: set[str] = set(ALL_ASSISTANT_TOOLS) | set(CLIENT_BRIDGE_HELPER_TOOLS) | set(ALL_PA_TOOLS)
@@ -74,6 +75,10 @@ def current_tool_names(config: Any) -> set[str]:
               "hb_last_successful_runs", "hb_capability_mode", "hb_db_select", "hb_root_list", "hb_root_stat",
               "hb_root_search", "hb_root_read_file", "hb_root_read_excerpt", "hb_output_list", "hb_output_stat",
               "hb_output_read"}
+    # N8C-24 client output workspace: reads always present; the 3 writes only when the gate is enabled.
+    names |= set(PA_OUTPUT_READ_TOOLS)
+    if client_output_write_enabled():
+        names |= set(PA_OUTPUT_WRITE_TOOLS)
     if ai_outputs_write_enabled():
         names.add("ai_outputs_card_upsert")
     return names

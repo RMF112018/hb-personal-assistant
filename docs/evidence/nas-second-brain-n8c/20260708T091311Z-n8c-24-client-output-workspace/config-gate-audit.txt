@@ -1,0 +1,8 @@
+client_output_write_enabled (default): True
+  client_output_write_enabled = True
+  ai_outputs_write_enabled = True
+  local_scratch_output_write_enabled = False
+  legacy_broad_vault_write_enabled = False
+CLIENT_OUTPUT_WRITE_TOOLS: ['pa_output_archive_commit', 'pa_output_commit', 'pa_output_stage']
+allowed ext: ['csv', 'docx', 'html', 'json', 'md', 'pdf', 'pptx', 'txt', 'xlsx', 'zip']
+denied ext: ['app', 'bat', 'command', 'db', 'dmg', 'enc', 'exe', 'jar', 'js', 'key', 'p12', 'pem', 'pkg', 'ps', 'ps1', 'py', 'sh', 'sqlite', 'ts']

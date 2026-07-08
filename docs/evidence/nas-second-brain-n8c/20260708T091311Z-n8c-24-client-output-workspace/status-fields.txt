@@ -1,0 +1,28 @@
+{
+  "client_output_workspace_enabled": true,
+  "client_output_write_enabled": true,
+  "client_output_root_configured": true,
+  "client_output_root_key": "outputs",
+  "client_output_allowed_extensions": [
+    "csv",
+    "docx",
+    "html",
+    "json",
+    "md",
+    "pdf",
+    "pptx",
+    "txt",
+    "xlsx",
+    "zip"
+  ],
+  "client_output_max_file_bytes": 26214400,
+  "client_output_max_zip_members": 200,
+  "client_output_max_zip_uncompressed_bytes": 104857600,
+  "client_output_manifest_path": "99 Manifests/client-output-manifest.md",
+  "client_output_receipts_path": "99 Receipts",
+  "client_output_pending_count": 0,
+  "client_output_committed_count": 0,
+  "client_output_last_write_at": null,
+  "client_output_last_receipt_id": null,
+  "client_output_safe_mode_blocked": false
+}

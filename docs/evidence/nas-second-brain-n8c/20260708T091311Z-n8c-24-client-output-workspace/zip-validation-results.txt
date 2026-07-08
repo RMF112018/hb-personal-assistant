@@ -1,0 +1,6 @@
+ZIP validation results
+
+GOOD zip: {"zip_validation_passed": true, "member_count": 2, "compressed_bytes": 4, "declared_uncompressed_bytes": 4, "member_preview": [{"name": "a.txt", "file_size": 2, "compress_size": 2, "is_dir": false}, {"name": "sub/b.txt", "file_size": 2, "compress_size": 2, "is_dir": false}], "zip_validation_warnings": []}
+UNSAFE '../evil.txt': rejected -> denied member path/segment: ../evil.txt
+UNSAFE '/abs.txt': rejected -> absolute member path: /abs.txt
+UNSAFE 'run.sh': rejected -> denied member extension: run.sh

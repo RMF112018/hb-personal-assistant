@@ -9,9 +9,11 @@ from .broker import (
     ALL_ASSISTANT_TOOLS,
     ASSISTANT_TOOL_GROUPS,
     DENIED_TOOL_NAMES,
+    GATEWAY_ALLOWLIST,
     NasMcpBroker,
     assistant_client_exposure_status,
 )
+from .client_output_tools import ALL_PA_OUTPUT_TOOLS
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
@@ -30,6 +32,7 @@ from .profile import (
     assistant_source_connector_enabled,
     assistant_workflows_enabled,
     blocked_write_tools,
+    client_output_write_enabled,
     client_tool_manifest_enabled,
     scratch_output_write_enabled,
 )
@@ -1055,10 +1058,23 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             "tools": [_assistant_tool_meta(name, index) for tools in scope.values() for name in tools],
             "canonical_assistant_tool_count": len(ALL_ASSISTANT_TOOLS),
             "client_bridge_helper_tools": list(CLIENT_BRIDGE_HELPER_TOOLS),
+            # Non-canonical gateway-reachable write surfaces (operator-authorized N8C-24 expansion). Kept in
+            # SEPARATE sections so `tools` stays the canonical read-only 78; every one still passes the full
+            # broker write-gate chain when invoked.
+            "structured_intelligence_tools": [t for t in GATEWAY_ALLOWLIST
+                                              if t.startswith(("pa_artifact_", "pa_session_",
+                                                               "pa_canonical_", "pa_tool_manifest_",
+                                                               "pa_vault_"))],
+            "client_output_tools": list(ALL_PA_OUTPUT_TOOLS),
+            "ai_output_tools": ["ai_outputs_card_upsert"],
+            "gateway_allowlist_count": len(GATEWAY_ALLOWLIST),
             "exposure": assistant_client_exposure_status(),
             "safety": (
-                "All listed assistant tools are read-only/advisory. The only sanctioned remote write is "
-                "ai_outputs_card_upsert, and it is NOT reachable through hb_assistant_tool_query."
+                "The `tools` list is the canonical read-only 78. The gateway also reaches the "
+                "structured-intelligence, client-output, and AI-output WRITE surfaces (operator-authorized); "
+                "every write still passes the full broker gate chain (safe-mode, per-tool gate, server-minted "
+                "approval, idempotency, path safety). Denied/raw-SQL/shell/exec/root-db/legacy hb_output_* "
+                "tools remain rejected."
             ),
         }
 
@@ -1069,7 +1085,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         directly or via ``hb_assistant_tool_query``."""
         if tool_name in DENIED_TOOL_NAMES:
             raise ValueError(f"denied_tool:{tool_name}")
-        if tool_name not in ALL_ASSISTANT_TOOLS:
+        if tool_name not in GATEWAY_ALLOWLIST:
             raise ValueError(f"unknown_or_non_assistant_tool:{tool_name}")
         index = _extract_client_tool_index(mcp)
         meta = _assistant_tool_meta(tool_name, index)
@@ -1081,18 +1097,19 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
     @mcp.tool()
     def hb_assistant_tool_query(tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Allowlisted gateway: call ONE canonical read-only N8C assistant tool by name for clients that
-        cannot ingest the full 78-tool manifest. Only the canonical 78 assistant tools are permitted; it
-        rejects denied names, write/finality/action tools, non-assistant tools, unknown handlers, and
-        unbounded limits. It is NOT a generic RPC escape hatch — no arbitrary modules/functions, no SQL,
-        shell, exec, or file paths. On success it returns the same audited, bounded broker receipt
-        (``ok``/``result``/``request_id``) the direct wrappers use; the same profile gates, per-group kill
-        switches, read-only snapshot, and audit logging apply."""
+        """Allowlisted gateway: call ONE tool by name for clients that cannot ingest the full manifest. The
+        allowlist is the canonical 78 read-only assistant tools PLUS the operator-authorized structured-
+        intelligence, client-output, and AI-output surfaces (GATEWAY_ALLOWLIST). Every gateway-routed WRITE
+        still passes the full broker gate chain (safe-mode, per-tool write gate, server-minted approval,
+        idempotency, path safety). It rejects denied names, raw SQL/shell/exec, root/db and legacy hb_output_*
+        tools, non-allowlisted names, and unbounded limits. It is NOT a generic RPC escape hatch. On success
+        it returns the same audited, bounded broker receipt (``ok``/``result``/``request_id``) the direct
+        wrappers use; the same profile gates, per-group kill switches, and audit logging apply."""
         if not isinstance(tool_name, str) or not tool_name:
             raise ValueError("tool_name_required")
         if tool_name in DENIED_TOOL_NAMES:
             raise ValueError(f"denied_tool:{tool_name}")
-        if tool_name not in ALL_ASSISTANT_TOOLS:
+        if tool_name not in GATEWAY_ALLOWLIST:
             raise ValueError(f"not_an_allowlisted_assistant_tool:{tool_name}")
         if arguments is None:
             arguments = {}
@@ -1274,3 +1291,77 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             operator_approval_id and a no-drift checksum. Never a silent rewrite."""
             return _assistant_result("pa_tool_manifest_refresh_promote", {
                 "refresh_proposal_id": refresh_proposal_id, "operator_approval_id": operator_approval_id})
+
+    # N8C-24 Connected Client Generated File Output Workspace. Bounded reads are always registered; the three
+    # controlled writes (stage/commit/archive_commit) register only when client_output_write_enabled(). All
+    # write to the `outputs` root only, behind server-minted approval + idempotency; never the vault/canonical.
+    @mcp.tool()
+    def pa_output_list(status: str | None = None, file_type: str | None = None,
+                       source_session_id: str | None = None, limit: int = 50) -> dict[str, Any]:
+        """List generated outputs (bounded, metadata only) by status/file_type/session."""
+        return _assistant_result("pa_output_list", {"status": status, "file_type": file_type,
+                                                    "source_session_id": source_session_id, "limit": limit})
+
+    @mcp.tool()
+    def pa_output_metadata(output_id: str) -> dict[str, Any]:
+        """Metadata for one generated output (no raw body)."""
+        return _assistant_result("pa_output_metadata", {"output_id": output_id})
+
+    @mcp.tool()
+    def pa_output_read_excerpt(output_id: str, max_chars: int = 4000) -> dict[str, Any]:
+        """Bounded excerpt of a text-like generated output. Office/PDF are metadata-only; ZIP lists members."""
+        return _assistant_result("pa_output_read_excerpt", {"output_id": output_id, "max_chars": max_chars})
+
+    @mcp.tool()
+    def pa_output_zip_inspect(output_id: str) -> dict[str, Any]:
+        """List the members of a generated ZIP output (bounded). Never extracts."""
+        return _assistant_result("pa_output_zip_inspect", {"output_id": output_id})
+
+    @mcp.tool()
+    def pa_output_receipt_get(receipt_id: str) -> dict[str, Any]:
+        """Retrieve the receipt for a generated output."""
+        return _assistant_result("pa_output_receipt_get", {"receipt_id": receipt_id})
+
+    @mcp.tool()
+    def pa_output_manifest_get() -> dict[str, Any]:
+        """Retrieve the generated-output manifest (bounded entry list)."""
+        return _assistant_result("pa_output_manifest_get", {})
+
+    @mcp.tool()
+    def pa_output_archive_plan(output_id: str) -> dict[str, Any]:
+        """Advisory plan to move a committed output to 90 Archive. Writes nothing; never deletes."""
+        return _assistant_result("pa_output_archive_plan", {"output_id": output_id})
+
+    if client_output_write_enabled():
+
+        @mcp.tool()
+        def pa_output_stage(title: str, file_type: str, content_mode: str = "text",
+                            content_text: str | None = None, content_base64: str | None = None,
+                            source_client: str | None = None, source_session_id: str | None = None,
+                            related_canonical_ids: list[str] | None = None,
+                            related_proposal_ids: list[str] | None = None,
+                            destination_state: str = "pending", operator_id: str | None = None) -> dict[str, Any]:
+            """Stage a generated output file (renders + validates bytes; does NOT write the final file).
+            Returns output_id + a server-minted operator_approval_id + idempotency_key needed to commit."""
+            return _assistant_result("pa_output_stage", {
+                "title": title, "file_type": file_type, "content_mode": content_mode,
+                "content_text": content_text, "content_base64": content_base64,
+                "source_client": source_client, "source_session_id": source_session_id,
+                "related_canonical_ids": related_canonical_ids, "related_proposal_ids": related_proposal_ids,
+                "destination_state": destination_state, "operator_id": operator_id})
+
+        @mcp.tool()
+        def pa_output_commit(output_id: str, operator_approval_id: str,
+                             idempotency_key: str | None = None, operator_id: str | None = None) -> dict[str, Any]:
+            """Write a staged output to the outputs workspace. Requires the server-minted operator_approval_id;
+            recomputes the staged content hash and fails closed on drift. Idempotent on the server key."""
+            return _assistant_result("pa_output_commit", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id,
+                "idempotency_key": idempotency_key, "operator_id": operator_id})
+
+        @mcp.tool()
+        def pa_output_archive_commit(output_id: str, operator_approval_id: str) -> dict[str, Any]:
+            """Move a committed output to 90 Archive + write an archive receipt. Requires the server-minted
+            operator_approval_id. Never deletes."""
+            return _assistant_result("pa_output_archive_commit", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id})

@@ -1,0 +1,62 @@
+ M docs/architecture/client-tool-operating-manifest.md
+ M pyproject.toml
+ M src/hb_assistant/cli/main.py
+ M src/hb_assistant/nas_mcp/artifact_tools.py
+ M src/hb_assistant/nas_mcp/broker.py
+ M src/hb_assistant/nas_mcp/config.py
+ M src/hb_assistant/nas_mcp/profile.py
+ M src/hb_assistant/nas_mcp/tool_registration.py
+ M src/hb_assistant/obsidian_mcp/client_tool_manifest.py
+ M src/hb_assistant/store/migrator.py
+ M tests/test_n8c23_mcp_surface_safety.py
+ M tests/test_n8c_client_exposure_bridge.py
+ M tests/test_n8c_final_validation.py
+?? docs/architecture/client-generated-file-output-policy.md
+?? docs/architecture/client-output-zip-safety.md
+?? docs/architecture/n8c-24-client-output-workspace.md
+?? docs/evidence/nas-second-brain-n8c/20260708T000513Z-nas-deploy/
+?? docs/evidence/nas-second-brain-n8c/20260708T091311Z-n8c-24-client-output-workspace/
+?? docs/evidence/obsidian-workflow-validation-20260702T073609Z/
+?? docs/evidence/project-schedule-hub/backups/
+?? docs/evidence/project-schedule-hub/local-main-recovery-20260702T070500Z/
+?? docs/evidence/project-schedule-hub/phase-9-end-to-end-validation-20260630T024231/
+?? docs/evidence/project-schedule-hub/remote-main-schedule-merge-audit-20260630T035406/
+?? docs/evidence/project-schedule-hub/schedule-data-capability-audit-20260629T075754-0400.zip
+?? docs/evidence/project-schedule-hub/schedule-data-capability-audit-20260629T075754-0400/
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/fd-hardening-baseline-failure.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/fd-hardening-post-patch.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/final-origin-main-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/focused-regression.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/local-branches.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/main-worktree-branch-before.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/main-worktree-status-before.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/origin-main-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-branch.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-status.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-update.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/remote-branches.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/schedule-merge-safety-final.md
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/worktree-list.txt
+?? docs/implementation/project-schedule-controls/baseline-repo-truth.md
+?? docs/implementation/project-schedule-controls/canonical-metric-contract.md
+?? docs/implementation/project-schedule-controls/phase-2-api-contract.md
+?? frontend/src/lib/copyHelpers.test.ts
+?? scripts/smoke-n8c-24-client-output-workspace.sh
+?? src/hb_assistant/cli/client_output.py
+?? src/hb_assistant/nas_mcp/client_output_path_resolver.py
+?? src/hb_assistant/nas_mcp/client_output_tools.py
+?? src/hb_assistant/nas_mcp/client_output_workspace.py
+?? src/hb_assistant/nas_mcp/client_output_writers.py
+?? src/hb_assistant/nas_mcp/client_output_zip.py
+?? src/hb_assistant/store/pa_client_output_tables.py
+?? tests/n8c24_helpers.py
+?? tests/test_n8c24_output_config.py
+?? tests/test_n8c24_output_file_writers.py
+?? tests/test_n8c24_output_manifest_receipts.py
+?? tests/test_n8c24_output_mcp_tools.py
+?? tests/test_n8c24_output_path_policy.py
+?? tests/test_n8c24_output_safety_negative.py
+?? tests/test_n8c24_output_workspace_repository.py
+?? tests/test_n8c24_output_zip_validation.py
+?? tests/test_n8c24_tool_manifest_integration.py

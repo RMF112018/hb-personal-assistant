@@ -1,0 +1,2 @@
+allowed: csv, docx, html, json, md, pdf, pptx, txt, xlsx, zip
+denied: app, bat, command, db, dmg, enc, exe, jar, js, key, p12, pem, pkg, ps, ps1, py, sh, sqlite, ts

@@ -1,0 +1,1 @@
+outputs root is a READ_WRITE_ROOTS member; assert_write('outputs') required for writes; controlled top-level folders only: 00 Pending, 01 Final, 90 Archive, 99 Receipts, 99 Manifests

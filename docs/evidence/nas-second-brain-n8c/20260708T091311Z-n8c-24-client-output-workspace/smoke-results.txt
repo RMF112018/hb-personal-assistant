@@ -1,0 +1,28 @@
+PASS - schema V113 + output workspace enabled 
+PASS - 78 canonical assistant tools preserved 
+PASS - commit md real file 
+PASS - commit docx real file 
+PASS - commit xlsx real file 
+PASS - commit html real file 
+PASS - commit pptx real file 
+PASS - commit pdf real file 
+PASS - commit zip real file 
+PASS - receipts written under 99 Receipts 
+PASS - manifest md+json written 
+PASS - list + metadata bounded 
+PASS - bounded text excerpt 
+PASS - zip inspect lists members (no extract) 
+PASS - commit retry idempotent (no dup) 
+PASS - gateway reaches pa_output_stage 
+PASS - archive plan never deletes 
+PASS - gateway rejects raw_sql 
+PASS - gateway rejects legacy hb_output_write_file 
+PASS - gateway rejects hb_db_select 
+PASS - script extension rejected 
+PASS - exe extension rejected 
+PASS - zip traversal rejected 
+PASS - unapproved commit on fresh staged rejected 
+PASS - no new top-level output folder created 
+PASS - generated files never landed in the vault 
+
+SMOKE PASSED: full stage->approve->commit->receipt->manifest->list->excerpt->archive + gateway + negatives

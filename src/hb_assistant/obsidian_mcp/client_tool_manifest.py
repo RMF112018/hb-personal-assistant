@@ -90,6 +90,11 @@ def classify_tool(name: str, group: str | None) -> tuple[str, str, str]:
     if name in ("pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_revise",
                 "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage"):
         return "staged_write", "staged_write_requires_review", "staged_write"
+    # N8C-24 client generated-output workspace: 3 controlled writes + 7 bounded reads.
+    if name in ("pa_output_stage", "pa_output_commit", "pa_output_archive_commit"):
+        return "staged_write", "staged_write_requires_review", "staged_write"
+    if name.startswith("pa_output_"):
+        return "read_only_retrieval", "bounded_read", "read_only"
     if name in ("pa_artifact_proposal_plan_promotion", "pa_artifact_promotion_validate",
                 "pa_tool_manifest_review_plan", "pa_vault_path_resolve"):
         return "advisory_routing", "advisory_only", "read_only"

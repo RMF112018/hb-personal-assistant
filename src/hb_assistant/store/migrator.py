@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 112
+LATEST_SCHEMA_VERSION = 113
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7030,6 +7030,13 @@ class SQLiteMigrator:
 
         return V112_ARTIFACT_WORKSPACE_STATEMENTS + V112_CLIENT_TOOL_MANIFEST_STATEMENTS
 
+    @staticmethod
+    def _v113_statements() -> list[str]:
+        # N8C-24: Connected Client Generated File Output Workspace.
+        from hb_assistant.store.pa_client_output_tables import V113_CLIENT_OUTPUT_STATEMENTS
+
+        return V113_CLIENT_OUTPUT_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8927,6 +8934,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (112, 'v112_pa_artifact_workspace_and_tool_manifest', ?)",
+                    (now,),
+                )
+
+            # v113 (NAS N8C-24): Connected Client Generated File Output Workspace. A remote-safe, audited,
+            # bounded output workspace for non-canonical generated files (docx/xlsx/pptx/pdf/md/txt/csv/json/
+            # html/zip) under the governed `outputs` root — separate from canonical promotion, Obsidian cards,
+            # AI Outputs, and the local scratch writer. Additive, all tables ship EMPTY; rows only written by
+            # the staged → approved → idempotent commit surface. A narrowly-scoped, approval-gated write class.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 113")
+            if cur.fetchone() is None:
+                for stmt in self._v113_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (113, 'v113_pa_client_output_workspace', ?)",
                     (now,),
                 )
 

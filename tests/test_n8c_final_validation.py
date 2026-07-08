@@ -50,6 +50,8 @@ N8C_TABLE_ANCHORS: dict[str, tuple[str, ...]] = {
                                   "pa_artifact_repair_tasks"),
     "N8C-23 tool-manifest": ("pa_client_tool_manifests", "pa_tool_manifest_entries", "pa_workflow_route_recipes",
                              "pa_tool_manifest_refresh_proposals"),
+    "N8C-24 client-output": ("assistant_output_files", "assistant_output_file_versions",
+                             "assistant_output_file_receipts", "assistant_output_file_manifest_entries"),
 }
 
 
@@ -62,7 +64,7 @@ def _tables(db: Path) -> set[str]:
 def test_fresh_db_migrates_to_head(tmp_path: Path) -> None:
     db = tmp_path / "final.db"
     head = SQLiteMigrator(db_path=str(db)).apply()
-    assert head == LATEST_SCHEMA_VERSION == 112
+    assert head == LATEST_SCHEMA_VERSION == 113
 
 
 def test_migration_is_idempotent(tmp_path: Path) -> None:
@@ -98,8 +100,8 @@ def test_schema_migrations_records_every_version(tmp_path: Path) -> None:
     with sqlite3.connect(db) as c:
         versions = {r[0] for r in c.execute("SELECT version FROM schema_migrations")}
         head = c.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
-    # every N8C schema version V100..V112 is recorded, and the head equals the code constant
-    assert set(range(100, 113)) <= versions
+    # every N8C schema version V100..V113 is recorded, and the head equals the code constant
+    assert set(range(100, 114)) <= versions
     assert head == LATEST_SCHEMA_VERSION
 
 

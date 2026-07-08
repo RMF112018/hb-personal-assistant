@@ -52,3 +52,27 @@ Read-only: `pa_tool_manifest_get`, `pa_tool_manifest_tool_help`, `pa_tool_manife
 `pa_tool_manifest_refresh_stage`. Approval-gated write: `pa_tool_manifest_refresh_promote`.
 
 Gate: `HB_MCP_CLIENT_TOOL_MANIFEST` (default-on kill-switch).
+
+## N8C-24 generated-output tools
+
+The Client Tool Operating Manifest classifies the 10 `pa_output_*` tools (see
+[n8c-24-client-output-workspace](n8c-24-client-output-workspace.md)): `pa_output_stage` /
+`pa_output_commit` / `pa_output_archive_commit` as `staged_write`; the seven reads as `read_only`. Clients
+should use `pa_output_*` for generated DOCX/XLSX/PDF/PPTX/ZIP work products — **not** the Obsidian vault
+tools, **not** canonical artifact promotion, and **not** the legacy `hb_output_*` scratch writer (mapped
+deprecated → replaced-by `pa_output_*`). Generated files go only to the `outputs` root; output staging
+precedes final save.
+
+## Gateway allowlist change (N8C-24, operator-authorized)
+
+The N8C-22 helper gateway (`hb_assistant_tool_query`) allowlist was deliberately expanded beyond the
+canonical 78 to reach every write surface: `GATEWAY_ALLOWLIST = 78 ∪ pa_artifact_* ∪ pa_tool_manifest_* ∪
+pa_output_* ∪ ai_outputs_card_upsert`. Denied tools, raw SQL/shell/exec, root/db tools, and legacy
+`hb_output_*` stay rejected; every gateway-routed write still passes the full broker gate chain. The
+canonical catalog still reports exactly 78; the write surfaces appear as separate catalog sections.
+
+## Mandatory MCP tool-surface maintenance
+
+Any change to the MCP tool surface must update this manifest, the catalog/help/query gateway, and the
+prompt preflight routing. See [mcp-tool-surface-maintenance](mcp-tool-surface-maintenance.md) (created in
+the Prompt Preflight phase) and the root `AGENTS.md`.

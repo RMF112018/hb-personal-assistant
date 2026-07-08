@@ -36,7 +36,17 @@ DEFAULT_DENIED_DIR_SEGMENTS = (
 DEFAULT_READ_EXTENSIONS = frozenset(
     {"txt", "md", "csv", "json", "yaml", "yml", "pdf", "docx", "xlsx", "xls"}
 )
+# Legacy local-scratch writer extensions (hb_output_write_file) — unchanged.
 DEFAULT_OUTPUT_WRITE_EXTENSIONS = frozenset({"txt", "md", "csv", "json", "yaml", "yml", "docx", "xlsx"})
+# N8C-24 connected-client generated-output workspace (pa_output_*). Broader, receipt-backed.
+DEFAULT_CLIENT_OUTPUT_WRITE_EXTENSIONS = frozenset(
+    {"txt", "md", "csv", "json", "docx", "xlsx", "pptx", "pdf", "html", "zip"}
+)
+# Executable/script/credential extensions that must never be written as generated output.
+DENIED_OUTPUT_EXTENSIONS = frozenset(
+    {"sh", "command", "app", "exe", "dmg", "pkg", "py", "js", "ts", "jar", "bat", "ps1", "ps",
+     "sqlite", "db", "pem", "p12", "key", "enc"}
+)
 
 
 @dataclass(frozen=True)
@@ -69,6 +79,12 @@ class NasMcpConfig:
     max_response_bytes: int = 256_000
     max_write_bytes: int = 262_144
     max_output_file_bytes: int = 1_048_576
+    # N8C-24 client generated-output workspace limits (separate from the 1 MiB scratch cap).
+    max_client_output_file_bytes: int = 26_214_400  # 25 MiB
+    max_client_output_zip_members: int = 200
+    max_client_output_zip_uncompressed_bytes: int = 104_857_600  # 100 MiB
+    max_client_output_writes_per_window: int = 20
+    client_output_write_window_seconds: int = 3600
     # N8B safe-mode/limits seams (all env-overridable via HB_MCP_MAX_* — see limits.py).
     max_search_results: int = 50
     max_card_bytes: int = 262_144
@@ -78,6 +94,8 @@ class NasMcpConfig:
     tool_timeout_seconds: int = 30
     read_extensions: frozenset[str] = DEFAULT_READ_EXTENSIONS
     output_write_extensions: frozenset[str] = DEFAULT_OUTPUT_WRITE_EXTENSIONS
+    client_output_extensions: frozenset[str] = DEFAULT_CLIENT_OUTPUT_WRITE_EXTENSIONS
+    denied_output_extensions: frozenset[str] = DENIED_OUTPUT_EXTENSIONS
     denied_name_patterns: tuple[str, ...] = DEFAULT_DENIED_NAME_PATTERNS
     denied_dir_segments: tuple[str, ...] = DEFAULT_DENIED_DIR_SEGMENTS
     actor: str = "bfetting-via-ssh-launcher"
@@ -165,6 +183,12 @@ class NasMcpConfig:
             max_response_bytes=int(limits.get("max_response_bytes", 256_000)),
             max_write_bytes=int(limits.get("max_write_bytes", 262_144)),
             max_output_file_bytes=int(limits.get("max_output_file_bytes", 1_048_576)),
+            max_client_output_file_bytes=int(limits.get("max_client_output_file_bytes", 26_214_400)),
+            max_client_output_zip_members=int(limits.get("max_client_output_zip_members", 200)),
+            max_client_output_zip_uncompressed_bytes=int(
+                limits.get("max_client_output_zip_uncompressed_bytes", 104_857_600)),
+            max_client_output_writes_per_window=int(limits.get("max_client_output_writes_per_window", 20)),
+            client_output_write_window_seconds=int(limits.get("client_output_write_window_seconds", 3600)),
             max_search_results=int(limits.get("max_search_results", 50)),
             max_card_bytes=int(limits.get("max_card_bytes", 262_144)),
             max_ai_outputs_writes_per_window=int(limits.get("max_ai_outputs_writes_per_window", 20)),

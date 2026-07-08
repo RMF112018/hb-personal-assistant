@@ -22,6 +22,7 @@ from . import actions as actions_mod
 from . import answer_draft as answer_draft_mod
 from . import auth as auth_mod
 from . import automation as auto_mod
+from . import client_output as client_output_mod
 from . import construction as construction_mod
 from . import context_pack as context_pack_mod
 from . import decision_memory as decision_memory_mod
@@ -103,6 +104,7 @@ app.add_typer(workflow_mod.app, name="workflow")
 app.add_typer(feedback_mod.app, name="feedback")
 app.add_typer(action_stage_mod.app, name="action-stage")
 app.add_typer(quality_mod.app, name="quality")
+app.add_typer(client_output_mod.app, name="output")
 
 
 # Explicit thin stubs for remaining command groups

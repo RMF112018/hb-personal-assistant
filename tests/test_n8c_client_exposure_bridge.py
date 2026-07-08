@@ -17,6 +17,7 @@ from hb_assistant.nas_mcp.broker import (
     ALL_ASSISTANT_TOOLS,
     ASSISTANT_TOOL_GROUPS,
     DENIED_TOOL_NAMES,
+    GATEWAY_ALLOWLIST,
     NasMcpBroker,
 )
 from hb_assistant.nas_mcp.config import NasMcpConfig, NasObsidianConfig, RootSpec
@@ -180,7 +181,9 @@ def test_help_returns_schema_for_known_tool(surface) -> None:
     assert meta["gateway"] == "hb_assistant_tool_query"
 
 
-@pytest.mark.parametrize("bad", ["hb_db_select", "raw_sql", "shell", "ai_outputs_card_upsert", "bogus_tool"])
+# N8C-24: the gateway allowlist was deliberately expanded to reach the write surfaces, so
+# ai_outputs_card_upsert is now gateway-reachable. Denied/root-db/legacy/unknown stay rejected.
+@pytest.mark.parametrize("bad", ["hb_db_select", "raw_sql", "shell", "hb_output_write_file", "bogus_tool"])
 def test_help_rejects_unknown_denied_and_non_assistant(surface, bad) -> None:
     with pytest.raises(ValueError):
         surface["tools"]["hb_assistant_tool_help"].fn(bad)
@@ -205,13 +208,15 @@ def test_gateway_calls_allowlisted_assistant_tool(surface) -> None:
         ("read_file_absolute", {}),
         ("hb_output_delete", {}),
         ("hb_db_select", {"table_key": "x", "columns": ["a"]}),
-        ("ai_outputs_card_upsert", {"title": "x", "body_markdown": "y"}),
+        ("hb_output_write_file", {}),  # legacy scratch writer stays gateway-rejected
         ("os.system", {}),
         ("assistant_unknown_tool", {}),
         ("hb_root_read_file", {"root_key": "home", "relative_path": "/etc/passwd"}),
     ],
 )
 def test_gateway_rejects_denied_write_and_non_allowlisted(surface, tool_name, args) -> None:
+    # N8C-24: ai_outputs_card_upsert and the pa_* write surfaces are now gateway-reachable (operator-
+    # authorized); denied tools, root/db tools, legacy hb_output_*, and non-allowlisted names stay rejected.
     with pytest.raises(ValueError):
         surface["tools"]["hb_assistant_tool_query"].fn(tool_name, args)
 
@@ -237,12 +242,19 @@ def test_gateway_preserves_group_kill_switch(surface, monkeypatch) -> None:
 
 # ---------- safety regression ----------
 
-def test_ai_outputs_remains_only_write_and_unreachable_via_gateway(surface) -> None:
+def test_ai_outputs_remains_only_pre_existing_write_and_stays_gate_enforced(surface, monkeypatch) -> None:
+    # N8C-24 (operator-authorized): ai_outputs_card_upsert is now REACHABLE via the gateway, but it stays the
+    # only PRE-EXISTING write, stays out of the canonical assistant surface, and every gateway-routed call
+    # still passes the full broker write-gate chain. Proof: with the write gate flipped OFF, the gateway call
+    # fails closed at dispatch (routed, not silently allowed) rather than raising not_allowlisted.
     names = surface["names"]
-    assert AI_OUTPUTS_WRITE_TOOL in names  # still the one sanctioned write, directly registered
-    assert AI_OUTPUTS_WRITE_TOOL not in ALL_ASSISTANT_TOOLS  # not part of the canonical assistant surface
-    with pytest.raises(ValueError, match="not_an_allowlisted_assistant_tool"):
-        surface["tools"]["hb_assistant_tool_query"].fn(AI_OUTPUTS_WRITE_TOOL, {"title": "x"})
+    assert AI_OUTPUTS_WRITE_TOOL in names
+    assert AI_OUTPUTS_WRITE_TOOL not in ALL_ASSISTANT_TOOLS  # not part of the canonical 78
+    assert AI_OUTPUTS_WRITE_TOOL in GATEWAY_ALLOWLIST  # now gateway-reachable
+    monkeypatch.setenv("HB_MCP_ALLOW_AI_OUTPUTS_WRITE", "0")
+    receipt = surface["tools"]["hb_assistant_tool_query"].fn(AI_OUTPUTS_WRITE_TOOL, {"title": "x"})
+    assert receipt["ok"] is False
+    assert "write_tool_blocked_by_profile" in str(receipt.get("error", ""))
 
 
 def test_no_new_raw_or_exec_surface_exposed(surface) -> None:

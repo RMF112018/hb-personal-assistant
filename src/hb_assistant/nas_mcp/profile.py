@@ -31,6 +31,8 @@ LEGACY_VAULT_WRITE_TOOLS = frozenset(
 )
 # Native output-sandbox writers (local scratch, tier 3-ish but not AI Outputs).
 SCRATCH_OUTPUT_WRITE_TOOLS = frozenset({"hb_output_write_file", "hb_output_create_dir"})
+# N8C-24 connected-client generated-output write tools (gated by client_output_write_enabled()).
+CLIENT_OUTPUT_WRITE_TOOLS = frozenset({"pa_output_stage", "pa_output_commit", "pa_output_archive_commit"})
 # The single sanctioned remote write (tier 3).
 AI_OUTPUTS_WRITE_TOOL = "ai_outputs_card_upsert"
 
@@ -80,6 +82,15 @@ def legacy_vault_write_enabled() -> bool:
         return False  # broad vault mutation always blocked remotely, no override
     override = _env_bool("HB_MCP_ALLOW_LEGACY_VAULT_WRITE")
     return _profile_defaults(profile)[2] if override is None else override
+
+
+def client_output_write_enabled() -> bool:
+    """N8C-24 connected-client generated-output workspace write gate. Deliberately distinct from the
+    local-scratch writer: default ON in both remote_cloudflare and local_trusted (operator-authorized),
+    since it is a narrow, receipt-backed, extension-allowlisted, staged+approved+idempotent write class.
+    Kill-switch: ``HB_MCP_ALLOW_CLIENT_OUTPUT_WRITE=0``."""
+    override = _env_bool("HB_MCP_ALLOW_CLIENT_OUTPUT_WRITE")
+    return True if override is None else override
 
 
 HEALTH_MODE_MINIMAL_PUBLIC = "minimal_public"
@@ -338,6 +349,8 @@ def blocked_write_tools() -> frozenset[str]:
         blocked |= set(SCRATCH_OUTPUT_WRITE_TOOLS)
     if not ai_outputs_write_enabled():
         blocked |= {AI_OUTPUTS_WRITE_TOOL}
+    if not client_output_write_enabled():
+        blocked |= set(CLIENT_OUTPUT_WRITE_TOOLS)
     return frozenset(blocked)
 
 
@@ -345,6 +358,7 @@ def gate_status() -> dict[str, object]:
     return {
         "profile": active_profile(),
         "ai_outputs_write_enabled": ai_outputs_write_enabled(),
+        "client_output_write_enabled": client_output_write_enabled(),
         "local_scratch_output_write_enabled": scratch_output_write_enabled(),
         "legacy_broad_vault_write_enabled": legacy_vault_write_enabled(),
         "origin_auth_required": origin_auth_required(),

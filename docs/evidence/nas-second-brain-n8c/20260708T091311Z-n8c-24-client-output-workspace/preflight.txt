@@ -1,0 +1,6 @@
+N8C-24 preflight Wed Jul  8 09:13:11 UTC 2026
+pwd: /Users/bobbyfetting/hb-personal-assistant
+branch: ops/nas-second-brain-n8c-24-client-output-workspace-20260708
+HEAD: e6f5aa9c2269fb28b6a5de3e532361da7f7a4bf3
+schema head baseline: V112
+reportlab: 5.0.0

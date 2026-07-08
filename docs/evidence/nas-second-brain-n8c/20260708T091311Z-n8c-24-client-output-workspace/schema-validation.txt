@@ -1,0 +1,3 @@
+LATEST_SCHEMA_VERSION = 113
+head first/reapply = 113 113 (idempotent)
+N8C-24 tables: ['assistant_output_file_manifest_entries', 'assistant_output_file_receipts', 'assistant_output_file_versions', 'assistant_output_files']

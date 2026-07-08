@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 61 items
+
+tests/test_n8c24_output_config.py .....                                  [  8%]
+tests/test_n8c24_output_file_writers.py .............                    [ 29%]
+tests/test_n8c24_output_manifest_receipts.py ...                         [ 34%]
+tests/test_n8c24_output_mcp_tools.py ........                            [ 47%]
+tests/test_n8c24_output_path_policy.py .......                           [ 59%]
+tests/test_n8c24_output_safety_negative.py ......                        [ 68%]
+tests/test_n8c24_output_workspace_repository.py .......                  [ 80%]
+tests/test_n8c24_output_zip_validation.py .........                      [ 95%]
+tests/test_n8c24_tool_manifest_integration.py ...                        [100%]
+
+======================== 61 passed in 64.55s (0:01:04) =========================

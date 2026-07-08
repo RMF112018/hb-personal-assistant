@@ -1,0 +1,7 @@
+assistant_ canonical count: 78 (invariant 78)
+ALL_ASSISTANT_TOOLS len: 78
+pa_output_ registered: ['pa_output_archive_commit', 'pa_output_archive_plan', 'pa_output_commit', 'pa_output_list', 'pa_output_manifest_get', 'pa_output_metadata', 'pa_output_read_excerpt', 'pa_output_receipt_get', 'pa_output_stage', 'pa_output_zip_inspect']
+GATEWAY_ALLOWLIST size: 112
+pa_output in gateway: True
+ai_outputs in gateway: True
+denied/root-db NOT in gateway: True

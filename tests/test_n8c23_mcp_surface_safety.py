@@ -42,10 +42,21 @@ def test_no_denied_tool_exposed(surface) -> None:
     assert DENIED_TOOL_NAMES.isdisjoint(surface["names"])
 
 
-def test_gateway_still_rejects_pa_tools(surface) -> None:
+def test_gateway_reaches_pa_tools_but_stays_write_gated(surface) -> None:
+    # N8C-24 (operator-authorized): the gateway allowlist was expanded to reach the structured-intelligence
+    # pa_* surfaces. They are now ROUTED (not rejected as non-allowlisted) — every write still passes the
+    # broker gate chain + server-minted approval/idempotency inside the handler. Routing is proven by the
+    # receipt shape (ok True/False), NOT a not_allowlisted ValueError.
     for pa in ("pa_artifact_promotion_apply", "pa_session_capture_stage"):
-        with pytest.raises(ValueError, match="not_an_allowlisted_assistant_tool"):
-            surface["fn"]["hb_assistant_tool_query"](pa, {})
+        try:
+            receipt = surface["fn"]["hb_assistant_tool_query"](pa, {})
+            assert isinstance(receipt, dict) and "ok" in receipt  # routed through broker.dispatch
+        except ValueError as exc:  # a bounded validation error from the handler is fine; not_allowlisted is not
+            assert "not_an_allowlisted_assistant_tool" not in str(exc)
+    # denied + legacy stay rejected at the gateway
+    for bad in ("raw_sql", "hb_output_write_file", "hb_db_select"):
+        with pytest.raises(ValueError):
+            surface["fn"]["hb_assistant_tool_query"](bad, {})
 
 
 def test_status_reports_workspace_and_manifest_fields(surface) -> None:

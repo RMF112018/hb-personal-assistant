@@ -17,6 +17,11 @@ from .artifact_tools import (
     dispatch_artifact_tool,
 )
 from .audit import NasMcpAuditWriter
+from .client_output_tools import (
+    ALL_PA_OUTPUT_TOOLS,
+    client_output_status,
+    dispatch_client_output_tool,
+)
 from .config import NasMcpConfig
 from .db_allowlist import list_allowlisted_table_keys
 from .db_tools import DbSelectError, _ro_uri, hb_db_select
@@ -45,6 +50,7 @@ from .overrides import OverrideStore
 from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
+    CLIENT_OUTPUT_WRITE_TOOLS,
     artifact_workspace_enabled,
     assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
@@ -288,11 +294,20 @@ ASSISTANT_GROUP_GATES = {
     "quality": assistant_quality_enabled,
 }
 
-# The 78 canonical assistant tools, deduped + sorted. Used as the gateway allowlist and the catalog
-# universe. NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help /
-# _tool_query) are deliberately NOT in here — they are helpers, not canonical assistant tools.
+# The 78 canonical assistant tools, deduped + sorted. This is the canonical read-only navigation set and
+# the catalog's canonical universe. NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog /
+# _tool_help / _tool_query) are deliberately NOT in here — they are helpers, not canonical assistant tools.
 ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
     sorted({tool for tools in ASSISTANT_TOOL_GROUPS.values() for tool in tools})
+)
+
+# GATEWAY_ALLOWLIST — the set of tools reachable via the N8C-22 helper gateway (hb_assistant_tool_query /
+# _tool_help). Deliberately DECOUPLED from ALL_ASSISTANT_TOOLS and expanded (operator-authorized, N8C-24):
+# the canonical 78 PLUS every structured-intelligence + output + AI-output WRITE surface. Denied tools,
+# root/db tools, legacy hb_output_* and any non-allowlisted name stay rejected, and every gateway-routed
+# write still passes the full broker gate chain (safe-mode, per-tool gate, approval, idempotency, path).
+GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
+    set(ALL_ASSISTANT_TOOLS) | set(ALL_PA_TOOLS) | set(ALL_PA_OUTPUT_TOOLS) | {AI_OUTPUTS_WRITE_TOOL}
 )
 
 
@@ -408,7 +423,7 @@ def _capability_tier(tool_name: str, write_attempted: bool) -> int:
         return 5
     if tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_write") or tool_name == "hb_output_create_dir":
         return 4
-    if tool_name == AI_OUTPUTS_WRITE_TOOL or tool_name in PA_CANONICAL_WRITE_TOOLS:
+    if tool_name == AI_OUTPUTS_WRITE_TOOL or tool_name in PA_CANONICAL_WRITE_TOOLS or tool_name in CLIENT_OUTPUT_WRITE_TOOLS:
         return 3
     if tool_name in FRESHNESS_TOOLS or tool_name == "hb_mcp_status":
         return 0
@@ -434,6 +449,7 @@ class NasMcpBroker:
             or tool_name.startswith("hb_output_")
             or tool_name == AI_OUTPUTS_WRITE_TOOL
             or tool_name in PA_CANONICAL_WRITE_TOOLS
+            or tool_name in CLIENT_OUTPUT_WRITE_TOOLS
         )
         auth = get_auth_context()
         client_label = auth.client_label if auth else "any"
@@ -630,6 +646,7 @@ class NasMcpBroker:
                 **assistant_client_exposure_status(),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),
+                **client_output_status(cfg),
             }
         if tool_name == AI_OUTPUTS_WRITE_TOOL:
             from .ai_outputs import ai_outputs_card_upsert  # noqa: PLC0415
@@ -705,6 +722,12 @@ class NasMcpBroker:
             if tool_name not in PA_MANIFEST_TOOLS and not artifact_workspace_enabled():
                 raise ValueError("artifact_workspace_disabled")
             return dispatch_artifact_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
+        if tool_name in ALL_PA_OUTPUT_TOOLS:
+            # N8C-24 client generated-output workspace. Controlled writes (stage/commit/archive_commit) are in
+            # CLIENT_OUTPUT_WRITE_TOOLS, so they already passed the dispatch write-gate chain (safe-mode +
+            # blocked_write_tools when client_output_write_enabled() is off) above; server-side approval +
+            # idempotency + path safety are enforced inside the handler. Reads are bounded.
+            return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name == "hb_db_select":
             return hb_db_select(
                 config=cfg,
