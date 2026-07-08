@@ -52,6 +52,7 @@ from .workflow_models import (
     WF_UNKNOWN,
     WORKFLOW_POLICY_CONTEXT_ONLY,
     WORKFLOW_ROUTER_VERSION,
+    WORKFLOW_TYPE_ALIASES,
     WORKFLOW_TYPES,
     RoutingDecision,
     WorkflowRequest,
@@ -126,6 +127,9 @@ class WorkflowRouter:
         warnings: list[str] = []
         explicit = request.workflow_type
         if explicit:
+            # Bridge the V114 recipe-registry ids (e.g. source_file_search) onto this router's canonical
+            # types so a workflow id read from pa_workflow_recipe_get doesn't resolve to unknown here.
+            explicit = WORKFLOW_TYPE_ALIASES.get(explicit, explicit)
             if explicit in WORKFLOW_TYPES and explicit != WF_UNKNOWN:
                 return explicit, "explicit", warnings
             warnings.append("unknown_workflow_type")

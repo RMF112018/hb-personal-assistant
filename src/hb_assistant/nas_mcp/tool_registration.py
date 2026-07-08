@@ -301,8 +301,13 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             return _assistant_result("assistant_search_sources", {"query": query, "limit": limit, "project_key": project_key})
 
         @mcp.tool()
-        def assistant_get_source(source_id: str) -> dict[str, Any]:
-            return _assistant_result("assistant_get_source", {"source_id": source_id})
+        def assistant_get_source(source_id: str, max_excerpt_chars: int | None = None) -> dict[str, Any]:
+            """DB detail for an indexed source + its card linkage. The echoed ``text_excerpt`` is bounded
+            to a least-exposure default (4000 chars); pass ``max_excerpt_chars`` to widen it (a truncated
+            excerpt is flagged with ``text_excerpt_truncated``). Prefer metadata first, then a bounded
+            read via assistant_source_file_read for full file content."""
+            return _assistant_result("assistant_get_source",
+                                     {"source_id": source_id, "max_excerpt_chars": max_excerpt_chars})
 
         @mcp.tool()
         def assistant_get_card_for_source(source_id: str) -> dict[str, Any]:
@@ -573,7 +578,8 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                                         limit: int = 25, cursor: str | None = None) -> dict[str, Any]:
             """List indexed NAS source FILES under a source_root_key (optional rel_path prefix/folder),
             with cursor paging. Use to browse original files in a NAS project/source folder — not vault
-            notes. Pass ``cursor`` for the next page."""
+            notes. ``limit`` defaults to 25 and is clamped to 100 per page; pass ``cursor`` for the next
+            page. An unknown ``source_root_key`` or a ``..``/absolute ``prefix`` fails closed."""
             return _assistant_result("assistant_source_files_list",
                                      {"source_root_key": source_root_key, "prefix": prefix,
                                       "limit": limit, "cursor": cursor})
@@ -584,8 +590,10 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                                          cursor: str | None = None) -> dict[str, Any]:
             """Full-text search indexed NAS source FILE contents. Use when the user asks to find files in
             NAS source folders / project folders / documents — PDFs, contracts, invoices, drawings,
-            proposals, spreadsheets. Results carry source_root_key + source_ref for follow-up. Filter by
-            ``source_root_key``/``file_ext``; page with ``cursor``. NOT for Obsidian vault notes."""
+            proposals, spreadsheets. Hyphenated/dotted project numbers (e.g. ``23-435-01``) are matched
+            literally — no quoting needed. Results carry source_root_key + source_ref for follow-up.
+            Filter by ``source_root_key``/``file_ext`` (an unknown root fails closed); ``limit`` defaults
+            to 25 and is clamped to 100 per page; page with ``cursor``. NOT for Obsidian vault notes."""
             return _assistant_result("assistant_source_file_search",
                                      {"query": query, "source_root_key": source_root_key,
                                       "file_ext": file_ext, "limit": limit, "cursor": cursor})

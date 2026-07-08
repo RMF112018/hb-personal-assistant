@@ -90,6 +90,16 @@ def test_source_file_lookup_routes_to_source_connector(tmp_path: Path) -> None:
     assert env["selected_artifacts"][0]["source_root_key"] == "work"
 
 
+def test_d4_v114_source_file_search_alias_resolves(tmp_path: Path) -> None:
+    # Defect D4: the V114 recipe id "source_file_search" must resolve to this router's
+    # "source_file_lookup" instead of returning unknown/needs_clarification.
+    env = _router(tmp_path).route(WorkflowRequest.from_inputs(
+        workflow_type="source_file_search", query="spec.pdf", source_root_key="work"))
+    assert env["workflow_type"] == "source_file_lookup"
+    assert env["status"] == "routed"
+    assert env["routing_decision"]["primary_target"] == "source_connector"
+
+
 def test_research_answer_routes_to_answer_drafts_when_draft_exists(tmp_path: Path) -> None:
     db = _db(tmp_path)
     _seed_draft(db)

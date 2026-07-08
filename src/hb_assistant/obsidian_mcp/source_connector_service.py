@@ -86,12 +86,28 @@ def list_source_roots(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
     return {"roots": roots, "count": len(roots)}
 
 
+def _known_root_keys(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, conn: Any = None) -> set[str]:
+    """The valid source-root key set — configured roots, or the index's roots when config has none
+    (mirrors list_source_roots' fallback on the internet-facing serve profile)."""
+    keys = {root.source_root_key for root in config.external_sources}
+    if not keys:
+        keys = set(repo.distinct_indexed_root_keys(conn=conn))
+    return keys
+
+
+def _reject_unsafe_prefix(prefix: str | None) -> None:
+    """Fail closed on a traversal/absolute rel_path prefix instead of silently matching nothing."""
+    if prefix and (".." in prefix or str(prefix).startswith("/")):
+        raise SourceConnectorValidationError("unsafe_prefix")
+
+
 def search_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, query: str,
                         source_root_key: str | None = None, file_ext: str | None = None,
                         limit: int = 25, cursor: str | None = None,
                         conn: Any = None) -> dict[str, Any]:
     """Root-aware FTS search over indexed source files, deterministic keyset cursor. Read-only."""
-    del config
+    if source_root_key is not None and source_root_key not in _known_root_keys(repo, config, conn=conn):
+        raise SourceConnectorValidationError("invalid_root")
     limit = clamp_limit(limit)
     order = ORDER_RANK_PATH
     filters = {"op": "search", "query": query, "source_root_key": source_root_key,
@@ -122,9 +138,11 @@ def list_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
                       conn: Any = None) -> dict[str, Any]:
     """Index-backed listing under one root/prefix, keyset-paged. Advisory child folders derived from the
     returned page (``child_folders_partial`` when more pages remain). Read-only, never a filesystem scan."""
-    del config
     if not source_root_key:
         raise SourceConnectorValidationError("source_root_key_required")
+    if source_root_key not in _known_root_keys(repo, config, conn=conn):
+        raise SourceConnectorValidationError("invalid_root")
+    _reject_unsafe_prefix(prefix)
     limit = clamp_limit(limit)
     order = ORDER_ROOT_PATH
     filters = {"op": "list", "source_root_key": source_root_key, "prefix": prefix or ""}

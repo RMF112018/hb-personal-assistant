@@ -25,6 +25,7 @@ from typing import Any
 from hb_assistant.store.connection import borrow_connection, transaction
 from hb_assistant.store.source_intelligence_tables import fts5_available
 
+from .source_connector_models import sanitize_fts_query
 from .source_skip_codes import normalize_skip_code
 
 
@@ -741,6 +742,9 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c:
             if not self._fts_available(c):
                 return []
+            match_query = sanitize_fts_query(query)
+            if not match_query:
+                return []
             sql = (
                 "SELECT f.rel_path, f.aux, bm25(source_intelligence_fts) AS rank, "
                 " snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip, s.source_id "
@@ -749,7 +753,7 @@ class SourceIndexRepository:
                 "JOIN source_intelligence_sources s ON s.source_id = m.source_id "
                 "WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
-            params: list[Any] = [query]
+            params: list[Any] = [match_query]
             if project_key:
                 sql += "AND f.aux = ? "
                 params.append(project_key)
@@ -767,6 +771,9 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c:
             if not self._fts_available(c):
                 return []
+            match_query = sanitize_fts_query(query)
+            if not match_query:
+                return []
             sql = (
                 "SELECT n.rel_path, n.aux, bm25(obsidian_note_fts) AS rank, "
                 " snippet(obsidian_note_fts, 0, '[', ']', '…', 12) AS snip, s.source_id "
@@ -775,7 +782,7 @@ class SourceIndexRepository:
                 "JOIN source_intelligence_sources s ON s.source_id = m.source_id AND s.source_kind='obsidian_note' "
                 "WHERE obsidian_note_fts MATCH ? AND s.deleted=0 "
             )
-            params: list[Any] = [query]
+            params: list[Any] = [match_query]
             if path_prefix:
                 sql += "AND n.rel_path LIKE ? "
                 params.append(f"{path_prefix}%")
@@ -804,6 +811,9 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c:
             if not self._fts_available(c):
                 return []
+            match_query = sanitize_fts_query(query)
+            if not match_query:
+                return []
             sql = (
                 "SELECT src_root, rel, sid, ext, rank, snip FROM ("
                 " SELECT COALESCE(s.source_root_key,'') AS src_root, COALESCE(s.rel_path,'') AS rel, "
@@ -814,7 +824,7 @@ class SourceIndexRepository:
                 " JOIN source_intelligence_sources s ON s.source_id = m.source_id "
                 " WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
-            params: list[Any] = [query]
+            params: list[Any] = [match_query]
             if source_root_key is not None:
                 sql += " AND s.source_root_key = ? "
                 params.append(source_root_key)

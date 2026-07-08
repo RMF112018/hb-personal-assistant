@@ -32,6 +32,9 @@ STATUS_OK = "ok"
 STATUS_STALE = "stale"
 STATUS_UNKNOWN = "unknown"  # configured but no data yet
 STATUS_NOT_CONFIGURED = "not_configured"  # table absent
+STATUS_FUTURE = "anomaly_future_timestamp"  # last timestamp is in the future — freshness untrustworthy
+# Small tolerance for benign clock skew before a future timestamp is treated as an anomaly.
+FUTURE_TOLERANCE_SECONDS = 300
 
 
 def _now() -> datetime:
@@ -73,6 +76,15 @@ def _age_status(ts_value: Any, *, stale_seconds: int = DEFAULT_STALE_SECONDS) ->
     if dt is None:
         return {"status": STATUS_UNKNOWN, "last": None, "age_seconds": None}
     age = int((_now() - dt).total_seconds())
+    if age < -FUTURE_TOLERANCE_SECONDS:
+        # A future-dated timestamp cannot be trusted as "fresh" — surface it as an anomaly (with the
+        # real, negative age) instead of silently reporting ok/age 0. Material for scheduling data.
+        return {
+            "status": STATUS_FUTURE,
+            "last": dt.isoformat(),
+            "age_seconds": age,
+            "note": "last timestamp is in the future; treat freshness as unreliable",
+        }
     return {
         "status": STATUS_STALE if age > stale_seconds else STATUS_OK,
         "last": dt.isoformat(),

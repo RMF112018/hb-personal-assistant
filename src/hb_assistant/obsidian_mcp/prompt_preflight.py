@@ -50,8 +50,22 @@ _MEMORY_CUES = (
 )
 
 
+# Destructive-intent cues (§13). The engine had no destructive classifier, so "delete README.md from the
+# vault" fell through to a benign unknown route. A destructive verb applied to a vault/file/record object
+# is surfaced explicitly: never self-authorized, target confirmation required, reversible archive preferred.
+_DESTRUCTIVE_VERBS = ("delete", "remove", "wipe", "destroy", "erase", "purge", "rm -")
+_DESTRUCTIVE_OBJECTS = ("vault", "note", "file", "readme", "card", "record", "folder", "document",
+                        "page", ".md", "artifact", "output")
+
+
 def _norm(text: str) -> str:
     return " ".join((text or "").lower().split())
+
+
+def _is_destructive(prompt_l: str) -> bool:
+    """A destructive verb applied to a stored object (avoids firing on benign 'remove the filter')."""
+    return (any(v in prompt_l for v in _DESTRUCTIVE_VERBS)
+            and any(o in prompt_l for o in _DESTRUCTIVE_OBJECTS))
 
 
 def _score_workflow(prompt_l: str, wf: dict[str, Any]) -> int:
@@ -64,10 +78,26 @@ def _score_workflow(prompt_l: str, wf: dict[str, Any]) -> int:
     return score
 
 
+# Tie-break priority by intent when workflow scores are EQUAL: an operator who explicitly says
+# "document/capture/create" must not lose to an incidental retrieval substring match. Previously the
+# alphabetical workflow_id tie-break let (e.g.) canonical_open_loop_retrieval beat document_session for
+# "document this session as decisions and open loops". Lower tier sorts first.
+_INTENT_TIE_TIER: dict[str, int] = {
+    "capture": 0, "documentation": 0, "staged_write": 1, "generation": 2, "canonical_promotion": 3,
+}
+_DEFAULT_INTENT_TIER = 5  # retrieval / discovery / status / routing
+
+
+def _intent_tier(wf: dict[str, Any]) -> int:
+    return min((_INTENT_TIE_TIER.get(ic, _DEFAULT_INTENT_TIER) for ic in wf["intent_classes"]),
+               default=_DEFAULT_INTENT_TIER)
+
+
 def _rank_workflows(prompt_l: str) -> list[tuple[int, dict[str, Any]]]:
     scored = [(_score_workflow(prompt_l, wf), wf) for wf in WORKFLOWS]
     scored = [(s, wf) for s, wf in scored if s > 0]
-    scored.sort(key=lambda t: (-t[0], t[1]["workflow_id"]))
+    # Rank by score, then by intent tier (capture/write before retrieval on a tie), then workflow_id.
+    scored.sort(key=lambda t: (-t[0], _intent_tier(t[1]), t[1]["workflow_id"]))
     return scored
 
 
@@ -140,6 +170,12 @@ def route_prompt(
 ) -> dict[str, Any]:
     """Return a read-only route plan for ``prompt`` (full §4 schema). Never writes or reads content."""
     prompt_l = _norm(prompt)
+
+    # Destructive intent takes precedence: a delete/remove/wipe of a stored object is never
+    # self-authorized and must not be silently classified as a benign unknown.
+    if _is_destructive(prompt_l):
+        return _destructive_route(prompt, prompt_l, freshness)
+
     ranked = _rank_workflows(prompt_l)
 
     if not ranked:
@@ -257,6 +293,51 @@ def _unknown_route(prompt: str, prompt_l: str, freshness: dict[str, Any] | None)
                                "(retrieve, generate a file, capture to memory, or promote)?",
         "preflight_is_read_only": True,
         "freshness": _freshness_view(freshness, is_write=False),
+    }
+
+
+def _destructive_route(prompt: str, prompt_l: str, freshness: dict[str, Any] | None) -> dict[str, Any]:
+    """Route for a detected destructive request: flag it high-risk, never self-authorize, prefer a
+    reversible archive plan, and require explicit operator confirmation of the exact target."""
+    return {
+        "prompt": prompt,
+        "intent": {"primary_class": "destructive", "classes": ["destructive"]},
+        "source_of_truth": "unclassified",
+        "candidate_families": ["prompt_routing"],
+        "primary_family": "prompt_routing",
+        "recommended_workflow": "context_preflight",
+        "alternative_workflows": [],
+        "recommended_tools": [],  # never auto-select a destructive tool
+        "workflow_available": True,
+        "unavailable_tools": [],
+        "authorization": {
+            "action_class": "destructive", "write_risk": "high",
+            "prompt_authorizes_execution": False, "additional_approval_required": True,
+            "approval_points": ["explicit operator confirmation of the exact target + irreversibility"],
+            "requires_explicit_operator_go": True,
+        },
+        "retrieval_budget": {
+            "default_layer": "route_only", "recommended_next_layer": "route_only",
+            "max_candidates": 0, "max_chars": 0, "deep_parse_requires_operator_selection": True,
+            "why_not_deep_read_all": "Destructive intent — do not spend retrieval budget; confirm first.",
+        },
+        "provenance_required": [],
+        "memory_opportunity": _memory_opportunity(prompt_l, "prompt_routing"),
+        "must_not_use": ["executing an irreversible delete", "guessing a delete/remove target",
+                         "any low-level or bulk delete tool"],
+        "fallback_plan": {"rules": ["prefer a reversible archive/plan over a delete"],
+                          "unsafe_fallback_blocked": True, "failure_recovery": ""},
+        "route_confidence": "high",
+        "routing_rationale": ("Destructive intent detected (delete/remove/wipe/destroy of a stored "
+                              "object). Destructive execution is not self-authorized; confirm the exact "
+                              "target and prefer a reversible archive plan."),
+        "clarifying_question": ("This looks like a destructive request. Deletes are not executed from a "
+                                "prompt — confirm the exact target, and note that a reversible archive "
+                                "(vault_archive_note_plan / vault_delete_note_plan, which substitutes "
+                                "archive) is preferred over an irreversible delete. Proceed?"),
+        "preflight_is_read_only": True,
+        "destructive_intent": True,
+        "freshness": _freshness_view(freshness, is_write=True),
     }
 
 

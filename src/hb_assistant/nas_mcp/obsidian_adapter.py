@@ -97,6 +97,51 @@ def _normalize(payload: Any) -> Any:
     return payload
 
 
+# Client-facing arg aliases. The NAS obsidian tools share ONE generic input schema, so a client often
+# passes a reasonable-but-wrong arg name — `path` for `target_path`, `max_results` for `limit`,
+# `path_prefix` for the root scope. Map those onto the canonical name each handler actually reads so the
+# call succeeds instead of KeyError-ing or silently ignoring the filter. Only fills a canonical key that
+# the client left empty (never overrides an explicit value).
+_VAULT_ARG_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "search_vault": {"limit": ("limit", "max_results", "max_files")},
+    "vault_search_by_properties": {"root_path": ("root_path", "path_prefix", "path"),
+                                   "limit": ("limit", "max_results")},
+    "vault_dataview_query": {"root_path": ("root_path", "path_prefix", "path", "path_scope"),
+                             "limit": ("limit", "max_results")},
+    "vault_summarize_folder": {"root_path": ("root_path", "path", "path_prefix", "folder")},
+    "vault_get_backlinks": {"target_path": ("target_path", "path", "note_path")},
+    "vault_get_note_graph": {"target_path": ("target_path", "path")},
+    "vault_get_unlinked_mentions": {"target_title": ("target_title", "title", "note_title")},
+}
+# Tools that hard-require an arg the generic schema does not mark required — validate with a clear
+# message after aliasing rather than raising a cryptic KeyError on ``args["target_path"]``.
+_VAULT_REQUIRED_ARG: dict[str, tuple[str, str]] = {
+    "vault_get_backlinks": ("target_path", "path"),
+    "vault_get_unlinked_mentions": ("target_title", "title or a note path"),
+}
+
+
+def _normalize_vault_args(tool_name: str, args: dict[str, Any]) -> None:
+    for canonical, sources in _VAULT_ARG_ALIASES.get(tool_name, {}).items():
+        if args.get(canonical) in (None, ""):
+            for src in sources:
+                if args.get(src) not in (None, ""):
+                    args[canonical] = args[src]
+                    break
+    # unlinked-mentions needs a title; if the client only supplied a path, derive the note title from it.
+    if tool_name == "vault_get_unlinked_mentions" and args.get("target_title") in (None, ""):
+        candidate = args.get("target_path") or args.get("path")
+        if candidate:
+            import os  # noqa: PLC0415
+
+            args["target_title"] = os.path.splitext(os.path.basename(str(candidate)))[0]
+    if tool_name in _VAULT_REQUIRED_ARG:
+        key, hint = _VAULT_REQUIRED_ARG[tool_name]
+        if args.get(key) in (None, ""):
+            raise ObsidianMcpToolError("missing_required_arg",
+                                       f"{tool_name} requires '{key}' (also accepts: {hint})")
+
+
 def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     if tool_name in NAS_OBSIDIAN_BLOCKED:
         raise ObsidianMcpToolError("blocked_on_nas", NAS_OBSIDIAN_BLOCKED[tool_name])
@@ -105,6 +150,7 @@ def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str
     apply_obsidian_support_env(config)
     ob = obsidian_config_from_nas(config)
     args = dict(arguments)
+    _normalize_vault_args(tool_name, args)
 
     handlers: dict[str, Callable[..., Any]] = {
         "list_directory": lambda: tools.list_directory(ob, path=args.get("path", ""), recursive=bool(args.get("recursive", False)), extensions=args.get("extensions"), max_depth=args.get("max_depth")),

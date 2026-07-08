@@ -125,6 +125,20 @@ def resolve_source_id(*, source_id: str | None = None, source_ref: str | None = 
     return sid
 
 
+def sanitize_fts_query(query: str) -> str:
+    """Turn a user query into a safe FTS5 MATCH string by phrase-quoting each whitespace token.
+
+    A raw token like ``23-435-01`` fed straight into ``MATCH`` is parsed as FTS5 query syntax (the
+    hyphen/column grammar), yielding ``no such column: 435``. Wrapping each token in double quotes makes
+    FTS5 treat it as a literal phrase, so hyphenated/dotted/coloned project numbers and ordinary words
+    all match literally; multiple tokens keep implicit-AND semantics (``"foo" "bar"``). Embedded quotes
+    are escaped by doubling. Returns ``""`` when the query has no usable tokens (caller should then skip
+    the search rather than run an empty/invalid MATCH).
+    """
+    tokens = str(query or "").split()
+    return " ".join('"' + tok.replace('"', '""') + '"' for tok in tokens if tok)
+
+
 def clamp_limit(limit: int | None, *, default: int = DEFAULT_LIMIT, maximum: int = MAX_LIMIT) -> int:
     try:
         value = int(limit) if limit is not None else default

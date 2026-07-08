@@ -125,7 +125,12 @@ WORKFLOWS: list[dict[str, Any]] = [
     # ---- artifact workspace (session capture → staged canonical) ----
     _w(workflow_id="document_session", family_id="artifact_workspace",
        trigger_phrases=["document this session", "capture this", "remember this", "save to memory",
-                        "write this down", "log our decisions"],
+                        "write this down", "log our decisions",
+                        # artifact-authoring phrasings (were classified "unknown" before)
+                        "create a decision artifact", "create an artifact", "create a decision",
+                        "document this as a decision", "document this as decisions",
+                        "capture this as a preference", "save this as an open loop",
+                        "capture our decisions", "record our decisions"],
        intent_classes=["capture", "staged_write"],
        when_to_use="Capture a session's decisions/preferences/open-loops as staged artifact proposals.",
        when_not_to_use="Generating a work-product file (use client_output_workspace).",

@@ -44,6 +44,9 @@ MAX_LIMIT = 100
 # complete, low enough that one call cannot try to stream a pathological multi-GB file over the tunnel.
 ASSISTANT_MAX_CONTENT_CHARS = 2_000_000
 ASSISTANT_MAX_FILE_BYTES = 64_000_000
+# Least-exposure default for the echoed source text_excerpt in get_source (the index stores up to 8000;
+# callers opt into more via max_excerpt_chars). Metadata-first, then an explicit bounded read.
+SOURCE_EXCERPT_DEFAULT_CHARS = 4_000
 
 # Active card statuses (a source SHOULD have exactly one active card).
 _ACTIVE = ("generated", "stale")
@@ -85,17 +88,25 @@ def search_cards(repo: SourceIndexRepository, query: str, *, limit: int = DEFAUL
 
 
 # --- source detail + linkage ------------------------------------------------------------
-def get_source(repo: SourceIndexRepository, source_id: str, *, conn=None) -> dict[str, Any] | None:
+def get_source(repo: SourceIndexRepository, source_id: str, *,
+               max_excerpt_chars: int = SOURCE_EXCERPT_DEFAULT_CHARS, conn=None) -> dict[str, Any] | None:
     """DB detail for a source + its primary card linkage. Relative paths only; ``None`` if absent.
 
-    Pure-DB (no vault file read) so it works against the read-only snapshot without vault access.
-    Includes the stored ``text_excerpt`` in full (the DB physically stores only a bounded,
-    redaction-safe excerpt — ``raw_body_persisted=0`` — so this is complete for what the index holds;
-    whole-file content is via :func:`get_vault_note` for vault notes).
+    Pure-DB (no vault file read) so it works against the read-only snapshot without vault access. The
+    stored ``text_excerpt`` is echoed **bounded** to ``max_excerpt_chars`` (least-exposure default 4000;
+    the index physically stores up to ``source_index_max_excerpt_chars``, default 8000). A truncated
+    excerpt is flagged with ``text_excerpt_truncated`` + ``text_excerpt_full_chars`` so a caller can ask
+    for more; whole-file content is via :func:`get_vault_note` / the source-connector bounded read.
     """
     detail = repo.get_source_detail(str(source_id), conn=conn)
     if detail is None:
         return None
+    excerpt = detail.get("text_excerpt")
+    if isinstance(excerpt, str):
+        cap = max(200, min(int(max_excerpt_chars or SOURCE_EXCERPT_DEFAULT_CHARS), ASSISTANT_MAX_CONTENT_CHARS))
+        if len(excerpt) > cap:
+            detail = {**detail, "text_excerpt": excerpt[:cap], "text_excerpt_truncated": True,
+                      "text_excerpt_full_chars": len(excerpt)}
     card = identity.get_card_for_source(repo, str(source_id), conn=conn)
     dup = identity.detect_duplicate_cards(repo, str(source_id), conn=conn)
     return {

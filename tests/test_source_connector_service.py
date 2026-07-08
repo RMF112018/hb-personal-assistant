@@ -97,6 +97,38 @@ def test_search_root_aware_rows(env) -> None:
     _no_abs(r, env["tmp"])
 
 
+def test_search_hyphenated_project_number_no_fts_error(env) -> None:
+    # Defect E: an unquoted hyphenated project number must NOT raise "no such column: 435" — it is
+    # matched as a literal phrase, and the seeded doc containing it is found.
+    _insert(env["db"], root_key="work", rel_path="Projects/po-23-435-01.txt",
+            body="purchase order for project 23-435-01 approved", ext="txt")
+    r = svc.search_source_files(env["repo"], env["config"], query="23-435-01", limit=10)
+    assert any("po-23-435-01" in i["rel_path"] for i in r["items"])
+
+
+def test_search_empty_query_returns_empty(env) -> None:
+    # A whitespace-only query sanitizes to nothing; return an empty page rather than an invalid MATCH.
+    r = svc.search_source_files(env["repo"], env["config"], query="   ", limit=5)
+    assert r["count"] == 0
+
+
+def test_search_invalid_root_fails_closed(env) -> None:
+    # Defect F1: an unknown source_root_key is an explicit invalid_root error, not a silent empty page.
+    with pytest.raises(SourceConnectorValidationError, match="invalid_root"):
+        svc.search_source_files(env["repo"], env["config"], query="payment", source_root_key="nope", limit=5)
+
+
+def test_list_invalid_root_fails_closed(env) -> None:
+    with pytest.raises(SourceConnectorValidationError, match="invalid_root"):
+        svc.list_source_files(env["repo"], env["config"], source_root_key="nope")
+
+
+def test_list_traversal_prefix_rejected(env) -> None:
+    # Defect F3: a traversal/absolute prefix fails closed instead of matching nothing.
+    with pytest.raises(SourceConnectorValidationError, match="unsafe_prefix"):
+        svc.list_source_files(env["repo"], env["config"], source_root_key="work", prefix="../")
+
+
 def test_search_root_and_ext_filter(env) -> None:
     r = svc.search_source_files(env["repo"], env["config"], query="payment", source_root_key="secure",
                                limit=10)

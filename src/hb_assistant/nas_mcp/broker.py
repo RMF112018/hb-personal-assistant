@@ -877,7 +877,9 @@ class NasMcpBroker:
                 return nav.search_sources(repo, str(arguments.get("query", "")), limit=_limit(),
                                           project_key=arguments.get("project_key"), conn=conn)
             if tool_name == "assistant_get_source":
-                result = nav.get_source(repo, str(arguments["source_id"]), conn=conn)
+                _mx = arguments.get("max_excerpt_chars")
+                kw = {"max_excerpt_chars": int(_mx)} if _mx is not None else {}
+                result = nav.get_source(repo, str(arguments["source_id"]), conn=conn, **kw)
                 if result is None:
                     raise ValueError("source_not_found")
                 return result

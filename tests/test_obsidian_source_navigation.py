@@ -104,6 +104,21 @@ def test_get_source_missing_is_none(env) -> None:
     assert nav.get_source(env["repo"], "deadbeef" * 4) is None
 
 
+def test_get_source_excerpt_bounded_default_and_override(env) -> None:
+    # Defect H: assistant_get_source must bound the echoed excerpt to a least-exposure default (4000),
+    # flag truncation, and honor a wider explicit max_excerpt_chars.
+    big = "lorem ipsum dolor " * 1200  # ~21k chars; the index caps the stored excerpt, get_source rebounds it
+    (env["root"] / "docs" / "big.txt").write_text(big, encoding="utf-8")
+    sid = index_source_file(env["root"] / "docs" / "big.txt", env["config"].external_sources[0],
+                            env["repo"], env["config"])
+    default = nav.get_source(env["repo"], sid)["source"]
+    assert len(default["text_excerpt"]) <= 4000
+    assert default.get("text_excerpt_truncated") is True
+    assert default.get("text_excerpt_full_chars", 0) > 4000
+    wider = nav.get_source(env["repo"], sid, max_excerpt_chars=8000)["source"]
+    assert len(wider["text_excerpt"]) > 4000
+
+
 def test_get_card_for_source(env) -> None:
     out = nav.get_card_for_source(env["repo"], env["sid_a"])
     assert out["card"]["note_rel_path"] == env["card_a"]

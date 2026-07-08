@@ -46,6 +46,18 @@ WORKFLOW_TYPES = frozenset({
     WF_DECISION_PREFERENCE_LOOKUP, WF_DRAFT_REVIEW, WF_ACTION_DRAFT_PREPARATION, WF_UNKNOWN,
 })
 
+# Cross-engine workflow-id aliases: the V114 prompt-preflight recipe registry
+# (pa_workflow_recipe_get) uses ids like ``source_file_search`` for the same concept this N8C-15 router
+# names ``source_file_lookup``. A client that reads a workflow id from one surface and passes it to
+# assistant_route_workflow must not get ``unknown`` for a known concept — normalize the recipe ids onto
+# the router's canonical types here.
+WORKFLOW_TYPE_ALIASES: dict[str, str] = {
+    "source_file_search": WF_SOURCE_FILE_LOOKUP,
+    "canonical_decision_retrieval": WF_DECISION_PREFERENCE_LOOKUP,
+    "canonical_preference_retrieval": WF_DECISION_PREFERENCE_LOOKUP,
+    "canonical_open_loop_retrieval": WF_OPEN_LOOP_TRIAGE,
+}
+
 # --- canonical routing targets (existing N8C read surfaces) -----------------------------
 TARGET_SOURCE_CONNECTOR = "source_connector"
 TARGET_RESEARCH_PACKETS = "research_packets"
