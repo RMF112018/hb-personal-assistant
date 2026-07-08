@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 21 items
+
+tests/test_nas_mcp_client_readiness_10x.py .....................         [100%]
+
+============================= 21 passed in 20.88s ==============================

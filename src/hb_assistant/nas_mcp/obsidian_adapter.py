@@ -153,7 +153,7 @@ def _dispatch_obsidian(config: NasMcpConfig, tool_name: str, arguments: dict[str
     _normalize_vault_args(tool_name, args)
 
     handlers: dict[str, Callable[..., Any]] = {
-        "list_directory": lambda: tools.list_directory(ob, path=args.get("path", ""), recursive=bool(args.get("recursive", False)), extensions=args.get("extensions"), max_depth=args.get("max_depth")),
+        "list_directory": lambda: tools.list_directory(ob, path=args.get("path", ""), recursive=bool(args.get("recursive", False)), extensions=args.get("extensions"), max_depth=args.get("max_depth"), max_files=_capint(args, "max_files", 100)),
         "search_vault": lambda: tools.search_vault(ob, query=str(args["query"]), path_scope=args.get("path_scope"), file_types=args.get("file_types"), limit=int(args.get("limit", 25)), include_content_snippet=bool(args.get("include_content_snippet", False))),
         "read_file": lambda: tools.read_file(ob, path=str(args["path"]), start_page=args.get("start_page"), end_page=args.get("end_page"), section=args.get("section"), max_chars=args.get("max_chars")),
         "create_note": lambda: mutations.create_note(ob, path=str(args["path"]), content=str(args["content"]), overwrite=bool(args.get("overwrite", False)), create_parent_dirs=bool(args.get("create_parent_dirs", True)), expected_sha256=args.get("expected_sha256"), caller_surface="nas_mcp"),

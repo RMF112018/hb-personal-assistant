@@ -125,7 +125,7 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
         tool_class, safety_class, rw = classify_tool(name, info.get("group"))
         entries.append({
             "tool_name": name, "tool_group": info.get("group"), "tool_class": tool_class,
-            "safety_class": safety_class, "read_write_class": rw,
+            "safety_class": safety_class, "read_write_class": rw, "purpose": info.get("purpose", ""),
             "preferred_for": info.get("preferred_for", []), "avoid_when": info.get("avoid_when", []),
             "required_args": info.get("required_args", []), "optional_args": info.get("optional_args", []),
             "limits": info.get("limits", {}), "workflow_roles": info.get("workflow_roles", []),

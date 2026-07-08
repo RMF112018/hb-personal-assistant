@@ -1003,6 +1003,8 @@ class NasMcpBroker:
         """
         from hb_assistant.obsidian_mcp.decision_memory_repository import DecisionMemoryRepository
 
+        from . import canonical_decision_projection as proj
+
         def _limit(default: int = 25) -> int:
             return int(arguments.get("limit", default) or default)
 
@@ -1010,30 +1012,47 @@ class NasMcpBroker:
         conn.execute("PRAGMA query_only=ON")
         try:
             repo = DecisionMemoryRepository(str(cfg.db_path))
+            # Read-time union: promoted canonical artifacts (workspace/managed DB) surfaced alongside the
+            # extracted V104 records so a client sees what it just promoted. Projection is read-only.
             if tool_name == "assistant_list_decisions":
+                lim, status = _limit(), arguments.get("status")
                 recs = repo.list_decisions(decision_type=arguments.get("decision_type"),
-                                           status=arguments.get("status"), limit=_limit(), conn=conn)
+                                           status=status, limit=lim, conn=conn)
+                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "decision", limit=lim),
+                                          pk="decision_id", status=status, limit=lim)
                 return {"decisions": recs, "count": len(recs)}
             if tool_name == "assistant_get_decision":
                 rec = repo.get_decision(str(arguments["decision_id"]), conn=conn)
                 if rec is None:
+                    rec = proj.project_canonical_record(cfg, "decision", str(arguments["decision_id"]))
+                if rec is None:
                     raise ValueError("decision_not_found")
                 return {"decision": rec}
             if tool_name == "assistant_list_preferences":
+                lim, status = _limit(), arguments.get("status")
                 recs = repo.list_preferences(preference_type=arguments.get("preference_type"),
-                                             status=arguments.get("status"), limit=_limit(), conn=conn)
+                                             status=status, limit=lim, conn=conn)
+                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "preference", limit=lim),
+                                          pk="preference_id", status=status, limit=lim)
                 return {"preferences": recs, "count": len(recs)}
             if tool_name == "assistant_get_preference":
                 rec = repo.get_preference(str(arguments["preference_id"]), conn=conn)
                 if rec is None:
+                    rec = proj.project_canonical_record(cfg, "preference", str(arguments["preference_id"]))
+                if rec is None:
                     raise ValueError("preference_not_found")
                 return {"preference": rec}
             if tool_name == "assistant_list_open_loops":
+                lim, status = _limit(), arguments.get("status")
                 recs = repo.list_open_loops(open_loop_type=arguments.get("open_loop_type"),
-                                            status=arguments.get("status"), limit=_limit(), conn=conn)
+                                            status=status, limit=lim, conn=conn)
+                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "open_loop", limit=lim),
+                                          pk="open_loop_id", status=status, limit=lim)
                 return {"open_loops": recs, "count": len(recs)}
             if tool_name == "assistant_get_open_loop":
                 rec = repo.get_open_loop(str(arguments["open_loop_id"]), conn=conn)
+                if rec is None:
+                    rec = proj.project_canonical_record(cfg, "open_loop", str(arguments["open_loop_id"]))
                 if rec is None:
                     raise ValueError("open_loop_not_found")
                 return {"open_loop": rec}

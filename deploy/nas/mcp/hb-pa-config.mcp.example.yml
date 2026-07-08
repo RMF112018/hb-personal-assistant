@@ -44,3 +44,15 @@ mcp:
     summarization_backend: deterministic
     allowed_write_file_types:
       - md
+    # Maps the indexed source-root keys to their read-only mounts so live source reads (prefer_live)
+    # resolve the real file instead of degrading to an indexed excerpt (reason: root_unavailable). The
+    # source_root_key MUST match what the index was built with (convention: syn-<roots-key>); path is the
+    # container mount. sensitive: true keeps a root indexed-only (forces excerpt fallback). If this block
+    # is omitted, the runtime derives syn-home/syn-work from the home/work roots automatically.
+    external_sources:
+      - source_root_key: syn-home
+        path: /mnt/roots/home
+        sensitive: false
+      - source_root_key: syn-work
+        path: /mnt/roots/work
+        sensitive: false

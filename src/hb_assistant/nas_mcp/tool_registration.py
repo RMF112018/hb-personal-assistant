@@ -97,8 +97,20 @@ def _extract_client_tool_index(mcp: Any) -> dict[str, dict[str, Any]]:
     return index
 
 
-def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    """Bounded, secret-free metadata for one canonical assistant tool, derived from its live schema."""
+# Live client-facing tool-schema index, captured once at registration (see register_nas_mcp_tools).
+# Lets the persisted tool manifest (built in the handler context, which has no `mcp` object) carry the
+# same purpose/args/limits the catalog derives from the live FastMCP schemas. Best-effort: empty until
+# registration runs; the manifest checksum ignores these fields so an empty snapshot never churns it.
+_LIVE_TOOL_SCHEMA_INDEX: dict[str, dict[str, Any]] = {}
+
+
+def live_tool_schema_index() -> dict[str, dict[str, Any]]:
+    """The live client-facing tool-schema index captured at registration ({} before registration)."""
+    return _LIVE_TOOL_SCHEMA_INDEX
+
+
+def derive_tool_arg_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Purpose + required/optional args + result limits for one tool, derived from its live schema."""
     entry = index.get(name) or {}
     schema = entry.get("input_schema") or {}
     props = schema.get("properties") or {}
@@ -106,19 +118,33 @@ def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[st
     optional = sorted(p for p in props if p not in required)
     desc = (entry.get("description") or "").strip()
     purpose = next((line.strip() for line in desc.splitlines() if line.strip()), "")
-    result_limits = {
+    limits = {
         key: props[key].get("default")
         for key in ("limit", "max_chars", "max_results", "max_files", "max_nodes", "max_body_chars")
         if key in props
     }
+    return {"purpose": purpose, "required_args": required, "optional_args": optional, "limits": limits}
+
+
+def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Bounded, secret-free metadata for one canonical assistant tool, derived from its live schema."""
+    arg_meta = derive_tool_arg_meta(name, index)
+    # Classify from the single source of truth (mirrors broker._access_mode) instead of hardcoding a
+    # blanket "read_only_advisory" — that label mislabelled every gateway-reachable staged/canonical
+    # write (pa_session_capture_stage, pa_output_stage, …) as a safe read.
+    from hb_assistant.obsidian_mcp.client_tool_manifest import classify_tool  # noqa: PLC0415
+
+    tool_class, safety_class, read_write_class = classify_tool(name, _TOOL_TO_GROUP.get(name))
     return {
         "tool_name": name,
         "group": _TOOL_TO_GROUP.get(name),
-        "purpose": purpose,
-        "required_args": required,
-        "optional_args": optional,
-        "result_limits": result_limits,
-        "safety_class": "read_only_advisory",
+        "purpose": arg_meta["purpose"],
+        "required_args": arg_meta["required_args"],
+        "optional_args": arg_meta["optional_args"],
+        "result_limits": arg_meta["limits"],
+        "tool_class": tool_class,
+        "read_write_class": read_write_class,
+        "safety_class": safety_class,
         "direct_exposure_available": name in index,
     }
 
@@ -1483,3 +1509,19 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
     # registration so the full surface is covered). Purely additive metadata for connected-client
     # safety layers; the broker gate chain remains the enforcing control.
     _stamp_tool_annotations(mcp)
+
+    # Capture the live tool-schema index once, now that the full surface is registered, so the persisted
+    # manifest (built in a handler context without `mcp`) can carry the same purpose/args/limits.
+    global _LIVE_TOOL_SCHEMA_INDEX
+    _LIVE_TOOL_SCHEMA_INDEX = _extract_client_tool_index(mcp)
+
+    # NAS internet-facing profile: idempotently materialize the persisted client-tool manifest so
+    # pa_tool_manifest_get returns a real active manifest out of the box (get/freshness/status agree).
+    # Server-side self-materialization of the deterministic tool catalog — gated to the read-only NAS
+    # profile, non-fatal, and a no-op when a matching active manifest already exists.
+    try:
+        from .artifact_tools import bootstrap_persisted_manifest  # noqa: PLC0415
+
+        bootstrap_persisted_manifest(broker._config)
+    except Exception:  # noqa: BLE001 — bootstrap must never break tool registration/startup
+        pass

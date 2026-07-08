@@ -104,14 +104,20 @@ def update_frontmatter(
 # ---------------------------------------------------------------------------
 # Read-only structured search over frontmatter.
 # ---------------------------------------------------------------------------
-def _iter_notes(config: ObsidianMcpConfig, root_path: str, *, operator_mode: bool, limit: int) -> list[Any]:
+def _iter_notes(config: ObsidianMcpConfig, root_path: str, *, operator_mode: bool,
+                limit: int) -> tuple[str, bool, list[Any]]:
+    """Return (scope_rel, scan_capped, notes). ``scope_rel`` is the effective vault-relative subtree
+    ("" = entire vault); ``scan_capped`` is True when the raw pre-filter scan hit its cap, so callers
+    can report that results may be incomplete instead of silently returning an alphabetical slice."""
     resolved = resolve_safe_path(config, root_path, must_exist=True)
     if not resolved.path.is_dir():
         raise ObsidianMcpToolError("path_is_not_directory")
     include_hidden = _hidden_inspection_allowed(config, operator_mode)
     if pathsafe.path_blocked(resolved.relative, include_hidden=include_hidden):
         raise ObsidianMcpToolError("protected_path_blocked")
+    scan_cap = min(limit, _MAX_RESULTS) * 4
     notes: list[Any] = []
+    scan_capped = False
     for item in sorted(resolved.path.rglob("*"), key=lambda p: p.as_posix().lower()):
         if pathsafe.symlink_escapes(item, resolved.root):
             continue
@@ -123,9 +129,10 @@ def _iter_notes(config: ObsidianMcpConfig, root_path: str, *, operator_mode: boo
         text = item.read_text(encoding="utf-8", errors="replace")
         fm, _body = mdutil.split_frontmatter(text)
         notes.append((rel, item, fm or {}, text))
-        if len(notes) >= min(limit, _MAX_RESULTS) * 4:
+        if len(notes) >= scan_cap:
+            scan_capped = True
             break
-    return notes
+    return resolved.relative, scan_capped, notes
 
 
 def _note_meta(rel: str, item: Path, fm: dict[str, Any], text: str) -> dict[str, Any]:
@@ -152,7 +159,8 @@ def search_by_properties(
     any_norm = mdutil.normalized_tags(tags_any or [])
     all_norm = mdutil.normalized_tags(tags_all or [])
     results: list[dict[str, Any]] = []
-    for rel, item, fm, text in _iter_notes(config, root_path, operator_mode=operator_mode, limit=cap):
+    scope_rel, scan_capped, notes = _iter_notes(config, root_path, operator_mode=operator_mode, limit=cap)
+    for rel, item, fm, text in notes:
         if any(str(fm.get(k)) != str(v) for k, v in filters.items()):
             continue
         note_tags = mdutil.normalized_tags(mdutil.frontmatter_tags(fm))
@@ -165,7 +173,11 @@ def search_by_properties(
         results.append(meta)
         if len(results) >= cap:
             break
-    return {"root_path": root_path.strip("/"), "count": len(results), "results": results}
+    # Make the effective scope explicit (paths are honest, full vault-relative) and flag when the scan
+    # was capped, so a client never mistakes a scoped/truncated slice for the whole vault.
+    return {"root_path": root_path.strip("/"), "scope": scope_rel or "(entire vault)",
+            "scoped": bool(scope_rel), "count": len(results),
+            "truncated": bool(scan_capped or len(results) >= cap), "results": results}
 
 
 def _field_value(fm: dict[str, Any], note: dict[str, Any], field: str) -> Any:
@@ -212,7 +224,8 @@ def dataview_query(
             raise ObsidianMcpToolError("unsupported_query_op")
     fields = select or ["path", "title", "modified"]
     rows: list[dict[str, Any]] = []
-    for rel, item, fm, text in _iter_notes(config, root_path, operator_mode=operator_mode, limit=cap):
+    scope_rel, scan_capped, notes = _iter_notes(config, root_path, operator_mode=operator_mode, limit=cap)
+    for rel, item, fm, text in notes:
         note = _note_meta(rel, item, fm, text)
         ok = True
         for clause in clauses:
@@ -225,4 +238,8 @@ def dataview_query(
         rows.append({f: _field_value(fm, note, f) for f in fields})
         if len(rows) >= cap:
             break
-    return {"root_path": root_path.strip("/"), "count": len(rows), "select": fields, "rows": rows}
+    # root_path is the SOLE spatial scope (no Dataview FROM clause); make it explicit and flag capping.
+    return {"root_path": root_path.strip("/"), "scope": scope_rel or "(entire vault)",
+            "scoped": bool(scope_rel), "scope_note": "root_path is the only spatial scope; FROM is unsupported",
+            "count": len(rows), "truncated": bool(scan_capped or len(rows) >= cap),
+            "select": fields, "rows": rows}

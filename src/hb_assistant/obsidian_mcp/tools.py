@@ -89,6 +89,12 @@ def _check_size(config: ObsidianMcpConfig, path: Path) -> tuple[bool, int]:
     return size <= config.max_file_mb * 1024 * 1024, size
 
 
+# Hard ceiling on list_directory entries so an unbounded/huge folder can never return a giant payload;
+# the default is intentionally modest and callers may lower it via max_files.
+LIST_DIR_MAX_FILES = 500
+LIST_DIR_DEFAULT_FILES = 100
+
+
 def list_directory(
     config: ObsidianMcpConfig,
     *,
@@ -96,6 +102,7 @@ def list_directory(
     recursive: bool = False,
     extensions: list[str] | None = None,
     max_depth: int | None = None,
+    max_files: int | None = None,
     operator_mode: bool = False,
 ) -> dict[str, Any]:
     resolved = resolve_safe_path(config, path, must_exist=True)
@@ -104,13 +111,19 @@ def list_directory(
     if pathsafe.path_blocked(resolved.relative, include_hidden=_hidden_inspection_allowed(config, operator_mode)):
         raise ObsidianMcpToolError("protected_path_blocked")
 
+    cap = LIST_DIR_DEFAULT_FILES if max_files is None else max_files
+    cap = max(1, min(int(cap), LIST_DIR_MAX_FILES))
     include_hidden = _hidden_inspection_allowed(config, operator_mode)
     allowed_exts = _allowed_extensions(config, extensions)
     files: list[dict[str, Any]] = []
+    truncated = False
     base_depth = len(resolved.path.relative_to(resolved.root).parts) if resolved.path != resolved.root else 0
 
     iterator = resolved.path.rglob("*") if recursive else resolved.path.iterdir()
     for item in sorted(iterator, key=lambda p: p.as_posix().lower()):
+        if len(files) >= cap:
+            truncated = True
+            break
         if item.is_symlink():
             try:
                 item.resolve().relative_to(resolved.root)
@@ -138,7 +151,9 @@ def list_directory(
             }
         )
 
-    return {"root": str(resolved.root), "path": resolved.relative, "files": files}
+    # Never leak the absolute host mount root (e.g. /mnt/vault); a vault-relative path_display is enough.
+    return {"path": resolved.relative, "path_display": resolved.relative or "/", "files": files,
+            "file_count": len(files), "truncated": truncated, "max_files": cap}
 
 
 def _markdown_heading_section(content: str, heading: str) -> str | None:
