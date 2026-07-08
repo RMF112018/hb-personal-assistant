@@ -1359,7 +1359,10 @@ class ConstructionStore:
                     """,
                     (
                         source_id,
-                        window_end_utc if (not chunked or is_final_chunk) else None,
+                        # last_successful_sync_utc must be the completion time, NOT window_end_utc
+                        # (the forward-looking calendar window end), which wrote a future timestamp
+                        # that freshness then flagged as an anomaly.
+                        now_done if (not chunked or is_final_chunk) else None,
                         last_attempted_sync_utc,
                         window_start_utc,
                         window_end_utc,
@@ -6000,12 +6003,16 @@ class ConstructionStore:
                              latest_received_datetime, latest_sent_datetime,
                              delta_token_fingerprint, delta_token_supported, sync_status,
                              error_redacted)
-                        VALUES (?, ?, 'project_discover', 30, NULL, ?, NULL, NULL, NULL, 0, 'completed', NULL)
+                        VALUES (?, ?, 'project_discover', 30, ?, ?, NULL, NULL, NULL, 0, 'completed', NULL)
                         ON CONFLICT(source_id, folder_id) DO UPDATE SET
+                            last_successful_sync_utc = excluded.last_successful_sync_utc,
                             last_attempted_sync_utc = excluded.last_attempted_sync_utc,
                             sync_status = excluded.sync_status
                         """,
-                        (sid, fid, now),
+                        # This branch runs only after the batch's writes succeed, so record the success
+                        # timestamp (was hard-coded NULL) alongside sync_status='completed' — otherwise
+                        # freshness always reads email as never-synced. Mirrors delta_sync's ok-path.
+                        (sid, fid, now, now),
                     )
 
                 # crawl run markers per source involved (mode=project_discover for audit trail)

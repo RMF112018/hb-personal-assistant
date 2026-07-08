@@ -339,3 +339,40 @@ def test_freshness_future_anomaly_not_overridden_by_status() -> None:
     info = {"status": freshness.STATUS_FUTURE, "last": "2099-01-01T00:00:00+00:00", "age_seconds": -1000}
     out = freshness._apply_last_status(dict(info), "failed")
     assert out["status"] == freshness.STATUS_FUTURE  # anomaly wins; not downgraded to degraded
+
+
+def test_freshness_blocked_status_surfaced_from_unknown() -> None:
+    # drive_sync: no timestamps (unknown) + pending_admin_approval → blocked, not a bare "unknown".
+    from hb_assistant.nas_mcp import freshness
+
+    info = {"status": freshness.STATUS_UNKNOWN, "last": None, "age_seconds": None}
+    out = freshness._apply_last_status(dict(info), "pending_admin_approval")
+    assert out["status"] == freshness.STATUS_BLOCKED
+    assert out["last_status"] == "pending_admin_approval"
+
+
+def test_freshness_sync_domain_falls_back_to_last_attempt(tmp_path: Path) -> None:
+    # email_sync_state: last_successful NULL but attempts present → stale/never_succeeded, not "unknown".
+    from datetime import timedelta
+
+    from hb_assistant.nas_mcp import freshness
+
+    db = str(tmp_path / "fresh.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    old = (freshness._now() - timedelta(days=31)).isoformat()  # relative → robust to the clock
+    with sqlite3.connect(db) as c:
+        c.execute("INSERT INTO email_sync_state (source_id, folder_id, sync_mode, lookback_days, "
+                  "last_successful_sync_utc, last_attempted_sync_utc, sync_status) "
+                  "VALUES ('outlook:x:inbox','f1','bounded_lookback',30, NULL, ?, 'completed')", (old,))
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    conn.execute("PRAGMA query_only=ON")
+    try:
+        info = freshness._sync_domain(conn, "email_sync_state", "last_successful_sync_utc",
+                                      "sync_status", attempted_col="last_attempted_sync_utc")
+    finally:
+        conn.close()
+    assert info["status"] == freshness.STATUS_STALE  # month-old attempt, not "unknown"
+    assert info["never_succeeded"] is True and info["basis"] == "last_attempt"
+    assert info["last_status"] == "completed"

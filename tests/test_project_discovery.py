@@ -168,6 +168,42 @@ def test_idempotent_recommit() -> None:
     assert _match_count(db) == first  # upsert on (message_id, project_key, match_signal)
 
 
+def _sync_row(db: str) -> Optional[tuple[Any, ...]]:
+    conn = sqlite3.connect(db)
+    try:
+        return conn.execute(
+            "SELECT last_successful_sync_utc, last_attempted_sync_utc, sync_status"
+            " FROM email_sync_state WHERE source_id = 'outlook:h:inbox'"
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def test_discover_records_last_successful_sync() -> None:
+    """Regression: the sync_state upsert records last_successful_sync_utc on the
+    success path (was hard-coded NULL), so freshness no longer reads a synced
+    mailbox as never-synced. Covers the INSERT and ON CONFLICT re-sync paths."""
+    db = _tmp_db()
+    store = _store_with_inbox(db)
+    reader = FakeReader([_msg("m1", subject="RFI 23-435-01 slab")])
+    d = ProjectEmailDiscovery(reader, store)
+    d.discover(project_key="tropical", lookback_days=30, dry_run=False)
+
+    row = _sync_row(db)
+    assert row is not None
+    assert row[0] is not None  # last_successful_sync_utc set on INSERT
+    assert row[1] is not None  # last_attempted_sync_utc also set
+    assert row[2] == "completed"
+    first_success = row[0]
+
+    # Re-run drives the ON CONFLICT DO UPDATE path; success stays recorded.
+    d.discover(project_key="tropical", lookback_days=30, dry_run=False)
+    row2 = _sync_row(db)
+    assert row2 is not None
+    assert row2[0] is not None
+    assert row2[0] >= first_success  # monotonic (same-clock resolution allows equality)
+
+
 def test_no_match_window_persists_nothing() -> None:
     db = _tmp_db()
     store = _store_with_inbox(db)
