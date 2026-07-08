@@ -1,0 +1,5 @@
+# N8C-23 preflight
+date_utc: 20260708T074516Z
+branch: ops/nas-second-brain-n8c-23-artifact-workspace-tool-manifest-20260708
+head: 8fffd5b40384c12aaa8a793ba51df6c73c395ee1
+base: 8fffd5b4 (n8c-22 committed)

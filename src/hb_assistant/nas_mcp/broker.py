@@ -9,6 +9,13 @@ import uuid
 from typing import Any
 
 from . import freshness, limits
+from .artifact_tools import (
+    ALL_PA_TOOLS,
+    PA_CANONICAL_WRITE_TOOLS,
+    PA_MANIFEST_TOOLS,
+    artifact_workspace_status,
+    dispatch_artifact_tool,
+)
 from .audit import NasMcpAuditWriter
 from .config import NasMcpConfig
 from .db_allowlist import list_allowlisted_table_keys
@@ -38,6 +45,7 @@ from .overrides import OverrideStore
 from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
+    artifact_workspace_enabled,
     assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
@@ -52,6 +60,7 @@ from .profile import (
     assistant_source_connector_enabled,
     assistant_workflows_enabled,
     blocked_write_tools,
+    client_tool_manifest_enabled,
     gate_status,
     safe_mode_enabled,
 )
@@ -399,7 +408,7 @@ def _capability_tier(tool_name: str, write_attempted: bool) -> int:
         return 5
     if tool_name in OBSIDIAN_WRITE_TOOLS or tool_name.startswith("hb_output_write") or tool_name == "hb_output_create_dir":
         return 4
-    if tool_name == AI_OUTPUTS_WRITE_TOOL:
+    if tool_name == AI_OUTPUTS_WRITE_TOOL or tool_name in PA_CANONICAL_WRITE_TOOLS:
         return 3
     if tool_name in FRESHNESS_TOOLS or tool_name == "hb_mcp_status":
         return 0
@@ -424,6 +433,7 @@ class NasMcpBroker:
             tool_name in OBSIDIAN_WRITE_TOOLS
             or tool_name.startswith("hb_output_")
             or tool_name == AI_OUTPUTS_WRITE_TOOL
+            or tool_name in PA_CANONICAL_WRITE_TOOLS
         )
         auth = get_auth_context()
         client_label = auth.client_label if auth else "any"
@@ -618,6 +628,8 @@ class NasMcpBroker:
                 "port_policy": "127.0.0.1:8765 host publish only",
                 # N8C-22 client-exposure summary (canonical 78 + per-group kill-switch aware).
                 **assistant_client_exposure_status(),
+                # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
+                **artifact_workspace_status(cfg),
             }
         if tool_name == AI_OUTPUTS_WRITE_TOOL:
             from .ai_outputs import ai_outputs_card_upsert  # noqa: PLC0415
@@ -684,6 +696,15 @@ class NasMcpBroker:
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
             return self._invoke_assistant(cfg, tool_name, arguments)
+        if tool_name in ALL_PA_TOOLS:
+            # N8C-23 artifact workspace + client tool operating manifest. Gated by their own kill switches;
+            # canonical writes additionally pass through the dispatch write gates + server-side
+            # approval/validation/idempotency inside the handler.
+            if tool_name in PA_MANIFEST_TOOLS and not client_tool_manifest_enabled():
+                raise ValueError("client_tool_manifest_disabled")
+            if tool_name not in PA_MANIFEST_TOOLS and not artifact_workspace_enabled():
+                raise ValueError("artifact_workspace_disabled")
+            return dispatch_artifact_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name == "hb_db_select":
             return hb_db_select(
                 config=cfg,

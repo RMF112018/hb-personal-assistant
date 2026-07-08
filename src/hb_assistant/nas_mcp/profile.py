@@ -285,6 +285,32 @@ def assistant_quality_enabled() -> bool:
     return True if override is None else override
 
 
+def artifact_workspace_enabled() -> bool:
+    """N8C-23 Structured Intelligence Artifact Workspace tools (``pa_session_capture_*`` /
+    ``pa_artifact_proposal_*`` / ``pa_artifact_promotion_*`` / ``pa_canonical_artifact_*`` /
+    ``pa_vault_path_resolve``).
+
+    Read/advisory + staged-write tools never finalize; the single canonical write
+    (``pa_artifact_promotion_apply``) is additionally guarded by a server-minted operator_approval_id, a
+    passed validation receipt, a recomputed validation hash, and a server-derived idempotency key. Enabled by
+    DEFAULT in every profile (the amendments' approval/validation/idempotency chain is the control, not a
+    default-off gate); this kill-switch (``HB_MCP_ARTIFACT_WORKSPACE=0``) is a defense-in-depth master off.
+    """
+    override = _env_bool("HB_MCP_ARTIFACT_WORKSPACE")
+    return True if override is None else override
+
+
+def client_tool_manifest_enabled() -> bool:
+    """N8C-23 Client Tool Operating Manifest tools (``pa_tool_manifest_*``).
+
+    Read/advisory + a staged refresh; materializing the manifest (``pa_tool_manifest_refresh_promote``)
+    requires a server-minted operator approval + a no-drift checksum (never a silent rewrite). Enabled by
+    DEFAULT; kill-switch ``HB_MCP_CLIENT_TOOL_MANIFEST=0``.
+    """
+    override = _env_bool("HB_MCP_CLIENT_TOOL_MANIFEST")
+    return True if override is None else override
+
+
 def safe_mode_enabled() -> bool:
     """Global incident/safe mode. When on, the surface stays readable (status, freshness,
     Tier 0-1 reads) but ALL mutations are denied. Default off; set only by the operator via
@@ -338,4 +364,6 @@ def gate_status() -> dict[str, object]:
         "assistant_feedback_enabled": assistant_feedback_enabled(),
         "assistant_action_stages_enabled": assistant_action_stages_enabled(),
         "assistant_quality_enabled": assistant_quality_enabled(),
+        "artifact_workspace_enabled": artifact_workspace_enabled(),
+        "client_tool_manifest_enabled": client_tool_manifest_enabled(),
     }

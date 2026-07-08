@@ -1,0 +1,26 @@
+PASS - schema V112 + workspace status 
+PASS - 78 assistant tools preserved 
+PASS - client tool manifest freshness field present 
+PASS - freshness reports stale when no manifest yet 
+PASS - manifest refresh is staged (not silent) 
+PASS - manifest promoted to 99 System/Manifests (md+json) 
+PASS - freshness fresh after promote 
+PASS - proposal bundle staged 
+PASS - revision creates a new version (v1 preserved) 
+PASS - plan is advisory (destination paths shown) 
+PASS - validate mints server approval + idempotency + hash 
+PASS - promotion writes 3 approved canonical artifacts 
+PASS - cards materialized into existing folders w/ frontmatter+tags+backlink 
+PASS - promotion receipt card written to 99 System/Receipts 
+PASS - canonical manifest (md+json) written 
+PASS - promoted artifacts retrievable next session 
+PASS - promotion retry is idempotent (no duplication) 
+PASS - forged operator approval rejected on fresh bundle 
+PASS - unvalidated promotion bundle rejected 
+PASS - override into NEW top-level folder rejected 
+PASS - traversal override rejected 
+PASS - assistant gateway rejects pa_ tools 
+PASS - manifest refresh with forged approval rejected 
+PASS - no new top-level vault folder created 
+
+SMOKE PASSED: full staged->reviewed->promoted->materialized->receipted->manifested->retrieved loop + negatives

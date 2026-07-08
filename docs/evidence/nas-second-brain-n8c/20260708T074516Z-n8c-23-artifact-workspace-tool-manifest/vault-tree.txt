@@ -1,0 +1,19 @@
+Temp vault structure (mirrors real folders; never the synced vault):
+
+00 Inbox
+90 Archive
+99 System
+99 System/Manifests
+99 System/Receipts
+AI Outputs
+Attachments
+Daily
+Email Archive
+Home
+MOCs
+Source Notes
+Templates
+Work
+Work/03 Decisions
+Work/04 Actions
+Work/07 Knowledge

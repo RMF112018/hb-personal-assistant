@@ -1,0 +1,11 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 14 items
+
+tests/test_n8c23_vault_path_resolver.py ..........                       [ 71%]
+tests/test_n8c23_obsidian_card_renderer.py ....                          [100%]
+
+============================== 14 passed in 1.86s ==============================

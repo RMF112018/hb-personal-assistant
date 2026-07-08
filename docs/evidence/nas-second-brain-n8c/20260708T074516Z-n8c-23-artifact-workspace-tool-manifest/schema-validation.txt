@@ -1,0 +1,22 @@
+LATEST_SCHEMA_VERSION = 112
+head after first apply = 112
+head after re-apply    = 112 (idempotent)
+
+N8C-23 pa_ tables (15):
+   pa_artifact_links
+   pa_artifact_promotion_bundles
+   pa_artifact_proposal_bundles
+   pa_artifact_proposal_versions
+   pa_artifact_proposals
+   pa_artifact_repair_tasks
+   pa_artifact_review_decisions
+   pa_artifact_validation_receipts
+   pa_canonical_artifacts
+   pa_client_tool_manifests
+   pa_promotion_receipts
+   pa_session_captures
+   pa_tool_manifest_entries
+   pa_tool_manifest_refresh_proposals
+   pa_workflow_route_recipes
+
+DDL statement counts (incl indexes): workspace = 28  manifest = 8

@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 111
+LATEST_SCHEMA_VERSION = 112
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7022,6 +7022,14 @@ class SQLiteMigrator:
 
         return V111_STATEMENTS
 
+    @staticmethod
+    def _v112_statements() -> list[str]:
+        # N8C-23: Structured Intelligence Artifact Workspace + Client Tool Operating Manifest.
+        from hb_assistant.store.pa_artifact_workspace_tables import V112_ARTIFACT_WORKSPACE_STATEMENTS
+        from hb_assistant.store.pa_client_tool_manifest_tables import V112_CLIENT_TOOL_MANIFEST_STATEMENTS
+
+        return V112_ARTIFACT_WORKSPACE_STATEMENTS + V112_CLIENT_TOOL_MANIFEST_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8905,6 +8913,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (111, 'v111_assistant_quality', ?)",
+                    (now,),
+                )
+
+            # v112 (NAS N8C-23): Structured Intelligence Artifact Workspace + Client Tool Operating Manifest.
+            # Durable, operator-reviewed staging → server-validated → operator-approved canonical promotion of
+            # second-brain artifacts, plus a versioned client tool routing manifest. Additive, all tables ship
+            # EMPTY; rows are only written by the explicit N8C-23 staging/promotion/manifest surfaces. Adds a
+            # narrowly-scoped, approval-gated write surface — never a raw/arbitrary/broad write.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 112")
+            if cur.fetchone() is None:
+                for stmt in self._v112_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (112, 'v112_pa_artifact_workspace_and_tool_manifest', ?)",
                     (now,),
                 )
 

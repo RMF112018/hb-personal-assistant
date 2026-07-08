@@ -15,6 +15,7 @@ from .broker import (
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
+    artifact_workspace_enabled,
     assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
     assistant_context_packs_enabled,
@@ -29,6 +30,7 @@ from .profile import (
     assistant_source_connector_enabled,
     assistant_workflows_enabled,
     blocked_write_tools,
+    client_tool_manifest_enabled,
     scratch_output_write_enabled,
 )
 
@@ -1098,3 +1100,177 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             raise ValueError("arguments_must_be_object")
         _reject_unbounded_gateway_args(arguments)
         return broker.dispatch(tool_name, arguments)
+
+    # N8C-23 Structured Intelligence Artifact Workspace tools. Read/advisory + staged-write (never the vault);
+    # pa_artifact_promotion_apply is the single canonical write, guarded by server-minted approval +
+    # validation + idempotency inside the broker/handler. Gated by artifact_workspace_enabled().
+    if artifact_workspace_enabled():
+
+        @mcp.tool()
+        def pa_session_capture_stage(source_client: str, session_title: str, capture_trigger: str,
+                                     session_summary: str, selected_excerpts: list[str] | None = None,
+                                     source_client_session_ref: str | None = None,
+                                     operator_id: str | None = None,
+                                     redaction_state: str = "redacted") -> dict[str, Any]:
+            """Stage a BOUNDED session capture (summary + selected excerpts; NO raw transcript). First step of
+            'document this session'. Returns a session_id used to stage artifact proposals."""
+            return _assistant_result("pa_session_capture_stage", {
+                "source_client": source_client, "session_title": session_title,
+                "capture_trigger": capture_trigger, "session_summary": session_summary,
+                "selected_excerpts": selected_excerpts or [], "source_client_session_ref": source_client_session_ref,
+                "operator_id": operator_id, "redaction_state": redaction_state})
+
+        @mcp.tool()
+        def pa_session_capture_get(session_id: str) -> dict[str, Any]:
+            """Retrieve a staged session capture by session_id."""
+            return _assistant_result("pa_session_capture_get", {"session_id": session_id})
+
+        @mcp.tool()
+        def pa_artifact_proposal_stage(session_id: str,
+                                       candidate_artifacts: list[dict[str, Any]]) -> dict[str, Any]:
+            """Stage a proposal bundle of candidate artifacts (decision/preference/open_loop/workflow/…) from a
+            session. Returns the bundle id, proposal ids, and a human + machine review packet. Nothing is
+            canonical yet."""
+            return _assistant_result("pa_artifact_proposal_stage",
+                                     {"session_id": session_id, "candidate_artifacts": candidate_artifacts})
+
+        @mcp.tool()
+        def pa_artifact_proposal_list(proposal_bundle_id: str | None = None, review_status: str | None = None,
+                                      limit: int = 50) -> dict[str, Any]:
+            """List staged artifact proposals (optionally by bundle / review_status)."""
+            return _assistant_result("pa_artifact_proposal_list", {
+                "proposal_bundle_id": proposal_bundle_id, "review_status": review_status, "limit": limit})
+
+        @mcp.tool()
+        def pa_artifact_proposal_get(proposal_id: str) -> dict[str, Any]:
+            """Retrieve one artifact proposal."""
+            return _assistant_result("pa_artifact_proposal_get", {"proposal_id": proposal_id})
+
+        @mcp.tool()
+        def pa_artifact_proposal_revise(proposal_id: str, body_markdown: str | None = None,
+                                        structured_payload: dict[str, Any] | None = None,
+                                        operator_instruction: str | None = None,
+                                        revision_summary: str | None = None,
+                                        created_by_client: str | None = None) -> dict[str, Any]:
+            """Revise a proposal, creating a NEW version (v1 is never overwritten)."""
+            return _assistant_result("pa_artifact_proposal_revise", {
+                "proposal_id": proposal_id, "body_markdown": body_markdown,
+                "structured_payload": structured_payload, "operator_instruction": operator_instruction,
+                "revision_summary": revision_summary, "created_by_client": created_by_client})
+
+        @mcp.tool()
+        def pa_artifact_proposal_review(proposal_id: str, decision: str, operator_id: str | None = None,
+                                        review_notes: str | None = None) -> dict[str, Any]:
+            """Record an operator review decision (approve/reject/request_revision/merge/split/
+            session_note_only/defer). 'approve' mints a SERVER-side approval id bound to the proposal."""
+            return _assistant_result("pa_artifact_proposal_review", {
+                "proposal_id": proposal_id, "decision": decision, "operator_id": operator_id,
+                "review_notes": review_notes})
+
+        @mcp.tool()
+        def pa_artifact_proposal_compare(proposal_ids: list[str]) -> dict[str, Any]:
+            """Compare a small set of proposals (bounded metadata)."""
+            return _assistant_result("pa_artifact_proposal_compare", {"proposal_ids": proposal_ids})
+
+        @mcp.tool()
+        def pa_artifact_proposal_plan_promotion(proposal_bundle_id: str) -> dict[str, Any]:
+            """Advisory promotion plan for the APPROVED proposals: proposed canonical ids, destination vault
+            paths, tags, backlinks, duplicate warnings. Writes nothing."""
+            return _assistant_result("pa_artifact_proposal_plan_promotion",
+                                     {"proposal_bundle_id": proposal_bundle_id})
+
+        @mcp.tool()
+        def pa_artifact_promotion_validate(proposal_bundle_id: str,
+                                           operator_id: str | None = None) -> dict[str, Any]:
+            """Validate the plan and persist a validation receipt binding the exact canonical ids/paths/tags/
+            hashes. Returns promotion_bundle_id + server-minted operator_approval_id + idempotency_key needed to
+            apply. Writes no vault content."""
+            return _assistant_result("pa_artifact_promotion_validate",
+                                     {"proposal_bundle_id": proposal_bundle_id, "operator_id": operator_id})
+
+        @mcp.tool()
+        def pa_artifact_promotion_apply(promotion_bundle_id: str, operator_approval_id: str,
+                                        idempotency_key: str | None = None,
+                                        operator_id: str | None = None) -> dict[str, Any]:
+            """Promote approved proposals to canonical records AND materialize Obsidian cards (the one canonical
+            write). Requires the server-minted operator_approval_id + a passed validation whose hash still
+            matches. Idempotent: a retry returns the existing receipt."""
+            return _assistant_result("pa_artifact_promotion_apply", {
+                "promotion_bundle_id": promotion_bundle_id, "operator_approval_id": operator_approval_id,
+                "idempotency_key": idempotency_key, "operator_id": operator_id})
+
+        @mcp.tool()
+        def pa_artifact_promotion_receipt_get(promotion_receipt_id: str) -> dict[str, Any]:
+            """Retrieve a promotion receipt."""
+            return _assistant_result("pa_artifact_promotion_receipt_get",
+                                     {"promotion_receipt_id": promotion_receipt_id})
+
+        @mcp.tool()
+        def pa_artifact_manifest_get(artifact_type: str | None = None, limit: int = 50) -> dict[str, Any]:
+            """List canonical artifacts (the canonical artifact manifest view)."""
+            return _assistant_result("pa_artifact_manifest_get",
+                                     {"artifact_type": artifact_type, "limit": limit})
+
+        @mcp.tool()
+        def pa_vault_path_resolve(artifact_type: str, title: str, domain: str | None = None,
+                                  canonical_id: str | None = None,
+                                  operator_override_path: str | None = None) -> dict[str, Any]:
+            """Resolve the destination vault path an artifact WOULD use (existing folders only; refuses new
+            top-level folders / traversal). Read-only preview."""
+            return _assistant_result("pa_vault_path_resolve", {
+                "artifact_type": artifact_type, "title": title, "domain": domain,
+                "canonical_id": canonical_id, "operator_override_path": operator_override_path})
+
+        @mcp.tool()
+        def pa_canonical_artifact_list(artifact_type: str | None = None, limit: int = 50) -> dict[str, Any]:
+            """List promoted canonical artifacts for future retrieval."""
+            return _assistant_result("pa_canonical_artifact_list",
+                                     {"artifact_type": artifact_type, "limit": limit})
+
+        @mcp.tool()
+        def pa_canonical_artifact_get(canonical_id: str) -> dict[str, Any]:
+            """Retrieve one canonical artifact by canonical_id."""
+            return _assistant_result("pa_canonical_artifact_get", {"canonical_id": canonical_id})
+
+    # N8C-23 Client Tool Operating Manifest tools. Read/advisory + a staged refresh; refresh_promote is the
+    # only manifest write and requires a server-minted approval + no-drift checksum. Gated separately.
+    if client_tool_manifest_enabled():
+
+        @mcp.tool()
+        def pa_tool_manifest_get() -> dict[str, Any]:
+            """The Client Tool Operating Manifest: which tool to use, when, sequences, safety classes, and
+            freshness. Use this to route your tool choices."""
+            return _assistant_result("pa_tool_manifest_get", {})
+
+        @mcp.tool()
+        def pa_tool_manifest_tool_help(tool_name: str) -> dict[str, Any]:
+            """Manifest guidance for one tool (class, safety, read/write, replacement tools)."""
+            return _assistant_result("pa_tool_manifest_tool_help", {"tool_name": tool_name})
+
+        @mcp.tool()
+        def pa_tool_manifest_workflow_get(workflow_name: str | None = None) -> dict[str, Any]:
+            """Workflow route recipes (trigger phrases, tool sequence, approval points)."""
+            return _assistant_result("pa_tool_manifest_workflow_get", {"workflow_name": workflow_name})
+
+        @mcp.tool()
+        def pa_tool_manifest_freshness_check() -> dict[str, Any]:
+            """Compare the live tool surface to the recorded manifest (missing/extra tools, staleness)."""
+            return _assistant_result("pa_tool_manifest_freshness_check", {})
+
+        @mcp.tool()
+        def pa_tool_manifest_review_plan() -> dict[str, Any]:
+            """Advisory review plan for the tool manifest (whether a refresh is due). Writes nothing."""
+            return _assistant_result("pa_tool_manifest_review_plan", {})
+
+        @mcp.tool()
+        def pa_tool_manifest_refresh_stage() -> dict[str, Any]:
+            """Stage a manifest refresh (a diff + server-minted approval id). Does NOT write the manifest."""
+            return _assistant_result("pa_tool_manifest_refresh_stage", {})
+
+        @mcp.tool()
+        def pa_tool_manifest_refresh_promote(refresh_proposal_id: str,
+                                             operator_approval_id: str) -> dict[str, Any]:
+            """Materialize a staged manifest refresh to 99 System/Manifests (md+json). Requires the server-minted
+            operator_approval_id and a no-drift checksum. Never a silent rewrite."""
+            return _assistant_result("pa_tool_manifest_refresh_promote", {
+                "refresh_proposal_id": refresh_proposal_id, "operator_approval_id": operator_approval_id})

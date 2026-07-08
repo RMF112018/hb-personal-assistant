@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 5 items
+
+tests/test_n8c23_canonical_promotion.py .....                            [100%]
+
+============================== 5 passed in 8.91s ===============================

@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: /Users/bobbyfetting/hb-personal-assistant
+configfile: pyproject.toml
+plugins: anyio-4.13.0
+collected 45 items
+
+tests/test_n8c_final_validation.py ......                                [ 13%]
+tests/test_n8c_mcp_tool_inventory_final.py ........                      [ 31%]
+tests/test_n8c_client_exposure_bridge.py ............................... [100%]
+
+======================== 45 passed in 61.55s (0:01:01) =========================

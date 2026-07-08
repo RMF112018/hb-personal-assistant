@@ -1,0 +1,10 @@
+N8C-23 exact staged paths (no git add -A; pre-existing untracked dirs excluded)
+branch: ops/nas-second-brain-n8c-23-artifact-workspace-tool-manifest-20260708
+parent HEAD: 8fffd5b4 feat(nas): add n8c-22 client exposure bridge
+
+== modified (in-scope) ==
+ M src/hb_assistant/nas_mcp/broker.py
+ M src/hb_assistant/nas_mcp/profile.py
+ M src/hb_assistant/nas_mcp/tool_registration.py
+ M src/hb_assistant/store/migrator.py
+ M tests/test_n8c_final_validation.py

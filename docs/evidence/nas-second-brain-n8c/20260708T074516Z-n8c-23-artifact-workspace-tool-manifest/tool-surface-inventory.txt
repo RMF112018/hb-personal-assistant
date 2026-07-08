@@ -1,0 +1,52 @@
+registered assistant_ tools : 78 (N8C-22 invariant = 78)
+registered pa_ tools        : 23
+  canonical-write pa_ tools : ['pa_artifact_promotion_apply', 'pa_tool_manifest_refresh_promote']
+  staged-write pa_ tools    : ['pa_artifact_proposal_review', 'pa_artifact_proposal_revise', 'pa_artifact_proposal_stage', 'pa_session_capture_stage', 'pa_tool_manifest_refresh_stage']
+pa_ in ALL_ASSISTANT_TOOLS  : set() (must be empty)
+pa_ names tripping write-verb heuristic: [] (must be empty)
+
+new hb_mcp_status fields:
+   artifact_workspace_enabled = True
+   artifact_workspace_last_promotion_at = None
+   artifact_workspace_last_receipt_id = None
+   artifact_workspace_pending_promotion_count = 0
+   artifact_workspace_pending_proposal_count = 0
+   artifact_workspace_pending_review_count = 0
+   artifact_workspace_schema_version = 112
+   client_tool_manifest_enabled = True
+   client_tool_manifest_extra_tool_count = 0
+   client_tool_manifest_freshness_checked_at = None
+   client_tool_manifest_generated_at = None
+   client_tool_manifest_mapping_count = 0
+   client_tool_manifest_missing_tool_count = 120
+   client_tool_manifest_next_review_due_at = None
+   client_tool_manifest_review_required = True
+   client_tool_manifest_staleness_state = stale
+   client_tool_manifest_tool_count = 0
+   client_tool_manifest_version = None
+   client_tool_manifest_workflow_count = 0
+
+all pa_ tool names:
+   pa_artifact_manifest_get
+   pa_artifact_promotion_apply
+   pa_artifact_promotion_receipt_get
+   pa_artifact_promotion_validate
+   pa_artifact_proposal_compare
+   pa_artifact_proposal_get
+   pa_artifact_proposal_list
+   pa_artifact_proposal_plan_promotion
+   pa_artifact_proposal_review
+   pa_artifact_proposal_revise
+   pa_artifact_proposal_stage
+   pa_canonical_artifact_get
+   pa_canonical_artifact_list
+   pa_session_capture_get
+   pa_session_capture_stage
+   pa_tool_manifest_freshness_check
+   pa_tool_manifest_get
+   pa_tool_manifest_refresh_promote
+   pa_tool_manifest_refresh_stage
+   pa_tool_manifest_review_plan
+   pa_tool_manifest_tool_help
+   pa_tool_manifest_workflow_get
+   pa_vault_path_resolve
