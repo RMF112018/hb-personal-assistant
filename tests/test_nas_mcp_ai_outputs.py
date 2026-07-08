@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.naming import sanitize_domain
-from hb_assistant.nas_mcp.ai_outputs import _render_card
+from hb_assistant.nas_mcp.ai_outputs import AiOutputsError, _render_card, normalize_source_client
 from hb_assistant.nas_mcp.broker import NasMcpBroker
 from hb_assistant.nas_mcp.config import NasMcpConfig, NasObsidianConfig, RootSpec
 
@@ -44,6 +44,19 @@ def _broker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[NasMcpBrok
     cfg = _cfg(tmp_path)
     monkeypatch.setenv("HB_OBSIDIAN_MCP_SUPPORT_DIR", str(cfg.obsidian.support_dir))
     return NasMcpBroker(cfg), cfg
+
+
+def test_source_client_normalizes_model_variants() -> None:
+    # A connected client may send a model/variant string; accept its family, reject an unknown family.
+    assert normalize_source_client("chatgpt-gpt-5.5-thinking") == "chatgpt"
+    assert normalize_source_client("claude/opus") == "claude"
+    assert normalize_source_client("grok:2") == "grok"
+    assert normalize_source_client("CHATGPT") == "chatgpt"
+    assert normalize_source_client(None) == "unknown"
+    assert normalize_source_client("") == "unknown"
+    for bad in ("bogus-model", "gemini", "openai"):
+        with pytest.raises(AiOutputsError):
+            normalize_source_client(bad)
 
 
 def test_render_card_frontmatter_is_neutral() -> None:

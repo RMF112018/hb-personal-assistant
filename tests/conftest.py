@@ -70,3 +70,9 @@ def isolated_hb_pa_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     }
     cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
     monkeypatch.setenv("HB_PA_CONFIG", str(cfg_path))
+    # ``nas_mcp.obsidian_config.apply_obsidian_support_env`` pins HB_OBSIDIAN_MCP_SUPPORT_DIR via
+    # ``os.environ.setdefault`` (an operator override on the real host). ``setdefault`` writes the process
+    # environment directly, so monkeypatch cannot revert it and the first nas_mcp test to run leaks a shared
+    # support dir — and thus a shared ``mutations.jsonl`` — into every later test's mutation receipts. Clear it
+    # at the start of each test so each test's obsidian mutation log resolves to its own per-test support dir.
+    monkeypatch.delenv("HB_OBSIDIAN_MCP_SUPPORT_DIR", raising=False)

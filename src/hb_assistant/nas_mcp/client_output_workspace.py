@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hb_assistant.store.connection import borrow_connection, transaction
+from hb_assistant.store.connection import borrow_connection, db_readonly, transaction
 
 from . import client_output_path_resolver as resolver
 from . import client_output_writers as writers
@@ -79,9 +79,17 @@ class ClientOutputWorkspaceRepository:
     def __init__(self, config: NasMcpConfig, db_path: str | None = None) -> None:
         self.config = config
         self.db_path = db_path or str(config.db_path)
+        # Reads open the snapshot read-only on the internet-facing profile; staged/committed output
+        # writes cannot persist to a read-only snapshot mount, so they fail closed with an honest error.
+        self._readonly = db_readonly()
+
+    def _guard_writable(self) -> None:
+        if self._readonly:
+            raise ClientOutputError("read_only_db_surface:output_staging_unavailable")
 
     # ---------- staging ----------
     def stage_output_file(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self._guard_writable()
         title = str(payload.get("title") or "").strip()
         file_type = str(payload.get("file_type") or "").strip().lower().lstrip(".")
         content_mode = str(payload.get("content_mode") or "text").strip()
@@ -144,6 +152,7 @@ class ClientOutputWorkspaceRepository:
     # ---------- commit ----------
     def commit_output_file(self, *, output_id: str, operator_approval_id: str,
                            idempotency_key: str | None = None, operator_id: str | None = None) -> dict[str, Any]:
+        self._guard_writable()
         rec = self.get_output_file(output_id, include_content=True)
         if not rec:
             raise ClientOutputError("output_not_found")
@@ -228,6 +237,7 @@ class ClientOutputWorkspaceRepository:
                 "deletes": False, "requires_operator_approval": True, "writes": False}
 
     def commit_archive_output(self, *, output_id: str, operator_approval_id: str) -> dict[str, Any]:
+        self._guard_writable()
         rec = self.get_output_file(output_id)
         if not rec:
             raise ClientOutputError("output_not_found")
@@ -273,12 +283,12 @@ class ClientOutputWorkspaceRepository:
             sql += " WHERE " + " AND ".join(where)
         sql += " ORDER BY created_at DESC LIMIT ?"
         args.append(min(int(limit), 200))
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             rows = [dict(zip(_FILE_COLS, r, strict=True)) for r in c.execute(sql, args).fetchall()]
         return {"outputs": [{k: r.get(k) for k in _PUBLIC_FILE_FIELDS} for r in rows], "count": len(rows)}
 
     def get_output_file(self, output_id: str, *, include_content: bool = False) -> dict[str, Any] | None:
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             row = _row(c.execute("SELECT " + ", ".join(_FILE_COLS) + " FROM assistant_output_files "
                                  "WHERE output_id=?", (output_id,)), _FILE_COLS)
         if row and not include_content:
@@ -316,14 +326,14 @@ class ClientOutputWorkspaceRepository:
                 "excerpt": text, "truncated": len(text) >= int(max_chars)}
 
     def get_output_receipt(self, receipt_id: str) -> dict[str, Any] | None:
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             return _row(c.execute("SELECT " + ", ".join(_RECEIPT_COLS) + " FROM assistant_output_file_receipts "
                                   "WHERE receipt_id=?", (receipt_id,)), _RECEIPT_COLS)
 
     def get_output_manifest(self) -> dict[str, Any]:
         cols = ("output_id", "title", "file_type", "status", "relative_path", "receipt_path", "sha256",
                 "source_client", "source_session_id", "created_at")
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             rows = [dict(zip(cols, r, strict=True)) for r in c.execute(
                 "SELECT " + ", ".join(cols) + " FROM assistant_output_file_manifest_entries "
                 "ORDER BY created_at DESC LIMIT 500").fetchall()]
@@ -331,7 +341,7 @@ class ClientOutputWorkspaceRepository:
                 "manifest_relative_paths": list(resolver.manifest_relative_paths())}
 
     def status_counts(self) -> dict[str, Any]:
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             def _one(sql: str, *a: Any) -> Any:
                 r = c.execute(sql, a).fetchone()
                 return r[0] if r else None
@@ -347,7 +357,7 @@ class ClientOutputWorkspaceRepository:
     def _next_output_id(self, now: str) -> str:
         day = now[:10].replace("-", "")
         prefix = f"OUTPUT-{day}-"
-        with borrow_connection(None, self.db_path) as c:
+        with borrow_connection(None, self.db_path, readonly=self._readonly) as c:
             n = c.execute("SELECT COUNT(*) FROM assistant_output_files WHERE output_id LIKE ?",
                           (prefix + "%",)).fetchone()[0]
         return f"{prefix}{n + 1:03d}"

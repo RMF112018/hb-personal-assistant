@@ -56,7 +56,12 @@ def source_status(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
 
 def list_source_roots(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
                       conn: Any = None) -> dict[str, Any]:
-    """Configured source roots (key/enabled/sensitive) + indexed file counts. No absolute paths."""
+    """Configured source roots (key/enabled/sensitive) + indexed file counts. No absolute paths.
+
+    When the runtime config has no ``external_sources`` (e.g. the internet-facing serve profile, which
+    persists no root config), fall back to the roots the INDEX actually records so the list reflects
+    reality instead of returning zero while indexed rows reference real roots. Each entry carries a
+    ``provenance`` marker (``config`` vs ``index``); index-derived entries default ``sensitive`` unknown."""
     roots = []
     for root in config.external_sources:
         roots.append({
@@ -65,7 +70,18 @@ def list_source_roots(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
             "sensitive": bool(root.sensitive),
             "source_kind": root.source_kind,
             "file_count": repo.count_source_files(root.source_root_key, conn=conn),
+            "provenance": "config",
         })
+    if not roots:
+        for key in repo.distinct_indexed_root_keys(conn=conn):
+            roots.append({
+                "source_root_key": key,
+                "enabled": True,
+                "sensitive": False,
+                "source_kind": "external_file",
+                "file_count": repo.count_source_files(key, conn=conn),
+                "provenance": "index",
+            })
     roots.sort(key=lambda r: r["source_root_key"])
     return {"roots": roots, "count": len(roots)}
 

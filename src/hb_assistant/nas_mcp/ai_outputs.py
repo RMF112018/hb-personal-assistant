@@ -32,6 +32,18 @@ class AiOutputsError(ValueError):
     """Bounded failure for the AI Outputs write tool (surfaced as a broker deny)."""
 
 
+def normalize_source_client(raw: str | None) -> str:
+    """Map a source-client string to its allowed family. Accepts model/variant suffixes
+    (e.g. ``chatgpt-gpt-5.5-thinking`` -> ``chatgpt``, ``claude/opus`` -> ``claude``): the family is
+    the leading token before the first ``-``, ``/``, ``:`` or whitespace. Raises on an unknown family."""
+    token = re.split(r"[-/:\s]", str(raw or "").strip().lower(), maxsplit=1)[0]
+    if not token:
+        return "unknown"
+    if token not in ALLOWED_CLIENTS:
+        raise AiOutputsError("invalid_source_client")
+    return token
+
+
 def _slug(title: str) -> str:
     cleaned = _SLUG_STRIP.sub("", title).strip()
     return _SLUG_WS.sub(" ", cleaned).strip()
@@ -69,8 +81,7 @@ def ai_outputs_card_upsert(
         raise AiOutputsError("obsidian_not_configured")
     if mode not in ALLOWED_MODES:
         raise AiOutputsError("invalid_mode")
-    if source_client not in ALLOWED_CLIENTS:
-        raise AiOutputsError("invalid_source_client")
+    source_client = normalize_source_client(source_client)
     # Metadata-only, path-inert label; never trusted for a path. Invalid/empty -> "unknown".
     domain = sanitize_domain(domain)
     title = str(title).strip()

@@ -28,6 +28,15 @@ from hb_assistant.config.path_policy import PathPolicy
 from .errors import StoreReadinessError
 
 
+def db_readonly() -> bool:
+    """True when the process runs against a read-only DB surface (``HB_ASSISTANT_DB_READONLY=1``),
+    e.g. the internet-facing NAS MCP reading a bind-mounted read-only snapshot. Workspace repos use
+    this to open reads immutable/read-only and to fail writes closed rather than hit the
+    writable-parent readiness check.
+    """
+    return os.environ.get("HB_ASSISTANT_DB_READONLY", "").strip() == "1"
+
+
 def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     """Open (or create) the SQLite DB and apply required PRAGMAs.
 
@@ -113,6 +122,31 @@ def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+def _ro_connect(db_path: Path | None) -> sqlite3.Connection:
+    """Open a DB read-only via the immutable URI. ``immutable=1`` is required to open a DB on a
+    read-only mount (a plain ``mode=ro`` open needs write access to the containing directory and
+    fails). Safe for a stable snapshot: the refresh job writes a temp file and atomically renames,
+    so an open descriptor keeps reading its inode. Mirrors ``nas_mcp/db_tools.py:_ro_uri``.
+    """
+    path = Path(db_path) if db_path is not None else PathPolicy().get_db_path()
+
+    from hb_assistant.config.db_storage_guard import assert_db_storage_allowed
+
+    assert_db_storage_allowed(path, context="sqlite_connect_ro")
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True, timeout=30)
+    except sqlite3.OperationalError as e:
+        raise StoreReadinessError(
+            status="blocked_db_unavailable",
+            message=f"Database unavailable at {path}: {e}",
+            db_path=str(path),
+            report={"ok": False, "status": "blocked_db_unavailable", "error": str(e)},
+        ) from e
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA query_only = ON")
+    return conn
+
+
 @contextmanager
 def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
     """Transaction boundary on a BORROWED connection: commit/rollback only, never close.
@@ -129,12 +163,17 @@ def transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
 
 
 @contextmanager
-def open_connection(db_path: Path | None = None) -> Iterator[sqlite3.Connection]:
+def open_connection(
+    db_path: Path | None = None, *, readonly: bool = False
+) -> Iterator[sqlite3.Connection]:
     """Own a connection: open it and ALWAYS close it on exit (every return/exception path).
 
     Use wherever a function opens its own connection so it never leaks a file descriptor.
+    ``readonly=True`` opens the DB immutable/read-only (``_ro_connect``) — required to read a DB on
+    a read-only mount (e.g. the NAS MCP snapshot); it bypasses ``get_connection``'s writable-parent
+    readiness check, which fails on such a mount.
     """
-    conn = get_connection(db_path)
+    conn = _ro_connect(db_path) if readonly else get_connection(db_path)
     try:
         yield conn
     finally:
@@ -143,15 +182,16 @@ def open_connection(db_path: Path | None = None) -> Iterator[sqlite3.Connection]
 
 @contextmanager
 def borrow_connection(
-    conn: sqlite3.Connection | None, db_path: Path | None = None
+    conn: sqlite3.Connection | None, db_path: Path | None = None, *, readonly: bool = False
 ) -> Iterator[sqlite3.Connection]:
     """Yield a caller-supplied ``conn`` (left open) or own+close a fresh one.
 
     Lets a helper accept an optional ``conn=`` so a parent can thread one shared connection
     down a hot path (no per-call open/close churn) while standalone callers stay leak-free.
+    ``readonly=True`` opens a fresh connection immutable/read-only (see ``open_connection``).
     """
     if conn is not None:
         yield conn
     else:
-        with open_connection(db_path) as owned:
+        with open_connection(db_path, readonly=readonly) as owned:
             yield owned

@@ -15,6 +15,10 @@ CASES = [
     ("Document this session", "artifact_workspace"),
     ("Promote the decision record to canonical memory", "canonical_promotion"),
     ("Find the source file for the contract", "assistant_source_connector"),
+    # Reported client-audit misclassifications (were routed 'unknown'); must now hit the source connector.
+    ("Search NAS source folders for Tropical World Nursery documents", "assistant_source_connector"),
+    ("find a file about the schedule", "assistant_source_connector"),
+    ("search the nas for the contract", "assistant_source_connector"),
     ("What did we decide about the schedule", "assistant_decision_memory"),
     ("Show generated files", "output_receipts_manifests"),
     ("Is the server up", "status_health"),

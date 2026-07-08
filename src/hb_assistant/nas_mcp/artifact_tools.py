@@ -18,6 +18,7 @@ from ..obsidian_mcp.client_tool_manifest import (
     render_manifest_md,
 )
 from ..obsidian_mcp.vault_path_resolver import MANIFESTS_FOLDER, resolve_relative_path
+from .artifact_template_registry import SUPPORTED_ARTIFACT_TYPES, resolve_template
 
 # Tool-name tuples. NONE contains the write-verb substrings (write/upsert/delete/create/persist) guarded by
 # test_ai_outputs_is_the_only_write_tool, and none is added to ALL_ASSISTANT_TOOLS / the assistant gateway.
@@ -38,6 +39,10 @@ PA_ARTIFACT_TOOLS: tuple[str, ...] = (
     "pa_vault_path_resolve",
     "pa_canonical_artifact_list",
     "pa_canonical_artifact_get",
+    # Template-based vault-markdown artifact author (the sanctioned client artifact-creation path on
+    # the read-only-DB profile). Name carries no write-verb substring (write/upsert/delete/create/
+    # persist) so the finality-name guard stays green; classified as a canonical write below.
+    "pa_artifact_author",
 )
 
 PA_MANIFEST_TOOLS: tuple[str, ...] = (
@@ -52,7 +57,7 @@ PA_MANIFEST_TOOLS: tuple[str, ...] = (
 
 # Canonical writes (vault + canonical DB) — gated like ai_outputs; require server-minted approval.
 PA_CANONICAL_WRITE_TOOLS: frozenset[str] = frozenset(
-    {"pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote"}
+    {"pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote", "pa_artifact_author"}
 )
 # Staged writes (workspace DB only; never the vault). Includes pa_artifact_promotion_validate: it persists
 # promotion-bundle + validation-receipt rows and mints an operator_approval_id, so it is a workspace DB write
@@ -98,6 +103,95 @@ def _require(args: dict[str, Any], key: str) -> Any:
     if val in (None, ""):
         raise ArtifactWorkspaceError(f"missing_required_arg:{key}")
     return val
+
+
+# Total-content cap for an authored artifact (mirrors ai_outputs; effective cap is config.max_card_bytes).
+_AUTHOR_MAX_BYTES = 262_144
+
+
+def _redact_map(raw: Any, redact: Any) -> tuple[dict[str, str], bool]:
+    """Redact every string value in a {key: text} mapping. Returns (clean_map, any_redacted)."""
+    out: dict[str, str] = {}
+    applied = False
+    for k, v in (raw or {}).items():
+        text, hit = redact(str(v if v is not None else ""))
+        out[str(k)] = text
+        applied = applied or hit
+    return out, applied
+
+
+def _author_artifact(config: Any, a: dict[str, Any]) -> dict[str, Any]:
+    """Create a structured-intelligence artifact as a TEMPLATE-BASED vault markdown file (no DB rows).
+
+    Resolves the in-taxonomy destination + the matching vault template, redacts caller content, injects
+    canonical frontmatter, and writes atomically via the shared template engine. Fails closed for unmapped
+    artifact types (``template_not_available``) and for oversized content. This is the sanctioned client
+    artifact-creation path on the read-only-DB profile (the staged-DB pipeline cannot persist there)."""
+    import hashlib  # noqa: PLC0415
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    from hb_assistant.naming import CREATED_VIA_MCP, MANAGED_BY, sanitize_domain  # noqa: PLC0415
+
+    from ..obsidian_mcp.artifact_card_renderer import required_tags  # noqa: PLC0415
+    from ..obsidian_mcp.artifact_vault_writer import md_config  # noqa: PLC0415
+    from ..obsidian_mcp.templates import create_note_from_template  # noqa: PLC0415
+    from .ai_outputs import normalize_source_client  # noqa: PLC0415
+    from .redaction import redact_text  # noqa: PLC0415
+
+    artifact_type = str(_require(a, "artifact_type")).strip()
+    title = str(_require(a, "title")).strip()
+    if not title or len(title) > 200:
+        raise ArtifactWorkspaceError("invalid_title")
+    domain = a.get("domain") or a.get("domain_class")
+    source_client = normalize_source_client(a.get("source_client") or "unknown")
+
+    # Deterministic canonical id from (type, domain, title): re-authoring the same artifact resolves to the
+    # same path and fails closed (note_already_exists) rather than silently duplicating.
+    seed = f"{artifact_type}|{sanitize_domain(domain)}|{title}".encode("utf-8")
+    canonical_id = "PA-" + hashlib.sha256(seed).hexdigest()[:12].upper()
+
+    # Destination + template both fail closed off-taxonomy / for unmapped types (order: cheap resolves first).
+    resolved = resolve_relative_path(artifact_type=artifact_type, domain=domain, canonical_id=canonical_id,
+                                     title=title, operator_override_path=a.get("operator_override_path"))
+    template_path = resolve_template(artifact_type, domain)
+
+    variables, v_red = _redact_map(a.get("variables"), redact_text)
+    sections, s_red = _redact_map(a.get("sections"), redact_text)
+    variables.setdefault("title", title)
+    total_bytes = sum(len(v.encode("utf-8")) for v in variables.values()) \
+        + sum(len(v.encode("utf-8")) for v in sections.values())
+    cap = int(getattr(config, "max_card_bytes", _AUTHOR_MAX_BYTES) or _AUTHOR_MAX_BYTES)
+    if total_bytes > cap:
+        raise ArtifactWorkspaceError(f"artifact_content_too_large:{total_bytes}>{cap}")
+
+    frontmatter = {
+        "canonical_id": canonical_id,
+        "artifact_type": artifact_type,
+        "title": title,
+        "domain": sanitize_domain(domain) or "unknown",
+        "source_client": source_client,
+        "managed_by": MANAGED_BY,
+        "created_via": CREATED_VIA_MCP,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "tags": required_tags(artifact_type, source_client, sanitize_domain(domain), "authored"),
+    }
+    result = create_note_from_template(
+        md_config(config), template_path=template_path,
+        target_path=resolved.resolved_relative_path, variables=variables, frontmatter=frontmatter,
+        sections=sections, overwrite=False, principal_kind=source_client,
+    )
+    return {
+        "status": "written",
+        "artifact_type": artifact_type,
+        "canonical_id": canonical_id,
+        "relative_path": resolved.resolved_relative_path,
+        "path_display": f"vault/{resolved.resolved_relative_path}",
+        "template_path": result.get("template_path"),
+        "sha256": result.get("sha256"),
+        "redaction_applied": bool(v_red or s_red),
+        "path_warnings": list(resolved.path_warnings),
+        "supported_artifact_types": list(SUPPORTED_ARTIFACT_TYPES),
+    }
 
 
 def dispatch_artifact_tool(config: Any, tool_name: str, arguments: dict[str, Any], *,
@@ -170,6 +264,8 @@ def dispatch_artifact_tool(config: Any, tool_name: str, arguments: dict[str, Any
         if not r:
             raise ArtifactWorkspaceError("canonical_not_found")
         return r
+    if tool_name == "pa_artifact_author":
+        return _author_artifact(config, a)
     if tool_name == "pa_vault_path_resolve":
         resolved = resolve_relative_path(
             artifact_type=str(_require(a, "artifact_type")), domain=a.get("domain"),

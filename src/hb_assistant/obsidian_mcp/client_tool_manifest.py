@@ -10,9 +10,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from hb_assistant.store.connection import borrow_connection, open_connection, transaction
+from hb_assistant.store.connection import (
+    borrow_connection,
+    db_readonly,
+    open_connection,
+    transaction,
+)
 
-from .artifact_workspace import _cjson, _insert, _now, _sha
+from .artifact_workspace import ArtifactWorkspaceError, _cjson, _insert, _now, _sha
 
 REVIEW_CADENCE = "tool_surface: on_change; routing: weekly; safety: on_tool_surface_change; operator: monthly"
 
@@ -181,6 +186,13 @@ def render_manifest_md(manifest: dict[str, Any]) -> str:
 class ClientToolManifestRepository:
     def __init__(self, db_path: str | None = None) -> None:
         self.db_path = db_path
+        # Reads open the snapshot read-only on the internet-facing profile; the staged manifest
+        # refresh writes cannot persist to a read-only snapshot mount, so they fail closed.
+        self._readonly = db_readonly()
+
+    def _guard_writable(self) -> None:
+        if self._readonly:
+            raise ArtifactWorkspaceError("read_only_db_surface:manifest_refresh_unavailable")
 
     def _path(self) -> Any:
         from pathlib import Path  # noqa: PLC0415
@@ -190,6 +202,7 @@ class ClientToolManifestRepository:
     def save_manifest(self, manifest: dict[str, Any]) -> str:
         now = manifest["generated_at"]
         manifest_id = _sha("manifest", manifest["checksum"], now)
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_status='superseded' WHERE manifest_status='active'")
             _insert(c, "pa_client_tool_manifests", {
@@ -227,7 +240,7 @@ class ClientToolManifestRepository:
                 "generated_from_runtime_commit", "tool_count", "workflow_count", "mapping_count",
                 "staleness_state", "freshness_checked_at", "next_review_due_at", "review_cadence", "checksum",
                 "manifest_vault_path", "manifest_json_path")
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             row = c.execute(f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
                             f"ORDER BY generated_at DESC LIMIT 1").fetchone()
             if not row:
@@ -262,6 +275,7 @@ class ClientToolManifestRepository:
         refresh_id = _sha("refresh", new_manifest["checksum"], now)
         # server-minted approval, relayed by the operator to promote — never client-invented.
         approval_id = _sha("manifest-appr", refresh_id, new_manifest["checksum"], now)
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_tool_manifest_refresh_proposals", {
                 "refresh_proposal_id": refresh_id, "base_manifest_id": base["manifest_id"] if base else None,
@@ -274,18 +288,20 @@ class ClientToolManifestRepository:
     def get_refresh(self, refresh_proposal_id: str, *, conn: Any = None) -> dict[str, Any] | None:
         cols = ("refresh_proposal_id", "base_manifest_id", "proposed_manifest_version", "freshness_diff_json",
                 "checksum", "status", "operator_approval_id", "receipt_path", "created_at", "promoted_at")
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             row = c.execute(f"SELECT {', '.join(cols)} FROM pa_tool_manifest_refresh_proposals "
                             f"WHERE refresh_proposal_id=?", (refresh_proposal_id,)).fetchone()
         return dict(zip(cols, row, strict=True)) if row else None
 
     def mark_refresh_promoted(self, refresh_proposal_id: str, receipt_path: str) -> None:
         now = _now()
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_tool_manifest_refresh_proposals SET status='promoted', receipt_path=?, "
                       "promoted_at=? WHERE refresh_proposal_id=?", (receipt_path, now, refresh_proposal_id))
 
     def set_manifest_vault_paths(self, manifest_id: str, md_path: str, json_path: str) -> None:
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_vault_path=?, manifest_json_path=?, "
                       "freshness_checked_at=? WHERE manifest_id=?", (md_path, json_path, _now(), manifest_id))

@@ -60,6 +60,7 @@ def test_all_known_write_tools_are_marked_destructive(surface: dict[str, object]
     expected_writes = {
         "ai_outputs_card_upsert",
         "hb_assistant_tool_query",
+        "pa_artifact_author",
         "pa_artifact_promotion_apply",
         "pa_artifact_promotion_validate",
         "pa_artifact_proposal_review",

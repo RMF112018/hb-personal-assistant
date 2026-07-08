@@ -14,7 +14,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from hb_assistant.store.connection import borrow_connection, open_connection, transaction
+from hb_assistant.store.connection import (
+    borrow_connection,
+    db_readonly,
+    open_connection,
+    transaction,
+)
 
 from .memory_models import bound_text, sha256_hex
 from .vault_path_resolver import resolve_relative_path
@@ -107,6 +112,13 @@ def _insert(c: Any, table: str, row: dict[str, Any]) -> None:
 class ArtifactWorkspaceRepository:
     def __init__(self, db_path: str | None = None) -> None:
         self.db_path = db_path
+        # Reads open the snapshot immutable/read-only on the internet-facing profile; staged writes
+        # cannot persist to a read-only snapshot mount, so they fail closed with an honest error.
+        self._readonly = db_readonly()
+
+    def _guard_writable(self) -> None:
+        if self._readonly:
+            raise ArtifactWorkspaceError("read_only_db_surface:use pa_artifact_create")
 
     # ---- session capture ----
     def stage_session_capture(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -147,12 +159,13 @@ class ArtifactWorkspaceRepository:
             "redaction_state": str(payload.get("redaction_state") or "redacted"),
             "created_at": now, "updated_at": now,
         }
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_session_captures", row)
         return {"session_id": session_id, "content_hash": content_hash, "captured_at": now}
 
     def get_session_capture(self, session_id: str, *, conn: Any = None) -> dict[str, Any] | None:
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(_SESSION_COLS)} FROM pa_session_captures WHERE session_id=?",
                 (session_id,)), _SESSION_COLS)
@@ -170,6 +183,7 @@ class ArtifactWorkspaceRepository:
         bundle_id = self._next_seq_id("pa_artifact_proposal_bundles", "proposal_bundle_id", "BUNDLE", now)
         source_client = session["source_client"]
         proposal_ids: list[str] = []
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_artifact_proposal_bundles", {
                 "proposal_bundle_id": bundle_id, "session_id": session_id, "source_client": source_client,
@@ -230,19 +244,19 @@ class ArtifactWorkspaceRepository:
             clauses.append("review_status=?")
             args.append(review_status)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _rows(c.execute(
                 f"SELECT {', '.join(_PROPOSAL_COLS)} FROM pa_artifact_proposals{where} "
                 f"ORDER BY created_at, proposal_id LIMIT ?", (*args, limit)), _PROPOSAL_COLS)
 
     def get_proposal(self, proposal_id: str, *, conn: Any = None) -> dict[str, Any] | None:
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(_PROPOSAL_COLS)} FROM pa_artifact_proposals WHERE proposal_id=?",
                 (proposal_id,)), _PROPOSAL_COLS)
 
     def get_bundle(self, bundle_id: str, *, conn: Any = None) -> dict[str, Any] | None:
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(_BUNDLE_COLS)} FROM pa_artifact_proposal_bundles WHERE proposal_bundle_id=?",
                 (bundle_id,)), _BUNDLE_COLS)
@@ -269,6 +283,7 @@ class ArtifactWorkspaceRepository:
         payload = structured_payload if structured_payload is not None else None
         payload_json = _cjson(payload) if payload is not None else p["structured_payload_json"]
         ch = _content_hash(p["artifact_type"], p["proposed_title"], body, payload)
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_artifact_proposal_versions", {
                 "proposal_version_id": _sha(proposal_id, new_version, ch), "proposal_id": proposal_id,
@@ -300,6 +315,7 @@ class ArtifactWorkspaceRepository:
         # Approval id is minted ONLY on approve, bound to bundle + proposal + content_hash. Never client-supplied.
         approval_id = (_sha("appr", p["proposal_bundle_id"], proposal_id, p["content_hash"], now)
                        if decision == "approve" else None)
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_artifact_review_decisions", {
                 "review_decision_id": review_decision_id, "proposal_id": proposal_id,
@@ -322,7 +338,7 @@ class ArtifactWorkspaceRepository:
     def get_review_decisions(self, proposal_id: str, *, conn: Any = None) -> list[dict[str, Any]]:
         cols = ("review_decision_id", "proposal_id", "proposal_bundle_id", "operator_id", "decision",
                 "review_notes", "operator_approval_id", "created_at")
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _rows(c.execute(
                 f"SELECT {', '.join(cols)} FROM pa_artifact_review_decisions WHERE proposal_id=? "
                 f"ORDER BY created_at", (proposal_id,)), cols)
@@ -383,6 +399,7 @@ class ArtifactWorkspaceRepository:
         validation_receipt_id = _sha("val", promotion_bundle_id, validation_hash)
         summary = {"approved_count": len(approved_ids), "canonical_ids": canonical_ids, "paths": paths,
                    "duplicate_warnings": plan["duplicate_warnings"]}
+        self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             _insert(c, "pa_artifact_promotion_bundles", {
                 "promotion_bundle_id": promotion_bundle_id, "proposal_bundle_id": bundle_id,
@@ -429,7 +446,7 @@ class ArtifactWorkspaceRepository:
 
     # ---- canonical reads ----
     def get_canonical(self, canonical_id: str, *, conn: Any = None) -> dict[str, Any] | None:
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(_CANON_COLS)} FROM pa_canonical_artifacts WHERE canonical_id=?",
                 (canonical_id,)), _CANON_COLS)
@@ -440,7 +457,7 @@ class ArtifactWorkspaceRepository:
         where, args = ("", [])
         if artifact_type:
             where, args = (" WHERE artifact_type=?", [artifact_type])
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _rows(c.execute(
                 f"SELECT {', '.join(_CANON_COLS)} FROM pa_canonical_artifacts{where} "
                 f"ORDER BY promoted_at DESC, canonical_id LIMIT ?", (*args, limit)), _CANON_COLS)
@@ -449,13 +466,13 @@ class ArtifactWorkspaceRepository:
         cols = ("promotion_receipt_id", "promotion_bundle_id", "session_id", "operator_id", "created_count",
                 "updated_count", "superseded_count", "archived_count", "failed_count", "created_paths_json",
                 "validation_summary_json", "validation_hash", "receipt_vault_path", "status", "created_at")
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(cols)} FROM pa_promotion_receipts WHERE promotion_receipt_id=?",
                 (promotion_receipt_id,)), cols)
 
     def pending_counts(self, *, conn: Any = None) -> dict[str, int]:
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             def n(sql: str, a: tuple = ()) -> int:
                 return int(c.execute(sql, a).fetchone()[0])
             return {
@@ -515,7 +532,7 @@ class ArtifactWorkspaceRepository:
     def _next_seq_id(self, table: str, id_col: str, prefix: str, now: str, *, conn: Any = None) -> str:
         date = _today(now)
         like = f"{prefix}-{date}-%"
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             n = int(c.execute(f"SELECT COUNT(*) FROM {table} WHERE {id_col} LIKE ?", (like,)).fetchone()[0])
         return f"{prefix}-{date}-{n + 1:03d}"
 
@@ -546,7 +563,7 @@ class ArtifactWorkspaceRepository:
                 "session_note_only": "Session note only"}.get(p["review_status"], "Review")
 
     def _find_duplicate(self, p: dict[str, Any]) -> str | None:
-        with borrow_connection(None, self._path()) as c:
+        with borrow_connection(None, self._path(), readonly=self._readonly) as c:
             row = c.execute(
                 "SELECT canonical_id FROM pa_canonical_artifacts WHERE content_hash=? AND status='canonical' "
                 "LIMIT 1", (p["content_hash"],)).fetchone()
@@ -556,7 +573,7 @@ class ArtifactWorkspaceRepository:
         cols = ("promotion_bundle_id", "proposal_bundle_id", "session_id", "operator_approval_id", "status",
                 "validation_summary_json", "validation_hash", "idempotency_key", "created_at", "promoted_at",
                 "failed_at", "failure_reason")
-        with borrow_connection(conn, self._path()) as c:
+        with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             return _row(c.execute(
                 f"SELECT {', '.join(cols)} FROM pa_artifact_promotion_bundles WHERE promotion_bundle_id=?",
                 (promotion_bundle_id,)), cols)

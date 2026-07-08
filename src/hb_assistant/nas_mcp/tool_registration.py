@@ -19,6 +19,7 @@ from .client_output_tools import ALL_PA_OUTPUT_TOOLS
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
+    artifact_author_enabled,
     artifact_workspace_enabled,
     assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
@@ -1293,6 +1294,28 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         def pa_canonical_artifact_get(canonical_id: str) -> dict[str, Any]:
             """Retrieve one canonical artifact by canonical_id."""
             return _assistant_result("pa_canonical_artifact_get", {"canonical_id": canonical_id})
+
+    # Template-based structured-intelligence artifact author. The sanctioned client artifact-creation path:
+    # instantiates a vault-resident template into the resolved taxonomy folder as a markdown file — NO DB
+    # records (works on the read-only-DB profile, unlike the staged pipeline). Own gate; canonical write.
+    if artifact_author_enabled():
+
+        @mcp.tool()
+        def pa_artifact_author(artifact_type: str, title: str, domain: str | None = None,
+                               variables: dict[str, Any] | None = None,
+                               sections: dict[str, str] | None = None,
+                               source_client: str = "unknown",
+                               operator_override_path: str | None = None) -> dict[str, Any]:
+            """Create a structured-intelligence artifact as a TEMPLATE-BASED vault markdown file (no DB rows).
+            Instantiates the vault template for ``artifact_type`` (decision / person_note / company_note /
+            project_context / source_card_annotation) into the resolved taxonomy folder, filling ``{{title}}``
+            + optional ``variables`` and scaffold ``sections`` (heading -> content). Canonical frontmatter is
+            injected; content is redacted + size-capped. Fails closed for unmapped types. Returns the
+            relative_path + sha256. This is the sanctioned client artifact-creation path."""
+            return _assistant_result("pa_artifact_author", {
+                "artifact_type": artifact_type, "title": title, "domain": domain,
+                "variables": variables or {}, "sections": sections or {},
+                "source_client": source_client, "operator_override_path": operator_override_path})
 
     # N8C-23 Client Tool Operating Manifest tools. Read/advisory + a staged refresh; refresh_promote is the
     # only manifest write and requires a server-minted approval + no-drift checksum. Gated separately.

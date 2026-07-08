@@ -52,6 +52,7 @@ from .path_safe import PathAccessError
 from .profile import (
     AI_OUTPUTS_WRITE_TOOL,
     CLIENT_OUTPUT_WRITE_TOOLS,
+    artifact_author_enabled,
     artifact_workspace_enabled,
     assistant_action_stages_enabled,
     assistant_answer_drafts_enabled,
@@ -739,9 +740,16 @@ class NasMcpBroker:
             # N8C-23 artifact workspace + client tool operating manifest. Gated by their own kill switches;
             # canonical writes additionally pass through the dispatch write gates + server-side
             # approval/validation/idempotency inside the handler.
-            if tool_name in PA_MANIFEST_TOOLS and not client_tool_manifest_enabled():
-                raise ValueError("client_tool_manifest_disabled")
-            if tool_name not in PA_MANIFEST_TOOLS and not artifact_workspace_enabled():
+            if tool_name == "pa_artifact_author":
+                # Template-based vault artifact author: its OWN dedicated gate (split-write-gate discipline),
+                # not the shared artifact-workspace gate. Its canonical-write classification already applied
+                # the safe-mode + write-gate chain above; path safety + template guards are in the handler.
+                if not artifact_author_enabled():
+                    raise ValueError("artifact_author_disabled")
+            elif tool_name in PA_MANIFEST_TOOLS:
+                if not client_tool_manifest_enabled():
+                    raise ValueError("client_tool_manifest_disabled")
+            elif not artifact_workspace_enabled():
                 raise ValueError("artifact_workspace_disabled")
             return dispatch_artifact_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name in ALL_PA_OUTPUT_TOOLS:

@@ -25,6 +25,9 @@ from .tools import (
 
 _VAR_RE = re.compile(r"\{\{\s*([A-Za-z0-9_]+)\s*\}\}")
 _HEADING_RE = re.compile(r"^#{1,6}\s+", re.MULTILINE)
+# A managed-template marker identifies the seeded TEMPLATE (for idempotent re-seeding) — it is not note
+# content and, being before the frontmatter, would also block frontmatter detection on instantiation.
+_MANAGED_MARKER_RE = re.compile(r"\A<!--\s*hb-managed:[^>]*-->\s*\n")
 
 
 def _render(template: str, variables: dict[str, Any]) -> str:
@@ -58,13 +61,24 @@ def create_note_from_template(
     target_path: str,
     variables: dict[str, Any] | None = None,
     frontmatter: dict[str, Any] | None = None,
+    sections: dict[str, str] | None = None,
     overwrite: bool = False,
     create_parent_dirs: bool = True,
     operator_mode: bool = False,
     principal_kind: str | None = None,
 ) -> dict[str, Any]:
     template = _read_template(config, template_path, operator_mode=operator_mode)
+    # Drop the managed-template marker so it doesn't land in the instantiated note and so any template
+    # frontmatter is once again the first thing in the text (required for frontmatter merge/detection).
+    template = _MANAGED_MARKER_RE.sub("", template, count=1)
     rendered = _render(template, variables or {})
+    # ``sections`` fills the template's ``## Heading`` scaffold with caller content, so a template-based
+    # note carries body content without free-rendering. Each heading is matched (or appended) by the same
+    # helper the daily-note appender uses.
+    for heading, content in (sections or {}).items():
+        text = str(content or "").strip()
+        if text:
+            rendered = _append_to_section(rendered, str(heading), text)
     if frontmatter:
         rendered = _merge_frontmatter(rendered, frontmatter)
     result = create_note(

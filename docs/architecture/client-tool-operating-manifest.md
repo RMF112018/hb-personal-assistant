@@ -65,6 +65,30 @@ tools, **not** canonical artifact promotion, and **not** the legacy `hb_output_*
 deprecated → replaced-by `pa_output_*`). Generated files go only to the `outputs` root; output staging
 precedes final save.
 
+## File access: two-tier guidance (clients)
+
+Two distinct file-access tiers exist; use the right one:
+
+- **Folder traversal / structure** — `hb_root_list` (and `hb_root_stat`) for deterministic directory
+  navigation over the `home`/`work`/`vault`/`outputs` roots. Use this to browse, not to search.
+- **Content search** — `assistant_source_file_search` over the indexed source corpus (FTS). This is the
+  primary search path; the legacy `hb_root_search` is a low-level fallback only (weak/no content index) and
+  must **not** be the first choice.
+- **Bounded reads** — `assistant_source_file_read` for indexed source files (binary/office files return a
+  bounded indexed excerpt); the legacy `hb_root_read_excerpt` denies binary content.
+
+Rule of thumb: **traverse with `hb_root_*`, search and read source content with `assistant_source_file_*`.**
+
+## Creating intelligence artifacts (template-based)
+
+Structured-intelligence artifacts are created as **template-based Obsidian markdown**, not DB records. Use
+`pa_artifact_author` (`artifact_type` ∈ decision / person_note / company_note / project_context /
+source_card_annotation): it instantiates the matching vault template into the resolved taxonomy folder,
+fills `{{title}}` + optional `variables`/`sections`, injects canonical frontmatter, and redacts/caps
+content. It has its own write gate and writes only in-taxonomy vault folders. The staged DB pipeline
+(`pa_session_capture_stage` → proposal → promotion) does not persist on the read-only-DB serve profile; on
+that profile its write steps fail closed with `read_only_db_surface` — prefer `pa_artifact_author`.
+
 ## Gateway allowlist change (N8C-24, operator-authorized)
 
 The N8C-22 helper gateway (`hb_assistant_tool_query`) allowlist was deliberately expanded beyond the

@@ -870,6 +870,17 @@ class SourceIndexRepository:
         return [{"source_root_key": r[0], "rel_path": r[1], "source_id": r[2], "file_ext": r[3]}
                 for r in rows]
 
+    def distinct_indexed_root_keys(self, *, conn: sqlite3.Connection | None = None) -> list[str]:
+        """Distinct, non-null root keys carried by active indexed source rows — the index-recorded
+        root truth. Used when the runtime config has no ``external_sources`` configured (e.g. the
+        internet-facing serve profile) so roots_list/status still reflect reality. Path-free."""
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT DISTINCT source_root_key FROM source_intelligence_sources "
+                "WHERE source_root_key IS NOT NULL AND deleted=0 ORDER BY source_root_key"
+            ).fetchall()
+        return [str(r[0]) for r in rows]
+
     def count_source_files(self, source_root_key: str | None = None, *,
                            conn: sqlite3.Connection | None = None) -> int:
         """Count of active indexed external source files (optionally scoped to one root)."""

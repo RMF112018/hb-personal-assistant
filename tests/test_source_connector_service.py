@@ -253,6 +253,28 @@ def test_reads_do_not_mutate(env) -> None:
     assert _snapshot(env["db"]) == before
 
 
+def test_roots_fall_back_to_index_when_config_empty(tmp_path: Path) -> None:
+    # Serve profile carries NO external_sources, but the index has rows keyed by real roots. roots_list /
+    # source_status must report those roots (provenance=index) instead of returning zero.
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    _insert(db, root_key="hb-onedrive", rel_path="Projects/plan.txt", body="tropical world nursery", ext="txt")
+    _insert(db, root_key="syn-work", rel_path="Contracts/a.txt", body="contract terms", ext="txt")
+    repo = SourceIndexRepository(db)
+    config = ObsidianMcpConfig(external_sources=[])  # empty, like the internet-facing serve profile
+
+    roots = svc.list_source_roots(repo, config)
+    keys = {r["source_root_key"] for r in roots["roots"]}
+    assert keys == {"hb-onedrive", "syn-work"}
+    assert roots["count"] == 2
+    assert all(r["provenance"] == "index" for r in roots["roots"])
+    assert {r["source_root_key"]: r["file_count"] for r in roots["roots"]} == {"hb-onedrive": 1, "syn-work": 1}
+
+    st = svc.source_status(repo, config)
+    assert st["configured_root_count"] == 2  # was 0 before the fix
+    _no_abs(roots, str(tmp_path))
+
+
 def test_status_and_roots_no_abs_paths(env) -> None:
     st = svc.source_status(env["repo"], env["config"])
     assert "configured_roots" not in st and st["index_enabled"] is True

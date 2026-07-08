@@ -101,6 +101,15 @@ def prompt_preflight_enabled() -> bool:
     return True if override is None else override
 
 
+def artifact_author_enabled() -> bool:
+    """Template-based structured-intelligence artifact author (``pa_artifact_author``) write gate. Its OWN
+    flag, distinct from the AI Outputs / client-output write gates (split-write-gate discipline). Default
+    ON (operator-authorized): it writes markdown to in-taxonomy vault folders from a vault template only —
+    no DB records, no new top-level folders. Kill-switch: ``HB_MCP_ALLOW_ARTIFACT_AUTHOR=0``."""
+    override = _env_bool("HB_MCP_ALLOW_ARTIFACT_AUTHOR")
+    return True if override is None else override
+
+
 HEALTH_MODE_MINIMAL_PUBLIC = "minimal_public"
 HEALTH_MODE_PROTECTED = "protected"
 KNOWN_HEALTH_MODES = (HEALTH_MODE_MINIMAL_PUBLIC, HEALTH_MODE_PROTECTED)
