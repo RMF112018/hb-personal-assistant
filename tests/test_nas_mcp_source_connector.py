@@ -182,3 +182,37 @@ def test_status_reports_source_connector(mcp_env) -> None:
     assert "ai_outputs_card_upsert" not in set(ASSISTANT_SOURCE_CONNECTOR_TOOLS)
     # source-index search tools stay BLOCKED as raw obsidian tools (not unblocked by N8C-12).
     assert "search_sources" in res["obsidian_tools_blocked"]
+
+
+def test_live_read_resolves_via_nas_root_injection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression for the deployed Defect-8 failure: load_config() has NO external_sources on the NAS,
+    so the broker must inject them from the NAS roots (syn-<key> → mount) or live reads degrade to
+    indexed excerpts (root_unavailable). The prior test forced external_sources via load_config, masking
+    this — here load_config returns empty and the NAS roots supply the mapping."""
+    monkeypatch.setenv("HB_MCP_PROFILE", "remote_cloudflare")
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    work = tmp_path / "work"
+    (work / "Projects").mkdir(parents=True)
+    (work / "Projects" / "contract_A.txt").write_text("payment application for the contract")
+    # Index under the derived key syn-work (roots key "work" → syn-work).
+    sid = _seed(db, "syn-work", "Projects/contract_A.txt", "payment application for the contract")
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    # load_config returns the real NAS default: NO external_sources.
+    monkeypatch.setattr("hb_assistant.obsidian_mcp.config.load_config", ObsidianMcpConfig)
+    vault = tmp_path / "vault"
+    vault.mkdir(exist_ok=True)
+    cfg = NasMcpConfig(
+        db_path=Path(db), audit_dir=tmp_path / "audit",
+        roots={"vault": RootSpec("vault", vault, "read_write"),
+               "work": RootSpec("work", work, "read_only")},
+        obsidian=NasObsidianConfig(vault_root=vault, backup_dir=tmp_path / "bk", support_dir=tmp_path / "sup"),
+    )
+    broker = NasMcpBroker(cfg)
+    # roots_list now reflects the injected syn-work root.
+    roots = broker.dispatch("assistant_source_roots_list", {})["result"]
+    assert any(r["source_root_key"] == "syn-work" for r in roots["roots"])
+    # live read resolves instead of falling back to the indexed excerpt.
+    rd = broker.dispatch("assistant_source_file_read", {"source_id": sid, "max_chars": 10})["result"]
+    assert rd["content_source"] == "live_extract", rd

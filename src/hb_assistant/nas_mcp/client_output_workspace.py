@@ -276,9 +276,12 @@ class ClientOutputWorkspaceRepository:
             import os  # noqa: PLC0415
             os.replace(str(src), str(dst))  # move, never delete
         receipt_id = _sha("arch-rcpt", output_id, now)
+        # Keep path_display in step with relative_path so pa_output_metadata doesn't report the stale
+        # pending path after an archive move.
+        new_path_display = dst_meta["path_display"]
         with borrow_connection(None, self.db_path) as c, transaction(c):
-            c.execute("UPDATE assistant_output_files SET status='archived', relative_path=?, archived_at=?, "
-                      "updated_at=? WHERE output_id=?", (target_rel, now, now, output_id))
+            c.execute("UPDATE assistant_output_files SET status='archived', relative_path=?, path_display=?, "
+                      "archived_at=?, updated_at=? WHERE output_id=?", (target_rel, new_path_display, now, now, output_id))
             c.execute("UPDATE assistant_output_file_manifest_entries SET status='archived', relative_path=?, "
                       "updated_at=? WHERE output_id=?", (target_rel, now, output_id))
             _insert(c, "assistant_output_file_receipts", {

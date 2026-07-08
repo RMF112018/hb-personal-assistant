@@ -15,7 +15,7 @@ from .config import NasMcpConfig
 _SOURCE_TREE_ROOT_KEYS = ("home", "work")
 
 
-def _resolve_external_sources(config: NasMcpConfig) -> list[ExternalSourceRoot]:
+def resolve_external_sources(config: NasMcpConfig) -> list[ExternalSourceRoot]:
     """Map indexed source-root keys → mounted paths so ``prefer_live`` reads resolve instead of
     degrading to indexed excerpts. Explicit ``obsidian.external_sources`` config wins; otherwise derive
     a ``syn-<roots-key>`` entry for each mounted home/work source tree (sensitive=False → live enabled)."""
@@ -70,7 +70,7 @@ def obsidian_config_from_nas(config: NasMcpConfig) -> ObsidianMcpConfig:
         backup_before_replace=True,
         write_requires_expected_sha256=True,
         create_parent_dirs_enabled=True,
-        external_sources=_resolve_external_sources(config),
+        external_sources=resolve_external_sources(config),
     )
 
 
