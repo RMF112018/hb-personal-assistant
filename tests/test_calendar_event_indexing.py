@@ -208,6 +208,30 @@ def test_apply_persists_redacted_rows_and_counts(tmp_path: Path) -> None:
     assert crawl == ("completed", 3, 3, 1, 1, 1)
 
 
+def test_sync_state_records_completion_time_not_future_window(tmp_path: Path) -> None:
+    """Regression: calendar_sync_state.last_successful_sync_utc is the completion
+    time, NOT window_end_utc (now + lookahead_days) — writing the forward-looking
+    window end produced a future timestamp that freshness flagged as an anomaly.
+    """
+    from datetime import datetime, timezone
+
+    indexer, db = _indexer(tmp_path)
+    indexer.index(source_id="primary_calendar", dry_run=False, lookahead_days=30)
+    conn = sqlite3.connect(db)
+    row = conn.execute(
+        "SELECT last_successful_sync_utc, window_end_utc, sync_status"
+        " FROM calendar_sync_state WHERE source_id = 'primary_calendar'"
+    ).fetchone()
+    last_success, window_end, status = row
+    assert status == "completed"
+    assert last_success is not None
+    # Not the forward-looking window end (which is now + lookahead_days).
+    assert last_success != window_end
+    assert last_success < window_end
+    # And not in the future.
+    assert datetime.fromisoformat(last_success) <= datetime.now(timezone.utc)
+
+
 def test_private_event_is_minimal_and_flagged(tmp_path: Path) -> None:
     indexer, db = _indexer(tmp_path)
     indexer.index(source_id="primary_calendar", dry_run=False)

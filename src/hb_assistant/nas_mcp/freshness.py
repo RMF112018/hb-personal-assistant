@@ -34,23 +34,32 @@ STATUS_UNKNOWN = "unknown"  # configured but no data yet
 STATUS_NOT_CONFIGURED = "not_configured"  # table absent
 STATUS_FUTURE = "anomaly_future_timestamp"  # last timestamp is in the future — freshness untrustworthy
 STATUS_DEGRADED = "degraded_last_run_failed"  # recent timestamp but the latest run's status is a failure
+STATUS_BLOCKED = "blocked_or_pending"  # not failing, but blocked/awaiting action (e.g. admin approval)
 # Small tolerance for benign clock skew before a future timestamp is treated as an anomaly.
 FUTURE_TOLERANCE_SECONDS = 300
 # Latest-run status enums that mean the subsystem is failing even if its timestamp looks recent.
 _FAILURE_STATUSES = frozenset({"error", "failed", "failure", "fail"})
+# Non-failure states that still mean the subsystem is not producing fresh data (surface, don't bury as
+# "unknown"): a blocked/pending sync is actionable, not merely "no data yet".
+_BLOCKED_STATUSES = frozenset({"pending_admin_approval", "blocked", "disabled", "paused"})
 
 
 def _apply_last_status(info: dict[str, Any], last_status: Any) -> dict[str, Any]:
-    """Attach ``last_status`` and, if it signals failure, downgrade an otherwise-fresh headline.
+    """Attach ``last_status`` and reflect a failing/blocked latest run in the headline.
 
     The headline ``status`` is derived from timestamp age; a subsystem that ran recently but FAILED
-    would otherwise read ``ok`` off a fresh timestamp. Downgrade ok/stale → degraded so a client never
-    mistakes a recent failed run for healthy data. Future/unknown/not_configured are left untouched.
+    would otherwise read ``ok`` off a fresh timestamp, and a blocked one (e.g. ``pending_admin_approval``
+    with no timestamps) would read a bare ``unknown``. Downgrade ok/stale → degraded on failure, and
+    ok/stale/unknown → blocked on a blocked/pending status, so a client sees the actionable state.
+    Future/not_configured are left untouched.
     """
     if last_status is not None:
         info["last_status"] = last_status
-    if str(last_status).strip().lower() in _FAILURE_STATUSES and info.get("status") in (STATUS_OK, STATUS_STALE):
+    normalized = str(last_status).strip().lower()
+    if normalized in _FAILURE_STATUSES and info.get("status") in (STATUS_OK, STATUS_STALE):
         info["status"] = STATUS_DEGRADED
+    elif normalized in _BLOCKED_STATUSES and info.get("status") in (STATUS_OK, STATUS_STALE, STATUS_UNKNOWN):
+        info["status"] = STATUS_BLOCKED
     return info
 
 
@@ -150,12 +159,25 @@ def _daily_brief(conn: sqlite3.Connection) -> dict[str, Any]:
     return _apply_last_status(info, latest[0] if latest else None)
 
 
-def _sync_domain(conn: sqlite3.Connection, table: str, ts_col: str, status_col: str) -> dict[str, Any]:
+def _sync_domain(conn: sqlite3.Connection, table: str, ts_col: str, status_col: str,
+                 *, attempted_col: str | None = None) -> dict[str, Any]:
     if not _table_exists(conn, table):
         return {"status": STATUS_NOT_CONFIGURED}
     last = _one(conn, f"SELECT MAX({ts_col}) FROM {table}")  # noqa: S608 (fixed identifiers)
-    info = _age_status(last[0] if last else None)
-    latest = _one(conn, f"SELECT {status_col} FROM {table} ORDER BY {ts_col} DESC LIMIT 1")  # noqa: S608
+    success_ts = last[0] if last else None
+    info = _age_status(success_ts)
+    if success_ts is None and attempted_col:
+        # No successful sync recorded, but there were attempts — surface the attempt age (stale/ok)
+        # instead of a bare "unknown", so a subsystem that keeps running without ever succeeding reads
+        # honestly rather than looking simply un-configured.
+        att = _one(conn, f"SELECT MAX({attempted_col}) FROM {table}")  # noqa: S608
+        attempt_ts = att[0] if att else None
+        if attempt_ts is not None:
+            info = _age_status(attempt_ts)
+            info["never_succeeded"] = True
+            info["basis"] = "last_attempt"
+    order_col = attempted_col or ts_col
+    latest = _one(conn, f"SELECT {status_col} FROM {table} ORDER BY {order_col} DESC LIMIT 1")  # noqa: S608
     return _apply_last_status(info, latest[0] if latest else None)
 
 
@@ -207,11 +229,15 @@ def data_freshness(config: NasMcpConfig) -> dict[str, Any]:
         result["schema_version"] = _schema_version(conn)
         result["source_intelligence"] = _source_intel(conn)
         result["daily_brief"] = _daily_brief(conn)
-        result["email_sync"] = _sync_domain(conn, "email_sync_state", "last_successful_sync_utc", "sync_status")
+        result["email_sync"] = _sync_domain(
+            conn, "email_sync_state", "last_successful_sync_utc", "sync_status",
+            attempted_col="last_attempted_sync_utc")
         result["drive_sync"] = _sync_domain(
-            conn, "construction_source_sync_state", "last_successful_sync_utc", "sync_status"
-        )
-        result["calendar_sync"] = _sync_domain(conn, "calendar_sync_state", "last_successful_sync_utc", "sync_status")
+            conn, "construction_source_sync_state", "last_successful_sync_utc", "sync_status",
+            attempted_col="last_attempted_sync_utc")
+        result["calendar_sync"] = _sync_domain(
+            conn, "calendar_sync_state", "last_successful_sync_utc", "sync_status",
+            attempted_col="last_attempted_sync_utc")
         result["procore_sync"] = _procore(conn)
     finally:
         conn.close()

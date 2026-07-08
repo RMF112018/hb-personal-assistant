@@ -1,0 +1,17 @@
+.............F.......................................................... [ 66%]
+....................................                                     [100%]
+=================================== FAILURES ===================================
+________________ test_raw_content_flag_produces_rows_and_counts ________________
+tests/test_calendar_event_indexing.py:464: in test_raw_content_flag_produces_rows_and_counts
+    assert dry.raw_content_enabled is False  # no policy in test env
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert True is False
+E    +  where True = IndexResult(source_id='primary_calendar', run_id='197a8c24-b729-400d-ad1f-8822691290a0', mode='dry_run', dry_run=True,...rror_redacted=None, failure_diagnostics=[], include_raw_content=True, raw_content_enabled=True, raw_events_persisted=3).raw_content_enabled
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_calendar_event_indexing.py::test_raw_content_flag_produces_rows_and_counts
