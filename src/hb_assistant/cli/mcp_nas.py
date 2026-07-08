@@ -48,3 +48,31 @@ def serve(
         typer.echo(json.dumps(payload, indent=2, default=str))
         raise typer.Exit(code=0 if payload.get("ready") else 1)
     typer.echo(json.dumps(payload, indent=2, default=str))
+
+
+@mcp_app.command("exposure-audit")
+def exposure_audit(
+    db_path: str = typer.Option(
+        None,
+        "--db-path",
+        help="Optional DB to audit read-only; default builds a fresh migrated temp DB (never prod).",
+    ),
+    out_json: str = typer.Option(None, "--out-json", help="Write the machine-readable JSON artifact here."),
+    out_md: str = typer.Option(None, "--out-md", help="Write the human-readable markdown summary here."),
+    as_json: bool = typer.Option(True, "--json/--no-json", help="Echo the JSON artifact to stdout."),
+) -> None:
+    """N8C-22 client-exposure parity audit: prove whether all 78 canonical assistant tools are actually
+    exposed as callable client tools (not merely advertised in status). Read-only; no prod mutation."""
+    from pathlib import Path
+
+    from hb_assistant.nas_mcp.exposure_audit import build_exposure_audit, render_markdown
+
+    audit = build_exposure_audit(db_path=db_path)
+    if out_json:
+        Path(out_json).write_text(json.dumps(audit, indent=2), encoding="utf-8")
+    if out_md:
+        Path(out_md).write_text(render_markdown(audit), encoding="utf-8")
+    if as_json:
+        typer.echo(json.dumps(audit, indent=2))
+    gap = audit["summary"]["missing_from_client_manifest"] > 0 or audit["summary"]["not_callable"] > 0
+    raise typer.Exit(code=1 if gap else 0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import time
 import uuid
@@ -239,6 +240,98 @@ ASSISTANT_QUALITY_TOOLS = (
     "assistant_get_quality_summary",
     "assistant_get_quality_export",
 )
+
+# N8C-22 — canonical aggregate registry: the single source of truth for the 13 read-only assistant
+# groups / 78 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
+# hb_mcp_status exposure fields derive from these — do NOT hand-maintain a second list. This does not
+# add any tool; it only names the union that already existed implicitly across the 13 group tuples.
+ASSISTANT_TOOL_GROUPS: dict[str, tuple[str, ...]] = {
+    "nav": ASSISTANT_NAV_TOOLS,
+    "context_packs": ASSISTANT_CONTEXT_PACK_TOOLS,
+    "memory": ASSISTANT_MEMORY_TOOLS,
+    "decision_memory": ASSISTANT_DECISION_MEMORY_TOOLS,
+    "review": ASSISTANT_REVIEW_TOOLS,
+    "intelligence": ASSISTANT_INTELLIGENCE_TOOLS,
+    "research_packets": ASSISTANT_RESEARCH_PACKET_TOOLS,
+    "source_connector": ASSISTANT_SOURCE_CONNECTOR_TOOLS,
+    "answer_drafts": ASSISTANT_ANSWER_DRAFT_TOOLS,
+    "workflows": ASSISTANT_WORKFLOW_TOOLS,
+    "feedback": ASSISTANT_FEEDBACK_TOOLS,
+    "action_stages": ASSISTANT_ACTION_STAGE_TOOLS,
+    "quality": ASSISTANT_QUALITY_TOOLS,
+}
+
+# Group label -> kill-switch-aware gate predicate. Mirrors the same gates applied at registration
+# (tool_registration.py) and dispatch (_invoke), so the exposure view never diverges from reality.
+ASSISTANT_GROUP_GATES = {
+    "nav": assistant_nav_enabled,
+    "context_packs": assistant_context_packs_enabled,
+    "memory": assistant_memory_enabled,
+    "decision_memory": assistant_decision_memory_enabled,
+    "review": assistant_review_enabled,
+    "intelligence": assistant_intelligence_enabled,
+    "research_packets": assistant_research_packets_enabled,
+    "source_connector": assistant_source_connector_enabled,
+    "answer_drafts": assistant_answer_drafts_enabled,
+    "workflows": assistant_workflows_enabled,
+    "feedback": assistant_feedback_enabled,
+    "action_stages": assistant_action_stages_enabled,
+    "quality": assistant_quality_enabled,
+}
+
+# The 78 canonical assistant tools, deduped + sorted. Used as the gateway allowlist and the catalog
+# universe. NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help /
+# _tool_query) are deliberately NOT in here — they are helpers, not canonical assistant tools.
+ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
+    sorted({tool for tools in ASSISTANT_TOOL_GROUPS.values() for tool in tools})
+)
+
+
+def runtime_commit() -> str:
+    """Best-effort runtime build identity for status (never raises).
+
+    Prefers an explicit build stamp injected at deploy time (the MCP process runs in a container
+    without the git repo, so env is the authoritative source); falls back to the package version.
+    """
+    for var in ("HB_RUNTIME_COMMIT", "HB_BUILD_SHA"):
+        val = os.environ.get(var)
+        if val:
+            return val
+    try:
+        from hb_assistant import __version__  # noqa: PLC0415
+
+        return f"v{__version__}"
+    except Exception:
+        return "unknown"
+
+
+def assistant_client_exposure_status() -> dict[str, Any]:
+    """N8C-22 client-exposure summary for hb_mcp_status.
+
+    Reports how many of the 78 canonical assistant tools are currently exposed to connected clients.
+    Exposure follows the per-group kill switches: a group turned off by ``HB_MCP_ASSISTANT_*=0`` is
+    neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
+    both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
+    """
+    groups_enabled = {label: gate() for label, gate in ASSISTANT_GROUP_GATES.items()}
+    exposed = sorted(
+        tool
+        for label, tools in ASSISTANT_TOOL_GROUPS.items()
+        if groups_enabled[label]
+        for tool in tools
+    )
+    canonical = len(ALL_ASSISTANT_TOOLS)
+    return {
+        "assistant_client_exposure_enabled": True,
+        "assistant_client_exposure_mode": "direct+gateway",
+        "assistant_client_exposed_tool_count": len(exposed),
+        "assistant_client_missing_tool_count": canonical - len(exposed),
+        "assistant_client_exposure_groups": sorted(
+            label for label, on in groups_enabled.items() if on
+        ),
+        "runtime_commit": runtime_commit(),
+    }
+
 
 # The five fixed no-execution policy fields carried by every N8C-15 workflow envelope.
 _WORKFLOW_POLICY_KEYS = (
@@ -523,6 +616,8 @@ class NasMcpBroker:
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
                 ),
                 "port_policy": "127.0.0.1:8765 host publish only",
+                # N8C-22 client-exposure summary (canonical 78 + per-group kill-switch aware).
+                **assistant_client_exposure_status(),
             }
         if tool_name == AI_OUTPUTS_WRITE_TOOL:
             from .ai_outputs import ai_outputs_card_upsert  # noqa: PLC0415

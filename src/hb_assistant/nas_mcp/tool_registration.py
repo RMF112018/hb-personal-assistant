@@ -5,7 +5,13 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from .broker import NasMcpBroker
+from .broker import (
+    ALL_ASSISTANT_TOOLS,
+    ASSISTANT_TOOL_GROUPS,
+    DENIED_TOOL_NAMES,
+    NasMcpBroker,
+    assistant_client_exposure_status,
+)
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
 from .profile import (
     ai_outputs_write_enabled,
@@ -25,6 +31,99 @@ from .profile import (
     blocked_write_tools,
     scratch_output_write_enabled,
 )
+
+# N8C-22 client-exposure bridge helper tools. NOT part of the canonical 78 assistant tools — they are
+# read-only meta/gateway helpers named ``hb_assistant_*`` (never ``assistant_*``) so they stay outside
+# the exact-78 inventory invariant and the ``assistant_``-prefixed finality guard. Names carry no
+# finality/write verb (catalog / tool_help / tool_query).
+CLIENT_BRIDGE_HELPER_TOOLS = (
+    "hb_assistant_catalog",
+    "hb_assistant_tool_help",
+    "hb_assistant_tool_query",
+)
+
+# Reverse map: canonical assistant tool name -> its group label (built once from the canonical registry).
+_TOOL_TO_GROUP = {tool: group for group, tools in ASSISTANT_TOOL_GROUPS.items() for tool in tools}
+
+# Gateway bound caps: reject unbounded numeric limit-like args before dispatch (defense in depth on top
+# of the per-handler bounds). A request over the cap fails closed rather than being silently clamped.
+_GATEWAY_LIMIT_CAPS = {
+    "limit": 500,
+    "max_results": 500,
+    "max_files": 500,
+    "max_nodes": 500,
+    "max_suggestions": 500,
+    "depth": 100,
+    "max_depth": 100,
+    "lookback_days": 3650,
+    "max_chars": 20000,
+    "max_body_chars": 20000,
+}
+
+
+def _extract_client_tool_index(mcp: Any) -> dict[str, dict[str, Any]]:
+    """Best-effort snapshot of the LIVE client-facing tool manifest {name: {description, input_schema}}.
+
+    Reads the FastMCP tool manager (the same registry FastMCP's ``tools/list`` serves to clients), so the
+    catalog/help helpers describe what a connected client can actually call. Degrades to ``{}`` on any
+    non-FastMCP object (e.g. a test fake) or introspection error — never raises.
+    """
+    mgr = getattr(mcp, "_tool_manager", None)
+    lister = getattr(mgr, "list_tools", None) if mgr is not None else None
+    if not callable(lister):
+        return {}
+    try:
+        tools = lister()
+    except Exception:
+        return {}
+    index: dict[str, dict[str, Any]] = {}
+    for tool in tools or []:
+        name = getattr(tool, "name", None)
+        if not name:
+            continue
+        index[name] = {
+            "description": getattr(tool, "description", "") or "",
+            "input_schema": getattr(tool, "parameters", None) or {},
+        }
+    return index
+
+
+def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Bounded, secret-free metadata for one canonical assistant tool, derived from its live schema."""
+    entry = index.get(name) or {}
+    schema = entry.get("input_schema") or {}
+    props = schema.get("properties") or {}
+    required = list(schema.get("required") or [])
+    optional = sorted(p for p in props if p not in required)
+    desc = (entry.get("description") or "").strip()
+    purpose = next((line.strip() for line in desc.splitlines() if line.strip()), "")
+    result_limits = {
+        key: props[key].get("default")
+        for key in ("limit", "max_chars", "max_results", "max_files", "max_nodes", "max_body_chars")
+        if key in props
+    }
+    return {
+        "tool_name": name,
+        "group": _TOOL_TO_GROUP.get(name),
+        "purpose": purpose,
+        "required_args": required,
+        "optional_args": optional,
+        "result_limits": result_limits,
+        "safety_class": "read_only_advisory",
+        "direct_exposure_available": name in index,
+    }
+
+
+def _reject_unbounded_gateway_args(arguments: dict[str, Any]) -> None:
+    """Fail closed if any numeric limit-like arg exceeds its cap (booleans/non-ints pass to the handler)."""
+    for key, cap in _GATEWAY_LIMIT_CAPS.items():
+        if key not in arguments:
+            continue
+        val = arguments[key]
+        if isinstance(val, bool):
+            continue
+        if isinstance(val, int) and val > cap:
+            raise ValueError(f"limit_exceeds_max:{key}:{val}>{cap}")
 
 
 def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
@@ -929,3 +1028,73 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
     for tool_name in enabled:
         _make_obsidian_tool(tool_name)
+
+    # N8C-22 client-exposure bridge: fallback catalog / help / gateway helper tools. Always registered
+    # (read-only meta). They let clients that cannot ingest the full 78-tool manifest still discover and
+    # reach the canonical assistant surface through a small, allowlisted entry point. They add NO new
+    # capability: the gateway only routes to the canonical 78 via the same audited broker.dispatch path.
+    @mcp.tool()
+    def hb_assistant_catalog(group: str | None = None) -> dict[str, Any]:
+        """Catalog of the read-only N8C assistant tool suite for connected clients. Lists the 13 groups
+        and their canonical tools with purpose, required/optional args, result limits, and safety class,
+        so a client can pick a tool then call it directly or via ``hb_assistant_tool_query``. Optionally
+        filter to one ``group`` (nav, context_packs, memory, decision_memory, review, intelligence,
+        research_packets, source_connector, answer_drafts, workflows, feedback, action_stages, quality).
+        Read-only; returns no secrets, raw payloads, credentials, or absolute paths."""
+        if group is not None and group not in ASSISTANT_TOOL_GROUPS:
+            raise ValueError(f"unknown_assistant_group:{group}")
+        index = _extract_client_tool_index(mcp)
+        scope = {group: ASSISTANT_TOOL_GROUPS[group]} if group else dict(ASSISTANT_TOOL_GROUPS)
+        return {
+            "groups": [
+                {"group": label, "tool_count": len(tools), "tools": list(tools)}
+                for label, tools in scope.items()
+            ],
+            "tools": [_assistant_tool_meta(name, index) for tools in scope.values() for name in tools],
+            "canonical_assistant_tool_count": len(ALL_ASSISTANT_TOOLS),
+            "client_bridge_helper_tools": list(CLIENT_BRIDGE_HELPER_TOOLS),
+            "exposure": assistant_client_exposure_status(),
+            "safety": (
+                "All listed assistant tools are read-only/advisory. The only sanctioned remote write is "
+                "ai_outputs_card_upsert, and it is NOT reachable through hb_assistant_tool_query."
+            ),
+        }
+
+    @mcp.tool()
+    def hb_assistant_tool_help(tool_name: str) -> dict[str, Any]:
+        """Schema + usage guidance for ONE approved read-only N8C assistant tool (must be one of the
+        canonical 78). Rejects unknown, denied, and non-assistant tool names. Use before calling a tool
+        directly or via ``hb_assistant_tool_query``."""
+        if tool_name in DENIED_TOOL_NAMES:
+            raise ValueError(f"denied_tool:{tool_name}")
+        if tool_name not in ALL_ASSISTANT_TOOLS:
+            raise ValueError(f"unknown_or_non_assistant_tool:{tool_name}")
+        index = _extract_client_tool_index(mcp)
+        meta = _assistant_tool_meta(tool_name, index)
+        entry = index.get(tool_name) or {}
+        meta["input_schema"] = entry.get("input_schema") or {}
+        meta["usage"] = (entry.get("description") or "").strip()
+        meta["gateway"] = "hb_assistant_tool_query"
+        return meta
+
+    @mcp.tool()
+    def hb_assistant_tool_query(tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Allowlisted gateway: call ONE canonical read-only N8C assistant tool by name for clients that
+        cannot ingest the full 78-tool manifest. Only the canonical 78 assistant tools are permitted; it
+        rejects denied names, write/finality/action tools, non-assistant tools, unknown handlers, and
+        unbounded limits. It is NOT a generic RPC escape hatch — no arbitrary modules/functions, no SQL,
+        shell, exec, or file paths. On success it returns the same audited, bounded broker receipt
+        (``ok``/``result``/``request_id``) the direct wrappers use; the same profile gates, per-group kill
+        switches, read-only snapshot, and audit logging apply."""
+        if not isinstance(tool_name, str) or not tool_name:
+            raise ValueError("tool_name_required")
+        if tool_name in DENIED_TOOL_NAMES:
+            raise ValueError(f"denied_tool:{tool_name}")
+        if tool_name not in ALL_ASSISTANT_TOOLS:
+            raise ValueError(f"not_an_allowlisted_assistant_tool:{tool_name}")
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            raise ValueError("arguments_must_be_object")
+        _reject_unbounded_gateway_args(arguments)
+        return broker.dispatch(tool_name, arguments)

@@ -1,0 +1,11 @@
+# N8C-22 implemented files (scope-limited)
+## modified
+src/hb_assistant/cli/mcp_nas.py
+src/hb_assistant/nas_mcp/broker.py
+src/hb_assistant/nas_mcp/tool_registration.py
+## new (untracked, N8C-22 scope)
+src/hb_assistant/nas_mcp/exposure_audit.py
+tests/test_n8c_client_exposure_bridge.py
+scripts/smoke-n8c-client-exposure.sh
+docs/architecture/n8c-connected-client-exposure.md
+docs/evidence/nas-second-brain-n8c/20260708T065039Z-n8c-22-client-exposure/ (evidence bundle)

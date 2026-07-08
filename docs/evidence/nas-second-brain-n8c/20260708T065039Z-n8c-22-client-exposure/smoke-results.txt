@@ -1,0 +1,42 @@
+PASS - status check 
+PASS - status exposed_tool_count == 78 
+PASS - client manifest exposes all 78 assistant tools 
+PASS - client manifest exposes 3 bridge helpers 
+PASS - catalog lists 13 groups / 78 tools 
+PASS - help returns schema for a known tool 
+PASS - assistant source file search 
+PASS - assistant source file bounded read 
+PASS - assistant source card search 
+PASS - assistant source status 
+PASS - context pack list 
+PASS - context pack get (reach) 
+PASS - memory list 
+PASS - memory get (reach) 
+PASS - decision list 
+PASS - preference list 
+PASS - open-loop list 
+PASS - research packet list 
+PASS - research packet get (reach) 
+PASS - research packet citations (reach) 
+PASS - draft list 
+PASS - draft get (reach) 
+PASS - draft citations (reach) 
+PASS - workflow list 
+PASS - workflow route (reach) 
+PASS - workflow policy (reach) 
+PASS - review list 
+PASS - review effective state (reach) 
+PASS - feedback list 
+PASS - feedback recommendations (reach) 
+PASS - action stage list 
+PASS - action stage get (reach) 
+PASS - quality list 
+PASS - quality findings (reach) 
+PASS - negative: denied tool (raw_sql) rejected 
+PASS - negative: raw SQL (hb_db_select) rejected 
+PASS - negative: shell/exec rejected 
+PASS - negative: write/finality (ai_outputs_card_upsert) rejected via gateway 
+PASS - negative: absolute file read tool rejected 
+PASS - negative: unbounded limit rejected 
+
+SMOKE OK: connected-client layer sees and can call the N8C assistant surface; negatives fail closed.

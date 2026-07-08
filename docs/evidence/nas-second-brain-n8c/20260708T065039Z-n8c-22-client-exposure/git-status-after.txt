@@ -1,0 +1,19 @@
+# N8C-22 git status after (scoped)
+branch: ops/nas-second-brain-n8c-22-client-exposure-20260708
+base: eebe72e0 (origin/main)
+
+## Tracked files changed by N8C-22 (git diff --stat vs HEAD):
+ src/hb_assistant/cli/mcp_nas.py               |  28 +++++
+ src/hb_assistant/nas_mcp/broker.py            |  95 ++++++++++++++
+ src/hb_assistant/nas_mcp/tool_registration.py | 171 +++++++++++++++++++++++++-
+ 3 files changed, 293 insertions(+), 1 deletion(-)
+
+## New (untracked) files in N8C-22 scope:
+  src/hb_assistant/nas_mcp/exposure_audit.py
+  tests/test_n8c_client_exposure_bridge.py
+  scripts/smoke-n8c-client-exposure.sh
+  docs/architecture/n8c-connected-client-exposure.md
+  docs/evidence/nas-second-brain-n8c/20260708T065039Z-n8c-22-client-exposure/*
+
+## NOTE: other untracked files under docs/evidence/, docs/implementation/, frontend/ pre-existed
+##       before N8C-22 (present in git-status-before.txt) and are NOT part of this change.
