@@ -1,0 +1,4 @@
+Prompt Preflight preflight Wed Jul  8 09:50:43 UTC 2026
+branch: ops/nas-second-brain-prompt-preflight-tool-routing-20260708
+HEAD (off N8C-24): a476c35f550d454a454518c69cb584e989753868
+schema baseline: V113 -> V114

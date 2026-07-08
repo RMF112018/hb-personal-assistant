@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Changing the NAS MCP tool surface?** See [AGENTS.md](AGENTS.md) → "Mandatory MCP Tool-Surface
+> Maintenance". Adding/removing/renaming a tool requires updating the routing manifests (families /
+> workflows / tool entries), the gateway allowlist, and the docs, then passing the guard tests — or the
+> tool-surface freshness guard fails closed on write routes.
+
 ## Project
 
 `hb-personal-assistant` — a Bobby-only, **local-first** MVP that pulls delegated Microsoft 365 (Graph) and Procore data, classifies/enriches it, and writes source-linked notes into an Obsidian vault. Pure Python 3.12+, single package `hb_assistant`, Typer CLI, SQLite for local state. No web service, frontend, or JS workspaces.

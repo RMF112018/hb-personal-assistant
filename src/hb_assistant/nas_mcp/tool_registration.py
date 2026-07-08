@@ -34,6 +34,7 @@ from .profile import (
     blocked_write_tools,
     client_output_write_enabled,
     client_tool_manifest_enabled,
+    prompt_preflight_enabled,
     scratch_output_write_enabled,
 )
 
@@ -1067,6 +1068,9 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                                                                "pa_vault_"))],
             "client_output_tools": list(ALL_PA_OUTPUT_TOOLS),
             "ai_output_tools": ["ai_outputs_card_upsert"],
+            "prompt_routing_tools": [t for t in GATEWAY_ALLOWLIST if t.startswith("pa_prompt_")
+                                     or t in ("pa_tool_family_get", "pa_workflow_recipe_get",
+                                              "pa_tool_surface_freshness_check")],
             "gateway_allowlist_count": len(GATEWAY_ALLOWLIST),
             "exposure": assistant_client_exposure_status(),
             "safety": (
@@ -1365,3 +1369,40 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             operator_approval_id. Never deletes."""
             return _assistant_result("pa_output_archive_commit", {
                 "output_id": output_id, "operator_approval_id": operator_approval_id})
+
+    # Prompt Preflight & Tool Routing. Five READ-ONLY routing tools that expose the deterministic route
+    # engine + tool-surface freshness guard. They never write/stage/promote/read source content — they only
+    # reason over the static routing manifests. Gateway-reachable via GATEWAY_ALLOWLIST.
+    if prompt_preflight_enabled():
+
+        @mcp.tool()
+        def pa_prompt_route(prompt: str, has_exact_id: bool = False) -> dict[str, Any]:
+            """Preflight a raw prompt into a read-only route plan: intent → source-of-truth → tool family →
+            workflow recipe → specific tools → authorization → retrieval budget → memory opportunity →
+            fallback. Recommends only; performs no write, no staging, no promotion, and reads no content."""
+            return _assistant_result("pa_prompt_route", {"prompt": prompt, "has_exact_id": has_exact_id})
+
+        @mcp.tool()
+        def pa_prompt_route_explain(prompt: str, has_exact_id: bool = False) -> dict[str, Any]:
+            """Same route plan as pa_prompt_route plus the full workflow + family records behind the
+            decision (why this family/workflow/tools). Read-only."""
+            return _assistant_result("pa_prompt_route_explain",
+                                     {"prompt": prompt, "has_exact_id": has_exact_id})
+
+        @mcp.tool()
+        def pa_tool_family_get(family_id: str | None = None) -> dict[str, Any]:
+            """Get one tool family record (use_when/do_not_use/read-write class/negative instructions) or,
+            with no id, the full family taxonomy. Read-only."""
+            return _assistant_result("pa_tool_family_get", {"family_id": family_id})
+
+        @mcp.tool()
+        def pa_workflow_recipe_get(workflow_id: str | None = None) -> dict[str, Any]:
+            """Get one workflow recipe (tool sequence, authorization, retrieval budget, provenance,
+            fallbacks) or, with no id, all recipes. Read-only."""
+            return _assistant_result("pa_workflow_recipe_get", {"workflow_id": workflow_id})
+
+        @mcp.tool()
+        def pa_tool_surface_freshness_check() -> dict[str, Any]:
+            """Check whether the live tool surface (tools, families, classes, gateway scope) still matches
+            the routing manifest. Reads warn on drift; write/promotion/archive routes fail closed. Read-only."""
+            return _assistant_result("pa_tool_surface_freshness_check", {})

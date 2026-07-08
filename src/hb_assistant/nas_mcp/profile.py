@@ -93,6 +93,14 @@ def client_output_write_enabled() -> bool:
     return True if override is None else override
 
 
+def prompt_preflight_enabled() -> bool:
+    """Prompt Preflight & Tool Routing read-only routing layer. Default ON in every profile — it never
+    writes, stages, promotes, or reads source content, so it carries no write risk. Kill-switch:
+    ``HB_MCP_PROMPT_PREFLIGHT=0``."""
+    override = _env_bool("HB_MCP_PROMPT_PREFLIGHT")
+    return True if override is None else override
+
+
 HEALTH_MODE_MINIMAL_PUBLIC = "minimal_public"
 HEALTH_MODE_PROTECTED = "protected"
 KNOWN_HEALTH_MODES = (HEALTH_MODE_MINIMAL_PUBLIC, HEALTH_MODE_PROTECTED)
@@ -380,4 +388,5 @@ def gate_status() -> dict[str, object]:
         "assistant_quality_enabled": assistant_quality_enabled(),
         "artifact_workspace_enabled": artifact_workspace_enabled(),
         "client_tool_manifest_enabled": client_tool_manifest_enabled(),
+        "prompt_preflight_enabled": prompt_preflight_enabled(),
     }

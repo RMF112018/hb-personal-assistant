@@ -74,5 +74,8 @@ canonical catalog still reports exactly 78; the write surfaces appear as separat
 ## Mandatory MCP tool-surface maintenance
 
 Any change to the MCP tool surface must update this manifest, the catalog/help/query gateway, and the
-prompt preflight routing. See [mcp-tool-surface-maintenance](mcp-tool-surface-maintenance.md) (created in
-the Prompt Preflight phase) and the root `AGENTS.md`.
+prompt preflight routing (families / workflows / tool entries / freshness). The 10-step checklist and the
+guard tests that enforce it live in the root [AGENTS.md](../../AGENTS.md); see also
+[mcp-tool-surface-maintenance](mcp-tool-surface-maintenance.md),
+[prompt-preflight-tool-routing](prompt-preflight-tool-routing.md), and
+[tool-routing-freshness-policy](tool-routing-freshness-policy.md).

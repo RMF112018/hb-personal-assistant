@@ -1,0 +1,2 @@
+# Org-neutral scan (must find nothing)
+CLEAN: no org-specific terms found

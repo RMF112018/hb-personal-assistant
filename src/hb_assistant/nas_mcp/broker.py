@@ -68,7 +68,13 @@ from .profile import (
     blocked_write_tools,
     client_tool_manifest_enabled,
     gate_status,
+    prompt_preflight_enabled,
     safe_mode_enabled,
+)
+from .prompt_routing_tools import (
+    PROMPT_ROUTING_TOOLS,
+    dispatch_prompt_routing_tool,
+    prompt_preflight_status,
 )
 from .root_policy import RootPolicyError
 from .root_tools import (
@@ -307,7 +313,11 @@ ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
 # root/db tools, legacy hb_output_* and any non-allowlisted name stay rejected, and every gateway-routed
 # write still passes the full broker gate chain (safe-mode, per-tool gate, approval, idempotency, path).
 GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
-    set(ALL_ASSISTANT_TOOLS) | set(ALL_PA_TOOLS) | set(ALL_PA_OUTPUT_TOOLS) | {AI_OUTPUTS_WRITE_TOOL}
+    set(ALL_ASSISTANT_TOOLS)
+    | set(ALL_PA_TOOLS)
+    | set(ALL_PA_OUTPUT_TOOLS)
+    | set(PROMPT_ROUTING_TOOLS)
+    | {AI_OUTPUTS_WRITE_TOOL}
 )
 
 
@@ -647,6 +657,8 @@ class NasMcpBroker:
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),
                 **client_output_status(cfg),
+                # Prompt Preflight & Tool Routing status + tool-surface freshness (fail-safe).
+                **prompt_preflight_status(cfg),
             }
         if tool_name == AI_OUTPUTS_WRITE_TOOL:
             from .ai_outputs import ai_outputs_card_upsert  # noqa: PLC0415
@@ -728,6 +740,12 @@ class NasMcpBroker:
             # blocked_write_tools when client_output_write_enabled() is off) above; server-side approval +
             # idempotency + path safety are enforced inside the handler. Reads are bounded.
             return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
+        if tool_name in PROMPT_ROUTING_TOOLS:
+            # Prompt Preflight & Tool Routing. Read-only routing layer — never writes/stages/promotes/reads
+            # source content. Gated by its own kill switch; gateway-reachable via GATEWAY_ALLOWLIST.
+            if not prompt_preflight_enabled():
+                raise ValueError("prompt_preflight_disabled")
+            return dispatch_prompt_routing_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name == "hb_db_select":
             return hb_db_select(
                 config=cfg,

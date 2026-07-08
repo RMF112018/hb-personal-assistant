@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 113
+LATEST_SCHEMA_VERSION = 114
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7037,6 +7037,13 @@ class SQLiteMigrator:
 
         return V113_CLIENT_OUTPUT_STATEMENTS
 
+    @staticmethod
+    def _v114_statements() -> list[str]:
+        # Prompt Preflight & Tool Routing: durable routing manifest (families / workflows / tool entries).
+        from hb_assistant.store.pa_prompt_routing_tables import V114_PROMPT_ROUTING_STATEMENTS
+
+        return V114_PROMPT_ROUTING_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8948,6 +8955,19 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (113, 'v113_pa_client_output_workspace', ?)",
+                    (now,),
+                )
+
+            # v114 (Prompt Preflight & Tool Routing): durable routing manifest (tool families, prompt
+            # workflow recipes, per-tool routing entries). Additive, all tables ship EMPTY; rows are only
+            # written by the explicit routing-manifest snapshot path. No route-audit table — route calls are
+            # audited by the existing broker audit envelope, so the preflight surface stays read-only.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 114")
+            if cur.fetchone() is None:
+                for stmt in self._v114_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (114, 'v114_pa_prompt_routing_manifest', ?)",
                     (now,),
                 )
 
