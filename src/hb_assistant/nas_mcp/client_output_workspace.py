@@ -25,6 +25,10 @@ _ALLOWED_CONTENT_MODES = frozenset({
     "docx_from_markdown_or_text", "xlsx_from_csv", "pptx_from_markdown_or_json",
     "pdf_from_html_or_markdown", "zip_base64", "zip_from_outputs",
 })
+# Client-friendly aliases folded to canonical modes before validation. A bare "base64" is the
+# natural thing a client passes for binary/zip payloads; without this it fell through the
+# membership check as invalid_content_mode:base64 even though the renderer decodes base64 anyway.
+_CONTENT_MODE_ALIASES = {"base64": "base64_binary", "json": "json_text", "zip": "zip_base64"}
 MAX_TITLE = 300
 MAX_EXCERPT_CHARS = 4000
 
@@ -107,6 +111,7 @@ class ClientOutputWorkspaceRepository:
             content = payload["content_base64"]
             content_mode = "base64_binary" if file_type not in ("zip",) else content_mode
         content = "" if content is None else str(content)
+        content_mode = _CONTENT_MODE_ALIASES.get(content_mode, content_mode)
         dest = str(payload.get("destination_state") or "pending").strip().lower()
         if not title:
             raise ClientOutputError("missing_title")
@@ -241,8 +246,12 @@ class ClientOutputWorkspaceRepository:
         if rec["status"] != "committed":
             raise ClientOutputError(f"only_committed_can_archive:{rec['status']}")
         target_rel = resolver.archive_relative_path(current_relative_path=rec["relative_path"], now=_now())
+        # Echo the server-minted approval id from staging so the client can complete the archive via
+        # commit_archive_output. It is reused (commit validates against rec["operator_approval_id"]) —
+        # never a new mint, and never client-invented.
         return {"output_id": output_id, "current_relative_path": rec["relative_path"],
                 "archive_relative_path": target_rel, "operation": "move_to_90_archive",
+                "operator_approval_id": rec["operator_approval_id"],
                 "deletes": False, "requires_operator_approval": True, "writes": False}
 
     def commit_archive_output(self, *, output_id: str, operator_approval_id: str) -> dict[str, Any]:

@@ -33,8 +33,25 @@ STATUS_STALE = "stale"
 STATUS_UNKNOWN = "unknown"  # configured but no data yet
 STATUS_NOT_CONFIGURED = "not_configured"  # table absent
 STATUS_FUTURE = "anomaly_future_timestamp"  # last timestamp is in the future — freshness untrustworthy
+STATUS_DEGRADED = "degraded_last_run_failed"  # recent timestamp but the latest run's status is a failure
 # Small tolerance for benign clock skew before a future timestamp is treated as an anomaly.
 FUTURE_TOLERANCE_SECONDS = 300
+# Latest-run status enums that mean the subsystem is failing even if its timestamp looks recent.
+_FAILURE_STATUSES = frozenset({"error", "failed", "failure", "fail"})
+
+
+def _apply_last_status(info: dict[str, Any], last_status: Any) -> dict[str, Any]:
+    """Attach ``last_status`` and, if it signals failure, downgrade an otherwise-fresh headline.
+
+    The headline ``status`` is derived from timestamp age; a subsystem that ran recently but FAILED
+    would otherwise read ``ok`` off a fresh timestamp. Downgrade ok/stale → degraded so a client never
+    mistakes a recent failed run for healthy data. Future/unknown/not_configured are left untouched.
+    """
+    if last_status is not None:
+        info["last_status"] = last_status
+    if str(last_status).strip().lower() in _FAILURE_STATUSES and info.get("status") in (STATUS_OK, STATUS_STALE):
+        info["status"] = STATUS_DEGRADED
+    return info
 
 
 def _now() -> datetime:
@@ -130,9 +147,7 @@ def _daily_brief(conn: sqlite3.Connection) -> dict[str, Any]:
     latest = _one(
         conn, "SELECT status FROM daily_brief_runs ORDER BY generated_utc DESC LIMIT 1"
     )
-    if latest:
-        info["last_status"] = latest[0]
-    return info
+    return _apply_last_status(info, latest[0] if latest else None)
 
 
 def _sync_domain(conn: sqlite3.Connection, table: str, ts_col: str, status_col: str) -> dict[str, Any]:
@@ -141,9 +156,7 @@ def _sync_domain(conn: sqlite3.Connection, table: str, ts_col: str, status_col: 
     last = _one(conn, f"SELECT MAX({ts_col}) FROM {table}")  # noqa: S608 (fixed identifiers)
     info = _age_status(last[0] if last else None)
     latest = _one(conn, f"SELECT {status_col} FROM {table} ORDER BY {ts_col} DESC LIMIT 1")  # noqa: S608
-    if latest:
-        info["last_status"] = latest[0]
-    return info
+    return _apply_last_status(info, latest[0] if latest else None)
 
 
 def _procore(conn: sqlite3.Connection) -> dict[str, Any]:
@@ -154,9 +167,7 @@ def _procore(conn: sqlite3.Connection) -> dict[str, Any]:
     latest = _one(
         conn, "SELECT status FROM procore_live_sync_runs ORDER BY started_at_utc DESC LIMIT 1"
     )
-    if latest:
-        info["last_status"] = latest[0]
-    return info
+    return _apply_last_status(info, latest[0] if latest else None)
 
 
 def _count(conn: sqlite3.Connection, table: str, where: str) -> int:

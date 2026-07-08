@@ -57,12 +57,23 @@ def _render_text(content: str) -> bytes:
     return str(content).encode("utf-8")
 
 
-def _render_json(content: str) -> bytes:
+def _render_json(content: str, content_mode: str = "text") -> bytes:
+    # JSON may arrive as raw text (content_text) or base64-encoded (content_base64 → base64_binary).
+    # The office/pdf branches already special-case base64; the json branch must too, or a base64
+    # payload is fed straight to json.loads and always fails ("invalid json content").
+    if content_mode == "base64_binary":
+        raw = _decode_base64(content)
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise OutputWriteError(f"json base64 payload is not utf-8 text: {exc}") from exc
+    else:
+        text = str(content)
     try:
-        json.loads(content)
+        json.loads(text)
     except (ValueError, TypeError) as exc:
         raise OutputWriteError(f"invalid json content: {exc}") from exc
-    return str(content).encode("utf-8")
+    return text.encode("utf-8")
 
 
 def _render_csv(content: str) -> bytes:
@@ -163,7 +174,7 @@ def render_output_bytes(
     elif ext == "html":
         data = _render_html(content)
     elif ext == "json":
-        data = _render_json(content)
+        data = _render_json(content, content_mode)
     elif ext == "csv":
         data = _render_csv(content)
     elif ext == "docx":

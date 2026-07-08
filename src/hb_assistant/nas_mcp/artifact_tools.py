@@ -93,9 +93,20 @@ def current_tool_names(config: Any) -> set[str]:
 
 def _build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
     from .broker import ASSISTANT_TOOL_GROUPS  # noqa: PLC0415
+    from .tool_registration import derive_tool_arg_meta, live_tool_schema_index  # noqa: PLC0415
 
     tool_to_group = {t: g for g, tools in ASSISTANT_TOOL_GROUPS.items() for t in tools}
-    return {name: {"group": tool_to_group.get(name)} for name in current_tool_names(config)}
+    # Enrich each entry with the same purpose/args/limits the catalog derives from the live tool
+    # schemas (captured at registration) so the persisted manifest and pa_tool_manifest_tool_help
+    # carry real metadata instead of empty lists. Best-effort: the schema index is {} before
+    # registration and does not affect the manifest checksum.
+    schema_index = live_tool_schema_index()
+    index: dict[str, dict[str, Any]] = {}
+    for name in current_tool_names(config):
+        entry: dict[str, Any] = {"group": tool_to_group.get(name)}
+        entry.update(derive_tool_arg_meta(name, schema_index))
+        index[name] = entry
+    return index
 
 
 def _require(args: dict[str, Any], key: str) -> Any:
@@ -372,6 +383,39 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
     mrepo.mark_refresh_promoted(refresh_id, receipt_rel)
     return {"status": "promoted", "manifest_id": manifest_id, "manifest_paths": paths,
             "checksum": manifest["checksum"], "idempotent_reuse": False}
+
+
+def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown") -> dict[str, Any]:
+    """Idempotently ensure an active persisted client-tool manifest exists (NAS read-only profile only).
+
+    Server-side self-materialization of the deterministic tool catalog: builds the manifest from the live
+    surface and, iff none is active or the checksum drifted, runs the SAME stage → promote path an operator
+    would — with a server-minted approval id from ``stage_refresh`` (never client-invented). No-op when a
+    matching active manifest already exists, so a no-change restart does nothing. Gated to the read-only NAS
+    profile so it never writes on a dev/ingest host; safe to call at startup.
+    """
+    from hb_assistant.store.connection import db_readonly  # noqa: PLC0415
+
+    from .profile import client_tool_manifest_enabled  # noqa: PLC0415
+
+    if not (db_readonly() and client_tool_manifest_enabled()):
+        return {"bootstrapped": False, "reason": "not_nas_readonly_profile"}
+    mrepo = ClientToolManifestRepository(str(config.db_path))
+    active = mrepo.get_active()
+    version = (active["manifest_version"] + 1) if active else 1
+    built = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now(),
+                           manifest_version=version)
+    if active and active.get("checksum") == built["checksum"]:
+        return {"bootstrapped": False, "reason": "already_active", "checksum": built["checksum"]}
+    fr = mrepo.freshness_check(current_tool_names(config))
+    staged = mrepo.stage_refresh(built, fr)  # server-minted operator_approval_id
+    promoted = _promote_manifest_refresh(
+        config, mrepo,
+        {"refresh_proposal_id": staged["refresh_proposal_id"],
+         "operator_approval_id": staged["operator_approval_id"]},
+        runtime_commit=runtime_commit)
+    return {"bootstrapped": True, "manifest_id": promoted.get("manifest_id"),
+            "checksum": promoted.get("checksum")}
 
 
 def _now() -> str:

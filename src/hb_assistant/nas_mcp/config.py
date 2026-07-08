@@ -58,6 +58,10 @@ class NasObsidianConfig:
     vault_markdown_write_enabled: bool = True
     summarization_backend: str = "deterministic"
     ai_outputs_folder: str = "AI Outputs"
+    # Maps indexed source-root keys → their mounted paths so live source reads resolve instead of
+    # falling back to indexed excerpts. Each entry: {"source_root_key", "path", "sensitive"?}. Left
+    # empty → obsidian_config_from_nas derives a `syn-<roots-key>` default for the home/work trees.
+    external_sources: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -163,6 +167,12 @@ class NasMcpConfig:
         limits = mcp.get("limits") if isinstance(mcp.get("limits"), dict) else {}
         obs_raw = mcp.get("obsidian") if isinstance(mcp.get("obsidian"), dict) else {}
         vault_mount = roots.get("vault").mount if roots.get("vault") else Path("/mnt/vault")
+        ext_raw = obs_raw.get("external_sources")
+        external_sources = tuple(
+            {"source_root_key": str(e.get("source_root_key")), "path": str(e.get("path")),
+             "sensitive": bool(e.get("sensitive", False))}
+            for e in ext_raw if isinstance(e, dict) and e.get("source_root_key") and e.get("path")
+        ) if isinstance(ext_raw, list) else ()
         obsidian = NasObsidianConfig(
             vault_root=Path(str(obs_raw.get("vault_root") or vault_mount)),
             backup_dir=Path(str(obs_raw.get("backup_dir") or audit_dir / "obsidian-backups")),
@@ -171,6 +181,7 @@ class NasMcpConfig:
             vault_markdown_write_enabled=bool(obs_raw.get("vault_markdown_write_enabled", True)),
             summarization_backend=str(obs_raw.get("summarization_backend", "deterministic")),
             ai_outputs_folder=str(obs_raw.get("ai_outputs_folder", "AI Outputs")),
+            external_sources=external_sources,
         )
         return cls(
             db_path=db_path,
