@@ -1,0 +1,125 @@
+{
+  "mode": "local_client_style_mcp_registration_and_dispatch",
+  "note": "Simulates connected-client tool discovery via FastMCP registration + broker dispatch (same path as smoke-n8c-client-exposure).",
+  "default_on": {
+    "structure_enabled_env_unset": true,
+    "status_structure_enabled": true,
+    "status_structure_tools_count": 7,
+    "status_structure_tools": [
+      "assistant_source_root_map",
+      "assistant_source_folder_map",
+      "assistant_source_folder_summary",
+      "assistant_source_search_route",
+      "assistant_source_scope_explain",
+      "assistant_source_project_map",
+      "assistant_source_quality"
+    ],
+    "assistant_client_exposed_tool_count": 87,
+    "assistant_client_exposure_groups": [
+      "action_stages",
+      "answer_drafts",
+      "context_packs",
+      "decision_memory",
+      "feedback",
+      "intelligence",
+      "memory",
+      "nav",
+      "quality",
+      "research_packets",
+      "review",
+      "source_connector",
+      "source_structure",
+      "workflows"
+    ],
+    "registered_tool_count": 182,
+    "assistant_prefixed_count": 97,
+    "canonical_assistant_count": 87,
+    "all_assistant_tools_const": 87,
+    "group_count": 14,
+    "connector_tools": [
+      "assistant_source_status",
+      "assistant_source_roots_list",
+      "assistant_source_files_list",
+      "assistant_source_file_search",
+      "assistant_source_file_metadata",
+      "assistant_source_file_read",
+      "assistant_source_index_health",
+      "assistant_source_query_plan"
+    ],
+    "structure_tools_const": [
+      "assistant_source_root_map",
+      "assistant_source_folder_map",
+      "assistant_source_folder_summary",
+      "assistant_source_search_route",
+      "assistant_source_scope_explain",
+      "assistant_source_project_map",
+      "assistant_source_quality"
+    ],
+    "required_tools_discoverable": {
+      "assistant_source_index_health": true,
+      "assistant_source_query_plan": true,
+      "assistant_source_project_map": true,
+      "assistant_source_folder_map": true
+    },
+    "assistant_output_aliases_registered": [
+      "assistant_output_archive_commit",
+      "assistant_output_archive_plan",
+      "assistant_output_commit",
+      "assistant_output_list",
+      "assistant_output_manifest_get",
+      "assistant_output_metadata",
+      "assistant_output_read_excerpt",
+      "assistant_output_receipt_get",
+      "assistant_output_stage",
+      "assistant_output_zip_inspect"
+    ],
+    "assistant_output_aliases_expected": [
+      "assistant_output_stage",
+      "assistant_output_commit",
+      "assistant_output_archive_commit",
+      "assistant_output_list",
+      "assistant_output_metadata",
+      "assistant_output_read_excerpt",
+      "assistant_output_receipt_get",
+      "assistant_output_manifest_get",
+      "assistant_output_archive_plan",
+      "assistant_output_zip_inspect"
+    ],
+    "aliases_in_gateway": [
+      "assistant_output_archive_commit",
+      "assistant_output_archive_plan",
+      "assistant_output_commit",
+      "assistant_output_list",
+      "assistant_output_manifest_get",
+      "assistant_output_metadata",
+      "assistant_output_read_excerpt",
+      "assistant_output_receipt_get",
+      "assistant_output_stage",
+      "assistant_output_zip_inspect"
+    ],
+    "health_dispatch_ok": true,
+    "plan_dispatch_ok": true,
+    "plan_intent": "map_project_folder",
+    "gateway_project_map": {
+      "ok": true
+    }
+  },
+  "kill_switch_structure_0": {
+    "structure_enabled": false,
+    "status_structure_enabled": false,
+    "status_structure_tools": [],
+    "structure_tools_still_registered": [],
+    "structure_tools_hidden_count": 7,
+    "health_plan_still_registered": [
+      "assistant_source_index_health",
+      "assistant_source_query_plan"
+    ],
+    "assistant_client_exposed_tool_count": 80,
+    "canonical_assistant_without_output_aliases": 80,
+    "dispatch_root_map_denied": true,
+    "dispatch_root_map_result": {
+      "ok": false,
+      "error": "assistant_source_structure_disabled"
+    }
+  }
+}
