@@ -1,0 +1,81 @@
+{
+  "started_utc": "2026-07-09T09:26:53.731345+00:00",
+  "branch": "ops/source-index-client-performance-hardening-20260709",
+  "head": "fa266c5293757fdd907eb2e8fba8c0424abe801f",
+  "fix_commit": "fa266c5293757fdd907eb2e8fba8c0424abe801f",
+  "root_cause": "broker.dispatch matched tool_name.startswith('assistant_') before ASSISTANT_OUTPUT_ALIASES / ALL_PA_OUTPUT_TOOLS, so assistant_output_* fell into _invoke_assistant and raised tool_not_registered",
+  "fix": "Reorder broker dispatch: client-output (pa_output_* + assistant_output_* aliases) before assistant_* catch-all. dispatch_client_output_tool already remaps aliases to pa_output_* handlers.",
+  "files_changed": [
+    "src/hb_assistant/nas_mcp/broker.py",
+    "tests/test_n8c24_output_mcp_tools.py",
+    "tests/test_source_index_client_performance_hardening.py"
+  ],
+  "local_validation": {
+    "pytest_files": [
+      "tests/test_n8c24_output_mcp_tools.py",
+      "tests/test_n8c24_output_safety_negative.py",
+      "tests/test_source_index_client_performance_hardening.py",
+      "tests/test_n8c_mcp_tool_inventory_final.py",
+      "tests/test_n8c_client_exposure_bridge.py"
+    ],
+    "pytest_exit_0": true,
+    "artifact": "10-alias-dispatch-pytest.txt",
+    "regression_tests_added": [
+      "test_assistant_output_aliases_registered",
+      "test_assistant_output_aliases_broker_callable_parity",
+      "test_assistant_output_alias_gateway_write_still_gated",
+      "test_broker_dispatch_rejects_unknown_assistant_output_suffix",
+      "gateway allowlist includes ASSISTANT_OUTPUT_ALIASES"
+    ]
+  },
+  "live_pre_redeploy": {
+    "endpoint": "https://nas-mcp.bobby-fetting.me/mcp",
+    "all_10_listed": true,
+    "all_10_callable": false,
+    "verdict": "FAIL_AS_EXPECTED_UNTIL_REDEPLOY",
+    "errors": {
+      "assistant_output_stage": "Error executing tool assistant_output_stage: 'tool_not_registered: assistant_output_stage'",
+      "assistant_output_commit": "Error executing tool assistant_output_commit: 'tool_not_registered: assistant_output_commit'",
+      "assistant_output_archive_plan": "Error executing tool assistant_output_archive_plan: 'tool_not_registered: assistant_output_archive_plan'",
+      "assistant_output_archive_commit": "Error executing tool assistant_output_archive_commit: 'tool_not_registered: assistant_output_archive_commit'",
+      "assistant_output_metadata": "Error executing tool assistant_output_metadata: 'tool_not_registered: assistant_output_metadata'",
+      "assistant_output_list": "Error executing tool assistant_output_list: 'tool_not_registered: assistant_output_list'",
+      "assistant_output_read_excerpt": "Error executing tool assistant_output_read_excerpt: 'tool_not_registered: assistant_output_read_excerpt'",
+      "assistant_output_receipt_get": "Error executing tool assistant_output_receipt_get: 'tool_not_registered: assistant_output_receipt_get'",
+      "assistant_output_manifest_get": "Error executing tool assistant_output_manifest_get: 'tool_not_registered: assistant_output_manifest_get'",
+      "assistant_output_zip_inspect": "Error executing tool assistant_output_zip_inspect: 'tool_not_registered: assistant_output_zip_inspect'"
+    },
+    "artifact": "10-alias-dispatch-live-pre-redeploy.json"
+  },
+  "live_post_redeploy": {
+    "status": "PENDING_OPERATOR_SUDO_DEPLOY",
+    "operator_script": "/tmp/hb-deploy-alias-fix.sh",
+    "image_meta": "10-alias-dispatch-build-meta.txt",
+    "required_proof": "all 10 aliases callable without tool_not_registered; stage/commit/archive via assistant_output_* only (no pa_output_* fallback)"
+  },
+  "gateway_allowlist": "ASSISTANT_OUTPUT_ALIASES remain in GATEWAY_ALLOWLIST / CLIENT_OUTPUT_GATEWAY_TOOLS; write gate still applies to alias writes",
+  "pa_output_compatibility": "preserved (same handlers; tests still call pa_output_*)",
+  "cleanup_ledger": [
+    {
+      "artifact": "alias-dispatch-proof temps",
+      "disposition": "none_created_pre_redeploy (stage failed)"
+    },
+    {
+      "artifact": "NAS /tmp/hb-nas-alias-fix-fa266c529375.tar.gz",
+      "disposition": "staged for operator load; remove after deploy"
+    },
+    {
+      "artifact": "origin bearer token",
+      "disposition": "not written to evidence"
+    }
+  ],
+  "gate": {
+    "code_fix_committed": true,
+    "local_tests_pass": true,
+    "live_alias_dispatch_pass": false,
+    "push_pr_authorized": false,
+    "reason": "live surface still pre-fix image; operator must run /tmp/hb-deploy-alias-fix.sh then re-probe"
+  },
+  "build_meta_text": "tag=hb-nas-alias-fix-fa266c529375\nhead=fa266c5293757fdd907eb2e8fba8c0424abe801f\nimage_id=sha256:533bb295a0d9ec50584ca3ca1c0d2bc62bf43fa5bb86722f9ff5816008438e48\ntarball=/tmp/hb-nas-alias-fix-fa266c529375.tar.gz\nlocal_sha256=693924a8b19c2fe477e3df51219acf1c91de440203d0ec7a120a8bb86d25244e\nnas_sha256=693924a8b19c2fe477e3df51219acf1c91de440203d0ec7a120a8bb86d25244e\nnas_path=/tmp/hb-nas-alias-fix-fa266c529375.tar.gz\noperator_script=/tmp/hb-deploy-alias-fix.sh\nfix=assistant_output_alias_broker_dispatch\n",
+  "finished_utc": "2026-07-09T09:26:53.731485+00:00"
+}

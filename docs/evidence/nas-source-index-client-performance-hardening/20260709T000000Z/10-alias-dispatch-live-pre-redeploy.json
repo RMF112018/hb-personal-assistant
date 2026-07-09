@@ -1,0 +1,142 @@
+{
+  "started_utc": "2026-07-09T09:23:35.876008+00:00",
+  "finished_utc": "2026-07-09T09:23:37.646112+00:00",
+  "endpoint": "https://nas-mcp.bobby-fetting.me/mcp",
+  "phase": "pre_redeploy_or_post",
+  "aliases_listed": {
+    "assistant_output_stage": true,
+    "assistant_output_commit": true,
+    "assistant_output_archive_plan": true,
+    "assistant_output_archive_commit": true,
+    "assistant_output_metadata": true,
+    "assistant_output_list": true,
+    "assistant_output_read_excerpt": true,
+    "assistant_output_receipt_get": true,
+    "assistant_output_manifest_get": true,
+    "assistant_output_zip_inspect": true
+  },
+  "alias_call_score": {
+    "assistant_output_stage": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_stage: 'tool_not_registered: assistant_output_stage'"
+    },
+    "assistant_output_commit": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_commit: 'tool_not_registered: assistant_output_commit'"
+    },
+    "assistant_output_archive_plan": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_archive_plan: 'tool_not_registered: assistant_output_archive_plan'"
+    },
+    "assistant_output_archive_commit": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_archive_commit: 'tool_not_registered: assistant_output_archive_commit'"
+    },
+    "assistant_output_metadata": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_metadata: 'tool_not_registered: assistant_output_metadata'"
+    },
+    "assistant_output_list": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_list: 'tool_not_registered: assistant_output_list'"
+    },
+    "assistant_output_read_excerpt": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_read_excerpt: 'tool_not_registered: assistant_output_read_excerpt'"
+    },
+    "assistant_output_receipt_get": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_receipt_get: 'tool_not_registered: assistant_output_receipt_get'"
+    },
+    "assistant_output_manifest_get": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_manifest_get: 'tool_not_registered: assistant_output_manifest_get'"
+    },
+    "assistant_output_zip_inspect": {
+      "ok": false,
+      "detail_keys": [
+        "error",
+        "isError"
+      ],
+      "error": "Error executing tool assistant_output_zip_inspect: 'tool_not_registered: assistant_output_zip_inspect'"
+    }
+  },
+  "raw_results_bounded": {
+    "assistant_output_stage": {
+      "error": "Error executing tool assistant_output_stage: 'tool_not_registered: assistant_output_stage'",
+      "isError": true
+    },
+    "assistant_output_commit": {
+      "error": "Error executing tool assistant_output_commit: 'tool_not_registered: assistant_output_commit'",
+      "isError": true
+    },
+    "assistant_output_archive_plan": {
+      "error": "Error executing tool assistant_output_archive_plan: 'tool_not_registered: assistant_output_archive_plan'",
+      "isError": true
+    },
+    "assistant_output_archive_commit": {
+      "error": "Error executing tool assistant_output_archive_commit: 'tool_not_registered: assistant_output_archive_commit'",
+      "isError": true
+    },
+    "assistant_output_metadata": {
+      "error": "Error executing tool assistant_output_metadata: 'tool_not_registered: assistant_output_metadata'",
+      "isError": true
+    },
+    "assistant_output_list": {
+      "error": "Error executing tool assistant_output_list: 'tool_not_registered: assistant_output_list'",
+      "isError": true
+    },
+    "assistant_output_read_excerpt": {
+      "error": "Error executing tool assistant_output_read_excerpt: 'tool_not_registered: assistant_output_read_excerpt'",
+      "isError": true
+    },
+    "assistant_output_receipt_get": {
+      "error": "Error executing tool assistant_output_receipt_get: 'tool_not_registered: assistant_output_receipt_get'",
+      "isError": true
+    },
+    "assistant_output_manifest_get": {
+      "error": "Error executing tool assistant_output_manifest_get: 'tool_not_registered: assistant_output_manifest_get'",
+      "isError": true
+    },
+    "assistant_output_zip_inspect": {
+      "error": "Error executing tool assistant_output_zip_inspect: 'tool_not_registered: assistant_output_zip_inspect'",
+      "isError": true
+    }
+  }
+}

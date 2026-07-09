@@ -16,3 +16,9 @@
 - `OUTPUT-20260709-004` (postdeploy-matrix-temp-md): archived_in_case_9
 - `OUTPUT-20260709-005` (postdeploy-matrix-temp-zip): archived_in_case_9
 - Bearer token: not written to evidence
+
+## 10 alias dispatch proof
+
+- Pre-redeploy: no temp outputs (assistant_output_stage tool_not_registered)
+- Staged image `/tmp/hb-nas-alias-fix-fa266c529375.tar.gz` — remove after load
+- Bearer token not written to evidence
