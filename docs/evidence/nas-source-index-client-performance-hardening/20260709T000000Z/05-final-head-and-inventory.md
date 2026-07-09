@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Final HEAD** | `21d1aa55eedb524839e59557998ebd88ff954125` |
+| **Final HEAD** | `bdced1bede938792aac1c3fd614876bdc6ff50a9` |
 | **Branch** | `ops/source-index-client-performance-hardening-20260709` |
 | **Working tree after this evidence stamp** | will be clean after the commit that includes this file |
 
@@ -26,7 +26,7 @@ Earlier session summary reported `d8dfa5ee` as HEAD while `04-final-report.md` l
 2. `d8dfa5ee` = docs-only update of the report hash field  
 3. `b695f3c8` + this tip = full closeout evidence reconciliation  
 
-**Authoritative tip for PR/push decisions:** `21d1aa55eedb524839e59557998ebd88ff954125` (after the stamp commit lands, re-read this file from that commit).
+**Authoritative tip for PR/push decisions:** `bdced1bede938792aac1c3fd614876bdc6ff50a9` (after the stamp commit lands, re-read this file from that commit).
 
 ### Recent log (at stamp generation)
 
