@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 116
+LATEST_SCHEMA_VERSION = 117
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7063,6 +7063,17 @@ class SQLiteMigrator:
 
         return V116_SOURCE_STRUCTURE_OVERRIDE_STATEMENTS
 
+    @staticmethod
+    def _v117_statements() -> list[str]:
+        # NAS Source-Index bootstrap readiness + reconciliation receipts: two additive tables giving the
+        # source-index watcher a durable per-root readiness gate and a receipt trail for safety-net
+        # reconciliation scans. Reuses the existing event queue / watcher k/v state / structure runs.
+        from hb_assistant.store.source_index_bootstrap_tables import (
+            V117_SOURCE_INDEX_BOOTSTRAP_STATEMENTS,
+        )
+
+        return V117_SOURCE_INDEX_BOOTSTRAP_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9014,6 +9025,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (116, 'v116_source_structure_overrides', ?)",
+                    (now,),
+                )
+
+            # v117 (NAS Source-Index bootstrap readiness + reconciliation): two additive tables —
+            # source_index_bootstrap_state (per-root file/structure bootstrap + watcher_ready gate) and
+            # source_index_reconciliation_runs (lightweight/full safety-net scan receipts). Additive, ship
+            # EMPTY; rows are written only by out-of-band CLI/operator jobs (source-watch bootstrap /
+            # reconcile). The file-event queue, watcher k/v state, and structure runs are reused as-is.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 117")
+            if cur.fetchone() is None:
+                for stmt in self._v117_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (117, 'v117_source_index_bootstrap', ?)",
                     (now,),
                 )
 

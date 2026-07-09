@@ -46,6 +46,7 @@ from . import search as search_mod
 from . import second_brain as second_brain_mod
 from . import source_connector as source_connector_mod
 from . import source_structure as source_structure_mod
+from . import source_watch as source_watch_mod
 from . import workflow as workflow_mod
 
 app = typer.Typer(
@@ -102,6 +103,7 @@ app.add_typer(answer_draft_mod.app, name="answer-draft")
 app.add_typer(research_packet_mod.app, name="research-packet")
 app.add_typer(source_connector_mod.app, name="source-connector")
 app.add_typer(source_structure_mod.app, name="source-structure")
+app.add_typer(source_watch_mod.app, name="source-watch")
 app.add_typer(workflow_mod.app, name="workflow")
 app.add_typer(feedback_mod.app, name="feedback")
 app.add_typer(action_stage_mod.app, name="action-stage")

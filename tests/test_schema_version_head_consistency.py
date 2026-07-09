@@ -330,6 +330,23 @@ def test_prior_assistant_tables_survive_v108(tmp_path: Path) -> None:
     assert {"assistant_claims", "assistant_context_packs"} <= names
 
 
+def test_v117_migration_row_present(tmp_path: Path) -> None:
+    db = tmp_path / "head.db"
+    _migrate(db)
+    with sqlite3.connect(db) as conn:
+        row = conn.execute("SELECT name FROM schema_migrations WHERE version = 117").fetchone()
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' "
+                "AND name LIKE 'source_index_%'"
+            )
+        }
+    assert row is not None
+    assert row[0] == "v117_source_index_bootstrap"
+    assert {"source_index_bootstrap_state", "source_index_reconciliation_runs"} <= tables
+
+
 def test_apply_is_idempotent(tmp_path: Path) -> None:
     # v98 is a destructive rebuild-and-rename guarded only by the outer
     # ``WHERE version = 98`` check; a second apply() must be a safe no-op.

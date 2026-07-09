@@ -8,10 +8,32 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+
 from .config import ObsidianMcpConfig
 from .source_connector_service import list_source_roots, source_status
 from .source_index_repository import SourceIndexRepository
 from .source_structure_repository import SourceStructureRepository
+
+
+def _watchdog_available() -> bool:
+    try:
+        import watchdog.observers  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def _run_state(config: ObsidianMcpConfig, ready: bool, backend: bool) -> str:
+    """Path-safe per-root watcher run-state projection (mirrors source_bootstrap.resolve_run_state)."""
+    if not bool(getattr(config, "external_source_watch_enabled", False)):
+        return "disabled_by_config"
+    if not ready:
+        return "not_bootstrapped"
+    if not backend:
+        return "backend_unavailable"
+    return "running"
 
 
 def _freshness_state(*, last_indexed_at: str | None, is_active: bool = True,
@@ -46,6 +68,24 @@ def source_index_health(
     srepo = structure_repo or SourceStructureRepository(str(repo.db_path))
     structure_status = srepo.status()
     structure_roots = {r["root_key"]: r for r in srepo.list_roots(limit=100)}
+
+    # Bootstrap readiness + watcher/queue/reconciliation state (V117). All path-safe: bootstrap_state
+    # and reconciliation rows carry only root_key; queue_health carries counts; the watcher-owner blob
+    # is read ONLY for its heartbeat timestamp (never cwd/db_path).
+    bstate = SourceIndexBootstrapRepository(str(repo.db_path))
+    bootstrap_by_root = {b["root_key"]: b for b in bstate.list_bootstrap_state()}
+    try:
+        queue = repo.queue_health()
+    except Exception:
+        queue = {}
+    watcher_heartbeat = None
+    try:
+        owner = repo.get_watcher_owner(ttl_seconds=900)
+        if isinstance(owner, dict):
+            watcher_heartbeat = owner.get("heartbeat_at")  # redacted: timestamp only, no paths
+    except Exception:
+        watcher_heartbeat = None
+    backend_available = _watchdog_available()
 
     # Skip code rollup from file index
     skipped_by_code = dict(file_status.get("skipped_by_code") or {})
@@ -124,6 +164,19 @@ def source_index_health(
             "layers": layers,
             "safe_for_client_answering": safe,
             "diagnostic_summary": "; ".join(summary_bits)[:400],
+            "bootstrap": {
+                "file_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
+                    "file_index_bootstrapped")),
+                "structure_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
+                    "structure_index_bootstrapped")),
+                "watcher_ready": bool((bootstrap_by_root.get(key) or {}).get("watcher_ready")),
+            },
+            "run_state": _run_state(
+                config,
+                bool((bootstrap_by_root.get(key) or {}).get("watcher_ready")),
+                backend_available,
+            ),
+            **bstate.get_structure_drift(key),
         })
 
     # Empty-roots handling
@@ -171,6 +224,28 @@ def source_index_health(
     elif any(r["freshness_status"] == "stale" for r in per_root):
         overall = "stale"
 
+    # --- V117 aggregate sections (bootstrap / watcher / file_index queue / structure drift /
+    # reconciliation) + an operator action recommendation. Directory-architecture drift discovered by
+    # reconciliation is surfaced even though the auto-rebuild bridge is deferred (dirty_bridge_enabled
+    # is a constant False this branch), so clients know a folder map may lag and no auto-rebuild runs.
+    real_roots = [r for r in per_root if r["root_key"] != "(none)"]
+    any_unbootstrapped = any(not r["bootstrap"]["watcher_ready"] for r in real_roots) or not real_roots
+    any_drift = any(r.get("directory_change_detected") for r in real_roots)
+    last_light = bstate.last_reconciliation(scan_type="lightweight") or {}
+    last_full = bstate.last_reconciliation(scan_type="full") or {}
+    recommended = None
+    if any_unbootstrapped:
+        recommended = "run `hb-assistant source-watch bootstrap --all-roots` (index not fully bootstrapped)"
+    elif any_drift:
+        recommended = (
+            "directory architecture changed — run `hb-assistant source-watch bootstrap "
+            "--structure-only` for drifted roots (structure map may be stale)"
+        )
+    elif int(queue.get("error_count") or 0) > 0:
+        recommended = "investigate failed file-index queue items (`hb-assistant source-watch status`)"
+
+    top_safe = bool(real_roots) and any(r["safe_for_client_answering"] for r in real_roots)
+
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return {
         "overall_freshness": overall,
@@ -186,6 +261,37 @@ def source_index_health(
             "skipped_by_code": skipped_by_code,
             "index_enabled": file_status.get("index_enabled"),
         },
+        "bootstrap": {
+            "all_roots_watcher_ready": bool(real_roots) and not any_unbootstrapped,
+            "roots_ready": sum(1 for r in real_roots if r["bootstrap"]["watcher_ready"]),
+            "roots_total": len(real_roots),
+        },
+        "watcher": {
+            "enabled": bool(getattr(config, "external_source_watch_enabled", False)),
+            "backend": "watchdog" if backend_available else "polling",
+            "backend_available": backend_available,
+            "last_heartbeat_at": watcher_heartbeat,
+            "queue_depth": queue.get("queued_count"),
+            "processing_count": queue.get("processing_count"),
+            "oldest_pending_age_seconds": queue.get("oldest_processing_age_seconds"),
+        },
+        "file_index": {
+            "last_incremental_update": queue.get("last_drain_at") or file_status.get("last_indexed_at"),
+            "pending_queue_count": queue.get("queued_count"),
+            "failed_queue_count": queue.get("error_count"),
+        },
+        "structure_index": {
+            "last_structure_update": (structure_status.get("last_run") or {}).get("finished_at"),
+            "directory_change_detected": any_drift,
+            "structure_refresh_recommended": any_drift,
+            "dirty_bridge_enabled": False,
+        },
+        "reconciliation": {
+            "last_lightweight_reconciliation": last_light.get("finished_at"),
+            "last_full_reconciliation": last_full.get("finished_at"),
+        },
+        "recommended_operator_action": recommended,
+        "safe_for_client_answering": top_safe,
         "roots": per_root[:50],
         "root_count": len(per_root),
         "truncated": len(per_root) > 50,
