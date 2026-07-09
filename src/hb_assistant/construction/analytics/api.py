@@ -2624,6 +2624,13 @@ def create_app(*, db_path: str | None = None) -> Any:
             severity=severity, finding_type=finding_type, status=status, limit=limit, cursor=cursor,
         ))
 
+    @app.get("/api/assistant/source-structure/readiness")
+    def assistant_source_structure_readiness(
+        role: dict[str, str] = role_dep,
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().readiness())
+
     @app.get("/api/assistant/sources")
     def assistant_sources(
         role: dict[str, str] = role_dep,

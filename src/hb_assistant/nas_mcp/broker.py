@@ -324,16 +324,18 @@ ASSISTANT_GROUP_GATES = {
     "source_structure": assistant_source_structure_enabled,
 }
 
-# The 78 canonical assistant tools, deduped + sorted. This is the canonical read-only navigation set and
-# the catalog's canonical universe. NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog /
-# _tool_help / _tool_query) are deliberately NOT in here — they are helpers, not canonical assistant tools.
+# The 85 installed canonical assistant tools, deduped + sorted. This is the canonical read-only navigation
+# set and the catalog's canonical universe. Of these, 78 are client-exposed by default; the +7 default-off
+# source_structure tools are installed-but-disabled until an operator sets HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1.
+# NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help / _tool_query) are
+# deliberately NOT in here — they are helpers, not canonical assistant tools.
 ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
     sorted({tool for tools in ASSISTANT_TOOL_GROUPS.values() for tool in tools})
 )
 
 # GATEWAY_ALLOWLIST — the set of tools reachable via the N8C-22 helper gateway (hb_assistant_tool_query /
 # _tool_help). Deliberately DECOUPLED from ALL_ASSISTANT_TOOLS and expanded (operator-authorized, N8C-24):
-# the canonical 78 PLUS every structured-intelligence + output + AI-output WRITE surface. Denied tools,
+# the canonical client-exposed set PLUS every structured-intelligence + output + AI-output WRITE surface. Denied tools,
 # root/db tools, legacy hb_output_* and any non-allowlisted name stay rejected, and every gateway-routed
 # write still passes the full broker gate chain (safe-mode, per-tool gate, approval, idempotency, path).
 GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
@@ -366,7 +368,8 @@ def runtime_commit() -> str:
 def assistant_client_exposure_status() -> dict[str, Any]:
     """N8C-22 client-exposure summary for hb_mcp_status.
 
-    Reports how many of the 78 canonical assistant tools are currently exposed to connected clients.
+    Reports how many of the canonical assistant tools are currently exposed to connected clients
+    (78 by default; up to 85 when the default-off source_structure group is enabled).
     Exposure follows the per-group kill switches: a group turned off by ``HB_MCP_ASSISTANT_*=0`` is
     neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
     both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
@@ -690,7 +693,7 @@ class NasMcpBroker:
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
                 ),
                 "port_policy": "127.0.0.1:8765 host publish only",
-                # N8C-22 client-exposure summary (canonical 78 + per-group kill-switch aware).
+                # N8C-22 client-exposure summary (78 client-exposed default / 85 installed; per-group kill-switch aware).
                 **assistant_client_exposure_status(),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),

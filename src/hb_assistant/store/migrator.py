@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 115
+LATEST_SCHEMA_VERSION = 116
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7052,6 +7052,17 @@ class SQLiteMigrator:
 
         return V115_SOURCE_STRUCTURE_STATEMENTS
 
+    @staticmethod
+    def _v116_statements() -> list[str]:
+        # NAS Source-Structure operator classification overrides: one additive table letting an operator
+        # correct a misclassified root/folder. Applied out-of-band at ingest (after inheritance, before
+        # persist); read surfaces see overridden rows via classification_source='manual_override'.
+        from hb_assistant.store.source_structure_override_tables import (
+            V116_SOURCE_STRUCTURE_OVERRIDE_STATEMENTS,
+        )
+
+        return V116_SOURCE_STRUCTURE_OVERRIDE_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8990,6 +9001,19 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (115, 'v115_source_structure_layered_index', ?)",
+                    (now,),
+                )
+
+            # v116 (NAS Source-Structure operator overrides): one additive table for operator-authored
+            # root/folder classification corrections. Applied out-of-band at ingest (after rule
+            # classification + project-number inheritance, immediately before persistence). Additive,
+            # ships EMPTY; MCP/API never read it directly.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 116")
+            if cur.fetchone() is None:
+                for stmt in self._v116_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (116, 'v116_source_structure_overrides', ?)",
                     (now,),
                 )
 

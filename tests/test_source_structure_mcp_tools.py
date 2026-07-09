@@ -22,6 +22,7 @@ from hb_assistant.obsidian_mcp.source_structure_ingest import (
 )
 from hb_assistant.obsidian_mcp.source_structure_repository import SourceStructureRepository
 from hb_assistant.store.migrator import SQLiteMigrator
+from tests._ss_helpers import assert_no_absolute_paths
 
 NEW_TOOLS = set(ASSISTANT_SOURCE_STRUCTURE_TOOLS)
 TREE = "/Work/NAS - HB\n├── 21-801-01 NORA\n│   └── Submittals\n└── @eaDir\n"
@@ -124,12 +125,26 @@ def test_gate_on_dispatch_returns_bounded_rows(gate_on, tmp_path):
 
 
 def test_gate_on_dispatch_never_leaks_absolute_paths(gate_on, tmp_path):
+    """Recursively assert every one of the 7 source-structure MCP tools leaks no absolute path."""
     db = str(tmp_path / "pa.db")
     _seed(db)
     broker, _tools = _build_surface(db)
-    res = broker.dispatch("assistant_source_folder_map", {"root_key": "nas-hb", "include_noise": True})
-    blob = repr(res["result"])
-    assert "/Users/" not in blob and "'rel_path': '/" not in blob
+    fid = broker.dispatch(
+        "assistant_source_folder_map", {"root_key": "nas-hb"}
+    )["result"]["folders"][0]["folder_id"]
+    calls = [
+        ("assistant_source_root_map", {"query_family": "construction_project"}),
+        ("assistant_source_folder_map", {"root_key": "nas-hb", "include_noise": True}),
+        ("assistant_source_folder_summary", {"folder_id": fid}),
+        ("assistant_source_search_route", {"project_number": "21-801-01", "doc_family": "submittal"}),
+        ("assistant_source_scope_explain", {"root_key": "nas-hb"}),
+        ("assistant_source_project_map", {"project_number": "21-801-01"}),
+        ("assistant_source_quality", {}),
+    ]
+    for name, args in calls:
+        res = broker.dispatch(name, args)
+        assert res["ok"] is True, (name, res.get("error"))
+        assert_no_absolute_paths(res["result"], label=name)
 
 
 def test_gate_on_denied_tools_still_denied(gate_on, tmp_path):

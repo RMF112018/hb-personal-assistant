@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from hb_assistant.obsidian_mcp.source_structure_classifier import is_partial_project_number
 from hb_assistant.obsidian_mcp.source_structure_repository import SourceStructureRepository
 
 # Thresholds (deterministic, no clock dependency).
@@ -73,14 +74,20 @@ def compute_findings(repo: SourceStructureRepository) -> list[dict]:
     project_primary: dict[str, list[str]] = defaultdict(list)
     for f in folders:
         rel = f.get("rel_path") or ""
-        # Hard safety check: no absolute path may be persisted in a client-facing row.
-        if _looks_absolute(rel) or _looks_absolute(f.get("name") or ""):
+        # Hard safety check: no absolute path may be persisted in a client-facing row. Scan rel_path,
+        # name, and any sample_names entry (the bounded child-name list surfaced to clients).
+        abs_hit = next(
+            (v for v in [rel, f.get("name") or "", *(f.get("sample_names") or [])]
+             if _looks_absolute(str(v))),
+            None,
+        )
+        if abs_hit is not None:
             findings.append({
                 "finding_type": "forbidden_path_exposed", "severity": "error",
                 "root_key": f["root_key"], "folder_id": f["folder_id"],
                 "title": f"Absolute-looking path in folder row: {f['name']}",
-                "details": "Folder rows must carry only root-relative rel_path values.",
-                "evidence": [f"rel_path={rel!r}"],
+                "details": "Folder rows must carry only root-relative rel_path / sample values.",
+                "evidence": [f"value={abs_hit!r}"],
             })
         # Broken parent ref.
         parent = f.get("parent_folder_id")
@@ -121,6 +128,14 @@ def compute_findings(repo: SourceStructureRepository) -> list[dict]:
                 "root_key": f["root_key"], "folder_id": f["folder_id"],
                 "title": f"Project-candidate folder with no project number: {rel}",
             })
+        # Partial (NN-NNN) project number — weak evidence, flag for operator confirmation.
+        if is_partial_project_number(f.get("project_number")):
+            findings.append({
+                "finding_type": "partial_project_number", "severity": "info",
+                "root_key": f["root_key"], "folder_id": f["folder_id"],
+                "title": f"Partial project number '{f.get('project_number')}' mapped to: {rel}",
+                "details": "Partial NN-NNN numbers are low-confidence; confirm or add a full NN-NNN-NN.",
+            })
         # High-noise parent.
         noise_children = sum(1 for c in children_by_parent.get(f["folder_id"], []) if c.get("is_noise"))
         if noise_children >= 3:
@@ -154,6 +169,23 @@ def compute_findings(repo: SourceStructureRepository) -> list[dict]:
                 "title": f"Project {proj} has {len(ids)} candidate primary folders",
                 "details": "Multiple project_root folders map to one project number.",
                 "evidence": ids[:10],
+            })
+
+    # --- operator-override findings ------------------------------------------------------------
+    # Any active override that clears a safety flag (is_backup_mirror / is_generated_output /
+    # is_sensitive → false) is surfaced for review so a downgrade is never silent.
+    _SAFETY_FLAGS = ("is_backup_mirror", "is_generated_output", "is_sensitive")
+    for ov in repo.list_overrides(active_only=True):
+        cleared = [flag for flag in _SAFETY_FLAGS if ov.get(flag) is False]
+        if cleared:
+            target = ov["rel_path"] if ov["target_type"] == "folder" and ov["rel_path"] else ov["root_key"]
+            findings.append({
+                "finding_type": "override_downgrades_safety_flag", "severity": "warning",
+                "root_key": ov["root_key"],
+                "title": f"Operator override clears {', '.join(cleared)} on {ov['target_type']} '{target}'",
+                "details": (f"Override by {ov['created_by']}: {ov['reason']}. A cleared safety flag "
+                            "removes a guardrail — confirm this is intended."),
+                "evidence": [f"override_id={ov['override_id']}", *cleared],
             })
 
     return findings

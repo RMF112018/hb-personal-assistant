@@ -9,7 +9,11 @@ from __future__ import annotations
 import hashlib
 import json
 
-from hb_assistant.obsidian_mcp.source_structure_classifier import classify_tree, is_noise_name
+from hb_assistant.obsidian_mcp.source_structure_classifier import (
+    classify_tree,
+    is_noise_name,
+    root_class_defaults,
+)
 from hb_assistant.obsidian_mcp.source_structure_models import FolderRecord, SourceStructureRoot
 from hb_assistant.obsidian_mcp.source_structure_repository import SourceStructureRepository
 from hb_assistant.obsidian_mcp.source_structure_tree_parser import parse_tree_text
@@ -46,12 +50,88 @@ def _rollups(records: list[FolderRecord]) -> dict[str, dict]:
     return agg
 
 
+def _apply_root_override(root: SourceStructureRoot, ov: dict) -> None:
+    """Apply one operator override to a classified root (in place), before persistence."""
+    if ov.get("root_class"):
+        root.root_class = ov["root_class"]
+        # Recompute trust/policy/rank/flags from the class defaults so a re-classified root is
+        # internally consistent; explicit fields below then win over the recomputed defaults.
+        trust, policy, rank, flags = root_class_defaults(ov["root_class"])
+        root.trust_tier = trust
+        root.index_policy = policy
+        root.default_search_rank = rank
+        root.is_generated_output = flags.get("is_generated_output", False)
+        root.is_backup_mirror = flags.get("is_backup_mirror", False)
+        root.is_sensitive = flags.get("is_sensitive", False)
+    if ov.get("trust_tier"):
+        root.trust_tier = ov["trust_tier"]
+    if ov.get("search_rank") is not None:
+        root.default_search_rank = ov["search_rank"]
+    for flag in ("is_backup_mirror", "is_generated_output", "is_sensitive"):
+        if ov.get(flag) is not None:
+            setattr(root, flag, bool(ov[flag]))
+
+
+def _apply_folder_override(rec: FolderRecord, ov: dict) -> None:
+    """Apply one operator override to a classified folder record (in place), before persistence."""
+    c = rec.classification
+    if ov.get("folder_class"):
+        c.folder_class = ov["folder_class"]
+    if ov.get("doc_family"):
+        c.doc_family = ov["doc_family"]
+    if ov.get("trust_tier"):
+        c.trust_tier = ov["trust_tier"]
+    if ov.get("search_rank") is not None:
+        c.search_rank = max(1, int(ov["search_rank"]))
+    for flag in ("is_backup_mirror", "is_generated_output", "is_sensitive"):
+        if ov.get(flag) is not None:
+            setattr(c, flag, bool(ov[flag]))
+    c.classification_source = "manual_override"
+
+
+def apply_overrides(
+    repo: SourceStructureRepository,
+    roots: dict[str, SourceStructureRoot],
+    records: list[FolderRecord],
+) -> int:
+    """Final classification pass: apply active operator overrides AFTER rule classification and
+    project-number inheritance, immediately before persistence. Operator overrides are human-authored
+    and explicitly allowed to override safety classes (unlike a model). Returns the count applied."""
+    root_keys = set(roots) | {r.root_key for r in records}
+    overrides: list[dict] = []
+    for rk in sorted(root_keys):
+        overrides.extend(repo.active_overrides_for(rk))
+    if not overrides:
+        return 0
+
+    by_rel: dict[tuple[str, str], FolderRecord] = {(r.root_key, r.rel_path): r for r in records}
+    applied = 0
+    for ov in overrides:
+        if ov["target_type"] == "root":
+            root = roots.get(ov["root_key"])
+            if root is not None:
+                _apply_root_override(root, ov)
+                applied += 1
+        elif ov["target_type"] == "folder":
+            rec = by_rel.get((ov["root_key"], ov["rel_path"]))
+            if rec is not None:
+                _apply_folder_override(rec, ov)
+                applied += 1
+    return applied
+
+
 def persist_records(
     repo: SourceStructureRepository,
     roots: dict[str, SourceStructureRoot],
     records: list[FolderRecord],
 ) -> dict:
-    """Persist classified roots + folder records + project entities/links + root rollups."""
+    """Persist classified roots + folder records + project entities/links + root rollups.
+
+    Operator overrides are applied here as a distinct final pass — AFTER rule classification and
+    project-number inheritance (done in ``classify_tree``) — so inherited mappings are not perturbed.
+    """
+    apply_overrides(repo, roots, records)
+
     for root in roots.values():
         repo.upsert_root(root)
 
