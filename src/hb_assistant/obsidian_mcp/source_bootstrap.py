@@ -108,15 +108,28 @@ def _file_plan_counts(root: Any, config: ObsidianMcpConfig) -> dict[str, Any]:
 
 
 def _bootstrap_file_layer(
-    root: Any, repo: SourceIndexRepository, config: ObsidianMcpConfig
+    root: Any,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    max_files_per_pass: int | None = None,
+    max_seconds: float | None = None,
 ) -> dict[str, Any]:
-    """Apply: full walk+index+delete-reconcile of one root. Success = the root existed and scanned."""
+    """Apply one bounded, resumable pass over a root.
+
+    ``success`` means the pass fully COMPLETED (walk exhausted + delete-reconcile ran) — only then is the
+    file layer bootstrapped. ``found`` (root existed) distinguishes a genuine failure from a ``bounded_out``
+    partial pass, which is progress that needs a resume, not an error.
+    """
     from .source_indexer import scan_source_root
 
-    report = scan_source_root(root, repo, config)
+    report = scan_source_root(
+        root, repo, config, max_files_per_pass=max_files_per_pass, max_seconds=max_seconds
+    )
     result = report.as_dict()
     result["error_codes"] = list(report.error_codes)
-    result["success"] = "root_not_found" not in report.error_codes
+    result["found"] = "root_not_found" not in report.error_codes
+    result["success"] = bool(report.completed)
     return result
 
 
@@ -231,11 +244,16 @@ def bootstrap(
     dry_run: bool = False,
     force: bool = False,
     explicit_map: dict[str, str] | None = None,
+    max_files_per_pass: int | None = None,
+    max_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Bootstrap one/all roots across both layers; record durable readiness. Idempotent + fail-closed.
 
     ``file_only`` / ``structure_only`` request a partial bootstrap (each preserves the other layer's
     recorded state). ``dry_run`` writes nothing (no index rows, no bootstrap_state) and returns a plan.
+    ``max_files_per_pass`` / ``max_seconds`` bound the file-layer pass so a very large root indexes across
+    repeated resumable invocations; a bounded (incomplete) pass reports ``bounded_out`` and leaves the
+    root not-yet-bootstrapped without failing.
     """
     if obsidian_config is None:
         obsidian_config = load_obsidian_config()
@@ -274,10 +292,14 @@ def bootstrap(
             if dry_run:
                 entry["file_index"] = _file_plan_counts(root_obj, obsidian_config)
             else:
-                res = _bootstrap_file_layer(root_obj, repo, obsidian_config)
+                res = _bootstrap_file_layer(
+                    root_obj, repo, obsidian_config,
+                    max_files_per_pass=max_files_per_pass, max_seconds=max_seconds,
+                )
                 entry["file_index"] = res
-                file_ok = bool(res["success"])
-                any_fail = any_fail or not file_ok
+                file_ok = bool(res["success"])  # bootstrapped only on a completed pass
+                # A bounded partial pass is progress, not a failure — only a missing root fails.
+                any_fail = any_fail or not bool(res.get("found", True))
 
         # --- structure layer ---
         structure_ok: bool | None = None

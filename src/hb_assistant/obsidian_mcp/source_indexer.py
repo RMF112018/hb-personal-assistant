@@ -402,6 +402,10 @@ class ScanReport:
     deleted: int = 0
     errors: int = 0
     truncated: bool = False
+    # bounded_out: a per-pass budget (max_files_per_pass / max_seconds) stopped the walk early, so it
+    # is INCOMPLETE and a resume pass is needed. completed: the walk fully finished (delete-reconcile ran).
+    bounded_out: bool = False
+    completed: bool = False
     error_codes: list[str] = field(default_factory=list)
     # source_ids of files newly indexed/changed this scan (NOT skipped/unchanged) — drives
     # rebuild auto-generation. Unchanged files are absent, so cards aren't needlessly regenerated.
@@ -411,13 +415,34 @@ class ScanReport:
         return {
             "root_key": self.root_key, "scanned": self.scanned, "indexed": self.indexed,
             "skipped": self.skipped, "deleted": self.deleted, "errors": self.errors,
-            "truncated": self.truncated,
+            "truncated": self.truncated, "bounded_out": self.bounded_out,
+            "completed": self.completed,
         }
 
 
-def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
-                     config: ObsidianMcpConfig) -> ScanReport:
-    """Bounded, idempotent walk of one root. NEVER called from a request handler."""
+def scan_source_root(
+    root: ExternalSourceRoot,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    max_files_per_pass: int | None = None,
+    max_seconds: float | None = None,
+) -> ScanReport:
+    """Bounded, idempotent, RESUMABLE walk of one root. NEVER called from a request handler.
+
+    Change detection is mtime+size fast-skip against a preloaded index-state map (one query), so an
+    unchanged file costs a stat + dict lookup — no per-file DB read and no re-hash. Re-running after an
+    interruption therefore skips already-indexed files cheaply and continues; that is what makes a very
+    large root (hundreds of thousands of files) indexable across multiple bounded passes.
+
+    ``max_files_per_pass`` / ``max_seconds`` bound a single invocation. When a pass stops early on
+    either budget (``bounded_out``), delete-reconciliation is SKIPPED — the walk is incomplete, so an
+    unseen file is not-yet-visited, not gone. Delete-reconciliation runs ONLY on a fully-completed pass.
+    """
+    import time
+
+    from hb_assistant.store.connection import open_connection
+
     report = ScanReport(root_key=root.source_root_key)
     root_path = Path(root.path)
     if not root_path.is_dir():
@@ -426,40 +451,51 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
         return report
 
     max_files = effective_max_files(root, config)
+    prior = repo.active_index_state(root.source_root_key)  # rel_path -> (mtime_ns, size_bytes)
     seen: set[str] = set()
-    # Streaming walk: skip predicates + symlink safety are applied inside walk_source_tree, and
-    # excluded/hidden dir subtrees are pruned, so the cap below bounds real work — not a pre-sorted
-    # full-tree list.
-    for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
-        report.scanned += 1
-        if report.scanned > max_files:
-            report.truncated = True
-            break
-        seen.add(rel_path)
-        try:
-            existing = repo.lookup_by_path("external_file", rel_path,
-                                           source_root_key=root.source_root_key)
-            if existing and not existing["deleted"]:
+    started = time.monotonic()
+    # One shared connection for the whole pass: avoids a per-file open/close on a 400k-file root.
+    with open_connection(repo.db_path) as conn:
+        for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
+            if report.scanned >= max_files:
+                report.truncated = True
+                break
+            report.scanned += 1
+            seen.add(rel_path)
+            try:
                 stat = abs_path.stat()
-                if existing["mtime_ns"] == stat.st_mtime_ns and existing["content_sha256"] == _sha256_file(abs_path):
+                prev = prior.get(rel_path)
+                # mtime+size fast-skip: unchanged file -> no re-hash, no write (the resume hot path).
+                if prev is not None and prev == (stat.st_mtime_ns, stat.st_size):
                     report.skipped += 1
                     continue
-            source_id = index_source_file(abs_path, root, repo, config)
-            if source_id is not None:
-                report.indexed += 1
-                report.indexed_source_ids.append(source_id)
-                if existing:
-                    repo.mark_generated_notes_stale(source_id)
-        except Exception as exc:  # never let one bad file abort the scan
-            report.errors += 1
-            report.error_codes.append(type(exc).__name__)
-            _logger.warning("source_index.scan_file_error", extra={"obsidian_mcp": {
-                "root": root.source_root_key, "error_code": type(exc).__name__}})
+                source_id = index_source_file(abs_path, root, repo, config, conn=conn)
+                if source_id is not None:
+                    report.indexed += 1
+                    report.indexed_source_ids.append(source_id)
+                    if prev is not None:
+                        repo.mark_generated_notes_stale(source_id, conn=conn)
+            except Exception as exc:  # never let one bad file abort the scan
+                report.errors += 1
+                report.error_codes.append(type(exc).__name__)
+                _logger.warning("source_index.scan_file_error", extra={"obsidian_mcp": {
+                    "root": root.source_root_key, "error_code": type(exc).__name__}})
+            # Per-pass budget: stop cleanly and leave the rest for a resume (NO delete-reconcile).
+            if max_files_per_pass is not None and report.indexed >= int(max_files_per_pass):
+                report.bounded_out = True
+                break
+            if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
+                report.bounded_out = True
+                break
 
-    # Reconcile deletions: active indexed files under this root no longer on disk.
-    for gone in repo.active_rel_paths(root.source_root_key) - seen:
-        repo.mark_deleted("external_file", gone, source_root_key=root.source_root_key)
-        report.deleted += 1
+        report.completed = not report.bounded_out and not report.truncated
+        if report.completed:
+            # Delete-reconcile ONLY on a complete pass (full `seen`); reuse the preloaded state keys.
+            for gone in set(prior) - seen:
+                repo.mark_deleted(
+                    "external_file", gone, source_root_key=root.source_root_key, conn=conn
+                )
+                report.deleted += 1
     return report
 
 
