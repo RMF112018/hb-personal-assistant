@@ -1,0 +1,23 @@
+{
+  "folder_class_counts": {
+    "project_root": 2,
+    "drawings": 1,
+    "financials": 1,
+    "rfis": 1,
+    "submittals": 1,
+    "closeout": 1,
+    "construction_docs": 1,
+    "noise": 1,
+    "personal": 2,
+    "generated_output": 2,
+    "unknown": 1,
+    "backup_mirror": 1
+  },
+  "doc_family_counts": {
+    "drawings": 1,
+    "pay_app": 1,
+    "rfi": 1,
+    "submittal": 1,
+    "closeout": 1
+  }
+}

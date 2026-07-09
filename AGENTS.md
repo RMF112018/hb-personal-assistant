@@ -15,8 +15,11 @@ their tests will drift unless you update them in the same change.
 **Before you claim a tool-surface change is complete, do all ten:**
 
 1. **Register/deregister the tool** in `nas_mcp/tool_registration.py` (and its dispatch in `nas_mcp/broker.py`).
-2. **Update the canonical inventory** if it is an `assistant_*` tool (`ALL_ASSISTANT_TOOLS` stays exactly 78 —
-   a new `pa_*`/helper tool never joins it).
+2. **Update the canonical inventory** if it is an `assistant_*` tool (`ALL_ASSISTANT_TOOLS` is currently
+   **85** across **14** groups — a new `pa_*`/helper tool never joins it). Note: the 14th group
+   `source_structure` (7 tools) is **default-OFF** (opt-in via `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1`), so
+   it is *installed* in the canonical 85 but *not client-exposed* by default — exposure counts stay 78
+   until an operator enables it.
 3. **Map it to a family** in `obsidian_mcp/tool_family_manifest.py` (`family_for_tool` must stay a total
    function — every live tool resolves to exactly one of the 24 families).
 4. **Add/adjust its workflow recipe(s)** in `obsidian_mcp/workflow_recipe_manifest.py` (a generation/write

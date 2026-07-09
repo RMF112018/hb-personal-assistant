@@ -1,0 +1,61 @@
+branch: feat/nas-source-structure
+head: 13a4e1a22874957aa279bddbee6ee5f3873d5da5
+base: origin/main 13a4e1a22874957aa279bddbee6ee5f3873d5da5
+
+=== changed files (source-structure feature; pre-existing docs/evidence dirt excluded) ===
+ M AGENTS.md
+ M docs/architecture/client-tool-operating-manifest.md
+ M docs/architecture/mcp-server-endpoints.md
+ M src/hb_assistant/cli/main.py
+ M src/hb_assistant/config/models.py
+ M src/hb_assistant/construction/analytics/api.py
+ M src/hb_assistant/nas_mcp/broker.py
+ M src/hb_assistant/nas_mcp/exposure_audit.py
+ M src/hb_assistant/nas_mcp/profile.py
+ M src/hb_assistant/nas_mcp/tool_registration.py
+ M src/hb_assistant/obsidian_mcp/tool_family_manifest.py
+ M src/hb_assistant/store/migrator.py
+ M tests/test_n8c_client_exposure_bridge.py
+ M tests/test_n8c_final_validation.py
+?? docs/evidence/nas-layered-source-index/
+?? docs/evidence/nas-second-brain-n8c/20260708T000513Z-nas-deploy/
+?? docs/evidence/nas-second-brain-n8c/20260708T105948Z-nas-redeploy-v114/
+?? docs/evidence/nas-second-brain-n8c/20260708T112933Z-gpt-connector-endpoint-and-safemode-fix/
+?? docs/evidence/obsidian-workflow-validation-20260702T073609Z/
+?? docs/evidence/project-schedule-hub/backups/
+?? docs/evidence/project-schedule-hub/local-main-recovery-20260702T070500Z/
+?? docs/evidence/project-schedule-hub/phase-9-end-to-end-validation-20260630T024231/
+?? docs/evidence/project-schedule-hub/remote-main-schedule-merge-audit-20260630T035406/
+?? docs/evidence/project-schedule-hub/schedule-data-capability-audit-20260629T075754-0400.zip
+?? docs/evidence/project-schedule-hub/schedule-data-capability-audit-20260629T075754-0400/
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/fd-hardening-baseline-failure.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/fd-hardening-post-patch.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/final-origin-main-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/focused-regression.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/local-branches.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/main-worktree-branch-before.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/main-worktree-status-before.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/origin-main-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-branch.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-head.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-status.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/primary-repo-update.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/remote-branches.txt
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/schedule-merge-safety-final.md
+?? docs/evidence/project-schedule-hub/schedule-fd-hardening-main-20260630T083255/worktree-list.txt
+?? src/hb_assistant/cli/source_structure.py
+?? src/hb_assistant/obsidian_mcp/source_structure_classifier.py
+?? src/hb_assistant/obsidian_mcp/source_structure_ingest.py
+?? src/hb_assistant/obsidian_mcp/source_structure_models.py
+?? src/hb_assistant/obsidian_mcp/source_structure_quality.py
+?? src/hb_assistant/obsidian_mcp/source_structure_repository.py
+?? src/hb_assistant/obsidian_mcp/source_structure_scanner.py
+?? src/hb_assistant/obsidian_mcp/source_structure_service.py
+?? src/hb_assistant/obsidian_mcp/source_structure_tree_parser.py
+?? src/hb_assistant/store/source_structure_tables.py
+?? tests/test_fastapi_analytics_source_structure.py
+?? tests/test_source_structure_cli.py
+?? tests/test_source_structure_mcp_tools.py
+?? tests/test_source_structure_parser_classifier.py
+?? tests/test_source_structure_repository_service.py
+?? tests/test_source_structure_schema.py

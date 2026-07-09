@@ -143,6 +143,31 @@ class SecurityConfig(BaseModel):
     external_llm_enabled: bool = False
 
 
+class SourceStructureScanConfig(BaseModel):
+    """Bounds for the optional live metadata scan (``source-structure scan-roots``)."""
+
+    max_files_per_root: int = 200_000
+    max_folders_per_root: int = 50_000
+    max_depth: int = 12
+    max_sample_names: int = 12
+    timeout_seconds: int = 300
+    high_fanout_threshold: int = 40
+
+
+class SourceStructureConfig(BaseModel):
+    """NAS Source-Structure Layered Index (V115) — out-of-band CLI/scheduled indexing only.
+
+    Never consulted from an MCP request handler. ``root_key_map`` maps a printed-tree header
+    substring → a neutral root_key; ``scan_roots`` maps a root_key → an absolute local path used
+    only by the operator-run live metadata scan (empty by default — nothing is scanned).
+    """
+
+    enabled: bool = True
+    root_key_map: dict[str, str] = Field(default_factory=dict)
+    scan_roots: dict[str, str] = Field(default_factory=dict)
+    scan: SourceStructureScanConfig = Field(default_factory=SourceStructureScanConfig)
+
+
 class AppConfig(BaseModel):
     """Root configuration object."""
 
@@ -156,6 +181,7 @@ class AppConfig(BaseModel):
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
     launcher: LauncherConfig = Field(default_factory=LauncherConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    source_structure: SourceStructureConfig = Field(default_factory=SourceStructureConfig)
     # The NAS MCP deployment shares one config file between AppConfig (resolved via
     # PathPolicy) and the MCP subsystem, whose settings live under a top-level ``mcp:``
     # block that AppConfig does not otherwise model. Accept it as an opaque mapping so

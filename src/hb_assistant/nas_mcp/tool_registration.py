@@ -33,6 +33,7 @@ from .profile import (
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
+    assistant_source_structure_enabled,
     assistant_workflows_enabled,
     blocked_write_tools,
     client_output_write_enabled,
@@ -644,6 +645,88 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             return _assistant_result("assistant_source_file_read",
                                      {"source_id": source_id, "source_ref": source_ref,
                                       "max_chars": max_chars, "prefer_live": prefer_live})
+
+    # NAS Source-Structure Layered Index (V115) read-only map/route tools. DEFAULT-OFF (opt-in): the
+    # group registers only when ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``. They return bounded,
+    # root-relative maps / routing hints / quality findings from the precomputed source-structure index
+    # (built out-of-band by ``hb-assistant source-structure``) — never a live scan, model call, mutation,
+    # or absolute path. Names use map/summary/route/explain/quality verbs (no finality/action substring).
+    if assistant_source_structure_enabled():
+
+        @mcp.tool()
+        def assistant_source_root_map(query_family: str | None = None,
+                                      limit: int = 25) -> dict[str, Any]:
+            """Map the NAS source ROOTS and where to search first. Returns each root's class
+            (construction_work / work / personal / backup_mirror / generated_output / vault), trust tier,
+            index policy, counts, and a rationale. Pass ``query_family`` (e.g. ``construction_project``) to
+            rank the roots for that intent. Use this before drilling into folders — no absolute paths."""
+            return _assistant_result("assistant_source_root_map",
+                                     {"query_family": query_family, "limit": limit})
+
+        @mcp.tool()
+        def assistant_source_folder_map(root_key: str | None = None,
+                                        parent_folder_id: str | None = None, depth: int | None = None,
+                                        folder_class: str | None = None, doc_family: str | None = None,
+                                        project_number: str | None = None, include_noise: bool = False,
+                                        limit: int = 50, cursor: str | None = None) -> dict[str, Any]:
+            """Browse a bounded, root-relative folder map. Filter by ``root_key`` / ``parent_folder_id`` /
+            ``depth`` / ``folder_class`` / ``doc_family`` / ``project_number``; page with ``cursor``. Noise
+            folders (``@eaDir`` etc.) are hidden unless ``include_noise=true``. Each folder carries an
+            opaque ``folder_id`` + ``rel_path`` — never an absolute path."""
+            return _assistant_result("assistant_source_folder_map",
+                                     {"root_key": root_key, "parent_folder_id": parent_folder_id,
+                                      "depth": depth, "folder_class": folder_class,
+                                      "doc_family": doc_family, "project_number": project_number,
+                                      "include_noise": include_noise, "limit": limit, "cursor": cursor})
+
+        @mcp.tool()
+        def assistant_source_folder_summary(folder_id: str) -> dict[str, Any]:
+            """Summarize one known folder by ``folder_id``: classification, doc-family, a bounded summary,
+            child class counts, routing hints, and quality warnings (backup/generated/noise/sensitive).
+            Use after a folder-map result to understand what a folder holds before searching it."""
+            return _assistant_result("assistant_source_folder_summary", {"folder_id": folder_id})
+
+        @mcp.tool()
+        def assistant_source_search_route(query: str | None = None, query_family: str | None = None,
+                                          project_number: str | None = None,
+                                          doc_family: str | None = None,
+                                          limit: int = 10) -> dict[str, Any]:
+            """Tell the client WHERE to search first for a file/folder question. Returns preferred roots +
+            folders, avoided roots (backups/generated), a rationale, and a confidence. Pass any of
+            ``query`` / ``query_family`` / ``project_number`` / ``doc_family``. It routes only — it does
+            not execute a search or read any file."""
+            return _assistant_result("assistant_source_search_route",
+                                     {"query": query, "query_family": query_family,
+                                      "project_number": project_number, "doc_family": doc_family,
+                                      "limit": limit})
+
+        @mcp.tool()
+        def assistant_source_scope_explain(root_key: str | None = None,
+                                           folder_id: str | None = None) -> dict[str, Any]:
+            """Explain why a root or folder is preferred, downranked, or excluded: its policy,
+            classification, reason, and allowed usage. Pass ``root_key`` or ``folder_id``. Use to justify a
+            routing choice or to check whether a backup/generated/sensitive folder should be searched."""
+            return _assistant_result("assistant_source_scope_explain",
+                                     {"root_key": root_key, "folder_id": folder_id})
+
+        @mcp.tool()
+        def assistant_source_project_map(project_number: str, limit: int = 50) -> dict[str, Any]:
+            """Show candidate folders for a project number (e.g. ``21-801-01``): each folder's relationship
+            (primary / supporting / backup / generated), confidence, and the document-family coverage
+            (submittals / rfis / pay_app …). Use to locate all of a project's folders across roots."""
+            return _assistant_result("assistant_source_project_map",
+                                     {"project_number": project_number, "limit": limit})
+
+        @mcp.tool()
+        def assistant_source_quality(severity: str | None = None, finding_type: str | None = None,
+                                     status: str | None = "open", limit: int = 50,
+                                     cursor: str | None = None) -> dict[str, Any]:
+            """List advisory source-structure quality findings (stale/noisy/ambiguous/duplicate/
+            misclassified folders, and any absolute-path-exposure error). Filter by ``severity`` /
+            ``finding_type`` / ``status``; page with ``cursor``. Read-only advisory — it repairs nothing."""
+            return _assistant_result("assistant_source_quality",
+                                     {"severity": severity, "finding_type": finding_type,
+                                      "status": status, "limit": limit, "cursor": cursor})
 
     # N8C-14 read-only citation-safe answer drafts. Reads only; enabled by default. These tools RETRIEVE
     # bounded, citation-safe DRAFT artifacts built from N8C-11 research packets — cited sections that preserve

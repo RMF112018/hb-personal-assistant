@@ -66,6 +66,7 @@ from .profile import (
     assistant_research_packets_enabled,
     assistant_review_enabled,
     assistant_source_connector_enabled,
+    assistant_source_structure_enabled,
     assistant_workflows_enabled,
     blocked_write_tools,
     client_tool_manifest_enabled,
@@ -264,10 +265,29 @@ ASSISTANT_QUALITY_TOOLS = (
     "assistant_get_quality_export",
 )
 
-# N8C-22 — canonical aggregate registry: the single source of truth for the 13 read-only assistant
-# groups / 78 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
+# NAS Source-Structure Layered Index (V115) read-only map/route tools: bounded, root-relative maps of
+# the NAS source folders (root/folder/project classification, search-routing hints, quality findings)
+# read from the precomputed index. They never scan a root, reindex, call a model, mutate anything, or
+# expose an absolute path — the index is built out-of-band by the ``hb-assistant source-structure`` CLI.
+# UNLIKE the other groups this one is DEFAULT-OFF (opt-in): installed but not exposed until an operator
+# sets ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``. Gated by ``assistant_source_structure_enabled()``. The
+# names use map/summary/route/explain/quality verbs — none is a forbidden finality/action substring.
+ASSISTANT_SOURCE_STRUCTURE_TOOLS = (
+    "assistant_source_root_map",
+    "assistant_source_folder_map",
+    "assistant_source_folder_summary",
+    "assistant_source_search_route",
+    "assistant_source_scope_explain",
+    "assistant_source_project_map",
+    "assistant_source_quality",
+)
+
+# N8C-22 — canonical aggregate registry: the single source of truth for the 14 read-only assistant
+# groups / 85 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
 # hb_mcp_status exposure fields derive from these — do NOT hand-maintain a second list. This does not
-# add any tool; it only names the union that already existed implicitly across the 13 group tuples.
+# add any tool; it only names the union that already existed implicitly across the group tuples.
+# Exposure follows the per-group gates: the default-off ``source_structure`` group is installed here
+# (so canonical == 85) but not client-exposed until its kill switch is turned on.
 ASSISTANT_TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "nav": ASSISTANT_NAV_TOOLS,
     "context_packs": ASSISTANT_CONTEXT_PACK_TOOLS,
@@ -282,6 +302,7 @@ ASSISTANT_TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "feedback": ASSISTANT_FEEDBACK_TOOLS,
     "action_stages": ASSISTANT_ACTION_STAGE_TOOLS,
     "quality": ASSISTANT_QUALITY_TOOLS,
+    "source_structure": ASSISTANT_SOURCE_STRUCTURE_TOOLS,
 }
 
 # Group label -> kill-switch-aware gate predicate. Mirrors the same gates applied at registration
@@ -300,6 +321,7 @@ ASSISTANT_GROUP_GATES = {
     "feedback": assistant_feedback_enabled,
     "action_stages": assistant_action_stages_enabled,
     "quality": assistant_quality_enabled,
+    "source_structure": assistant_source_structure_enabled,
 }
 
 # The 78 canonical assistant tools, deduped + sorted. This is the canonical read-only navigation set and
@@ -658,6 +680,11 @@ class NasMcpBroker:
                 "assistant_quality_tools": (
                     list(ASSISTANT_QUALITY_TOOLS) if assistant_quality_enabled() else []
                 ),
+                "assistant_source_structure_enabled": assistant_source_structure_enabled(),
+                "assistant_source_structure_tools": (
+                    list(ASSISTANT_SOURCE_STRUCTURE_TOOLS)
+                    if assistant_source_structure_enabled() else []
+                ),
                 "blocked_write_tools": sorted(profile_blocked),
                 "active_override_count": (
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
@@ -732,6 +759,10 @@ class NasMcpBroker:
             if not assistant_quality_enabled():
                 raise ValueError("assistant_quality_disabled")
             return self._invoke_assistant_quality(cfg, tool_name, arguments)
+        if tool_name in ASSISTANT_SOURCE_STRUCTURE_TOOLS:
+            if not assistant_source_structure_enabled():
+                raise ValueError("assistant_source_structure_disabled")
+            return self._invoke_assistant_source_structure(cfg, tool_name, arguments)
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -1269,6 +1300,62 @@ class NasMcpBroker:
             raise KeyError(f"tool_not_registered: {tool_name}")
         finally:
             conn.close()
+
+    def _invoke_assistant_source_structure(self, cfg: NasMcpConfig, tool_name: str,
+                                           arguments: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a read-only source-structure map/route tool.
+
+        The SourceStructureService reads the precomputed ``source_structure_*`` rows over READ-ONLY
+        immutable connections (the repository opens ``mode=ro&immutable=1``) — never a live scan, never
+        a model call, never an absolute path. Every returned row is bounded and root-relative.
+        """
+        from hb_assistant.obsidian_mcp.source_structure_service import SourceStructureService
+
+        svc = SourceStructureService(db_path=str(cfg.db_path))
+
+        def _limit(default: int = 25) -> int:
+            return int(arguments.get("limit", default) or default)
+
+        if tool_name == "assistant_source_root_map":
+            return svc.root_map(query_family=arguments.get("query_family"), limit=_limit())
+        if tool_name == "assistant_source_folder_map":
+            return svc.folder_map(
+                root_key=arguments.get("root_key"),
+                parent_folder_id=arguments.get("parent_folder_id"),
+                depth=arguments.get("depth"),
+                folder_class=arguments.get("folder_class"),
+                doc_family=arguments.get("doc_family"),
+                project_number=arguments.get("project_number"),
+                include_noise=bool(arguments.get("include_noise", False)),
+                limit=_limit(50), cursor=arguments.get("cursor"),
+            )
+        if tool_name == "assistant_source_folder_summary":
+            result = svc.folder_summary(str(arguments["folder_id"]))
+            if result is None:
+                raise ValueError("folder_not_found")
+            return result
+        if tool_name == "assistant_source_search_route":
+            return svc.search_route(
+                query=arguments.get("query"), query_family=arguments.get("query_family"),
+                project_number=arguments.get("project_number"),
+                doc_family=arguments.get("doc_family"), limit=_limit(10),
+            )
+        if tool_name == "assistant_source_scope_explain":
+            result = svc.scope_explain(
+                root_key=arguments.get("root_key"), folder_id=arguments.get("folder_id"),
+            )
+            if result is None:
+                raise ValueError("scope_not_found")
+            return result
+        if tool_name == "assistant_source_project_map":
+            return svc.project_map(str(arguments["project_number"]), limit=_limit(50))
+        if tool_name == "assistant_source_quality":
+            return svc.quality(
+                severity=arguments.get("severity"), finding_type=arguments.get("finding_type"),
+                status=arguments.get("status", "open"), limit=_limit(50),
+                cursor=arguments.get("cursor"),
+            )
+        raise KeyError(f"tool_not_registered: {tool_name}")
 
     def _invoke_assistant_answer_drafts(self, cfg: NasMcpConfig, tool_name: str,
                                         arguments: dict[str, Any]) -> dict[str, Any]:

@@ -2533,6 +2533,97 @@ def create_app(*, db_path: str | None = None) -> Any:
     def _assistant_env(payload: dict[str, Any]) -> dict[str, Any]:
         return {**payload, "guardrails": _guardrails()}
 
+    # --- NAS source-structure layered index (V115) — read-only, bounded, root-relative only ----
+    def _source_structure() -> Any:
+        from hb_assistant.config.path_policy import PathPolicy
+        from hb_assistant.obsidian_mcp.source_structure_service import SourceStructureService
+
+        return SourceStructureService(db_path or str(PathPolicy().get_db_path()))
+
+    @app.get("/api/assistant/source-structure/status")
+    def assistant_source_structure_status(role: dict[str, str] = role_dep) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().status())
+
+    @app.get("/api/assistant/source-structure/roots")
+    def assistant_source_structure_roots(
+        role: dict[str, str] = role_dep,
+        query_family: str | None = Query(default=None),
+        limit: int = Query(default=50),
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().root_map(query_family=query_family, limit=limit))
+
+    @app.get("/api/assistant/source-structure/folders")
+    def assistant_source_structure_folders(
+        role: dict[str, str] = role_dep,
+        root_key: str | None = Query(default=None),
+        parent_folder_id: str | None = Query(default=None),
+        depth: int | None = Query(default=None),
+        folder_class: str | None = Query(default=None),
+        doc_family: str | None = Query(default=None),
+        project_number: str | None = Query(default=None),
+        include_noise: bool = Query(default=False),
+        limit: int = Query(default=50),
+        cursor: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().folder_map(
+            root_key=root_key, parent_folder_id=parent_folder_id, depth=depth,
+            folder_class=folder_class, doc_family=doc_family, project_number=project_number,
+            include_noise=include_noise, limit=limit, cursor=cursor,
+        ))
+
+    @app.get("/api/assistant/source-structure/folder-summary")
+    def assistant_source_structure_folder_summary(
+        role: dict[str, str] = role_dep, folder_id: str = Query(...),
+    ) -> dict[str, Any]:
+        del role
+        from fastapi import HTTPException
+
+        result = _source_structure().folder_summary(folder_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="folder_not_found")
+        return _assistant_env(result)
+
+    @app.get("/api/assistant/source-structure/search-route")
+    def assistant_source_structure_search_route(
+        role: dict[str, str] = role_dep,
+        query: str | None = Query(default=None),
+        query_family: str | None = Query(default=None),
+        project_number: str | None = Query(default=None),
+        doc_family: str | None = Query(default=None),
+        limit: int = Query(default=10),
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().search_route(
+            query=query, query_family=query_family, project_number=project_number,
+            doc_family=doc_family, limit=limit,
+        ))
+
+    @app.get("/api/assistant/source-structure/project-map")
+    def assistant_source_structure_project_map(
+        role: dict[str, str] = role_dep,
+        project_number: str = Query(...),
+        limit: int = Query(default=50),
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().project_map(project_number, limit=limit))
+
+    @app.get("/api/assistant/source-structure/quality")
+    def assistant_source_structure_quality(
+        role: dict[str, str] = role_dep,
+        severity: str | None = Query(default=None),
+        finding_type: str | None = Query(default=None),
+        status: str | None = Query(default="open"),
+        limit: int = Query(default=50),
+        cursor: str | None = Query(default=None),
+    ) -> dict[str, Any]:
+        del role
+        return _assistant_env(_source_structure().quality(
+            severity=severity, finding_type=finding_type, status=status, limit=limit, cursor=cursor,
+        ))
+
     @app.get("/api/assistant/sources")
     def assistant_sources(
         role: dict[str, str] = role_dep,

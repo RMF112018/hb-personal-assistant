@@ -1,6 +1,6 @@
 """N8C-22 — client-exposure parity audit.
 
-Compares, for every one of the 78 canonical N8C assistant tools, four exposure layers:
+Compares, for every one of the canonical N8C assistant tools, four exposure layers:
 
 1. ``broker_registered``       — name is in a canonical ``ASSISTANT_*_TOOLS`` group tuple.
 2. ``status_advertised``       — name appears in an ``hb_mcp_status`` ``assistant_*_tools`` list.
@@ -9,7 +9,7 @@ Compares, for every one of the 78 canonical N8C assistant tools, four exposure l
                                   safely (bounded result, or a fail-closed not-found for id-shaped tools).
 
 The audit builds a fresh migrated **temp** DB and a real FastMCP surface — it never touches production
-data. It answers plainly: are the 78 tools merely advertised, or actually client-callable? Output is a
+data. It answers plainly: are the tools merely advertised, or actually client-callable? Output is a
 machine-readable dict (JSON-serialisable) plus a markdown renderer.
 """
 
@@ -21,6 +21,7 @@ from typing import Any
 
 from .broker import (
     ALL_ASSISTANT_TOOLS,
+    ASSISTANT_GROUP_GATES,
     ASSISTANT_TOOL_GROUPS,
     NasMcpBroker,
     assistant_client_exposure_status,
@@ -152,13 +153,26 @@ def build_exposure_audit(db_path: str | None = None) -> dict[str, Any]:
         callable_count = sum(1 for r in matrix if r["callable_smoke_tested"])
         advertised_count = sum(1 for r in matrix if r["status_advertised"])
         helper_exposed = sorted(h for h in CLIENT_BRIDGE_HELPER_TOOLS if h in tools)
-        gap = exposed < len(ALL_ASSISTANT_TOOLS)
+        # Expected-exposed = tools whose group kill-switch is currently ON. Default-off groups (e.g.
+        # source_structure) are installed in ALL_ASSISTANT_TOOLS but intentionally NOT client-exposed,
+        # so they must not count as a code-level gap — only a tool that SHOULD be exposed but isn't does.
+        _group_enabled = {label: gate() for label, gate in ASSISTANT_GROUP_GATES.items()}
+        expected_exposed = {
+            name for name in ALL_ASSISTANT_TOOLS if _group_enabled.get(_TOOL_TO_GROUP.get(name, ""), False)
+        }
+        disabled_installed = sorted(name for name in ALL_ASSISTANT_TOOLS if name not in expected_exposed)
+        gap = any(
+            r["tool_name"] in expected_exposed and not r["client_manifest_exposed"] for r in matrix
+        )
+        canonical = len(ALL_ASSISTANT_TOOLS)
         conclusion = (
-            "GAP: not every canonical tool is client-exposed — see rows with client_manifest_exposed=false."
+            "GAP: a tool whose group is enabled is not client-exposed — see enabled rows with "
+            "client_manifest_exposed=false."
             if gap
-            else "NO CODE-LEVEL GAP: all 78 canonical assistant tools are broker-registered, "
-            "status-advertised, present in the live client manifest, and callable through the "
-            "client wrapper. Any live client-visibility gap is runtime/client-side (stale image, "
+            else f"NO CODE-LEVEL GAP: all {len(expected_exposed)} enabled canonical assistant tools "
+            f"(of {canonical} installed; {len(disabled_installed)} in default-off groups) are "
+            "broker-registered, status-advertised, present in the live client manifest, and callable "
+            "through the client wrapper. Any further gap is runtime/client-side (stale image, "
             "HB_MCP_ASSISTANT_* kill switch, or client tool-count limits), not a missing code layer."
         )
         return {
@@ -169,11 +183,15 @@ def build_exposure_audit(db_path: str | None = None) -> dict[str, Any]:
             "matrix_columns": list(_MATRIX_COLUMNS),
             "summary": {
                 "broker_registered": len(ALL_ASSISTANT_TOOLS),
+                "installed_total": canonical,
+                "expected_exposed": len(expected_exposed),
+                "installed_but_disabled": disabled_installed,
                 "status_advertised": advertised_count,
                 "client_manifest_exposed": exposed,
                 "callable_smoke_tested": callable_count,
-                "missing_from_client_manifest": len(ALL_ASSISTANT_TOOLS) - exposed,
-                "not_callable": len(ALL_ASSISTANT_TOOLS) - callable_count,
+                # Relative to what SHOULD be exposed (enabled groups) — a default-off group is not a gap.
+                "missing_from_client_manifest": len(expected_exposed) - exposed,
+                "not_callable": len(expected_exposed) - callable_count,
             },
             "exposure_status": assistant_client_exposure_status(),
             "matrix": matrix,

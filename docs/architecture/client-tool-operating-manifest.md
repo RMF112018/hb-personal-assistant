@@ -95,7 +95,9 @@ The N8C-22 helper gateway (`hb_assistant_tool_query`) allowlist was deliberately
 canonical 78 to reach every write surface: `GATEWAY_ALLOWLIST = 78 ∪ pa_artifact_* ∪ pa_tool_manifest_* ∪
 pa_output_* ∪ ai_outputs_card_upsert`. Denied tools, raw SQL/shell/exec, root/db tools, and legacy
 `hb_output_*` stay rejected; every gateway-routed write still passes the full broker gate chain. The
-canonical catalog still reports exactly 78; the write surfaces appear as separate catalog sections.
+canonical catalog reports 85 across 14 groups (installed); the write surfaces appear as separate catalog
+sections. The 14th group `source_structure` (7 read-only map/route tools) is default-OFF, so the
+client-exposed count stays 78 until an operator sets `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1`.
 
 ## Mandatory MCP tool-surface maintenance
 
