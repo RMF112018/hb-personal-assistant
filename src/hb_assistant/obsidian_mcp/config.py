@@ -69,8 +69,19 @@ class ExternalSourceRoot(BaseModel):
     enabled: bool = True
     source_kind: Literal["external_file"] = "external_file"
     sensitive: bool = False
+    # Per-root file cap override. None => fall back to the global ``external_source_scan_max_files``.
+    # Lets a large NAS root (Work/Home/backup, 200k–2.5M files) raise its own ceiling while a small
+    # root (vault) keeps the conservative default. Enforced in ``source_indexer.effective_max_files``.
+    max_files: int | None = None
 
     model_config = {"extra": "forbid"}
+
+    @field_validator("max_files")
+    @classmethod
+    def _positive_max_files(cls, value: int | None) -> int | None:
+        if value is not None and value <= 0:
+            raise ValueError("external_source_max_files_must_be_positive")
+        return value
 
     @field_validator("path")
     @classmethod
