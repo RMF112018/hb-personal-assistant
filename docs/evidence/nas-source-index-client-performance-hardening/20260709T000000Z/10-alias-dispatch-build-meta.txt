@@ -1,0 +1,9 @@
+tag=hb-nas-alias-fix-fa266c529375
+head=fa266c5293757fdd907eb2e8fba8c0424abe801f
+image_id=sha256:533bb295a0d9ec50584ca3ca1c0d2bc62bf43fa5bb86722f9ff5816008438e48
+tarball=/tmp/hb-nas-alias-fix-fa266c529375.tar.gz
+local_sha256=693924a8b19c2fe477e3df51219acf1c91de440203d0ec7a120a8bb86d25244e
+nas_sha256=693924a8b19c2fe477e3df51219acf1c91de440203d0ec7a120a8bb86d25244e
+nas_path=/tmp/hb-nas-alias-fix-fa266c529375.tar.gz
+operator_script=/tmp/hb-deploy-alias-fix.sh
+fix=assistant_output_alias_broker_dispatch

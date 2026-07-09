@@ -1,0 +1,4 @@
+Use: git rev-parse HEAD
+Post-rebase tip parent note: see 06-post-rebase-head-and-status.md
+Implementation (rebased): see git log --grep=source.index.health
+origin/main base: 2e98a03d56f54b25fef86bd3b4c19a89185988cc

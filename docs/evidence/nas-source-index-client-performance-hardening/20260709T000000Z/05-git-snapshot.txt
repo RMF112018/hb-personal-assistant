@@ -1,0 +1,24 @@
+### git rev-parse HEAD
+d8dfa5ee4b2044999f2c1cb181f0abfbdc08f89a
+
+### git log --oneline --decorate -5
+d8dfa5ee (HEAD -> ops/source-index-client-performance-hardening-20260709) docs(evidence): record final commit hash for source-index hardening
+6f54bdd0 feat(nas): source index health, query plan, default-on structure map
+4c510db6 Merge pull request #286 from RMF112018/feat/nas-source-structure
+e06ce14a feat(nas): source-structure layered index + read-only API + default-off MCP tools (V115)
+13a4e1a2 Merge pull request #285 from RMF112018/fix/nas-mcp-freshness-defect6
+
+### git status --short
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-final-pytest-command.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-final-pytest-with-command.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-git-snapshot.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-mcp-client-discovery.json.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-offline-prompt-matrix.json.txt
+
+### git status -sb
+## ops/source-index-client-performance-hardening-20260709...origin/main [ahead 2, behind 2]
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-final-pytest-command.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-final-pytest-with-command.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-git-snapshot.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-mcp-client-discovery.json.txt
+?? docs/evidence/nas-source-index-client-performance-hardening/20260709T000000Z/05-offline-prompt-matrix.json.txt

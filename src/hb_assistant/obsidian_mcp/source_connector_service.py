@@ -33,6 +33,12 @@ from .source_connector_models import (
 )
 from .source_content_provider import SourceContentProvider
 from .source_index_repository import SourceIndexRepository
+from .source_project_number import (
+    match_explanation_for_row,
+    query_project_candidates,
+    rank_boost,
+)
+import time
 
 _MAX_NEIGHBORS = 20
 _MAX_CHILD_FOLDERS = 50
@@ -119,18 +125,54 @@ def search_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, 
         if len(raw) != 4:
             raise SourceConnectorValidationError("invalid_cursor")
         after = (float(raw[0]), str(raw[1]), str(raw[2]), str(raw[3]))
+    t0 = time.perf_counter()
     rows = repo.search_source_files(query, source_root_key=source_root_key, file_ext=file_ext,
                                     limit=limit + 1, after=after, conn=conn)
     has_more = len(rows) > limit
     page = rows[:limit]
+    projects = query_project_candidates(query)
+    # Multi-stage within-page re-rank; preserve BM25 as base_score for rollback diagnostics.
+    ranked = []
+    for r in page:
+        boost = rank_boost(r, query=query, project_numbers=projects)
+        ranked.append((boost, -float(r.get("score") or 0.0), r))
+    ranked.sort(key=lambda t: (-t[0], -t[1], t[2].get("source_root_key") or "",
+                               t[2].get("rel_path") or "", t[2].get("source_id") or ""))
     next_after = None
     if has_more and page:
+        # Cursor stays BM25-order based for stable keyset continuation across pages.
         last = page[-1]
         next_after = [last["score"], last["source_root_key"], last["rel_path"], last["source_id"]]
-    items = [shape_source_file(r, snippet=r.get("snippet"), include_snippet=True) for r in page]
+    items = []
+    for idx, (boost, _neg_bm25, r) in enumerate(ranked):
+        shaped = shape_source_file(r, snippet=r.get("snippet"), include_snippet=True)
+        shaped["base_score"] = float(r.get("score") or 0.0)
+        shaped["bm25_rank"] = float(r.get("score") or 0.0)
+        shaped["rank_boost"] = boost
+        shaped["reranked_position"] = idx
+        shaped["match_explanation"] = match_explanation_for_row(
+            r, query=query, project_numbers=projects,
+        )
+        items.append(shaped)
     env = page_envelope(items, limit=limit, order=order, query_digest=query_digest,
                         next_after=next_after, cursor=cursor)
-    return {**env, "query": query, "search_backend": "source_index"}
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    return {
+        **env, "query": query, "search_backend": "source_index",
+        "ranking_strategy": "project_path_filename_content_fts",
+        "detected_project_numbers": projects,
+        "telemetry": {
+            "elapsed_ms": elapsed_ms,
+            "candidate_count": len(rows),
+            "returned_count": len(items),
+            "truncated": has_more,
+            "cursor_present": bool(cursor) or has_more,
+            "layers_used": ["source_intelligence_fts", "path_project_rerank"],
+            "fallback_used": None,
+            "rank_strategy": "project_path_filename_content_fts",
+            "freshness_basis": "indexed_rows",
+        },
+    }
 
 
 def list_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, source_root_key: str,
@@ -200,6 +242,10 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
     active_cards = [c for c in cards if c.get("generation_status") in ("generated", "stale")]
     ext = (str(detail.get("file_ext")).lower().lstrip(".") if detail.get("file_ext") else None)
     neighbors = _neighbors(repo, detail, sid, conn=conn)
+    extraction = str(detail.get("extraction_status") or "")
+    unsupported = extraction == "unsupported" or (ext or "") in {"xer", "mpp", "pln"}
+    from .source_project_number import extract_project_numbers_from_path  # noqa: PLC0415
+    projects = extract_project_numbers_from_path(str(detail.get("rel_path") or ""))
     return {
         "object_type": "source_file",
         "is_source_file": True,
@@ -207,8 +253,10 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
         "source_ref": encode_source_ref(sid),
         "source_root_key": detail.get("source_root_key"),
         "rel_path": detail.get("rel_path"),
+        "path_display": f"{detail.get('source_root_key')}/{detail.get('rel_path')}" if detail.get("rel_path") else detail.get("source_root_key"),
         "source_kind": detail.get("source_kind"),
         "extension": ext,
+        "file_type": ext,
         "mime_type": mime_for_ext(ext),
         "size_bytes": detail.get("size_bytes"),
         "mtime_ns": detail.get("mtime_ns"),
@@ -218,12 +266,22 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
         "sheet_count": detail.get("sheet_count"),
         "extraction_status": detail.get("extraction_status"),
         "indexed_text_available": detail.get("text_excerpt") is not None,
+        "indexed_metadata_available": True,
+        "content_extraction_unsupported": unsupported,
+        "parser_available": False if unsupported else None,
+        "likely_project_numbers": projects,
+        "folder_classification": None,
+        "recommended_next_action": (
+            "Use metadata + nearby readable siblings; do not invent XER/P6 content."
+            if unsupported else "assistant_source_file_read for bounded content."
+        ),
         "source_state": "deleted" if detail.get("deleted") else "active",
         "generated_card_available": bool(active_cards),
         "generated_card_rel_path": (active_cards[0]["note_rel_path"] if active_cards else None),
         "generated_card_status": (active_cards[0]["generation_status"] if active_cards else None),
         "generated_card_note": "supplemental artifact; the original source file is the primary object",
         "neighbors": neighbors,
+        "nearby_readable_siblings": [n for n in neighbors if not str(n.get("rel_path") or "").lower().endswith((".xer", ".mpp"))],
     }
 
 

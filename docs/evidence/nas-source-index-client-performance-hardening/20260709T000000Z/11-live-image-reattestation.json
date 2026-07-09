@@ -1,0 +1,78 @@
+{
+  "started_utc": "2026-07-09T09:59:41.269069+00:00",
+  "purpose": "Re-attest currently serving live NAS MCP image without redeploy; reconcile PR head vs live image identity",
+  "pr": 288,
+  "pr_head": "77bd67d565c0dbeaf94b8e280bb9632c868ec0f0",
+  "alias_dispatch_fix_commit": "fa266c5293757fdd907eb2e8fba8c0424abe801f",
+  "live_image": {
+    "digest_or_config_sha": "sha256:c8a04da81bd235b688bca8664cd6d4e685534c0051c790627ff219bf49114341",
+    "digest_short": "sha256:c8a04da8\u2026",
+    "note": "Operator/audit-reported live image identity. Image was loaded via hb-deploy-alias-fix.sh after no-cache rebuild of fa266c52 tree; not re-tagged with PR tip. Finding: undocumented rebuild relative to formal PR-tip stamp, but code-equivalent by introspection (alias-before-catchall present; 87 tools; structure ON).",
+    "redeploy_this_session": false
+  },
+  "code_equivalence": {
+    "finding": "live image is an undocumented rebuild relative to pure PR-tip git stamp, but code-equivalent to PR head by runtime introspection",
+    "fa266c52_to_pr_head_docs_only": true,
+    "commits_fa266c52_to_77bd67d5": [
+      "77bd67d5 docs(evidence): live post-redeploy 10/10 assistant_output alias dispatch PASS",
+      "8095d170 docs(evidence): assistant_output alias dispatch fix proof (local green, live pending redeploy)"
+    ],
+    "proof": "git log fa266c52..77bd67d5 is docs(evidence) only; broker alias dispatch landed in fa266c52 and is present live"
+  },
+  "historical_matrix_vs_reattest": {
+    "older_13x13_matrix": {
+      "artifact": "09-postdeploy-live-matrix.md/json",
+      "local_branch_tip_at_run": "974becc2 (predeploy/blocked-deploy era evidence chain) / matrix run after operator deploy of source-index image",
+      "score": "13/13 PASS",
+      "note": "Do not treat 09 as proof of the current image config digest; it proved post-deploy functional matrix for the source-index surface before the alias-dispatch residual fix."
+    },
+    "alias_post_redeploy": {
+      "artifact": "10-alias-dispatch-live-post-redeploy.json",
+      "score": "10/10 aliases + cases 7-9 PASS via assistant_output_* only",
+      "note": "Proved after alias-fix image load; same serving image family as this re-attestation."
+    },
+    "this_reattestation": {
+      "artifact": "11-live-image-reattestation.md/json",
+      "note": "Non-mutating re-probe of the currently serving image; no redeploy authorized or performed in FIX_BEFORE_MERGE session."
+    }
+  },
+  "live_probe": {
+    "endpoint": "https://nas-mcp.bobby-fetting.me/mcp",
+    "auth": "origin_bearer_from_app_support_token_file_not_stored",
+    "installed_tools_assistant_canonical": 87,
+    "groups": 14,
+    "group_names": [
+      "action_stages",
+      "answer_drafts",
+      "context_packs",
+      "decision_memory",
+      "feedback",
+      "intelligence",
+      "memory",
+      "nav",
+      "quality",
+      "research_packets",
+      "review",
+      "source_connector",
+      "source_structure",
+      "workflows"
+    ],
+    "has_index_health": true,
+    "has_query_plan": true,
+    "structure_default_on": true,
+    "structure_tools_present": 7,
+    "alias_before_catchall": true,
+    "assistant_output_stage_callable_live": true,
+    "cleanup_from_probe": {
+      "output_id": "OUTPUT-20260709-008",
+      "disposition": "archived_after_reattest_stage_commit"
+    }
+  },
+  "gate": {
+    "redeploy_performed": false,
+    "source_structure_live_scan": false,
+    "launchd_touched": false,
+    "pr_merged": false
+  },
+  "finished_utc": "2026-07-09T09:59:41.269350+00:00"
+}

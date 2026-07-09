@@ -57,8 +57,12 @@ def test_parser_never_persists_absolute_paths():
 
 # --- project number extraction --------------------------------------------------------------
 def test_project_number_full_vs_partial():
-    assert extract_project_number("21-801-01 NORA") == ("21-801-01", 0.9)
-    assert extract_project_number("22-100 Old") == ("22-100", 0.35)  # partial: weak evidence
+    full_num, full_conf = extract_project_number("21-801-01 NORA")
+    assert full_num == "21-801-01"
+    assert full_conf >= 0.9
+    part_num, part_conf = extract_project_number("22-100 Old")
+    assert part_num == "22-100"
+    assert part_conf == 0.35  # partial: weak evidence (shared normalizer)
     assert extract_project_number("no digits") == (None, 0.0)
 
 

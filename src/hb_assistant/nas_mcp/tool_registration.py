@@ -646,8 +646,23 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                                      {"source_id": source_id, "source_ref": source_ref,
                                       "max_chars": max_chars, "prefer_live": prefer_live})
 
-    # NAS Source-Structure Layered Index (V115) read-only map/route tools. DEFAULT-OFF (opt-in): the
-    # group registers only when ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``. They return bounded,
+        @mcp.tool()
+        def assistant_source_index_health() -> dict[str, Any]:
+            """Per-root source index health (file index + folder map layers): freshness, counts,
+            skipped/unsupported, whether safe for client answering. No absolute paths. Use before
+            trusting broad NAS answers."""
+            return _assistant_result("assistant_source_index_health", {})
+
+        @mcp.tool()
+        def assistant_source_query_plan(prompt: str, query: str | None = None) -> dict[str, Any]:
+            """Deterministic planner for NAS source prompts: classifies intent (map vs search vs health
+            vs unsupported), normalizes project numbers, and recommends a tool sequence. Does not search
+            or read files. Prefer this before generic file search for map/folder/project questions."""
+            return _assistant_result("assistant_source_query_plan",
+                                     {"prompt": prompt or query or "", "query": query})
+
+    # NAS Source-Structure Layered Index (V115) read-only map/route tools. DEFAULT-ON
+    # (kill-switch ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0``). They return bounded,
     # root-relative maps / routing hints / quality findings from the precomputed source-structure index
     # (built out-of-band by ``hb-assistant source-structure``) — never a live scan, model call, mutation,
     # or absolute path. Names use map/summary/route/explain/quality verbs (no finality/action substring).
@@ -1549,6 +1564,75 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             """Move a committed output to 90 Archive + write an archive receipt. Requires the server-minted
             operator_approval_id. Never deletes."""
             return _assistant_result("pa_output_archive_commit", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id})
+
+
+    # assistant_output_* aliases — same handlers as pa_output_* (client-facing naming).
+    @mcp.tool()
+    def assistant_output_list(status: str | None = None, file_type: str | None = None,
+                              source_session_id: str | None = None, limit: int = 50) -> dict[str, Any]:
+        """Alias of pa_output_list."""
+        return _assistant_result("assistant_output_list", {"status": status, "file_type": file_type,
+                                                           "source_session_id": source_session_id, "limit": limit})
+
+    @mcp.tool()
+    def assistant_output_metadata(output_id: str) -> dict[str, Any]:
+        """Alias of pa_output_metadata."""
+        return _assistant_result("assistant_output_metadata", {"output_id": output_id})
+
+    @mcp.tool()
+    def assistant_output_read_excerpt(output_id: str, max_chars: int = 4000) -> dict[str, Any]:
+        """Alias of pa_output_read_excerpt."""
+        return _assistant_result("assistant_output_read_excerpt", {"output_id": output_id, "max_chars": max_chars})
+
+    @mcp.tool()
+    def assistant_output_zip_inspect(output_id: str) -> dict[str, Any]:
+        """Alias of pa_output_zip_inspect."""
+        return _assistant_result("assistant_output_zip_inspect", {"output_id": output_id})
+
+    @mcp.tool()
+    def assistant_output_receipt_get(receipt_id: str) -> dict[str, Any]:
+        """Alias of pa_output_receipt_get."""
+        return _assistant_result("assistant_output_receipt_get", {"receipt_id": receipt_id})
+
+    @mcp.tool()
+    def assistant_output_manifest_get() -> dict[str, Any]:
+        """Alias of pa_output_manifest_get."""
+        return _assistant_result("assistant_output_manifest_get", {})
+
+    @mcp.tool()
+    def assistant_output_archive_plan(output_id: str) -> dict[str, Any]:
+        """Alias of pa_output_archive_plan."""
+        return _assistant_result("assistant_output_archive_plan", {"output_id": output_id})
+
+    if client_output_write_enabled():
+        @mcp.tool()
+        def assistant_output_stage(title: str, file_type: str, content_mode: str = "text",
+                                   content_text: str | None = None, content_base64: str | None = None,
+                                   source_client: str | None = None, source_session_id: str | None = None,
+                                   related_canonical_ids: list[str] | None = None,
+                                   related_proposal_ids: list[str] | None = None,
+                                   destination_state: str = "pending", operator_id: str | None = None) -> dict[str, Any]:
+            """Alias of pa_output_stage."""
+            return _assistant_result("assistant_output_stage", {
+                "title": title, "file_type": file_type, "content_mode": content_mode,
+                "content_text": content_text, "content_base64": content_base64,
+                "source_client": source_client, "source_session_id": source_session_id,
+                "related_canonical_ids": related_canonical_ids, "related_proposal_ids": related_proposal_ids,
+                "destination_state": destination_state, "operator_id": operator_id})
+
+        @mcp.tool()
+        def assistant_output_commit(output_id: str, operator_approval_id: str,
+                                    idempotency_key: str | None = None, operator_id: str | None = None) -> dict[str, Any]:
+            """Alias of pa_output_commit."""
+            return _assistant_result("assistant_output_commit", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id,
+                "idempotency_key": idempotency_key, "operator_id": operator_id})
+
+        @mcp.tool()
+        def assistant_output_archive_commit(output_id: str, operator_approval_id: str) -> dict[str, Any]:
+            """Alias of pa_output_archive_commit."""
+            return _assistant_result("assistant_output_archive_commit", {
                 "output_id": output_id, "operator_approval_id": operator_approval_id})
 
     # Prompt Preflight & Tool Routing. Five READ-ONLY routing tools that expose the deterministic route

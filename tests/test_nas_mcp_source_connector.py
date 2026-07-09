@@ -162,7 +162,7 @@ def test_no_write_scan_or_action_tool_registered(mcp_env) -> None:
         "extract", "apply", "write", "create", "delete", "persist", "upsert", "close", "reopen",
         "accept", "reject", "defer", "dispose", "build", "send", "remind", "answer", "generate",
         "scan", "reindex", "rebuild"))]
-    assert len(ASSISTANT_SOURCE_CONNECTOR_TOOLS) == 6
+    assert len(ASSISTANT_SOURCE_CONNECTOR_TOOLS) == 8  # + index_health + query_plan
 
 
 def test_hb_root_tools_not_broadened(mcp_env) -> None:

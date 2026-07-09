@@ -112,6 +112,11 @@ _VAULT_ARG_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
     "vault_get_backlinks": {"target_path": ("target_path", "path", "note_path")},
     "vault_get_note_graph": {"target_path": ("target_path", "path")},
     "vault_get_unlinked_mentions": {"target_title": ("target_title", "title", "note_title")},
+    "vault_archive_note_plan": {"source_path": ("source_path", "path", "relative_path", "note_path")},
+    "vault_move_note_plan": {"source_path": ("source_path", "path", "relative_path"),
+                             "target_path": ("target_path", "destination", "dest_path")},
+    "vault_rename_note_plan": {"source_path": ("source_path", "path", "relative_path")},
+    "vault_delete_note_plan": {"source_path": ("source_path", "path", "relative_path", "note_path")},
 }
 # Tools that hard-require an arg the generic schema does not mark required — validate with a clear
 # message after aliasing rather than raising a cryptic KeyError on ``args["target_path"]``.

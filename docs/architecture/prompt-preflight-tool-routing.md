@@ -52,8 +52,8 @@ referencing missing tools, and gateway-scope drift. **Read routes proceed with a
 
 `pa_prompt_route`, `pa_prompt_route_explain`, `pa_tool_family_get`, `pa_workflow_recipe_get`,
 `pa_tool_surface_freshness_check`. None contains a write-verb or finality substring; none joins the canonical
-78; all are added to `GATEWAY_ALLOWLIST`. Gate: `HB_MCP_PROMPT_PREFLIGHT` (default-on kill-switch).
-`hb_mcp_status` surfaces `prompt_preflight_*` + `tool_surface_*` fields and never crashes.
+87 `assistant_*` tools; all are added to `GATEWAY_ALLOWLIST`. Gate: `HB_MCP_PROMPT_PREFLIGHT` (default-on
+kill-switch). `hb_mcp_status` surfaces `prompt_preflight_*` + `tool_surface_*` fields and never crashes.
 
 ## Mandatory MCP tool-surface maintenance
 

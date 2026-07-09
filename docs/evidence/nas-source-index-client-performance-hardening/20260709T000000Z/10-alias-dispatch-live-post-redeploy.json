@@ -1,0 +1,324 @@
+{
+  "started_utc": "2026-07-09T09:32:51.984212+00:00",
+  "finished_utc": "2026-07-09T09:33:00.303819+00:00",
+  "endpoint": "https://nas-mcp.bobby-fetting.me/mcp",
+  "auth": "origin_bearer_from_app_support_token_file",
+  "phase": "post_redeploy",
+  "server": {
+    "name": "hb-nas-mcp",
+    "version": "1.28.1"
+  },
+  "status_safe": {
+    "assistant_client_exposed_tool_count": 87,
+    "assistant_source_structure_enabled": true,
+    "runtime_commit": "v1.3.0",
+    "client_output_write_enabled": true
+  },
+  "aliases_listed": {
+    "assistant_output_stage": true,
+    "assistant_output_commit": true,
+    "assistant_output_archive_plan": true,
+    "assistant_output_archive_commit": true,
+    "assistant_output_metadata": true,
+    "assistant_output_list": true,
+    "assistant_output_read_excerpt": true,
+    "assistant_output_receipt_get": true,
+    "assistant_output_manifest_get": true,
+    "assistant_output_zip_inspect": true
+  },
+  "alias_call_score": {
+    "assistant_output_stage": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_commit": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_archive_plan": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_archive_commit": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_metadata": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_list": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_read_excerpt": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_receipt_get": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_manifest_get": {
+      "ok": true,
+      "error": null
+    },
+    "assistant_output_zip_inspect": {
+      "ok": true,
+      "error": null
+    }
+  },
+  "all_10_listed": true,
+  "all_10_callable": true,
+  "cases_7_8_9": [
+    {
+      "id": 7,
+      "prompt": "Create a temporary markdown output\u2026 (assistant_output_* only)",
+      "tools_called": [
+        "assistant_output_stage",
+        "assistant_output_commit"
+      ],
+      "pass": true,
+      "defects": [],
+      "observed": {
+        "stage": {
+          "output_id": "OUTPUT-20260709-006",
+          "operator_approval_id": "94cef9dbb4754e22d0207962",
+          "idempotency_key": "68226d32c838ce5e7f8caa9b",
+          "staged_status": "staged",
+          "status": null,
+          "writes": false,
+          "error": null,
+          "isError": null
+        },
+        "commit": {
+          "output_id": "OUTPUT-20260709-006",
+          "status": "committed",
+          "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-006 - alias-postdeploy-temp-md.md",
+          "receipt_id": "0bcfc2c51be7d82e855a2f59",
+          "error": null,
+          "isError": null
+        }
+      }
+    },
+    {
+      "id": 8,
+      "prompt": "Create a temporary zip\u2026 (assistant_output_* only)",
+      "tools_called": [
+        "assistant_output_stage",
+        "assistant_output_zip_inspect",
+        "assistant_output_commit"
+      ],
+      "pass": true,
+      "defects": [],
+      "observed": {
+        "stage": {
+          "output_id": "OUTPUT-20260709-007",
+          "error": null,
+          "zip_validation": {
+            "zip_validation_passed": true,
+            "member_count": 1,
+            "compressed_bytes": 56,
+            "declared_uncompressed_bytes": 54,
+            "member_preview": [
+              {
+                "name": "readme.txt",
+                "file_size": 54,
+                "compress_size": 56,
+                "is_dir": false
+              }
+            ],
+            "zip_validation_warnings": []
+          }
+        },
+        "zip_inspect": {
+          "ok": true,
+          "error": null,
+          "keys": [
+            "file_type",
+            "note",
+            "output_id",
+            "preview_mode",
+            "zip_validation"
+          ]
+        },
+        "commit": {
+          "status": "committed",
+          "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-007 - alias-postdeploy-temp-zip.zip",
+          "error": null
+        }
+      }
+    },
+    {
+      "id": 9,
+      "prompt": "Archive temporary outputs\u2026 (assistant_output_* only)",
+      "tools_called": [
+        "assistant_output_archive_plan",
+        "assistant_output_archive_commit",
+        "assistant_output_list"
+      ],
+      "pass": true,
+      "defects": [],
+      "observed": {
+        "archived": [
+          {
+            "output_id": "OUTPUT-20260709-006",
+            "status": "archived",
+            "error": null,
+            "ok": true
+          },
+          {
+            "output_id": "OUTPUT-20260709-007",
+            "status": "archived",
+            "error": null,
+            "ok": true
+          }
+        ],
+        "plans": [
+          {
+            "output_id": "OUTPUT-20260709-006",
+            "ok": true,
+            "operator_approval_id": true,
+            "error": null
+          },
+          {
+            "output_id": "OUTPUT-20260709-007",
+            "ok": true,
+            "operator_approval_id": true,
+            "error": null
+          }
+        ]
+      }
+    }
+  ],
+  "cases_7_8_9_all_pass": true,
+  "results_bounded": {
+    "assistant_output_stage": {
+      "output_id": "OUTPUT-20260709-006",
+      "operator_approval_id": "94cef9dbb4754e22d0207962",
+      "idempotency_key": "68226d32c838ce5e7f8caa9b",
+      "staged_status": "staged",
+      "status": null,
+      "writes": false,
+      "error": null,
+      "isError": null
+    },
+    "assistant_output_commit": {
+      "output_id": "OUTPUT-20260709-006",
+      "status": "committed",
+      "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-006 - alias-postdeploy-temp-md.md",
+      "receipt_id": "0bcfc2c51be7d82e855a2f59",
+      "error": null,
+      "isError": null
+    },
+    "assistant_output_zip_inspect": {
+      "ok": true,
+      "error": null,
+      "keys": [
+        "file_type",
+        "note",
+        "output_id",
+        "preview_mode",
+        "zip_validation"
+      ]
+    },
+    "assistant_output_commit_zip": {
+      "status": "committed",
+      "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-007 - alias-postdeploy-temp-zip.zip",
+      "error": null
+    },
+    "assistant_output_list": {
+      "ok": true,
+      "count": 20,
+      "error": null,
+      "keys": [
+        "count",
+        "outputs"
+      ]
+    },
+    "assistant_output_metadata": {
+      "ok": true,
+      "status": "committed",
+      "receipt_id": "0bcfc2c51be7d82e855a2f59",
+      "error": null
+    },
+    "assistant_output_read_excerpt": {
+      "ok": true,
+      "error": null,
+      "keys": [
+        "excerpt",
+        "file_type",
+        "output_id",
+        "preview_mode",
+        "truncated"
+      ]
+    },
+    "assistant_output_manifest_get": {
+      "ok": true,
+      "entry_count": 32,
+      "error": null
+    },
+    "assistant_output_receipt_get": {
+      "ok": true,
+      "error": null,
+      "receipt_id": "0bcfc2c51be7d82e855a2f59",
+      "keys": [
+        "bytes_written",
+        "created_at",
+        "output_id",
+        "receipt_id",
+        "receipt_type",
+        "relative_receipt_path",
+        "sha256",
+        "status",
+        "validation_summary_json"
+      ]
+    },
+    "assistant_output_archive_plan_samples": [
+      {
+        "output_id": "OUTPUT-20260709-006",
+        "ok": true,
+        "operator_approval_id": true,
+        "error": null
+      },
+      {
+        "output_id": "OUTPUT-20260709-007",
+        "ok": true,
+        "operator_approval_id": true,
+        "error": null
+      }
+    ],
+    "assistant_output_archive_commit": [
+      {
+        "output_id": "OUTPUT-20260709-006",
+        "status": "archived",
+        "error": null,
+        "ok": true
+      },
+      {
+        "output_id": "OUTPUT-20260709-007",
+        "status": "archived",
+        "error": null,
+        "ok": true
+      }
+    ]
+  },
+  "cleanup_ledger": [
+    {
+      "artifact": "alias-postdeploy-temp-md",
+      "output_id": "OUTPUT-20260709-006",
+      "disposition": "archived"
+    },
+    {
+      "artifact": "alias-postdeploy-temp-zip",
+      "output_id": "OUTPUT-20260709-007",
+      "disposition": "archived"
+    }
+  ],
+  "note": "All write/read tools invoked via assistant_output_* only; no pa_output_* fallback.",
+  "gate": {
+    "live_alias_dispatch_pass": true,
+    "push_pr_authorized": false,
+    "reason": "live proof only; push/PR still requires explicit operator authorize"
+  }
+}

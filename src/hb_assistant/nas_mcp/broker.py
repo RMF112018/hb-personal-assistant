@@ -20,6 +20,7 @@ from .artifact_tools import (
 from .audit import NasMcpAuditWriter
 from .client_output_tools import (
     ALL_PA_OUTPUT_TOOLS,
+    ASSISTANT_OUTPUT_ALIASES,
     client_output_status,
     dispatch_client_output_tool,
 )
@@ -185,6 +186,8 @@ ASSISTANT_SOURCE_CONNECTOR_TOOLS = (
     "assistant_source_file_search",
     "assistant_source_file_metadata",
     "assistant_source_file_read",
+    "assistant_source_index_health",
+    "assistant_source_query_plan",
 )
 
 # N8C-14 read-only citation-safe answer-draft tools (reads only; never write). They retrieve bounded,
@@ -270,7 +273,7 @@ ASSISTANT_QUALITY_TOOLS = (
 # read from the precomputed index. They never scan a root, reindex, call a model, mutate anything, or
 # expose an absolute path — the index is built out-of-band by the ``hb-assistant source-structure`` CLI.
 # UNLIKE the other groups this one is DEFAULT-OFF (opt-in): installed but not exposed until an operator
-# sets ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``. Gated by ``assistant_source_structure_enabled()``. The
+# default-ON (kill-switch ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0``). Gated by ``assistant_source_structure_enabled()``. The
 # names use map/summary/route/explain/quality verbs — none is a forbidden finality/action substring.
 ASSISTANT_SOURCE_STRUCTURE_TOOLS = (
     "assistant_source_root_map",
@@ -283,11 +286,12 @@ ASSISTANT_SOURCE_STRUCTURE_TOOLS = (
 )
 
 # N8C-22 — canonical aggregate registry: the single source of truth for the 14 read-only assistant
-# groups / 85 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
+# groups / 87 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
 # hb_mcp_status exposure fields derive from these — do NOT hand-maintain a second list. This does not
 # add any tool; it only names the union that already existed implicitly across the group tuples.
-# Exposure follows the per-group gates: the default-off ``source_structure`` group is installed here
-# (so canonical == 85) but not client-exposed until its kill switch is turned on.
+# Exposure follows the per-group gates. ``source_structure`` (7 tools) is **default-ON** (kill-switch
+# ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0``). ``source_connector`` includes index health + query plan
+# (canonical/client-exposed default == 87 when all groups are enabled).
 ASSISTANT_TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "nav": ASSISTANT_NAV_TOOLS,
     "context_packs": ASSISTANT_CONTEXT_PACK_TOOLS,
@@ -324,9 +328,10 @@ ASSISTANT_GROUP_GATES = {
     "source_structure": assistant_source_structure_enabled,
 }
 
-# The 85 installed canonical assistant tools, deduped + sorted. This is the canonical read-only navigation
-# set and the catalog's canonical universe. Of these, 78 are client-exposed by default; the +7 default-off
-# source_structure tools are installed-but-disabled until an operator sets HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1.
+# The 87 installed canonical assistant tools, deduped + sorted. This is the canonical read-only navigation
+# set and the catalog's canonical universe. Default client-exposed count is also 87 (all 14 groups on),
+# including the 7 default-ON source_structure tools and source_connector health/query_plan. Operators may
+# hide structure only via kill-switch HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0 (exposed then drops by 7).
 # NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help / _tool_query) are
 # deliberately NOT in here — they are helpers, not canonical assistant tools.
 ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
@@ -342,6 +347,7 @@ GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
     set(ALL_ASSISTANT_TOOLS)
     | set(ALL_PA_TOOLS)
     | set(ALL_PA_OUTPUT_TOOLS)
+    | set(ASSISTANT_OUTPUT_ALIASES)
     | set(PROMPT_ROUTING_TOOLS)
     | {AI_OUTPUTS_WRITE_TOOL}
 )
@@ -369,7 +375,7 @@ def assistant_client_exposure_status() -> dict[str, Any]:
     """N8C-22 client-exposure summary for hb_mcp_status.
 
     Reports how many of the canonical assistant tools are currently exposed to connected clients
-    (78 by default; up to 85 when the default-off source_structure group is enabled).
+    (87 by default across 14 groups; structure is default-ON; kill-switch drops structure's 7 tools).
     Exposure follows the per-group kill switches: a group turned off by ``HB_MCP_ASSISTANT_*=0`` is
     neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
     both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
@@ -693,7 +699,8 @@ class NasMcpBroker:
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
                 ),
                 "port_policy": "127.0.0.1:8765 host publish only",
-                # N8C-22 client-exposure summary (78 client-exposed default / 85 installed; per-group kill-switch aware).
+                # N8C-22 client-exposure summary (87 client-exposed default / 87 installed; 14 groups;
+                # source_structure default-ON; per-group kill-switch aware).
                 **assistant_client_exposure_status(),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),
@@ -766,6 +773,15 @@ class NasMcpBroker:
             if not assistant_source_structure_enabled():
                 raise ValueError("assistant_source_structure_disabled")
             return self._invoke_assistant_source_structure(cfg, tool_name, arguments)
+        # N8C-24 client generated-output workspace — MUST run before the broad
+        # ``assistant_*`` catch-all below. ``assistant_output_*`` aliases start with
+        # ``assistant_`` but are NOT nav tools; they dispatch to the same handlers as
+        # ``pa_output_*``. Controlled writes (stage/commit/archive_commit) are in
+        # CLIENT_OUTPUT_WRITE_TOOLS, so they already passed the dispatch write-gate chain
+        # (safe-mode + blocked_write_tools when client_output_write_enabled() is off) above;
+        # server-side approval + idempotency + path safety are enforced inside the handler.
+        if tool_name in ALL_PA_OUTPUT_TOOLS or tool_name in ASSISTANT_OUTPUT_ALIASES:
+            return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -786,12 +802,6 @@ class NasMcpBroker:
             elif not artifact_workspace_enabled():
                 raise ValueError("artifact_workspace_disabled")
             return dispatch_artifact_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
-        if tool_name in ALL_PA_OUTPUT_TOOLS:
-            # N8C-24 client generated-output workspace. Controlled writes (stage/commit/archive_commit) are in
-            # CLIENT_OUTPUT_WRITE_TOOLS, so they already passed the dispatch write-gate chain (safe-mode +
-            # blocked_write_tools when client_output_write_enabled() is off) above; server-side approval +
-            # idempotency + path safety are enforced inside the handler. Reads are bounded.
-            return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name in PROMPT_ROUTING_TOOLS:
             # Prompt Preflight & Tool Routing. Read-only routing layer — never writes/stages/promotes/reads
             # source content. Gated by its own kill switch; gateway-reachable via GATEWAY_ALLOWLIST.
@@ -1298,6 +1308,16 @@ class NasMcpBroker:
                         source_ref=arguments.get("source_ref"),
                         max_chars=arguments.get("max_chars"),
                         prefer_live=bool(arguments.get("prefer_live", True)), conn=conn)
+                if tool_name == "assistant_source_index_health":
+                    from hb_assistant.obsidian_mcp.source_health_service import (  # noqa: PLC0415
+                        source_index_health,
+                    )
+                    return source_index_health(repo, config, conn=conn)
+                if tool_name == "assistant_source_query_plan":
+                    from hb_assistant.obsidian_mcp.source_query_planner import (  # noqa: PLC0415
+                        plan_source_query,
+                    )
+                    return plan_source_query(str(arguments.get("prompt") or arguments.get("query") or ""))
             except SourceConnectorValidationError as e:
                 raise ValueError(str(e)) from None
             raise KeyError(f"tool_not_registered: {tool_name}")

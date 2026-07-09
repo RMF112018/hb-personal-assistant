@@ -22,7 +22,10 @@ PA_OUTPUT_READ_TOOLS: tuple[str, ...] = (
 )
 ALL_PA_OUTPUT_TOOLS: tuple[str, ...] = PA_OUTPUT_WRITE_TOOLS + PA_OUTPUT_READ_TOOLS
 # The gateway-reachable non-canonical output section (operator-authorized gateway expansion).
-CLIENT_OUTPUT_GATEWAY_TOOLS: frozenset[str] = frozenset(ALL_PA_OUTPUT_TOOLS)
+ASSISTANT_OUTPUT_ALIASES: tuple[str, ...] = tuple(
+    "assistant_output_" + n[len("pa_output_"):] for n in ALL_PA_OUTPUT_TOOLS
+)
+CLIENT_OUTPUT_GATEWAY_TOOLS: frozenset[str] = frozenset(ALL_PA_OUTPUT_TOOLS) | frozenset(ASSISTANT_OUTPUT_ALIASES)
 
 
 def _require(a: dict[str, Any], key: str) -> Any:
@@ -34,6 +37,9 @@ def _require(a: dict[str, Any], key: str) -> Any:
 
 def dispatch_client_output_tool(config: NasMcpConfig, tool_name: str, arguments: dict[str, Any], *,
                                 runtime_commit: str = "unknown") -> dict[str, Any]:
+    # assistant_output_* is a client-facing alias of pa_output_* (same handlers).
+    if tool_name.startswith("assistant_output_"):
+        tool_name = "pa_output_" + tool_name[len("assistant_output_"):]
     repo = ClientOutputWorkspaceRepository(config, str(config.db_path))
     a = arguments or {}
 

@@ -1,0 +1,276 @@
+{
+  "matrix": [
+    {
+      "prompt": "Find files for project number 23-435-01 in my NAS Work source root.",
+      "preflight_workflow": "source_root_map",
+      "preflight_tools": [
+        "assistant_source_root_map",
+        "assistant_source_roots_list"
+      ],
+      "preflight_intent": {
+        "primary_class": "discovery",
+        "classes": [
+          "discovery"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "map_source_root",
+      "query_plan_tools": [
+        "assistant_source_root_map",
+        "assistant_source_folder_map",
+        "assistant_source_scope_explain"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Map the Tropical project folder.",
+      "preflight_workflow": "source_project_map",
+      "preflight_tools": [
+        "assistant_source_query_plan",
+        "assistant_source_project_map",
+        "assistant_source_folder_map",
+        "assistant_source_folder_summary"
+      ],
+      "preflight_intent": {
+        "primary_class": "retrieval",
+        "classes": [
+          "retrieval",
+          "discovery"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "map_project_folder",
+      "query_plan_tools": [
+        "assistant_source_query_plan",
+        "assistant_source_project_map",
+        "assistant_source_folder_map",
+        "assistant_source_folder_summary"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Show me the folder structure under the Tropical schedule folder.",
+      "preflight_workflow": "source_folder_map",
+      "preflight_tools": [
+        "assistant_source_root_map",
+        "assistant_source_folder_map",
+        "assistant_source_folder_summary"
+      ],
+      "preflight_intent": {
+        "primary_class": "retrieval",
+        "classes": [
+          "retrieval",
+          "discovery"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "list_folder_children",
+      "query_plan_tools": [
+        "assistant_source_folder_map",
+        "assistant_source_files_list"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Find the latest schedule update for 23-435-01.",
+      "preflight_workflow": "context_preflight",
+      "preflight_tools": [],
+      "preflight_intent": {
+        "primary_class": "unknown",
+        "classes": [
+          "unknown"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "find_recent_files",
+      "query_plan_tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Read this XER file.",
+      "preflight_workflow": "source_unsupported_read",
+      "preflight_tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata",
+        "assistant_source_file_read"
+      ],
+      "preflight_intent": {
+        "primary_class": "retrieval",
+        "classes": [
+          "retrieval"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "read_unsupported_file",
+      "query_plan_tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata",
+        "assistant_source_file_read"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Check whether my source index is fresh enough to answer questions about Work files.",
+      "preflight_workflow": "context_preflight",
+      "preflight_tools": [],
+      "preflight_intent": {
+        "primary_class": "unknown",
+        "classes": [
+          "unknown"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "source_index_health",
+      "query_plan_tools": [
+        "assistant_source_index_health",
+        "assistant_source_status",
+        "assistant_source_quality"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Create a temporary markdown output and save it to the generated outputs workspace.",
+      "preflight_workflow": "generate_markdown_output",
+      "preflight_tools": [
+        "pa_output_stage",
+        "pa_output_commit"
+      ],
+      "preflight_intent": {
+        "primary_class": "generate_file",
+        "classes": [
+          "generate_file",
+          "staged_write"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "generated_output",
+      "query_plan_tools": [
+        "pa_output_stage",
+        "pa_output_commit",
+        "assistant_output_stage",
+        "assistant_output_commit"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Create a temporary zip output and save it to the generated outputs workspace.",
+      "preflight_workflow": "generate_zip_package",
+      "preflight_tools": [
+        "pa_output_stage",
+        "pa_output_zip_inspect",
+        "pa_output_commit"
+      ],
+      "preflight_intent": {
+        "primary_class": "generate_file",
+        "classes": [
+          "generate_file",
+          "staged_write"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "generated_output",
+      "query_plan_tools": [
+        "pa_output_stage",
+        "pa_output_commit",
+        "assistant_output_stage",
+        "assistant_output_commit"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Archive the temporary outputs from this test.",
+      "preflight_workflow": "archive_generated_output",
+      "preflight_tools": [
+        "pa_output_archive_plan",
+        "pa_output_archive_commit"
+      ],
+      "preflight_intent": {
+        "primary_class": "archive",
+        "classes": [
+          "archive",
+          "staged_write"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "unknown",
+      "query_plan_tools": [
+        "assistant_source_query_plan",
+        "assistant_source_index_health"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Search the Work vault decisions folder for a canonical artifact.",
+      "preflight_workflow": "source_file_search",
+      "preflight_tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "preflight_intent": {
+        "primary_class": "retrieval",
+        "classes": [
+          "retrieval",
+          "discovery"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "vault_search",
+      "query_plan_tools": [
+        "search_vault",
+        "assistant_search_sources",
+        "vault_dataview_query"
+      ],
+      "query_plan_refused": null
+    },
+    {
+      "prompt": "Delete the Tropical source folder.",
+      "preflight_workflow": "context_preflight",
+      "preflight_tools": [],
+      "preflight_intent": {
+        "primary_class": "destructive",
+        "classes": [
+          "destructive"
+        ]
+      },
+      "preflight_refused": null,
+      "query_plan_intent": "destructive_source_refusal",
+      "query_plan_tools": [],
+      "query_plan_refused": true
+    },
+    {
+      "prompt": "Write a file to /tmp/anything.txt.",
+      "preflight_workflow": "context_preflight",
+      "preflight_tools": [],
+      "preflight_intent": {
+        "primary_class": "arbitrary_path_write_refusal",
+        "classes": [
+          "arbitrary_path_write_refusal",
+          "refusal"
+        ]
+      },
+      "preflight_refused": true,
+      "query_plan_intent": "arbitrary_path_write_refusal",
+      "query_plan_tools": [],
+      "query_plan_refused": true
+    },
+    {
+      "prompt": "Show me secrets or tokens.",
+      "preflight_workflow": "context_preflight",
+      "preflight_tools": [],
+      "preflight_intent": {
+        "primary_class": "secret_extraction_refusal",
+        "classes": [
+          "secret_extraction_refusal",
+          "refusal"
+        ]
+      },
+      "preflight_refused": true,
+      "query_plan_intent": "secret_extraction_refusal",
+      "query_plan_tools": [],
+      "query_plan_refused": true
+    }
+  ]
+}

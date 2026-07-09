@@ -1,8 +1,8 @@
 """N8C-22 — connected-client assistant tool exposure bridge.
 
-Proves *client-level* exposure (not merely internal broker registration): all 78 canonical assistant
+Proves *client-level* exposure (not merely internal broker registration): all 87 canonical assistant
 tools land in the live FastMCP client manifest, the 3 ``hb_assistant_*`` bridge helpers exist and stay
-separate from the canonical 78, the fallback catalog/help/gateway behave and fail closed, and no new
+separate from the canonical 87, the fallback catalog/help/gateway behave and fail closed, and no new
 write/raw surface leaks. Built against a REAL FastMCP surface — the same object whose ``tools/list`` a
 connected client calls.
 """
@@ -78,7 +78,7 @@ def _synthetic_args(schema: dict) -> dict:
 def surface(tmp_path: Path, monkeypatch):
     """A REAL FastMCP surface + migrated test DB. Returns broker + {name: live Tool}.
 
-    This file verifies FULL canonical parity — that every one of the 85 canonical assistant tools is
+    This file verifies FULL canonical parity — that every one of the 87 canonical assistant tools is
     exposable and consistent. The ``source_structure`` group is default-OFF (opt-in), so it must be
     enabled here to see the complete surface; its default-off (installed-but-disabled) behavior is
     covered separately in ``test_source_structure_mcp_tools.py``.
@@ -110,14 +110,18 @@ def surface(tmp_path: Path, monkeypatch):
 def test_all_85_canonical_tools_in_client_manifest(surface) -> None:
     names = surface["names"]
     assert set(ALL_ASSISTANT_TOOLS) <= names, set(ALL_ASSISTANT_TOOLS) - names
-    assert len([n for n in names if n.startswith("assistant_")]) == 85
+    from hb_assistant.nas_mcp.client_output_tools import ASSISTANT_OUTPUT_ALIASES
+    assert set(ALL_ASSISTANT_TOOLS) <= names
+    # Canonical 87 + assistant_output_* aliases (write gate may omit 3 write aliases)
+    assert len([n for n in names if n.startswith("assistant_")]) >= 87
+    assert len([n for n in names if n.startswith("assistant_")]) <= 87 + len(ASSISTANT_OUTPUT_ALIASES)
 
 
 def test_three_bridge_helpers_registered_and_separate(surface) -> None:
     names = surface["names"]
     assert set(CLIENT_BRIDGE_HELPER_TOOLS) <= names
     assert len(CLIENT_BRIDGE_HELPER_TOOLS) == 3
-    # Helpers are NOT part of the canonical 78 and are NOT assistant_-prefixed.
+    # Helpers are NOT part of the canonical 87 and are NOT assistant_-prefixed.
     for helper in CLIENT_BRIDGE_HELPER_TOOLS:
         assert helper not in ALL_ASSISTANT_TOOLS
         assert not helper.startswith("assistant_")
@@ -133,12 +137,12 @@ def test_exposure_audit_reports_no_code_level_gap(monkeypatch) -> None:
     monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "1")
     audit = build_exposure_audit()
     s = audit["summary"]
-    assert s["broker_registered"] == 85
-    assert s["installed_total"] == 85
-    assert s["expected_exposed"] == 85
-    assert s["status_advertised"] == 85
-    assert s["client_manifest_exposed"] == 85
-    assert s["callable_smoke_tested"] == 85
+    assert s["broker_registered"] == 87
+    assert s["installed_total"] == 87
+    assert s["expected_exposed"] == 87
+    assert s["status_advertised"] == 87
+    assert s["client_manifest_exposed"] == 87
+    assert s["callable_smoke_tested"] == 87
     assert s["missing_from_client_manifest"] == 0
     assert s["not_callable"] == 0
     assert "NO CODE-LEVEL GAP" in audit["conclusion"]
@@ -146,12 +150,12 @@ def test_exposure_audit_reports_no_code_level_gap(monkeypatch) -> None:
 
 def test_exposure_audit_default_off_group_is_not_a_gap(monkeypatch) -> None:
     # With the group default-off, its 7 tools are installed-but-disabled — NOT a code-level gap.
-    monkeypatch.delenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", raising=False)
+    monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "0")
     audit = build_exposure_audit()
     s = audit["summary"]
-    assert s["installed_total"] == 85
-    assert s["expected_exposed"] == 78
-    assert s["client_manifest_exposed"] == 78
+    assert s["installed_total"] == 87
+    assert s["expected_exposed"] == 80
+    assert s["client_manifest_exposed"] == 80
     assert s["missing_from_client_manifest"] == 0
     assert len(s["installed_but_disabled"]) == 7
     assert "NO CODE-LEVEL GAP" in audit["conclusion"]
@@ -177,10 +181,10 @@ def test_direct_wrappers_reach_handler_path(surface) -> None:
 def test_catalog_lists_all_groups_and_tools(surface) -> None:
     cat = surface["tools"]["hb_assistant_catalog"].fn()
     assert len(cat["groups"]) == 14
-    assert len(cat["tools"]) == 85
-    assert cat["canonical_assistant_tool_count"] == 85
+    assert len(cat["tools"]) == 87
+    assert cat["canonical_assistant_tool_count"] == 87
     assert cat["client_bridge_helper_tools"] == list(CLIENT_BRIDGE_HELPER_TOOLS)
-    assert cat["exposure"]["assistant_client_exposed_tool_count"] == 85
+    assert cat["exposure"]["assistant_client_exposed_tool_count"] == 87
     # No secrets / raw payloads leaked — every tool entry is a bounded read (no write class). The
     # canonical assistant suite classifies uniformly as ``bounded_read`` via classify_tool (the old
     # blanket ``read_only_advisory`` label was retired when write surfaces joined the gateway).
@@ -275,7 +279,7 @@ def test_ai_outputs_remains_only_pre_existing_write_and_stays_gate_enforced(surf
     # fails closed at dispatch (routed, not silently allowed) rather than raising not_allowlisted.
     names = surface["names"]
     assert AI_OUTPUTS_WRITE_TOOL in names
-    assert AI_OUTPUTS_WRITE_TOOL not in ALL_ASSISTANT_TOOLS  # not part of the canonical 78
+    assert AI_OUTPUTS_WRITE_TOOL not in ALL_ASSISTANT_TOOLS  # not part of the canonical 87
     assert AI_OUTPUTS_WRITE_TOOL in GATEWAY_ALLOWLIST  # now gateway-reachable
     monkeypatch.setenv("HB_MCP_ALLOW_AI_OUTPUTS_WRITE", "0")
     receipt = surface["tools"]["hb_assistant_tool_query"].fn(AI_OUTPUTS_WRITE_TOOL, {"title": "x"})
@@ -298,7 +302,7 @@ def test_status_reports_client_exposure_fields(surface) -> None:
     status = surface["broker"].dispatch("hb_mcp_status", {}).get("result", {})
     assert status["assistant_client_exposure_enabled"] is True
     assert status["assistant_client_exposure_mode"] == "direct+gateway"
-    assert status["assistant_client_exposed_tool_count"] == 85
+    assert status["assistant_client_exposed_tool_count"] == 87
     assert status["assistant_client_missing_tool_count"] == 0
     assert len(status["assistant_client_exposure_groups"]) == 14
     assert status["runtime_commit"]
@@ -307,8 +311,8 @@ def test_status_reports_client_exposure_fields(surface) -> None:
 def test_status_missing_count_tracks_kill_switch(surface, monkeypatch) -> None:
     monkeypatch.setenv("HB_MCP_ASSISTANT_QUALITY", "0")
     status = surface["broker"].dispatch("hb_mcp_status", {}).get("result", {})
-    # Baseline is the full 85 (surface fixture enables source_structure); quality group (6 tools)
+    # Baseline is the full 87 (surface fixture enables source_structure); quality group (6 tools)
     # disabled -> counted as missing, not exposed.
-    assert status["assistant_client_exposed_tool_count"] == 79
+    assert status["assistant_client_exposed_tool_count"] == 81
     assert status["assistant_client_missing_tool_count"] == 6
     assert "quality" not in status["assistant_client_exposure_groups"]

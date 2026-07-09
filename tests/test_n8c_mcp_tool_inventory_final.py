@@ -1,7 +1,7 @@
-"""N8C-21 — consolidated final validation of the remote NAS MCP surface across ALL 13 read-only assistant tool
+"""N8C-21 — consolidated final validation of the remote NAS MCP surface across ALL 14 read-only assistant tool
 groups (nav … quality).
 
-Asserts, in one place: every group is registered BY NAME (78 assistant tools); every group is independently
+Asserts, in one place: every group is registered BY NAME (87 assistant tools); every group is independently
 gated by its default-ON kill-switch (toggling one env var flips only that group's `gate_status`); the finality
 guard passes across EVERY assistant tool; `DENIED_TOOL_NAMES` blocks raw_sql/sql/shell/exec/
 read_file_absolute/hb_output_delete; `ai_outputs_card_upsert` is the ONLY registered write tool; and
@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from hb_assistant.nas_mcp.broker import (
+    ALL_ASSISTANT_TOOLS,
     ASSISTANT_ACTION_STAGE_TOOLS,
     ASSISTANT_ANSWER_DRAFT_TOOLS,
     ASSISTANT_CONTEXT_PACK_TOOLS,
@@ -27,6 +28,7 @@ from hb_assistant.nas_mcp.broker import (
     ASSISTANT_RESEARCH_PACKET_TOOLS,
     ASSISTANT_REVIEW_TOOLS,
     ASSISTANT_SOURCE_CONNECTOR_TOOLS,
+    ASSISTANT_SOURCE_STRUCTURE_TOOLS,
     ASSISTANT_WORKFLOW_TOOLS,
     DENIED_TOOL_NAMES,
     NasMcpBroker,
@@ -36,7 +38,7 @@ from hb_assistant.nas_mcp.profile import AI_OUTPUTS_WRITE_TOOL, gate_status
 from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools
 from hb_assistant.store.migrator import SQLiteMigrator
 
-# The 13 read-only assistant groups: (label, tools tuple, gate_status key, kill-switch env var).
+# The 14 read-only assistant groups: (label, tools tuple, gate_status key, kill-switch env var).
 GROUPS = [
     ("nav", ASSISTANT_NAV_TOOLS, "assistant_nav_enabled", "HB_MCP_ASSISTANT_NAV"),
     ("context_packs", ASSISTANT_CONTEXT_PACK_TOOLS, "assistant_context_packs_enabled",
@@ -58,6 +60,8 @@ GROUPS = [
     ("action_stages", ASSISTANT_ACTION_STAGE_TOOLS, "assistant_action_stages_enabled",
      "HB_MCP_ASSISTANT_ACTION_STAGES"),
     ("quality", ASSISTANT_QUALITY_TOOLS, "assistant_quality_enabled", "HB_MCP_ASSISTANT_QUALITY"),
+    ("source_structure", ASSISTANT_SOURCE_STRUCTURE_TOOLS, "assistant_source_structure_enabled",
+     "HB_MCP_ASSISTANT_SOURCE_STRUCTURE"),
 ]
 
 # The 23-substring finality guard, plus the N8C-20 additions.
@@ -97,8 +101,8 @@ def env(tmp_path: Path):
     return {"mcp": mcp, "broker": broker}
 
 
-def test_thirteen_groups() -> None:
-    assert len(GROUPS) == 13
+def test_fourteen_groups() -> None:
+    assert len(GROUPS) == 14
 
 
 def test_every_group_registered_by_name(env) -> None:
@@ -107,11 +111,12 @@ def test_every_group_registered_by_name(env) -> None:
         assert set(tools) <= registered, f"{label} tools missing: {set(tools) - registered}"
 
 
-def test_assistant_tool_count_is_78(env) -> None:
-    assistant = [n for n in env["mcp"].names if n.startswith("assistant_")]
+def test_assistant_tool_count_is_87(env) -> None:
+    # Canonical assistant tools only (exclude assistant_output_* aliases which are pa_output twins).
+    assistant = [n for n in env["mcp"].names if n.startswith("assistant_") and not n.startswith("assistant_output_")]
     union = set().union(*(set(t) for _l, t, _k, _v in GROUPS))
-    assert set(assistant) == union
-    assert len(assistant) == 78
+    assert set(assistant) == union == set(ALL_ASSISTANT_TOOLS)
+    assert len(assistant) == 87
 
 
 def test_finality_guard_across_every_assistant_tool(env) -> None:
@@ -121,7 +126,7 @@ def test_finality_guard_across_every_assistant_tool(env) -> None:
 
 
 def test_each_group_gated_independently(monkeypatch: pytest.MonkeyPatch) -> None:
-    # All 13 default-ON; toggling one env var to "0" disables ONLY that group's gate.
+    # All 14 default-ON; toggling one env var to "0" disables ONLY that group's gate.
     base = gate_status()
     for _label, _tools, key, _var in GROUPS:
         assert base[key] is True
