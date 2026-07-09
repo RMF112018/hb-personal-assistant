@@ -129,3 +129,16 @@ bfetting ALL=(root) NOPASSWD: /volume2/personal-assistant/bin/hb-mcp-runner
 Operator completes staged deploy script → re-run live matrix → only then push/PR or explicitly authorize PR with pending live.
 
 **No push, no PR from this agent.**
+
+---
+
+## Postscript — operator deploy completed; matrix re-run
+
+After this note was first written (deploy **BLOCKED** on sudo), the operator ran `/tmp/hb-deploy-source-index.sh` on the NAS. Post-deploy live matrix evidence:
+
+- `09-postdeploy-live-matrix.md` / `.json`
+- Score: **13/13 PASS**
+- Surface: assistant exposed **87**, structure default-ON, required health/plan/map tools present, **10** `assistant_output_*` aliases listed
+- Residual: `assistant_output_stage` listed but broker `tool_not_registered` — use `pa_output_*` for writes
+- Push/PR: still requires explicit operator authorize (no auto-push from agent)
+

@@ -50,5 +50,15 @@
   },
   "matrix_rerun": "NOT_RUN_deploy_not_applied",
   "thirteen_cases": "see 07-live-connected-client-results.md (pre-deploy baseline); not re-run because runtime unchanged",
-  "push_pr_authorized": false
+  "push_pr_authorized": false,
+  "postscript": {
+    "operator_deploy_completed": true,
+    "matrix_evidence": "09-postdeploy-live-matrix.md",
+    "matrix_score": "13/13",
+    "all_pass": true,
+    "residual_defects": [
+      "assistant_output_stage_tool_not_registered_in_broker",
+      "mcp_trailing_slash_307"
+    ]
+  }
 }
