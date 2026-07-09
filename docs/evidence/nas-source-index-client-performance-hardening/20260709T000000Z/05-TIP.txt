@@ -1,2 +1,4 @@
-AUTHORITATIVE: run git rev-parse HEAD on this branch.
-Last freeze parent: 74973cd8090ca9776dcb1ff2d685b00f9c2c35e9
+Use: git rev-parse HEAD
+Implementation: 6f54bdd017cdb51f6002322b6386f2752324e401
+Closeout pack: b695f3c81ad9d65b3c2cc96a5614e560a4b5a66f
+Inventory body generation parent: 38741bcc7ffd501c9c7f8d6e35084d55b6304d43
