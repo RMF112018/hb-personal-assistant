@@ -2,7 +2,7 @@
 
 1. **Branch:** ops/source-index-client-performance-hardening-20260709
 2. **Base commit:** 4c510db65a4fe7409c80e810baf3fd17e316133d (origin/main)
-3. **Final commit:** (see git log after commit)
+3. **Final commit:** 6f54bdd017cdb51f6002322b6386f2752324e401
 4. **Worktree:** /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
 5. **Schema migrations:** none (no V116)
 6. **Tools added (canonical):** assistant_source_index_health, assistant_source_query_plan
