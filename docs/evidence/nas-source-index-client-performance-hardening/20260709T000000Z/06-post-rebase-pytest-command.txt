@@ -1,0 +1,22 @@
+cd /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
+export PYTHONPATH="src:subrepos/construction-financial-review/src"
+/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python -m pytest -q \
+  tests/test_source_index_client_performance_hardening.py \
+  tests/test_source_structure_mcp_tools.py \
+  tests/test_n8c_client_exposure_bridge.py \
+  tests/test_n8c_mcp_tool_inventory_final.py \
+  tests/test_tool_surface_maintenance_contract.py \
+  tests/test_tool_manifest_freshness_guard.py \
+  tests/test_prompt_preflight_family_routing.py \
+  tests/test_prompt_preflight_workflow_routing.py \
+  tests/test_prompt_preflight_authorization.py \
+  tests/test_prompt_preflight_route_schema.py \
+  tests/test_prompt_preflight_fallbacks.py \
+  tests/test_prompt_preflight_retrieval_budget.py \
+  tests/test_prompt_preflight_source_of_truth.py \
+  tests/test_prompt_preflight_memory_opportunities.py \
+  tests/test_n8c24_output_workspace_repository.py \
+  tests/test_n8c24_output_mcp_tools.py \
+  tests/test_nas_mcp_source_connector.py \
+  tests/test_source_structure_repository_service.py \
+  tests/test_source_structure_parser_classifier.py

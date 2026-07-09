@@ -1,4 +1,4 @@
 Use: git rev-parse HEAD
-Implementation: 6f54bdd017cdb51f6002322b6386f2752324e401
-Closeout pack: b695f3c81ad9d65b3c2cc96a5614e560a4b5a66f
-Inventory body generation parent: 38741bcc7ffd501c9c7f8d6e35084d55b6304d43
+Post-rebase tip parent note: see 06-post-rebase-head-and-status.md
+Implementation (rebased): see git log --grep=source.index.health
+origin/main base: 2e98a03d56f54b25fef86bd3b4c19a89185988cc
