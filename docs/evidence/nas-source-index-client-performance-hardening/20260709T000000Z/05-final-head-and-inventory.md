@@ -1,5 +1,19 @@
 # 05 — Final HEAD and inventory
 
+## Authoritative closeout tip
+
+| Field | Value |
+|-------|-------|
+| **Final HEAD** |  |
+| **Branch** |  |
+| **Status after closeout commit** | clean (see following commit if this paragraph was amended) |
+
+Implementation commit:   
+Prior docs-hash commit:   
+This closeout pack commit: 
+
+---
+
 Generated during closeout reconciliation. **Note:** if this file is committed after generation, HEAD advances by one commit; the commit that contains this file is the authoritative closeout tip unless a later commit is made.
 
 ## Git
