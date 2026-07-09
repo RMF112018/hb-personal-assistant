@@ -32,7 +32,10 @@ LEGACY_VAULT_WRITE_TOOLS = frozenset(
 # Native output-sandbox writers (local scratch, tier 3-ish but not AI Outputs).
 SCRATCH_OUTPUT_WRITE_TOOLS = frozenset({"hb_output_write_file", "hb_output_create_dir"})
 # N8C-24 connected-client generated-output write tools (gated by client_output_write_enabled()).
-CLIENT_OUTPUT_WRITE_TOOLS = frozenset({"pa_output_stage", "pa_output_commit", "pa_output_archive_commit"})
+CLIENT_OUTPUT_WRITE_TOOLS = frozenset({
+    "pa_output_stage", "pa_output_commit", "pa_output_archive_commit",
+    "assistant_output_stage", "assistant_output_commit", "assistant_output_archive_commit",
+})
 # The single sanctioned remote write (tier 3).
 AI_OUTPUTS_WRITE_TOOL = "ai_outputs_card_upsert"
 
@@ -321,12 +324,11 @@ def assistant_source_structure_enabled() -> bool:
     precomputed source-structure index (built out-of-band by ``hb-assistant source-structure``). They
     never scan a root, reindex, call a model, mutate anything, or expose an absolute path.
 
-    UNLIKE the other read-only assistant groups, this one is **DEFAULT-OFF (opt-in)**: the tools are
-    installed in the registry but not registered/dispatchable to clients until an operator explicitly
-    enables the group. Turn it on with ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``.
+    **DEFAULT-ON** for connected clients so map/tree/project navigation is not file-search-only.
+    Kill-switch: ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0``.
     """
     override = _env_bool("HB_MCP_ASSISTANT_SOURCE_STRUCTURE")
-    return False if override is None else override
+    return True if override is None else override
 
 
 def artifact_workspace_enabled() -> bool:

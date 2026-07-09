@@ -8,6 +8,8 @@ is a safe structured query (a fixed set of operators) — it never executes arbi
 
 from __future__ import annotations
 
+import re
+
 from pathlib import Path
 from typing import Any
 
@@ -216,9 +218,22 @@ def dataview_query(
     select: list[str] | None = None,
     limit: int = 100,
     operator_mode: bool = False,
+    query: str | None = None,
 ) -> dict[str, Any]:
+    # Full Dataview DSL (LIST FROM ...) is not executed — fail closed with a clear error.
+    raw_q = str(query or "")
+    if raw_q and re.search(r"\bFROM\b", raw_q, flags=re.IGNORECASE):
+        raise ObsidianMcpToolError(
+            "unsupported_dataview_from",
+            "Dataview FROM is unsupported; pass root_path for spatial scope and structured where/select clauses.",
+        )
+    if isinstance(where, str) and re.search(r"\bFROM\b", where, flags=re.IGNORECASE):
+        raise ObsidianMcpToolError(
+            "unsupported_dataview_from",
+            "Dataview FROM is unsupported; pass root_path for spatial scope and structured where/select clauses.",
+        )
     cap = min(max(1, limit), _MAX_RESULTS)
-    clauses = where or []
+    clauses = where if isinstance(where, list) else []
     for clause in clauses:
         if clause.get("op") not in _QUERY_OPS:
             raise ObsidianMcpToolError("unsupported_query_op")

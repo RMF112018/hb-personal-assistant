@@ -39,8 +39,13 @@ def test_names_avoid_write_verb_and_finality_substrings() -> None:
 
 
 def test_output_tools_not_in_canonical_78(surface) -> None:
+    from hb_assistant.nas_mcp.broker import ALL_ASSISTANT_TOOLS
+    from hb_assistant.nas_mcp.client_output_tools import ALL_PA_OUTPUT_TOOLS
     assert set(ALL_PA_OUTPUT_TOOLS).isdisjoint(set(ALL_ASSISTANT_TOOLS))
-    assert len([n for n in surface["names"] if n.startswith("assistant_")]) == 78
+    # Canonical assistant tools are present; assistant_output_* aliases may also register.
+    assert set(ALL_ASSISTANT_TOOLS) <= set(surface["names"])
+    assert len([n for n in surface["names"] if n.startswith("assistant_") and not n.startswith("assistant_output_")]) == len(ALL_ASSISTANT_TOOLS)
+
 
 
 def test_output_tools_are_in_gateway_allowlist() -> None:

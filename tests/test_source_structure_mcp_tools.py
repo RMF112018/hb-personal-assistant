@@ -1,8 +1,8 @@
-"""Source-structure MCP tools: default-off installed-but-disabled vs gate-on exposed (three states).
+"""Source-structure MCP tools: default-ON surface vs kill-switch OFF (three states).
 
-State 1 (baseline): the canonical assistant surface is INSTALLED at 85 / 14 groups (structural).
-State 2 (gate OFF, default): the 7 tools are NOT registered/invokable to clients — exposed stays 78.
-State 3 (gate ON, test harness): the 7 tools register + dispatch — exposed becomes 85.
+State 1 (baseline): the canonical assistant surface is INSTALLED at 87 / 14 groups (structural).
+State 2 (gate OFF, kill-switch): the 7 structure tools are NOT registered — exposed stays 80.
+State 3 (gate ON / default): the 7 tools register + dispatch — exposed becomes 87.
 """
 
 from __future__ import annotations
@@ -44,7 +44,8 @@ def _seed(db: str) -> None:
 
 @pytest.fixture()
 def gate_off(monkeypatch):
-    monkeypatch.delenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", raising=False)
+    # Kill-switch OFF (structure group disabled). Default is ON when env is unset.
+    monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "0")
 
 
 @pytest.fixture()
@@ -54,7 +55,7 @@ def gate_on(monkeypatch):
 
 # --- State 1: structural installation (gate-independent) -------------------------------------
 def test_canonical_surface_installed_at_85_and_14_groups():
-    assert len(ALL_ASSISTANT_TOOLS) == 85
+    assert len(ALL_ASSISTANT_TOOLS) == 87
     assert len(ASSISTANT_TOOL_GROUPS) == 14
     assert set(ALL_ASSISTANT_TOOLS) >= NEW_TOOLS
 
@@ -70,7 +71,7 @@ def test_gate_off_tools_not_registered(gate_off, tmp_path):
     _seed(db)
     _broker, tools = _build_surface(db)
     assert NEW_TOOLS.isdisjoint(set(tools))
-    assert sum(1 for t in tools if t.startswith("assistant_")) == 78
+    assert sum(1 for t in tools if t.startswith("assistant_") and not t.startswith("assistant_output_")) == 80
 
 
 def test_gate_off_dispatch_is_denied(gate_off, tmp_path):
@@ -96,9 +97,9 @@ def test_gate_off_audit_reports_no_code_gap(gate_off, tmp_path):
     _seed(db)
     audit = build_exposure_audit(db)
     s = audit["summary"]
-    assert s["installed_total"] == 85
-    assert s["expected_exposed"] == 78
-    assert s["client_manifest_exposed"] == 78
+    assert s["installed_total"] == 87
+    assert s["expected_exposed"] == 80
+    assert s["client_manifest_exposed"] == 80
     assert s["missing_from_client_manifest"] == 0  # default-off group is not a gap
     assert len(s["installed_but_disabled"]) == 7
     assert not audit["conclusion"].startswith("GAP")
@@ -110,7 +111,7 @@ def test_gate_on_tools_registered_and_exposed_85(gate_on, tmp_path):
     _seed(db)
     _broker, tools = _build_surface(db)
     assert set(tools) >= NEW_TOOLS
-    assert sum(1 for t in tools if t.startswith("assistant_")) == 85
+    assert sum(1 for t in tools if t.startswith("assistant_") and not t.startswith("assistant_output_")) == 87
 
 
 def test_gate_on_dispatch_returns_bounded_rows(gate_on, tmp_path):
@@ -158,6 +159,6 @@ def test_gate_on_audit_no_gap(gate_on, tmp_path):
     db = str(tmp_path / "pa.db")
     _seed(db)
     audit = build_exposure_audit(db)
-    assert audit["summary"]["expected_exposed"] == 85
-    assert audit["summary"]["client_manifest_exposed"] == 85
+    assert audit["summary"]["expected_exposed"] == 87
+    assert audit["summary"]["client_manifest_exposed"] == 87
     assert not audit["conclusion"].startswith("GAP")

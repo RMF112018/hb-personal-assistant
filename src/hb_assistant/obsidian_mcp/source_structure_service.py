@@ -99,9 +99,18 @@ class SourceStructureService:
             include_noise=include_noise, limit=n, offset=offset,
         )
         next_cursor = StructureCursor(offset + n).encode() if offset + n < total else None
+        truncated = offset + n < total
+        # Stale when no roots indexed at all
+        stale_warning = None
+        if not self._repo.list_roots(limit=1):
+            stale_warning = "source_structure_index_empty"
         return {
             "folders": [_client_folder(f) for f in items],
-            "total": total, "next_cursor": next_cursor,
+            "total": total,
+            "next_cursor": next_cursor,
+            "truncated": truncated,
+            "stale_index_warning": stale_warning,
+            "root_key": root_key,
         }
 
     # -- folder summary -------------------------------------------------------------------------
@@ -114,12 +123,32 @@ class SourceStructureService:
         warnings = self._folder_warnings(folder)
         hints = self._repo.list_hints(query_family=None, limit=MAX_HINTS)
         relevant_hints = [h for h in hints if h.get("folder_id") == folder_id][:MAX_HINTS]
+        conf = float(folder.get("classification_confidence") or 0.0)
+        conf_label = "high" if conf >= 0.75 else ("medium" if conf >= 0.5 else "low")
         return {
             "folder": _client_folder(folder),
             "summary": summary,
+            "folder_classification": folder.get("folder_class"),
+            "doc_family": folder.get("doc_family"),
+            "classification_confidence": conf,
+            "confidence_label": conf_label,
+            "confidence_explanation": (
+                f"rule-based {folder.get('classification_source') or 'rule'} classification "
+                f"as {folder.get('folder_class')} / doc_family={folder.get('doc_family')}"
+            ),
+            "likely_project_number": folder.get("project_number"),
+            "likely_project_name": folder.get("project_name_hint"),
+            "direct_child_folder_count": folder.get("child_folder_count"),
+            "direct_file_count": folder.get("file_count"),
+            "dominant_file_types": folder.get("dominant_extensions") or [],
             "child_class_counts": child_counts,
             "routing_hints": relevant_hints,
             "quality_warnings": warnings,
+            "recommended_next_actions": [
+                "assistant_source_folder_map with parent_folder_id=" + str(folder_id),
+                "assistant_source_file_search with project or folder terms",
+                "assistant_source_files_list under root_key + prefix=rel_path",
+            ],
         }
 
     @staticmethod
@@ -212,7 +241,14 @@ class SourceStructureService:
 
     # -- project map ----------------------------------------------------------------------------
     def project_map(self, project_number: str, *, limit: int | None = None) -> dict:
-        folders = self._repo.project_folders(project_number, limit=limit)
+        from .source_project_number import normalize_project_number  # noqa: PLC0415
+        canon, conf, form = normalize_project_number(
+            project_number, allow_compact=True, context="path/project"
+        )
+        lookup = canon or project_number
+        folders = self._repo.project_folders(lookup, limit=limit)
+        if not folders and canon and canon != project_number:
+            folders = self._repo.project_folders(project_number, limit=limit)
         doc_families = sorted({f["doc_family"] for f in folders if f.get("doc_family")})
         candidates = []
         for f in folders:
@@ -232,8 +268,17 @@ class SourceStructureService:
             })
         return {
             "project_number": project_number,
+            "normalized_project_number": lookup,
+            "normalization_confidence": conf,
+            "normalization_form": form,
             "candidate_folders": candidates,
             "doc_family_coverage": doc_families,
+            "recommended_next_actions": [
+                "assistant_source_folder_map with parent_folder_id of primary folder",
+                "assistant_source_folder_summary for rollup",
+                "assistant_source_file_search scoped by project number",
+            ],
+            "stale_index_warning": ("source_structure_index_empty" if not candidates and not folders else None),
         }
 
     # -- quality --------------------------------------------------------------------------------
@@ -247,7 +292,10 @@ class SourceStructureService:
             severity=severity, finding_type=finding_type, status=status, limit=n, offset=offset,
         )
         next_cursor = StructureCursor(offset + n).encode() if offset + n < total else None
-        return {"findings": items, "total": total, "next_cursor": next_cursor}
+        return {
+            "findings": items, "total": total, "next_cursor": next_cursor,
+            "truncated": offset + n < total,
+        }
 
     # -- readiness ------------------------------------------------------------------------------
     def readiness(self) -> dict:

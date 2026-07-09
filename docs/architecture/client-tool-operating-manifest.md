@@ -77,7 +77,19 @@ Two distinct file-access tiers exist; use the right one:
 - **Bounded reads** — `assistant_source_file_read` for indexed source files (binary/office files return a
   bounded indexed excerpt); the legacy `hb_root_read_excerpt` denies binary content.
 
-Rule of thumb: **traverse with `hb_root_*`, search and read source content with `assistant_source_file_*`.**
+Rule of thumb: **map with `assistant_source_*_map` / folder tools, search and read with `assistant_source_file_*`, traverse low-level with `hb_root_*` only as fallback.**
+
+## Three-tier file access (updated)
+
+1. **Structure map (default-ON)** — `assistant_source_root_map`, `assistant_source_folder_map`,
+   `assistant_source_folder_summary`, `assistant_source_project_map`, `assistant_source_query_plan`,
+   `assistant_source_index_health` for project/folder navigation and trust checks.
+2. **Content search/read** — `assistant_source_file_search` / `metadata` / `read` over the indexed file corpus.
+3. **Legacy root traversal** — `hb_root_list` / `hb_root_stat` only when structure map is empty or operator needs raw FS browse.
+
+Generated outputs: use `pa_output_*` or **`assistant_output_*` aliases** (same handlers). Archive sets
+`status=archived` and `destination_state=archived`.
+
 
 ## Creating intelligence artifacts (template-based)
 
@@ -97,7 +109,7 @@ pa_output_* ∪ ai_outputs_card_upsert`. Denied tools, raw SQL/shell/exec, root/
 `hb_output_*` stay rejected; every gateway-routed write still passes the full broker gate chain. The
 canonical catalog reports 85 across 14 groups (installed); the write surfaces appear as separate catalog
 sections. The 14th group `source_structure` (7 read-only map/route tools) is default-OFF, so the
-client-exposed count stays 78 until an operator sets `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1`.
+client-exposed assistant tools default to the full structure-enabled surface (87 including health/plan).
 
 ## Mandatory MCP tool-surface maintenance
 

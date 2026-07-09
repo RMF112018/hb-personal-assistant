@@ -176,6 +176,22 @@ def route_prompt(
     if _is_destructive(prompt_l):
         return _destructive_route(prompt, prompt_l, freshness)
 
+    # Secret extraction / arbitrary path write refusals (deterministic, fail closed).
+    if any(c in prompt_l for c in ("show me secrets", "show tokens", "dump credentials", "api keys",
+                                   "extract password")):
+        return _safety_refusal_route(
+            prompt, prompt_l, freshness,
+            intent="secret_extraction_refusal",
+            rationale="Refuse secret/token extraction.",
+        )
+    if any(c in prompt_l for c in ("write a file to /tmp", "write to /tmp", "/tmp/anything",
+                                   "save to /etc/")):
+        return _safety_refusal_route(
+            prompt, prompt_l, freshness,
+            intent="arbitrary_path_write_refusal",
+            rationale="Refuse arbitrary host path writes; use generated-output workspace only.",
+        )
+
     ranked = _rank_workflows(prompt_l)
 
     if not ranked:
@@ -293,6 +309,43 @@ def _unknown_route(prompt: str, prompt_l: str, freshness: dict[str, Any] | None)
                                "(retrieve, generate a file, capture to memory, or promote)?",
         "preflight_is_read_only": True,
         "freshness": _freshness_view(freshness, is_write=False),
+    }
+
+
+
+def _safety_refusal_route(prompt: str, prompt_l: str, freshness: dict[str, Any] | None, *,
+                          intent: str, rationale: str) -> dict[str, Any]:
+    return {
+        "prompt": prompt,
+        "intent": {"primary_class": intent, "classes": [intent, "refusal"]},
+        "source_of_truth": "unclassified",
+        "candidate_families": ["prompt_routing"],
+        "primary_family": "prompt_routing",
+        "recommended_workflow": "context_preflight",
+        "alternative_workflows": [],
+        "recommended_tools": [],
+        "workflow_available": True,
+        "unavailable_tools": [],
+        "authorization": {
+            "action_class": "read", "write_risk": "none", "prompt_authorizes_execution": False,
+            "additional_approval_required": True, "approval_points": ["refusal — do not execute"],
+            "requires_explicit_operator_go": True,
+        },
+        "retrieval_budget": {
+            "default_layer": "route_only", "recommended_next_layer": "route_only",
+            "max_candidates": 0, "max_chars": 0, "deep_parse_requires_operator_selection": True,
+            "why_not_deep_read_all": rationale,
+        },
+        "provenance_required": [],
+        "memory_opportunity": _memory_opportunity(prompt_l, "prompt_routing"),
+        "must_not_use": [rationale, "any write or extract tool for this intent"],
+        "fallback_plan": {"rules": ["refuse"], "unsafe_fallback_blocked": True, "failure_recovery": ""},
+        "route_confidence": "high",
+        "routing_rationale": rationale,
+        "clarifying_question": rationale,
+        "preflight_is_read_only": True,
+        "freshness": _freshness_view(freshness, is_write=False),
+        "refused": True,
     }
 
 

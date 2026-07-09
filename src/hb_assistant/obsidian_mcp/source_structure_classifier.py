@@ -125,23 +125,24 @@ _PROJECT_PARTIAL_RE = re.compile(r"\b(\d{2}-\d{3})\b")
 
 
 def extract_project_number(text: str) -> tuple[str | None, float]:
-    """Return (project_number, confidence). Full ``NN-NNN-NN`` is high-conf; ``NN-NNN`` low-conf."""
-    m = _PROJECT_FULL_RE.search(text)
-    if m:
-        return m.group(1), 0.9
-    m = _PROJECT_PARTIAL_RE.search(text)
-    if m:
-        # Partial numbers are weak evidence (0.35) — deliberately below the 0.5 "supporting" threshold,
-        # especially once inherited to descendants; a partial-only mapping raises a quality finding.
-        return m.group(1), 0.35
-    return None, 0.0
+    """Return (project_number, confidence).
+
+    Uses shared normalizer (hyphen / spaced / dotted / compact path-safe). Partial forms keep weak
+    confidence (0.35) — below the 0.5 supporting threshold used by quality findings.
+    """
+    from .source_project_number import normalize_project_number  # noqa: PLC0415
+
+    num, conf, _form = normalize_project_number(
+        text, allow_compact=True, context="path/" + str(text or "")
+    )
+    return num, conf
 
 
 def is_partial_project_number(number: str | None) -> bool:
     """True when ``number`` is a partial ``NN-NNN`` (not a full ``NN-NNN-NN``) project number."""
-    if not number:
-        return False
-    return bool(_PROJECT_PARTIAL_RE.fullmatch(number)) and not _PROJECT_FULL_RE.fullmatch(number)
+    from .source_project_number import is_partial_project_number as _ipp  # noqa: PLC0415
+
+    return _ipp(number)
 
 
 def is_noise_name(name: str) -> bool:
