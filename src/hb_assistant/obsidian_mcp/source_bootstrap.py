@@ -21,7 +21,6 @@ key; no absolute host path is ever persisted to bootstrap state.
 from __future__ import annotations
 
 import uuid
-from contextlib import suppress
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -85,24 +84,21 @@ def map_roots(
 
 # ----- file/content layer ---------------------------------------------------------------------
 def _file_plan_counts(root: Any, config: ObsidianMcpConfig) -> dict[str, Any]:
-    """Dry-run: bounded stat-only walk reusing the indexer's skip predicates. No writes."""
-    from .source_indexer import is_excluded_source_path, should_ignore
+    """Dry-run: bounded stat-only streaming walk reusing the indexer's skip predicates. No writes.
+
+    Shares ``walk_source_tree`` with the apply path so the dry-run count matches what apply would
+    scan, and it prunes excluded/hidden dir subtrees during traversal (so a huge low-value root does
+    not hang the dry-run the way ``sorted(rglob("*"))`` did).
+    """
+    from .source_indexer import effective_max_files, walk_source_tree
 
     root_path = Path(root.path)
     if not root_path.is_dir():
         return {"root_found": False, "files_seen": 0, "would_index": 0}
-    max_files = int(getattr(config, "external_source_scan_max_files", 5000))
+    max_files = effective_max_files(root, config)
     seen = 0
     truncated = False
-    for abs_path in sorted(root_path.rglob("*")):
-        if not abs_path.is_file():
-            continue
-        try:
-            rel_path = str(abs_path.relative_to(root_path))
-        except ValueError:
-            continue
-        if should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config):
-            continue
+    for _kind, _abs_path, _rel_path in walk_source_tree(root_path, config):
         seen += 1
         if seen > max_files:
             truncated = True
@@ -362,7 +358,7 @@ def reconcile_root(
 
         app_config = load_app_config()
 
-    from .source_indexer import is_excluded_source_path, scan_source_root, should_ignore
+    from .source_indexer import effective_max_files, scan_source_root, walk_source_tree
 
     repo = SourceIndexRepository(db_path)
     bstate = SourceIndexBootstrapRepository(db_path)
@@ -385,23 +381,16 @@ def reconcile_root(
             files_seen = report.scanned
             changes = report.indexed + report.deleted
         else:  # lightweight: stat-compare + enqueue, don't index inline
-            max_files = int(getattr(obsidian_config, "external_source_scan_max_files", 5000))
+            max_files = effective_max_files(root_obj, obsidian_config)
             seen_rel: set[str] = set()
             live_dirs: set[str] = set()
-            for abs_path in sorted(root_path.rglob("*")):
-                if abs_path.is_dir():
-                    with suppress(ValueError):
-                        live_dirs.add(str(abs_path.relative_to(root_path)))
-                    continue
-                if not abs_path.is_file():
-                    continue
-                try:
-                    rel_path = str(abs_path.relative_to(root_path))
-                except ValueError:
-                    continue
-                if should_ignore(rel_path, abs_path.name) or is_excluded_source_path(
-                    rel_path, obsidian_config
-                ):
+            # Streaming walk (dirs + files): skip predicates + dir-subtree pruning happen inside
+            # walk_source_tree, so a huge low-value root does not front-load a full sorted tree.
+            for kind, abs_path, rel_path in walk_source_tree(
+                root_path, obsidian_config, want_dirs=True
+            ):
+                if kind == "dir":
+                    live_dirs.add(rel_path)
                     continue
                 files_seen += 1
                 if files_seen > max_files:

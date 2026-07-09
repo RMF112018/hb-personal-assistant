@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import threading
+from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -58,6 +60,74 @@ def is_excluded_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
     excluded_set = {str(p).strip().lower() for p in excluded if str(p).strip()}
     segments = [seg for seg in str(rel_path).replace("\\", "/").lower().split("/") if seg]
     return any(seg in excluded_set for seg in segments)
+
+
+def effective_max_files(root: ExternalSourceRoot, config: ObsidianMcpConfig) -> int:
+    """Per-root ``max_files`` override, else the global ``external_source_scan_max_files`` default.
+
+    Lets a small root (vault) keep the conservative default while a large NAS root (Work/Home/backup)
+    raises its own ceiling, without one blunt global number.
+    """
+    per_root = getattr(root, "max_files", None)
+    if per_root is not None:
+        return int(per_root)
+    return int(getattr(config, "external_source_scan_max_files", 5000))
+
+
+def walk_source_tree(
+    root_path: Path, config: ObsidianMcpConfig, *, want_dirs: bool = False
+) -> Iterator[tuple[str, Path, str]]:
+    """Lazily walk ``root_path`` depth-first, yielding ``(kind, abs_path, rel_path)`` where ``kind``
+    is ``"file"`` (always) or ``"dir"`` (only when ``want_dirs``).
+
+    Unlike ``sorted(root_path.rglob("*"))``, this NEVER materializes or sorts the whole tree: it uses
+    ``os.scandir`` per directory (sorted only within a directory for deterministic order) and — the key
+    scale win — **prunes excluded/hidden/ignored directory subtrees**, so a low-value tree
+    (``node_modules``, ``.git``, ``Library``, caches, hidden dirs) costs one ``readdir`` instead of a
+    full recursive sweep. Symlinked directories are never descended (cycle/escape safety); a symlinked
+    file is yielded only if it resolves inside the root. No file content is read.
+
+    Callers apply their own ``max_files`` cap on the yielded ``"file"`` entries.
+    """
+    root_path = Path(root_path)
+    stack: list[Path] = [root_path]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = sorted(os.scandir(current), key=lambda e: e.name)
+        except OSError:
+            continue
+        subdirs: list[Path] = []
+        for entry in entries:
+            abs_path = Path(entry.path)
+            try:
+                rel_path = str(abs_path.relative_to(root_path))
+            except ValueError:
+                continue
+            try:
+                is_symlink = entry.is_symlink()
+                is_dir = entry.is_dir(follow_symlinks=False)
+                is_file = entry.is_file(follow_symlinks=False)
+            except OSError:
+                continue
+            if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
+                # prune: neither descend an excluded dir nor yield an excluded file
+                continue
+            if is_symlink:
+                # never descend a symlink dir; include a symlinked file only if it stays in-root
+                with suppress(OSError):
+                    if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
+                        yield ("file", abs_path, rel_path)
+                continue
+            if is_dir:
+                if want_dirs:
+                    yield ("dir", abs_path, rel_path)
+                subdirs.append(abs_path)
+            elif is_file:
+                yield ("file", abs_path, rel_path)
+        # push in reverse so the sorted children pop in ascending order (stable DFS)
+        for d in reversed(subdirs):
+            stack.append(d)
 
 
 def is_deferred_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
@@ -355,19 +425,12 @@ def scan_source_root(root: ExternalSourceRoot, repo: SourceIndexRepository,
         report.errors += 1
         return report
 
-    max_files = int(getattr(config, "external_source_scan_max_files", 5000))
+    max_files = effective_max_files(root, config)
     seen: set[str] = set()
-    for abs_path in sorted(root_path.rglob("*")):
-        if not abs_path.is_file():
-            continue
-        try:
-            rel_path = str(abs_path.relative_to(root_path))
-        except ValueError:
-            continue
-        if should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config):
-            continue
-        if pathsafe.symlink_escapes(abs_path, root_path):
-            continue
+    # Streaming walk: skip predicates + symlink safety are applied inside walk_source_tree, and
+    # excluded/hidden dir subtrees are pruned, so the cap below bounds real work — not a pre-sorted
+    # full-tree list.
+    for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
         report.scanned += 1
         if report.scanned > max_files:
             report.truncated = True
