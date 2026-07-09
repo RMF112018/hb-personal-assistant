@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.source_structure_override_tables import V116_TABLES
 from hb_assistant.store.source_structure_tables import V115_TABLES
 
 
@@ -13,8 +14,10 @@ def _migrate(tmp_path) -> str:
     return dbp
 
 
-def test_latest_schema_version_is_115():
-    assert LATEST_SCHEMA_VERSION == 115
+def test_latest_schema_version_covers_source_structure():
+    # Soft floor, not a moving literal: the V115 source-structure migration must be included. The
+    # single deliberate exact-version bump-guard lives in test_n8c_final_validation.py.
+    assert LATEST_SCHEMA_VERSION >= 115
 
 
 def test_migration_applies_and_is_idempotent(tmp_path):
@@ -25,15 +28,26 @@ def test_migration_applies_and_is_idempotent(tmp_path):
     assert m.apply() == LATEST_SCHEMA_VERSION
 
 
-def test_all_v115_tables_exist_and_ship_empty(tmp_path):
+def test_all_v115_and_v116_tables_exist_and_ship_empty(tmp_path):
     dbp = _migrate(tmp_path)
     SQLiteMigrator(dbp).apply()
     conn = sqlite3.connect(dbp)
     try:
         names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        for t in V115_TABLES:
+        for t in (*V115_TABLES, *V116_TABLES):
             assert t in names, f"missing table {t}"
             assert conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] == 0
+    finally:
+        conn.close()
+
+
+def test_v115_and_v116_migration_rows_recorded(tmp_path):
+    dbp = _migrate(tmp_path)
+    SQLiteMigrator(dbp).apply()
+    conn = sqlite3.connect(dbp)
+    try:
+        versions = {r[0] for r in conn.execute("SELECT version FROM schema_migrations")}
+        assert {115, 116} <= versions
     finally:
         conn.close()
 

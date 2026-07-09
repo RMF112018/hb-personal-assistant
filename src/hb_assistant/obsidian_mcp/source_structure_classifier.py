@@ -131,8 +131,17 @@ def extract_project_number(text: str) -> tuple[str | None, float]:
         return m.group(1), 0.9
     m = _PROJECT_PARTIAL_RE.search(text)
     if m:
-        return m.group(1), 0.5
+        # Partial numbers are weak evidence (0.35) — deliberately below the 0.5 "supporting" threshold,
+        # especially once inherited to descendants; a partial-only mapping raises a quality finding.
+        return m.group(1), 0.35
     return None, 0.0
+
+
+def is_partial_project_number(number: str | None) -> bool:
+    """True when ``number`` is a partial ``NN-NNN`` (not a full ``NN-NNN-NN``) project number."""
+    if not number:
+        return False
+    return bool(_PROJECT_PARTIAL_RE.fullmatch(number)) and not _PROJECT_FULL_RE.fullmatch(number)
 
 
 def is_noise_name(name: str) -> bool:
@@ -144,12 +153,41 @@ def _lower(name: str) -> str:
     return name.strip().lower()
 
 
+# Canonical per-root-class defaults (trust_tier, index_policy, default_search_rank, safety flags).
+# Single source of truth shared by classify_root and operator-override rank/trust recomputation.
+ROOT_CLASS_DEFAULTS: dict[str, tuple[str, str, int, dict[str, bool]]] = {
+    "generated_output": ("generated", "generated_outputs_only", 7, {"is_generated_output": True}),
+    "backup_mirror": ("low", "shallow_map", 9, {"is_backup_mirror": True}),
+    "personal": ("medium", "selective_metadata", 5, {"is_sensitive": True}),
+    "vault": ("supplemental", "vault_notes_only", 6, {}),
+    "construction_work": ("high", "deep_metadata", 1, {}),
+    "work": ("high", "deep_metadata", 2, {}),
+    "unknown": ("medium", "selective_metadata", 8, {}),
+}
+
+
+def root_class_defaults(root_class: str) -> tuple[str, str, int, dict[str, bool]]:
+    """Canonical (trust_tier, index_policy, default_search_rank, flags) for a root class."""
+    return ROOT_CLASS_DEFAULTS.get(root_class, ROOT_CLASS_DEFAULTS["unknown"])
+
+
 # --- Root classification ----------------------------------------------------------------------
-# (matcher predicate on lowered key/name) → (root_class, trust_tier, index_policy, rank)
-def classify_root(root_key: str, display_name: str) -> SourceStructureRoot:
+def classify_root(
+    root_key: str, display_name: str, source_header: str | None = None
+) -> SourceStructureRoot:
+    """Classify a root. SAFETY CLASSES WIN FIRST — generated → backup → personal → vault — before the
+    construction/work rules, so a root like "NAS - HB Backup" or a "/Backup/…" header is downranked
+    rather than treated as high-trust construction work.
+
+    ``source_header`` (the original absolute path, when available) is used ONLY to strengthen the
+    generated/backup *substring* signals (e.g. a "/Backup/Old" root whose basename lost the parent
+    context). It is never persisted — rows still carry only the neutral ``root_key``.
+    """
     key = _lower(root_key)
     name = _lower(display_name)
     blob = f"{key} {name}"
+    # header_blob adds the lowered header path for substring safety-signal matching only.
+    header_blob = f"{blob} {_lower(source_header)}" if source_header else blob
 
     def _mk(root_class, trust, policy, rank, **flags) -> SourceStructureRoot:
         return SourceStructureRoot(
@@ -162,17 +200,23 @@ def classify_root(root_key: str, display_name: str) -> SourceStructureRoot:
             **flags,
         )
 
-    if "nas - hb" in blob or "nas-hb" in blob or ("nas" in blob and "hb" in blob):
-        return _mk("construction_work", "high", "deep_metadata", 1)
-    if any(s in blob for s in GENERATED_SUBSTRINGS) or key in {"outputs", "mcp-outputs"}:
+    # 1. Generated output (safety).
+    if any(s in header_blob for s in GENERATED_SUBSTRINGS) or key in {"outputs", "mcp-outputs"}:
         return _mk("generated_output", "generated", "generated_outputs_only", 7,
                    is_generated_output=True)
-    if any(s in blob for s in BACKUP_SUBSTRINGS) or key.startswith("backup"):
+    # 2. Backup / mirror (safety).
+    if any(s in header_blob for s in BACKUP_SUBSTRINGS) or key.startswith("backup"):
         return _mk("backup_mirror", "low", "shallow_map", 9, is_backup_mirror=True)
-    if "vault" in blob or "obsidian" in blob:
-        return _mk("vault", "supplemental", "vault_notes_only", 6)
+    # 3. Personal / sensitive (safety).
     if key in {"home", "personal"} or any(s in blob for s in PERSONAL_SUBSTRINGS):
         return _mk("personal", "medium", "selective_metadata", 5, is_sensitive=True)
+    # 4. Vault / supplemental.
+    if "vault" in blob or "obsidian" in blob:
+        return _mk("vault", "supplemental", "vault_notes_only", 6)
+    # 5. Construction work (only after every safety class has been ruled out).
+    if "nas - hb" in blob or "nas-hb" in blob or ("nas" in blob and "hb" in blob):
+        return _mk("construction_work", "high", "deep_metadata", 1)
+    # 6. General work.
     if key in {"work"} or "work" in blob:
         return _mk("work", "high", "deep_metadata", 2)
     return _mk("unknown", "medium", "selective_metadata", 8)
@@ -246,10 +290,12 @@ def classify_folder(
 
     if proj:
         is_project = True
-        # A folder whose name *is* the project (and no more specific family) is a project_root.
+        # A folder whose name *is* the project (and no more specific family) is a project_root; its
+        # confidence IS the project-number confidence (0.9 full / 0.35 partial), so a partial-only
+        # project root reads as low-confidence rather than being masked by the generic default.
         if folder_class == "unknown":
             folder_class = "project_root"
-            confidence = max(confidence, proj_conf)
+            confidence = proj_conf
         # Project name hint = the non-numeric remainder of the folder name.
         remainder = _PROJECT_FULL_RE.sub("", sample.name)
         remainder = _PROJECT_PARTIAL_RE.sub("", remainder).strip(" -_")
@@ -295,7 +341,8 @@ def classify_tree(parsed_tree) -> tuple[dict[str, SourceStructureRoot], list[Fol
 
     assert isinstance(parsed_tree, ParsedTree)
     roots: dict[str, SourceStructureRoot] = {
-        pr.root_key: classify_root(pr.root_key, pr.display_name) for pr in parsed_tree.roots
+        pr.root_key: classify_root(pr.root_key, pr.display_name, pr.source_header)
+        for pr in parsed_tree.roots
     }
 
     records: list[FolderRecord] = []

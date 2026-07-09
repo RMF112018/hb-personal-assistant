@@ -154,6 +154,18 @@ class SourceStructureScanConfig(BaseModel):
     high_fanout_threshold: int = 40
 
 
+class SourceStructureScheduleConfig(BaseModel):
+    """PREVIEW-ONLY launchd schedule for the periodic ``source-structure refresh`` cycle.
+
+    Default OFF. Nothing here ever calls ``launchctl`` — the builder only renders the plist/job
+    definition for operator review; actual install remains a separate, future operator command.
+    """
+
+    enabled: bool = False
+    schedule_time: str = "03:00"  # local HH:MM
+    label: str = "com.hb.personal-assistant.source-structure-refresh"
+
+
 class SourceStructureConfig(BaseModel):
     """NAS Source-Structure Layered Index (V115) — out-of-band CLI/scheduled indexing only.
 
@@ -166,6 +178,7 @@ class SourceStructureConfig(BaseModel):
     root_key_map: dict[str, str] = Field(default_factory=dict)
     scan_roots: dict[str, str] = Field(default_factory=dict)
     scan: SourceStructureScanConfig = Field(default_factory=SourceStructureScanConfig)
+    schedule: SourceStructureScheduleConfig = Field(default_factory=SourceStructureScheduleConfig)
 
 
 class AppConfig(BaseModel):

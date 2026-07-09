@@ -95,6 +95,49 @@ def test_folder_map_excludes_noise_by_default(seeded):
     assert with_noise["total"] >= default["total"]
 
 
+GEN_BACKUP_TREE = """/Work/NAS - HB
+└── 21-801-01 NORA
+    └── Submittals
+/mcp-outputs
+└── AI Outputs
+/Backup/MacBook-Pro.local
+└── Documents
+"""
+
+
+def test_generated_and_backup_roots_never_rank_as_source_truth(tmp_path):
+    dbp = str(tmp_path / "pa.db")
+    SQLiteMigrator(dbp).apply()
+    repo = SourceStructureRepository(dbp)
+    ingest_tree_text(repo, GEN_BACKUP_TREE, apply=True)
+    generate_routing_hints(repo)
+    svc = SourceStructureService(dbp)
+
+    roots = {r["root_key"]: r for r in svc.root_map()["roots"]}
+    construction = next(r for r in roots.values() if r["root_class"] == "construction_work")
+    generated = next(r for r in roots.values() if r["root_class"] == "generated_output")
+    backup = next(r for r in roots.values() if r["root_class"] == "backup_mirror")
+    # Generated + backup roots rank strictly worse (higher number) than construction.
+    assert generated["default_search_rank"] > construction["default_search_rank"]
+    assert backup["default_search_rank"] > construction["default_search_rank"]
+
+    sr = svc.search_route(query_family="construction_project", project_number="21-801-01")
+    preferred_keys = {r["root_key"] for r in sr["preferred_roots"]}
+    assert generated["root_key"] in sr["avoided_roots"]
+    assert backup["root_key"] in sr["avoided_roots"]
+    assert generated["root_key"] not in preferred_keys
+    assert backup["root_key"] not in preferred_keys
+
+
+def test_partial_project_number_raises_finding(tmp_path):
+    dbp = str(tmp_path / "pa.db")
+    SQLiteMigrator(dbp).apply()
+    repo = SourceStructureRepository(dbp)
+    ingest_tree_text(repo, "/Work/NAS - HB\n└── 22-100 Riverside\n    └── Submittals\n", apply=True)
+    findings = compute_findings(repo)
+    assert any(f["finding_type"] == "partial_project_number" for f in findings)
+
+
 def test_no_absolute_paths_in_any_client_surface(seeded):
     dbp, _repo = seeded
     svc = SourceStructureService(dbp)
@@ -122,6 +165,86 @@ def test_folder_map_pagination_cursor(seeded):
         ids1 = {f["folder_id"] for f in page1["folders"]}
         ids2 = {f["folder_id"] for f in page2["folders"]}
         assert ids1.isdisjoint(ids2)
+
+
+OVERRIDE_TREE = """/Work/NAS - HB
+├── 21-801-01 NORA
+│   ├── Submittals
+│   └── RFIs
+"""
+
+
+def _override_db(tmp_path):
+    dbp = str(tmp_path / "pa.db")
+    SQLiteMigrator(dbp).apply()
+    return dbp, SourceStructureRepository(dbp)
+
+
+def test_override_reclassifies_root_and_downranks_after_ingest(tmp_path):
+    """An operator override of a root's class wins over the rule AND is applied at ingest — a root the
+    rules read as construction work becomes a downranked backup mirror."""
+    dbp, repo = _override_db(tmp_path)
+    repo.upsert_override(target_type="root", root_key="nas-hb", root_class="backup_mirror",
+                         reason="this is actually the backup copy", created_by="bobby")
+    ingest_tree_text(repo, OVERRIDE_TREE, apply=True)
+
+    svc = SourceStructureService(dbp)
+    root = {r["root_key"]: r for r in svc.root_map()["roots"]}["nas-hb"]
+    assert root["root_class"] == "backup_mirror"
+    assert root["is_backup_mirror"] is True
+    # Backup rank (9) is strictly worse than the construction default (1) the rule would have given.
+    assert root["default_search_rank"] == 9
+
+
+def test_override_survives_reingest(tmp_path):
+    dbp, repo = _override_db(tmp_path)
+    repo.upsert_override(target_type="root", root_key="nas-hb", root_class="backup_mirror",
+                         reason="backup", created_by="bobby")
+    ingest_tree_text(repo, OVERRIDE_TREE, apply=True)
+    # Re-ingest: the override is read from the DB again and re-applied.
+    ingest_tree_text(repo, OVERRIDE_TREE, apply=True)
+    svc = SourceStructureService(dbp)
+    root = {r["root_key"]: r for r in svc.root_map()["roots"]}["nas-hb"]
+    assert root["root_class"] == "backup_mirror"
+
+
+def test_folder_override_applies_after_inheritance_and_preserves_project(tmp_path):
+    """A folder override is applied AFTER project-number inheritance: the inherited project mapping
+    survives, and the row is marked manual_override."""
+    dbp, repo = _override_db(tmp_path)
+    # Submittals inherits project 21-801-01 from its parent during classify_tree.
+    repo.upsert_override(target_type="folder", root_key="nas-hb",
+                         rel_path="21-801-01 NORA/Submittals", folder_class="closeout",
+                         reason="these are actually closeout docs", created_by="bobby")
+    ingest_tree_text(repo, OVERRIDE_TREE, apply=True)
+
+    svc = SourceStructureService(dbp)
+    folders = {f["rel_path"]: f for f in
+               svc.folder_map(root_key="nas-hb", include_noise=True, limit=200)["folders"]}
+    sub = folders["21-801-01 NORA/Submittals"]
+    assert sub["folder_class"] == "closeout"
+    # Inheritance ran before the override, so the project number is preserved.
+    assert sub["project_number"] == "21-801-01"
+
+
+def test_override_clearing_safety_flag_raises_finding(tmp_path):
+    dbp, repo = _override_db(tmp_path)
+    repo.upsert_override(target_type="root", root_key="nas-hb", is_sensitive=False,
+                         reason="not sensitive", created_by="bobby")
+    ingest_tree_text(repo, OVERRIDE_TREE, apply=True)
+    findings = compute_findings(repo)
+    assert any(f["finding_type"] == "override_downgrades_safety_flag" and f["severity"] == "warning"
+               for f in findings)
+
+
+def test_upsert_override_fails_closed_without_reason_or_created_by(tmp_path):
+    _dbp, repo = _override_db(tmp_path)
+    with pytest.raises(ValueError):
+        repo.upsert_override(target_type="root", root_key="nas-hb", root_class="backup_mirror",
+                             reason="", created_by="bobby")
+    with pytest.raises(ValueError):
+        repo.upsert_override(target_type="root", root_key="nas-hb", root_class="backup_mirror",
+                             reason="x", created_by="")
 
 
 def test_forbidden_path_finding_fires_on_absolute_rel_path(tmp_path):

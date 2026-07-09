@@ -249,6 +249,35 @@ class SourceStructureService:
         next_cursor = StructureCursor(offset + n).encode() if offset + n < total else None
         return {"findings": items, "total": total, "next_cursor": next_cursor}
 
+    # -- readiness ------------------------------------------------------------------------------
+    def readiness(self) -> dict:
+        """Bounded, conservative index-readiness rollup. Never overstates: gate-on is recommended
+        only when at least one root is indexed and there are zero open ``error`` findings."""
+        roots = self._repo.list_roots()
+        roots_indexed = sum(1 for r in roots if r.get("last_indexed_at"))
+        stale_roots = [r["root_key"] for r in roots if not r.get("last_indexed_at")]
+        _e, open_errors = self._repo.list_findings(severity="error", status="open", limit=1)
+        _w, open_warnings = self._repo.list_findings(severity="warning", status="open", limit=1)
+
+        reasons: list[str] = []
+        if roots_indexed == 0:
+            reasons.append("no roots have been indexed yet")
+        if open_errors:
+            reasons.append(f"{open_errors} open error finding(s) must be resolved")
+        gate_on_recommended = roots_indexed > 0 and open_errors == 0
+        if gate_on_recommended and open_warnings:
+            reasons.append(f"{open_warnings} open warning(s) — review advised, not blocking")
+        return {
+            "roots_total": len(roots),
+            "roots_indexed": roots_indexed,
+            "stale_roots": stale_roots,
+            "open_error_findings": open_errors,
+            "open_warning_findings": open_warnings,
+            "gate_on_recommended": gate_on_recommended,
+            "reasons": reasons or (["all indexed roots clean; no blocking findings"]
+                                   if gate_on_recommended else []),
+        }
+
 
 # --- rationale helpers ------------------------------------------------------------------------
 def _root_default_rationale(r: dict) -> str:

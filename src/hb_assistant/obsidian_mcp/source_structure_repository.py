@@ -595,3 +595,90 @@ class SourceStructureRepository:
                 "max_depth=?, last_indexed_at=?, last_seen_at=?, updated_at=? WHERE root_key=?",
                 (folder_count, file_count, noise_count, max_depth, now, now, now, root_key),
             )
+
+    # -- V116 operator classification overrides ------------------------------------------------
+    _OVERRIDE_COLS = (
+        "override_id, target_type, root_key, rel_path, root_class, folder_class, doc_family, "
+        "trust_tier, search_rank, is_backup_mirror, is_generated_output, is_sensitive, reason, "
+        "created_by, active"
+    )
+
+    @staticmethod
+    def _override_row(r: tuple) -> dict:
+        def _ob(v: object) -> bool | None:
+            return None if v is None else bool(v)
+
+        return {
+            "override_id": r[0], "target_type": r[1], "root_key": r[2], "rel_path": r[3],
+            "root_class": r[4], "folder_class": r[5], "doc_family": r[6], "trust_tier": r[7],
+            "search_rank": r[8], "is_backup_mirror": _ob(r[9]), "is_generated_output": _ob(r[10]),
+            "is_sensitive": _ob(r[11]), "reason": r[12], "created_by": r[13], "active": bool(r[14]),
+        }
+
+    def upsert_override(
+        self, *, target_type: str, root_key: str, reason: str, created_by: str,
+        rel_path: str = "", active: bool = True, root_class: str | None = None,
+        folder_class: str | None = None, doc_family: str | None = None,
+        trust_tier: str | None = None, search_rank: int | None = None,
+        is_backup_mirror: bool | None = None, is_generated_output: bool | None = None,
+        is_sensitive: bool | None = None, conn: sqlite3.Connection | None = None,
+    ) -> str:
+        """Persist one operator override. Roots use ``rel_path=''``. Requires reason + created_by
+        (the CLI fails closed if either is missing). Idempotent per (target_type, root_key, rel_path)."""
+        if not reason or not created_by:
+            raise ValueError("override requires a non-empty reason and created_by")
+        rel = rel_path if target_type == "folder" else ""
+        override_id = _sid("override", target_type, root_key, rel)
+        now = _utc_now()
+
+        def _fb(v: bool | None) -> int | None:
+            return None if v is None else _b(v)
+
+        with borrow_connection(conn, self._db_path) as c, transaction(c):
+            c.execute(
+                f"""
+                INSERT INTO source_structure_overrides ({self._OVERRIDE_COLS}, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(target_type, root_key, rel_path) DO UPDATE SET
+                  root_class=excluded.root_class, folder_class=excluded.folder_class,
+                  doc_family=excluded.doc_family, trust_tier=excluded.trust_tier,
+                  search_rank=excluded.search_rank, is_backup_mirror=excluded.is_backup_mirror,
+                  is_generated_output=excluded.is_generated_output, is_sensitive=excluded.is_sensitive,
+                  reason=excluded.reason, created_by=excluded.created_by, active=excluded.active,
+                  updated_at=excluded.updated_at
+                """,
+                (override_id, target_type, root_key, rel, root_class, folder_class, doc_family,
+                 trust_tier, search_rank, _fb(is_backup_mirror), _fb(is_generated_output),
+                 _fb(is_sensitive), reason, created_by, _b(active), now, now),
+            )
+        return override_id
+
+    def list_overrides(
+        self, *, active_only: bool = False, target_type: str | None = None,
+        conn: sqlite3.Connection | None = None,
+    ) -> list[dict]:
+        where: list[str] = []
+        params: list[object] = []
+        if active_only:
+            where.append("active = 1")
+        if target_type:
+            where.append("target_type = ?")
+            params.append(target_type)
+        clause = (" WHERE " + " AND ".join(where)) if where else ""
+        with borrow_connection(conn, self._db_path, readonly=True) as c:
+            rows = c.execute(
+                f"SELECT {self._OVERRIDE_COLS} FROM source_structure_overrides{clause} "
+                "ORDER BY target_type, root_key, rel_path",
+                params,
+            ).fetchall()
+        return [self._override_row(r) for r in rows]
+
+    def active_overrides_for(self, root_key: str, *,
+                             conn: sqlite3.Connection | None = None) -> list[dict]:
+        with borrow_connection(conn, self._db_path, readonly=True) as c:
+            rows = c.execute(
+                f"SELECT {self._OVERRIDE_COLS} FROM source_structure_overrides "
+                "WHERE active = 1 AND root_key = ?",
+                (root_key,),
+            ).fetchall()
+        return [self._override_row(r) for r in rows]

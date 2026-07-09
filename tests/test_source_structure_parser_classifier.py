@@ -58,7 +58,7 @@ def test_parser_never_persists_absolute_paths():
 # --- project number extraction --------------------------------------------------------------
 def test_project_number_full_vs_partial():
     assert extract_project_number("21-801-01 NORA") == ("21-801-01", 0.9)
-    assert extract_project_number("22-100 Old") == ("22-100", 0.5)
+    assert extract_project_number("22-100 Old") == ("22-100", 0.35)  # partial: weak evidence
     assert extract_project_number("no digits") == (None, 0.0)
 
 
@@ -115,3 +115,24 @@ def test_classify_tree_inherits_project_numbers_to_descendants():
     assert sub.classification.classification_source == "inherited"
     # Its own doc-family survives inheritance.
     assert sub.classification.doc_family == "submittal"
+
+
+PARTIAL_TREE = """/Work/NAS - HB
+└── 22-100 Riverside
+    ├── Submittals
+    └── RFIs
+"""
+
+
+def test_partial_project_number_inheritance_and_confidence():
+    t = parse_tree_text(PARTIAL_TREE, is_noise_name=is_noise_name)
+    _roots, records = classify_tree(t)
+    by = {(r.root_key, r.rel_path): r for r in records}
+    root = by[("nas-hb", "22-100 Riverside")]
+    # Partial NN-NNN project root is low-confidence (0.35), still a project candidate.
+    assert root.classification.project_number == "22-100"
+    assert root.classification.classification_confidence == 0.35
+    # Partial number inherits to descendants like a full one.
+    sub = by[("nas-hb", "22-100 Riverside/Submittals")]
+    assert sub.classification.project_number == "22-100"
+    assert sub.classification.classification_source == "inherited"

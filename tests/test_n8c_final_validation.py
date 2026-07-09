@@ -65,7 +65,7 @@ def _tables(db: Path) -> set[str]:
 def test_fresh_db_migrates_to_head(tmp_path: Path) -> None:
     db = tmp_path / "final.db"
     head = SQLiteMigrator(db_path=str(db)).apply()
-    assert head == LATEST_SCHEMA_VERSION == 115
+    assert head == LATEST_SCHEMA_VERSION == 116
 
 
 def test_migration_is_idempotent(tmp_path: Path) -> None:
@@ -102,7 +102,7 @@ def test_schema_migrations_records_every_version(tmp_path: Path) -> None:
         versions = {r[0] for r in c.execute("SELECT version FROM schema_migrations")}
         head = c.execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0]
     # every N8C schema version V100..V113 is recorded, and the head equals the code constant
-    assert set(range(100, 115)) <= versions
+    assert set(range(100, 117)) <= versions
     assert head == LATEST_SCHEMA_VERSION
 
 

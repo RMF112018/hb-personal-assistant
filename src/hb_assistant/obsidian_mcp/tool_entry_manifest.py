@@ -57,6 +57,44 @@ TOOL_ENTRY_OVERRIDES: dict[str, dict[str, Any]] = {
         "do_not_use_when": "A semantic source-connector tool is available.", "deprecated": True,
         "replaced_by": ["assistant_source_file_search"],
     },
+    # Source-Structure Layered Index (default-off group). These return bounded, root-relative MAPS of
+    # the precomputed index; they never read file contents. For actual file discovery/reads, follow up
+    # with assistant_source_file_search / assistant_source_file_read (named in use_when/do_not_use_when).
+    "assistant_source_root_map": {
+        "use_when": "First step to choose WHICH NAS root to search for a query (routes by family, "
+                    "downranks backups/generated output).",
+        "do_not_use_when": "You already know the folder — use assistant_source_folder_map or "
+                           "assistant_source_file_search to find files.",
+    },
+    "assistant_source_folder_map": {
+        "use_when": "List candidate folders under a root/project with classification (doc family, "
+                    "trust, noise) before searching for files.",
+        "do_not_use_when": "Reading file contents or listing actual files — use "
+                           "assistant_source_file_search then assistant_source_file_read.",
+    },
+    "assistant_source_folder_summary": {
+        "use_when": "Inspect one folder's classification, child mix, and routing warnings by folder_id.",
+        "do_not_use_when": "Enumerating files in the folder — use assistant_source_file_search.",
+    },
+    "assistant_source_search_route": {
+        "use_when": "Ask WHERE to look for a project/doc-family query; returns preferred + avoided "
+                    "roots and candidate folders.",
+        "do_not_use_when": "Performing the actual file search — follow up with "
+                           "assistant_source_file_search / assistant_source_file_read.",
+    },
+    "assistant_source_scope_explain": {
+        "use_when": "Explain why a root/folder is preferred, downranked, or off-limits (trust + policy).",
+        "do_not_use_when": "Searching for or reading files.",
+    },
+    "assistant_source_project_map": {
+        "use_when": "Map a project number to its candidate folders and document-family coverage.",
+        "do_not_use_when": "Reading a specific document — use assistant_source_file_read.",
+    },
+    "assistant_source_quality": {
+        "use_when": "Review advisory index-quality findings (duplicates, low confidence, partial "
+                    "project numbers) before trusting routing.",
+        "do_not_use_when": "Searching or reading source files.",
+    },
 }
 
 
