@@ -111,3 +111,7 @@ Do not push/PR until live connected-client matrix with origin auth, or operator 
 
 Operator: `03-operator-connected-client-test-script.md`  
 Offline matrix: `05-offline-prompt-matrix.json.txt`
+
+## Post-commit tip file
+
+See `05-TIP.txt` for the hash of the commit that last froze this inventory body (parent of any pure tip stamp). After this tip file commit, **`git rev-parse HEAD` is authoritative.**
