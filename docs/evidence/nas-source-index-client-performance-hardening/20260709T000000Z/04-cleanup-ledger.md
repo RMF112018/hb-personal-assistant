@@ -22,3 +22,10 @@
 - Pre-redeploy: no temp outputs (assistant_output_stage tool_not_registered)
 - Staged image `/tmp/hb-nas-alias-fix-fa266c529375.tar.gz` — remove after load
 - Bearer token not written to evidence
+
+## 10 alias dispatch post-redeploy
+
+- `OUTPUT-20260709-006` (alias-postdeploy-temp-md): archived
+- `OUTPUT-20260709-007` (alias-postdeploy-temp-zip): archived
+- Bearer token not written to evidence
+
