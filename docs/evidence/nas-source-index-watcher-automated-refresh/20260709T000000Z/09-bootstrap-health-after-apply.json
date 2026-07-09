@@ -1,0 +1,110 @@
+{
+  "overall_freshness": "degraded",
+  "structure_status": {
+    "root_count": 1,
+    "folder_count": 2,
+    "open_finding_count": 0,
+    "last_run": {
+      "run_id": "9801108545144e288311d5dcfe362b5f",
+      "run_type": "scan_roots",
+      "status": "completed",
+      "started_at": "2026-07-09T11:17:41.149309+00:00",
+      "finished_at": "2026-07-09T11:17:41.594397+00:00"
+    }
+  },
+  "file_index_status": {
+    "fts_available": true,
+    "last_indexed_at": "2026-07-09T11:17:41.014258+00:00",
+    "skipped_by_code": {},
+    "index_enabled": true
+  },
+  "bootstrap": {
+    "all_roots_watcher_ready": true,
+    "roots_ready": 1,
+    "roots_total": 1
+  },
+  "watcher": {
+    "enabled": true,
+    "backend": "watchdog",
+    "backend_available": true,
+    "last_heartbeat_at": null,
+    "queue_depth": 0,
+    "processing_count": 0,
+    "oldest_pending_age_seconds": null
+  },
+  "file_index": {
+    "last_incremental_update": "2026-07-09T11:17:41.014258+00:00",
+    "pending_queue_count": 0,
+    "failed_queue_count": 0
+  },
+  "structure_index": {
+    "last_structure_update": "2026-07-09T11:17:41.594397+00:00",
+    "directory_change_detected": false,
+    "structure_refresh_recommended": false,
+    "dirty_bridge_enabled": false
+  },
+  "reconciliation": {
+    "last_lightweight_reconciliation": null,
+    "last_full_reconciliation": null
+  },
+  "recommended_operator_action": null,
+  "safe_for_client_answering": false,
+  "roots": [
+    {
+      "root_key": "k",
+      "display_label": "root",
+      "root_class": "unknown",
+      "enabled": true,
+      "last_scan_started": "2026-07-09T11:17:41.149309+00:00",
+      "last_scan_completed": "2026-07-09T11:17:41.594397+00:00",
+      "last_successful_scan": "2026-07-09T11:17:41.303260+00:00",
+      "scan_duration": null,
+      "scan_status": "completed",
+      "indexing_watermark": "2026-07-09T11:17:41.303260+00:00",
+      "total_folders_indexed": 2,
+      "total_files_indexed": 2,
+      "content_indexed_file_count": 2,
+      "metadata_only_file_count": 0,
+      "live_readable_file_count": null,
+      "unsupported_file_count": 0,
+      "skipped_file_count": 0,
+      "skipped_directory_count": 0,
+      "largest_skipped_directories": [],
+      "extension_type_distribution": [],
+      "freshness_status": "future_anomaly",
+      "scan_error_count": 0,
+      "recent_scan_errors": [],
+      "layers": {
+        "folder_layer_populated": true,
+        "metadata_layer_populated": true,
+        "content_layer_populated": true
+      },
+      "safe_for_client_answering": false,
+      "diagnostic_summary": "last_indexed_at is in the future",
+      "bootstrap": {
+        "file_index_bootstrapped": true,
+        "structure_index_bootstrapped": true,
+        "watcher_ready": true
+      },
+      "run_state": "running",
+      "directory_change_detected": false,
+      "structure_refresh_recommended": false
+    }
+  ],
+  "root_count": 1,
+  "truncated": false,
+  "telemetry": {
+    "elapsed_ms": 205,
+    "candidate_count": 1,
+    "returned_count": 1,
+    "truncated": false,
+    "cursor_present": false,
+    "layers_used": [
+      "source_intelligence",
+      "source_structure"
+    ],
+    "fallback_used": null,
+    "rank_strategy": "n/a",
+    "freshness_basis": "last_indexed_at+structure_runs"
+  }
+}

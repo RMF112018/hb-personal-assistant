@@ -1,0 +1,13 @@
+ALL_ASSISTANT_TOOLS count: 87
+group count: 14
+source_connector group count: 8
+source_connector members:
+   assistant_source_file_metadata
+   assistant_source_file_read
+   assistant_source_file_search
+   assistant_source_files_list
+   assistant_source_index_health
+   assistant_source_query_plan
+   assistant_source_roots_list
+   assistant_source_status
+new assistant_* tools added this branch: NONE (health extended in place)

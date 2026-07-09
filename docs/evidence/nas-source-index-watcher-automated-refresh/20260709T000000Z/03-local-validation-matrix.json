@@ -1,0 +1,175 @@
+{
+  "summary": {
+    "passed": 16,
+    "total": 16,
+    "all_pass": true,
+    "schema_head": 117,
+    "tool_count": 87
+  },
+  "steps": [
+    {
+      "step": 1,
+      "scenario": "empty temp DB migrated to head",
+      "pass": true,
+      "detail": {
+        "schema": 117
+      }
+    },
+    {
+      "step": 2,
+      "scenario": "bootstrap dry-run plans, writes nothing",
+      "pass": true,
+      "detail": {
+        "files_seen": 2
+      }
+    },
+    {
+      "step": 3,
+      "scenario": "bootstrap apply indexes file layer",
+      "pass": true,
+      "detail": {
+        "root_key": "k",
+        "scanned": 2,
+        "indexed": 2,
+        "skipped": 0,
+        "deleted": 0,
+        "errors": 0,
+        "truncated": false,
+        "error_codes": [],
+        "success": true
+      }
+    },
+    {
+      "step": 4,
+      "scenario": "bootstrap apply builds structure layer",
+      "pass": true,
+      "detail": {
+        "roots": 1,
+        "folders": 2,
+        "project_links": 0
+      }
+    },
+    {
+      "step": 5,
+      "scenario": "watcher_ready true after both layers",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "step": 6,
+      "scenario": "file index rows exist",
+      "pass": true,
+      "detail": [
+        "a.md",
+        "sub/b.txt"
+      ]
+    },
+    {
+      "step": 7,
+      "scenario": "health reports bootstrap complete + watcher ready",
+      "pass": true,
+      "detail": {
+        "all_roots_watcher_ready": true,
+        "roots_ready": 1,
+        "roots_total": 1
+      }
+    },
+    {
+      "step": 8,
+      "scenario": "health has all V117 sections",
+      "pass": true,
+      "detail": [
+        "overall_freshness",
+        "structure_status",
+        "file_index_status",
+        "bootstrap",
+        "watcher",
+        "file_index",
+        "structure_index",
+        "reconciliation",
+        "recommended_operator_action",
+        "safe_for_client_answering",
+        "roots",
+        "root_count",
+        "truncated",
+        "telemetry"
+      ]
+    },
+    {
+      "step": 9,
+      "scenario": "health path-safe (no abs path)",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "step": 10,
+      "scenario": "idempotent second bootstrap (0 re-indexed)",
+      "pass": true,
+      "detail": {
+        "root_key": "k",
+        "scanned": 2,
+        "indexed": 0,
+        "skipped": 2,
+        "deleted": 0,
+        "errors": 0,
+        "truncated": false,
+        "error_codes": [],
+        "success": true
+      }
+    },
+    {
+      "step": 11,
+      "scenario": "reconcile detects new+modified files",
+      "pass": true,
+      "detail": {
+        "enqueued": 3
+      }
+    },
+    {
+      "step": 12,
+      "scenario": "reconcile detects folder drift",
+      "pass": true,
+      "detail": {}
+    },
+    {
+      "step": 13,
+      "scenario": "drain updates file/content index (c.md indexed)",
+      "pass": true,
+      "detail": {
+        "processed": 3
+      }
+    },
+    {
+      "step": 14,
+      "scenario": "deleted file no longer active search hit",
+      "pass": true,
+      "detail": [
+        "c.md",
+        "newp/d.md",
+        "sub/b.txt"
+      ]
+    },
+    {
+      "step": 15,
+      "scenario": "run-state enum distinguishes 4 states",
+      "pass": true,
+      "detail": {
+        "disabled": "disabled_by_config",
+        "not_bootstrapped": "not_bootstrapped",
+        "backend_unavailable": "backend_unavailable",
+        "running": "running"
+      }
+    },
+    {
+      "step": 16,
+      "scenario": "health surfaces drift with dirty_bridge_enabled false",
+      "pass": true,
+      "detail": {
+        "last_structure_update": "2026-07-09T11:17:42.394528+00:00",
+        "directory_change_detected": true,
+        "structure_refresh_recommended": true,
+        "dirty_bridge_enabled": false
+      }
+    }
+  ]
+}

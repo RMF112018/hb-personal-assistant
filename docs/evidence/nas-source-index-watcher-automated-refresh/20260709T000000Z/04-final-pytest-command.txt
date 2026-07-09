@@ -1,0 +1,3 @@
+pytest tests/test_source_index_watcher_automated_refresh.py tests/test_migrator_v117_source_index_bootstrap.py tests/test_schema_version_head_consistency.py tests/test_source_index_client_performance_hardening.py tests/test_n8c_mcp_tool_inventory_final.py tests/test_source_structure_repository_service.py tests/test_startup_schema_policy.py -q
+PYTHONPATH=src:subrepos/construction-financial-review/src
+python=Python 3.14.5
