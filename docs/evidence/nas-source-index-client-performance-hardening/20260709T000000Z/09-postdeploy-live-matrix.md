@@ -24,7 +24,7 @@
 | `assistant_output_stage` broker-callable | **FAIL (listed-only; use pa_output_* )** |
 | **Push/PR authorized by this gate?** | **YES (local push/PR still operator-authorized)** |
 
-Functional 13/13 matrix **PASS** on post-deploy surface. Residual defect: `assistant_output_*` **write** aliases appear in `tools/list` but broker raises `tool_not_registered` — clients must use `pa_output_*` for stage/commit/archive until alias dispatch is fixed. Read aliases and listing still present.
+Functional 13/13 matrix **PASS** on post-deploy surface. Note (historical at matrix write-time): residual `assistant_output_*` write-alias dispatch was fixed in `fa266c52` and re-proven live in `10-alias-dispatch-*` / `11-live-image-reattestation`.
 
 ## Discovery (tools/list + hb_mcp_status)
 
@@ -783,6 +783,6 @@ Functional 13/13 matrix **PASS** on post-deploy surface. Residual defect: `assis
 
 ## Recommendation
 
-Live post-deploy matrix is **13/13 PASS** for functional client paths. Safe to open PR from branch **after operator authorize** (no auto-push). Track alias broker registration as a small follow-up fix if ChatGPT clients are expected to call `assistant_output_*` write tools by name.
+Live post-deploy matrix is **13/13 PASS** for functional client paths. Safe to open PR from branch **after operator authorize** (no auto-push). Alias broker dispatch was fixed post-matrix (`fa266c52`) and re-attested live (see `11-live-image-reattestation`).
 
 **No secrets committed. No automatic push/PR.**

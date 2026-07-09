@@ -29,3 +29,8 @@
 - `OUTPUT-20260709-007` (alias-postdeploy-temp-zip): archived
 - Bearer token not written to evidence
 
+## 11 live image re-attestation
+
+- `OUTPUT-20260709-008` (reattest-probe): archived
+- No redeploy; bearer token not written to evidence
+

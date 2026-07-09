@@ -30,7 +30,8 @@ tests.
 - `tests/test_prompt_preflight_*.py` — route schema, family/workflow routing, authorization, retrieval
   budget, source-of-truth, memory opportunities, fallbacks.
 - Invariants: `tests/test_n8c_final_validation.py`, `tests/test_n8c_mcp_tool_inventory_final.py`,
-  `tests/test_n8c_client_exposure_bridge.py` (canonical 78 unchanged; gateway allowlist decoupled).
+  `tests/test_n8c_client_exposure_bridge.py` (canonical **87** across **14** groups; structure default-ON;
+  gateway allowlist decoupled from the assistant set).
 
 ## Freshness signal at runtime
 

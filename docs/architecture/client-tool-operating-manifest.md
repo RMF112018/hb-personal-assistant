@@ -104,12 +104,16 @@ that profile its write steps fail closed with `read_only_db_surface` — prefer 
 ## Gateway allowlist change (N8C-24, operator-authorized)
 
 The N8C-22 helper gateway (`hb_assistant_tool_query`) allowlist was deliberately expanded beyond the
-canonical 78 to reach every write surface: `GATEWAY_ALLOWLIST = 78 ∪ pa_artifact_* ∪ pa_tool_manifest_* ∪
-pa_output_* ∪ ai_outputs_card_upsert`. Denied tools, raw SQL/shell/exec, root/db tools, and legacy
-`hb_output_*` stay rejected; every gateway-routed write still passes the full broker gate chain. The
-canonical catalog reports 85 across 14 groups (installed); the write surfaces appear as separate catalog
-sections. The 14th group `source_structure` (7 read-only map/route tools) is default-OFF, so the
-client-exposed assistant tools default to the full structure-enabled surface (87 including health/plan).
+canonical assistant set to reach every write surface:
+`GATEWAY_ALLOWLIST = ALL_ASSISTANT_TOOLS ∪ pa_artifact_* ∪ pa_tool_manifest_* ∪ pa_output_* ∪
+assistant_output_* ∪ pa_prompt_* ∪ ai_outputs_card_upsert`. Denied tools, raw SQL/shell/exec, root/db
+tools, and legacy `hb_output_*` stay rejected; every gateway-routed write still passes the full broker
+gate chain. The canonical catalog reports **87** `assistant_*` tools across **14** groups (installed and
+client-exposed by default). That is the prior 85-tool universe **plus** `assistant_source_index_health`
+and `assistant_source_query_plan` on `source_connector`. The 14th group `source_structure` (7 read-only
+map/route tools) is **default-ON** (kill-switch `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0`). Write surfaces
+(`pa_*` / `assistant_output_*` aliases / AI outputs) appear as separate catalog sections and are **not**
+part of the 87.
 
 ## Mandatory MCP tool-surface maintenance
 

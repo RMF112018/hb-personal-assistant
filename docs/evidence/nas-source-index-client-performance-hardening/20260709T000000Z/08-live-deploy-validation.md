@@ -44,7 +44,7 @@ Repo-truth path (`deploy/nas/BUILD.md` + prior N8C deploy closeout):
 2. Mac: `docker save | gzip` → ship `ssh hb-nas "cat > /tmp/….tar.gz"`
 3. NAS: `sudo docker load` + `sudo /volume2/personal-assistant/bin/hb-mcp-runner stop|start`
 
-Step 3 failed: `sudo: a password is required` (batch SSH; NOPASSWD not valid for volume2 runner).
+Step 3 failed: `sudo: a password is required` (batch SSH; NOPASSWD=<redacted>
 
 ### Build / staging (no secrets)
 
@@ -110,11 +110,7 @@ sh /tmp/hb-deploy-source-index.sh   # enter sudo password
 
 Then re-run authenticated live matrix; expect assistant tools **87**, structure default-ON, all required tools + 10 aliases.
 
-Optional sudoers fix (operator review only):
-
-```
-bfetting ALL=(root) NOPASSWD: /volume2/personal-assistant/bin/hb-mcp-runner
-```
+Optional sudoers fix: **redacted** (operator-local; not committed as a runnable recipe).
 
 ## Defect classification
 

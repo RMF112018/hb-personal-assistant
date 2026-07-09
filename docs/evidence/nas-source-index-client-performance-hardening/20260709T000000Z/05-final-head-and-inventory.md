@@ -11,7 +11,7 @@
 ### Verify
 
 ```bash
-cd /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
+cd <worktree>
 git rev-parse HEAD
 git log --oneline --decorate -8
 git status --short

@@ -1,12 +1,12 @@
 === COMMAND ===
 # Exact final pytest command (worktree-local)
-# cwd: /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
+# cwd: <worktree>
 # PYTHONPATH=src:subrepos/construction-financial-review/src
-# python: /Users/bobbyfetting/hb-personal-assistant/.venv/bin/python
+# python: <repo>/.venv/bin/python
 
-cd /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
+cd <worktree>
 export PYTHONPATH="src:subrepos/construction-financial-review/src"
-/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python -m pytest -q \
+<repo>/.venv/bin/python -m pytest -q \
   tests/test_source_index_client_performance_hardening.py \
   tests/test_source_structure_mcp_tools.py \
   tests/test_n8c_client_exposure_bridge.py \

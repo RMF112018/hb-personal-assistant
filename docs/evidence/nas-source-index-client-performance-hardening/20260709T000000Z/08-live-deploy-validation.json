@@ -16,7 +16,7 @@
   },
   "blocker": {
     "type": "deployment_host_privilege",
-    "detail": "sudo password required for docker load and hb-mcp-runner; NOPASSWD path points to missing /volume1 runner",
+    "detail": "sudo password required for docker load and hb-mcp-runner; NOPASSWD=<redacted>",
     "attempted": "sudo -n /usr/local/bin/docker load < tarball \u2192 password required"
   },
   "post_attempt_live_surface": {

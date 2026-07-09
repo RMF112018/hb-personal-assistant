@@ -41,7 +41,7 @@
   "nas_local_health_and_listen": "{\"status\":\"ok\",\"surface\":\"nas_mcp\",\"nas_readonly\":true,\"profile\":\"remote_cloudflare\",\"origin_auth_required\":true}\ntcp        0      0 127.0.0.1:8765          0.0.0.0:*               LISTEN     \ntcp        0      0 127.0.0.1:8765          127.0.0.1:55934         ESTABLISHED\ntcp        0      0 127.0.0.1:55924         127.0.0.1:8765          TIME_WAIT  \ntcp        0      0 172.27.0.1:56424        172.27.0.2:8765         TIME_WAIT  \ntcp        0      0 127.0.0.1:55928         127.0.0.1:8765        ",
   "rollback_notes": {
     "method": "retain prior docker image tag hb-personal-assistant:nas (retag/load previous tarball) + hb-mcp-runner stop/start",
-    "sudo_blocker": "sudo -n to /volume2/.../hb-mcp-runner requires password; example sudoers still points at missing /volume1 path"
+    "sudo_blocker": "sudo -n to /volume2/.../hb-mcp-runner requires password; example sudoers path drifted from live runner path"
   },
   "container_id": "unavailable_without_docker_socket_or_sudo",
   "running_image_tag": "hb-personal-assistant:nas (inspect unavailable without sudo)"

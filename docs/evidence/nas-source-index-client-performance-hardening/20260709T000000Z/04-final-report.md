@@ -7,7 +7,7 @@
    - Docs hash record: `d8dfa5ee4b2044999f2c1cb181f0abfbdc08f89a`
    - Closeout evidence pack: `b695f3c81ad9d65b3c2cc96a5614e560a4b5a66f`
    - **Tip at last inventory generation:** `38741bcc7ffd501c9c7f8d6e35084d55b6304d43` — after committing this file, run `git rev-parse HEAD`
-4. **Worktree:** `/Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709`
+4. **Worktree:** `<worktree>`
 5. **Schema migrations:** none
 6. **Tools added:** `assistant_source_index_health`, `assistant_source_query_plan`
 7. **Tools modified:** structure service, connector ranking/explanations, archive destination_state, vault path aliases, dataview FROM, structure default-ON, project-map preflight

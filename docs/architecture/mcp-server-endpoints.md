@@ -14,7 +14,7 @@ the wrong host is the most likely cause of "the server says a tool is enabled bu
 | Started by | `hb-assistant mcp serve --nas-readonly --streamable-http` (compose `hb-personal-assistant-mcp`, port **8765**) | mounted in the FastAPI backend at `/mcp` (port **8000**) |
 | Public host | **`https://nas-mcp.bobby-fetting.me/mcp`** | **`https://mcp.bobby-fetting.me/mcp`** |
 | Profile / auth | `remote_cloudflare`, origin bearer + OAuth (`nas.read`/`nas.write`) | OAuth 2.1 PKCE + DCR (`obsidian.read`/`obsidian.write`) |
-| Tool surface | **~137 tools**: the 85 canonical `assistant_*` (78 client-exposed by default; the 7 `assistant_source_*` source-structure map/route tools are installed but default-OFF via `HB_MCP_ASSISTANT_SOURCE_STRUCTURE`), the 3 `hb_assistant_*` gateway helpers, `pa_prompt_*`, `pa_output_*`, `pa_artifact_*`, `pa_tool_manifest_*`, `ai_outputs_card_upsert`, status/freshness/root/db reads, and NAS obsidian-adapter wrappers | **~56 tools**: vault read/write + summarize/graph/email/domain plan tools. A read-only ChatGPT principal (`chatgpt_readonly_mode`, scope `obsidian.read`) sees only its ~40–43 `obsidian.read`-scoped subset. |
+| Tool surface | **~140+ tools**: **87** canonical `assistant_*` across **14** groups (client-exposed by default; includes 7 default-ON `source_structure` map/route tools — kill-switch `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0` — plus source index health/query plan on `source_connector`), the 3 `hb_assistant_*` gateway helpers, `pa_prompt_*`, `pa_output_*` + `assistant_output_*` aliases, `pa_artifact_*`, `pa_tool_manifest_*`, `ai_outputs_card_upsert`, status/freshness/root/db reads, and NAS obsidian-adapter wrappers | **~56 tools**: vault read/write + summarize/graph/email/domain plan tools. A read-only ChatGPT principal (`chatgpt_readonly_mode`, scope `obsidian.read`) sees only its ~40–43 `obsidian.read`-scoped subset. |
 | Has the N8C stack? | **Yes** — all `assistant_*` / `hb_assistant_*` / `pa_prompt_*` / `pa_output_*` live here | **No** — none of those exist on this server |
 
 ## Which endpoint a connector should use
@@ -24,9 +24,9 @@ the wrong host is the most likely cause of "the server says a tool is enabled bu
   `https://nas-mcp.bobby-fetting.me/mcp`.
 - To reach **only the Obsidian vault tools**: the Obsidian MCP, `https://mcp.bobby-fetting.me/mcp`.
 
-`hb_mcp_status` is a **NAS-MCP-only** tool. If a client shows `hb_mcp_status` reporting "78 assistant tools
-enabled" but cannot call `assistant_*` / `pa_*`, the status view and the connector are describing **different
-servers** — repoint the connector at the NAS MCP.
+`hb_mcp_status` is a **NAS-MCP-only** tool. If a client shows `hb_mcp_status` reporting assistant tools
+enabled (expected **87** exposed by default) but cannot call `assistant_*` / `pa_*`, the status view and the
+connector are describing **different servers** — repoint the connector at the NAS MCP.
 
 ## Host-cutover status (N8B)
 

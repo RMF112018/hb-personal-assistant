@@ -286,11 +286,12 @@ ASSISTANT_SOURCE_STRUCTURE_TOOLS = (
 )
 
 # N8C-22 — canonical aggregate registry: the single source of truth for the 14 read-only assistant
-# groups / 85 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
+# groups / 87 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
 # hb_mcp_status exposure fields derive from these — do NOT hand-maintain a second list. This does not
 # add any tool; it only names the union that already existed implicitly across the group tuples.
-# Exposure follows the per-group gates: the default-off ``source_structure`` group is installed here
-# (so canonical == 85) but not client-exposed until its kill switch is turned on.
+# Exposure follows the per-group gates. ``source_structure`` (7 tools) is **default-ON** (kill-switch
+# ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0``). ``source_connector`` includes index health + query plan
+# (canonical/client-exposed default == 87 when all groups are enabled).
 ASSISTANT_TOOL_GROUPS: dict[str, tuple[str, ...]] = {
     "nav": ASSISTANT_NAV_TOOLS,
     "context_packs": ASSISTANT_CONTEXT_PACK_TOOLS,
@@ -327,9 +328,10 @@ ASSISTANT_GROUP_GATES = {
     "source_structure": assistant_source_structure_enabled,
 }
 
-# The 85 installed canonical assistant tools, deduped + sorted. This is the canonical read-only navigation
-# set and the catalog's canonical universe. Of these, 78 are client-exposed by default; the +7 default-off
-# source_structure tools are installed-but-disabled until an operator sets HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1.
+# The 87 installed canonical assistant tools, deduped + sorted. This is the canonical read-only navigation
+# set and the catalog's canonical universe. Default client-exposed count is also 87 (all 14 groups on),
+# including the 7 default-ON source_structure tools and source_connector health/query_plan. Operators may
+# hide structure only via kill-switch HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0 (exposed then drops by 7).
 # NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help / _tool_query) are
 # deliberately NOT in here — they are helpers, not canonical assistant tools.
 ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
@@ -373,7 +375,7 @@ def assistant_client_exposure_status() -> dict[str, Any]:
     """N8C-22 client-exposure summary for hb_mcp_status.
 
     Reports how many of the canonical assistant tools are currently exposed to connected clients
-    (78 by default; up to 85 when the default-off source_structure group is enabled).
+    (87 by default across 14 groups; structure is default-ON; kill-switch drops structure's 7 tools).
     Exposure follows the per-group kill switches: a group turned off by ``HB_MCP_ASSISTANT_*=0`` is
     neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
     both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
@@ -697,7 +699,8 @@ class NasMcpBroker:
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
                 ),
                 "port_policy": "127.0.0.1:8765 host publish only",
-                # N8C-22 client-exposure summary (78 client-exposed default / 85 installed; per-group kill-switch aware).
+                # N8C-22 client-exposure summary (87 client-exposed default / 87 installed; 14 groups;
+                # source_structure default-ON; per-group kill-switch aware).
                 **assistant_client_exposure_status(),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),

@@ -64,7 +64,7 @@ Container ID / image digest: **not readable** without docker.sock or sudo (see d
 ## Known host-side deploy blocker
 
 - `sudo -n` for MCP runner **requires a password** from this agent session.
-- Installed example sudoers path (`/volume1/personal-assistant/bin/hb-mcp-runner`) **does not exist**; runner lives at `/volume2/personal-assistant/bin/hb-mcp-runner`.
+- Host sudoers path for the MCP runner had drifted relative to the live runner binary location (details redacted).
 - `bfetting` cannot open `/var/run/docker.sock` without sudo.
 
 Machine-readable: `08-predeploy-runtime-snapshot.json`.
