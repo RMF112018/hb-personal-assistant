@@ -229,7 +229,11 @@ def test_structure_default_on():
 
 
 def test_output_aliases_defined():
+    from hb_assistant.nas_mcp.broker import GATEWAY_ALLOWLIST
     from hb_assistant.nas_mcp.client_output_tools import ASSISTANT_OUTPUT_ALIASES, ALL_PA_OUTPUT_TOOLS
 
-    assert len(ASSISTANT_OUTPUT_ALIASES) == len(ALL_PA_OUTPUT_TOOLS)
+    assert len(ASSISTANT_OUTPUT_ALIASES) == len(ALL_PA_OUTPUT_TOOLS) == 10
     assert "assistant_output_stage" in ASSISTANT_OUTPUT_ALIASES
+    assert set(ASSISTANT_OUTPUT_ALIASES) <= GATEWAY_ALLOWLIST
+    for alias, pa in zip(ASSISTANT_OUTPUT_ALIASES, ALL_PA_OUTPUT_TOOLS, strict=True):
+        assert alias == "assistant_output_" + pa[len("pa_output_") :]

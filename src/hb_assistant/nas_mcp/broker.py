@@ -770,6 +770,15 @@ class NasMcpBroker:
             if not assistant_source_structure_enabled():
                 raise ValueError("assistant_source_structure_disabled")
             return self._invoke_assistant_source_structure(cfg, tool_name, arguments)
+        # N8C-24 client generated-output workspace — MUST run before the broad
+        # ``assistant_*`` catch-all below. ``assistant_output_*`` aliases start with
+        # ``assistant_`` but are NOT nav tools; they dispatch to the same handlers as
+        # ``pa_output_*``. Controlled writes (stage/commit/archive_commit) are in
+        # CLIENT_OUTPUT_WRITE_TOOLS, so they already passed the dispatch write-gate chain
+        # (safe-mode + blocked_write_tools when client_output_write_enabled() is off) above;
+        # server-side approval + idempotency + path safety are enforced inside the handler.
+        if tool_name in ALL_PA_OUTPUT_TOOLS or tool_name in ASSISTANT_OUTPUT_ALIASES:
+            return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name.startswith("assistant_"):
             if not assistant_nav_enabled():
                 raise ValueError("assistant_nav_disabled")
@@ -790,12 +799,6 @@ class NasMcpBroker:
             elif not artifact_workspace_enabled():
                 raise ValueError("artifact_workspace_disabled")
             return dispatch_artifact_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
-        if tool_name in ALL_PA_OUTPUT_TOOLS or tool_name in ASSISTANT_OUTPUT_ALIASES:
-            # N8C-24 client generated-output workspace. Controlled writes (stage/commit/archive_commit) are in
-            # CLIENT_OUTPUT_WRITE_TOOLS, so they already passed the dispatch write-gate chain (safe-mode +
-            # blocked_write_tools when client_output_write_enabled() is off) above; server-side approval +
-            # idempotency + path safety are enforced inside the handler. Reads are bounded.
-            return dispatch_client_output_tool(cfg, tool_name, arguments, runtime_commit=runtime_commit())
         if tool_name in PROMPT_ROUTING_TOOLS:
             # Prompt Preflight & Tool Routing. Read-only routing layer — never writes/stages/promotes/reads
             # source content. Gated by its own kill switch; gateway-reachable via GATEWAY_ALLOWLIST.
