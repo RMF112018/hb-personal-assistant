@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 114
+LATEST_SCHEMA_VERSION = 115
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7044,6 +7044,14 @@ class SQLiteMigrator:
 
         return V114_PROMPT_ROUTING_STATEMENTS
 
+    @staticmethod
+    def _v115_statements() -> list[str]:
+        # NAS Source-Structure Layered Index: root/folder/entity classification + summaries, routing
+        # hints, quality findings, and run audit. Populated OUTSIDE the request path; read-only surfaces.
+        from hb_assistant.store.source_structure_tables import V115_SOURCE_STRUCTURE_STATEMENTS
+
+        return V115_SOURCE_STRUCTURE_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -8968,6 +8976,20 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (114, 'v114_pa_prompt_routing_manifest', ?)",
+                    (now,),
+                )
+
+            # v115 (NAS Source-Structure Layered Index): deterministic root/folder/entity classification,
+            # bounded summaries, search-routing hints, quality findings, and run audit for the NAS source
+            # folders. Additive, all tables ship EMPTY; rows are only written by out-of-band CLI/scheduled
+            # jobs (tree ingest / bounded metadata scan / classify / quality). MCP + API handlers read
+            # these rows only — never scan live and never expose absolute host paths.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 115")
+            if cur.fetchone() is None:
+                for stmt in self._v115_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (115, 'v115_source_structure_layered_index', ?)",
                     (now,),
                 )
 

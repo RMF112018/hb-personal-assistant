@@ -194,6 +194,9 @@ _GROUP_FAMILY = {
     "source_connector": "assistant_source_connector", "answer_drafts": "assistant_answer_drafts",
     "workflows": "assistant_workflows", "feedback": "assistant_feedback",
     "action_stages": "assistant_action_stages", "quality": "assistant_quality",
+    # Source-structure map/route tools share the NAS source-discovery family (keeps family_for_tool
+    # total without adding a family). Default-off, so absent from the live surface until enabled.
+    "source_structure": "assistant_source_connector",
 }
 _OUTPUT_READS = frozenset({"pa_output_list", "pa_output_metadata", "pa_output_read_excerpt",
                            "pa_output_receipt_get", "pa_output_manifest_get", "pa_output_archive_plan",

@@ -313,6 +313,22 @@ def assistant_quality_enabled() -> bool:
     return True if override is None else override
 
 
+def assistant_source_structure_enabled() -> bool:
+    """NAS Source-Structure Layered Index read-only map/route tools (``assistant_source_root_map`` /
+    ``assistant_source_folder_map`` / ``assistant_source_search_route`` etc.).
+
+    Reads only — they return bounded, root-relative maps / routing hints / quality findings from the
+    precomputed source-structure index (built out-of-band by ``hb-assistant source-structure``). They
+    never scan a root, reindex, call a model, mutate anything, or expose an absolute path.
+
+    UNLIKE the other read-only assistant groups, this one is **DEFAULT-OFF (opt-in)**: the tools are
+    installed in the registry but not registered/dispatchable to clients until an operator explicitly
+    enables the group. Turn it on with ``HB_MCP_ASSISTANT_SOURCE_STRUCTURE=1``.
+    """
+    override = _env_bool("HB_MCP_ASSISTANT_SOURCE_STRUCTURE")
+    return False if override is None else override
+
+
 def artifact_workspace_enabled() -> bool:
     """N8C-23 Structured Intelligence Artifact Workspace tools (``pa_session_capture_*`` /
     ``pa_artifact_proposal_*`` / ``pa_artifact_promotion_*`` / ``pa_canonical_artifact_*`` /
@@ -395,6 +411,7 @@ def gate_status() -> dict[str, object]:
         "assistant_feedback_enabled": assistant_feedback_enabled(),
         "assistant_action_stages_enabled": assistant_action_stages_enabled(),
         "assistant_quality_enabled": assistant_quality_enabled(),
+        "assistant_source_structure_enabled": assistant_source_structure_enabled(),
         "artifact_workspace_enabled": artifact_workspace_enabled(),
         "client_tool_manifest_enabled": client_tool_manifest_enabled(),
         "prompt_preflight_enabled": prompt_preflight_enabled(),

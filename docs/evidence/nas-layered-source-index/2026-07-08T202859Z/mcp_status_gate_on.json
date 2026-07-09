@@ -1,0 +1,14 @@
+{
+  "summary": {
+    "broker_registered": 85,
+    "installed_total": 85,
+    "expected_exposed": 85,
+    "installed_but_disabled": [],
+    "status_advertised": 85,
+    "client_manifest_exposed": 85,
+    "callable_smoke_tested": 85,
+    "missing_from_client_manifest": 0,
+    "not_callable": 0
+  },
+  "conclusion": "NO CODE-LEVEL GAP: all 85 enabled canonical assistant tools (of 85 installed; 0 in default-off groups) are broker-registered, status-advertised, present in the live client manifest, and callable through the client wrapper. Any further gap is runtime/client-side (stale image, HB_MCP_ASSISTANT_* kill switch, or client tool-count limits), not a missing code layer."
+}
