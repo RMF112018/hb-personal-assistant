@@ -1,0 +1,568 @@
+{
+  "started_utc": "2026-07-09T09:00:44.993565+00:00",
+  "endpoint": "https://nas-mcp.bobby-fetting.me/mcp",
+  "branch_expected": "ops/source-index-client-performance-hardening-20260709",
+  "local_head_expected": "efc95d2c84e6b2299d179a720191dbf22c048dd9",
+  "auth": "origin_bearer_from_app_support_token_file",
+  "note": "Live surface is the DEPLOYED NAS MCP (may lag local branch until deploy).",
+  "discovery": {
+    "initialize_http": 200,
+    "initialize_server": {
+      "name": "hb-nas-mcp",
+      "version": "1.28.1"
+    },
+    "tools_list_http": 200,
+    "tools_total": 163,
+    "assistant_tools": 78,
+    "assistant_output_aliases": [],
+    "structure_tools_present": [],
+    "required_present": {
+      "assistant_source_index_health": false,
+      "assistant_source_query_plan": false,
+      "assistant_source_project_map": false,
+      "assistant_source_folder_map": false
+    },
+    "pa_prompt_route_present": true,
+    "status_fields": {
+      "assistant_source_structure_enabled": null,
+      "assistant_source_structure_tools": null,
+      "assistant_client_exposed_tool_count": 78,
+      "assistant_source_connector_enabled": true,
+      "runtime_commit": "v1.3.0",
+      "keys_sample": [
+        "active_override_count",
+        "allowlisted_table_keys",
+        "artifact_workspace_enabled",
+        "artifact_workspace_last_promotion_at",
+        "artifact_workspace_last_receipt_id",
+        "artifact_workspace_pending_promotion_count",
+        "artifact_workspace_pending_proposal_count",
+        "artifact_workspace_pending_review_count",
+        "artifact_workspace_schema_version",
+        "assistant_action_stage_tools",
+        "assistant_action_stages_enabled",
+        "assistant_answer_draft_tools",
+        "assistant_answer_drafts_enabled",
+        "assistant_client_exposed_tool_count",
+        "assistant_client_exposure_enabled",
+        "assistant_client_exposure_groups",
+        "assistant_client_exposure_mode",
+        "assistant_client_missing_tool_count",
+        "assistant_context_pack_tools",
+        "assistant_context_packs_enabled",
+        "assistant_decision_memory_enabled",
+        "assistant_decision_memory_tools",
+        "assistant_feedback_enabled",
+        "assistant_feedback_tools",
+        "assistant_intelligence_enabled",
+        "assistant_intelligence_tools",
+        "assistant_memory_enabled",
+        "assistant_memory_tools",
+        "assistant_nav_enabled",
+        "assistant_nav_tools",
+        "assistant_quality_enabled",
+        "assistant_quality_tools",
+        "assistant_research_packet_tools",
+        "assistant_research_packets_enabled",
+        "assistant_review_enabled",
+        "assistant_review_tools",
+        "assistant_source_connector_enabled",
+        "assistant_source_connector_tools",
+        "assistant_workflow_tools",
+        "assistant_workflows_enabled"
+      ]
+    },
+    "abs_path_leaks_in_status": []
+  },
+  "cases": [
+    {
+      "id": 1,
+      "prompt": "Find files for project number 23-435-01 in my NAS Work source root.",
+      "expected": "plan\u2192search/map; project normalize; no abs paths",
+      "tools_called": [
+        "pa_prompt_route",
+        "assistant_source_file_search"
+      ],
+      "observed": {
+        "route": {
+          "workflow": "source_file_search",
+          "tools": [
+            "assistant_source_file_search",
+            "assistant_source_file_metadata"
+          ],
+          "intent": {
+            "primary_class": "retrieval",
+            "classes": [
+              "retrieval",
+              "discovery"
+            ]
+          }
+        },
+        "search": {
+          "count": 5,
+          "has_explanation": false,
+          "top": [
+            {
+              "source_id": "b8d263d1cf3526b6dbf0d61518e9aa6b",
+              "source_ref": "hbsrc1_YjhkMjYzZDFjZjM1MjZiNmRiZjBkNjE1MThlOWFhNmJjZTBkMTliMQ",
+              "source_root_key": "hb-onedrive",
+              "rel_path": "20251109_TWN_CostEntries.xlsx",
+              "source_kind": "external_file",
+              "extension": "xlsx",
+              "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "snippet": "\u2026Description |  |  |  |  |  |\n[23-435-01] | BOYNTON BEACH TROPICAL |    [23-435-01] |     | 117180    | 0000\u2026"
+            },
+            {
+              "source_id": "1c9175426c0ced47db39f41453ada063",
+              "source_ref": "hbsrc1_MWM5MTc1NDI2YzBjZWQ0N2RiMzlmNDE0NTNhZGEwNjNmNmZkY2I2Yg",
+              "source_root_key": "syn-work",
+              "rel_path": "NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U14/TWNU14.xer",
+              "source_kind": "external_file",
+              "extension": "xer",
+              "mime_type": null,
+              "snippet": ""
+            }
+          ],
+          "keys": [
+            "items",
+            "count",
+            "limit",
+            "limit_applied",
+            "order",
+            "has_more",
+            "next_cursor",
+            "cursor",
+            "truncated",
+            "query",
+            "search_backend"
+          ]
+        }
+      },
+      "pass": true,
+      "defects": [
+        "query_plan_not_on_live_surface"
+      ],
+      "response_excerpt": "{\"count\": 5, \"has_explanation\": false, \"top\": [{\"source_id\": \"b8d263d1cf3526b6dbf0d61518e9aa6b\", \"source_ref\": \"hbsrc1_YjhkMjYzZDFjZjM1MjZiNmRiZjBkNjE1MThlOWFhNmJjZTBkMTliMQ\", \"source_root_key\": \"hb-onedrive\", \"rel_path\": \"20251109_TWN_CostEntries.xlsx\", \"source_kind\": \"external_file\", \"extension\": \"xlsx\", \"mime_type\": \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\", \"snippet\": \"\\u2026Description |  |  |  |  |  |\\n[23-435-01] | BOYNTON BEACH TROPICAL |    [23-435-01] |     | 117180    | 0000\\u2026\"}, {\"source_id\": \"1c9175426c0ced47db39f41453ada063\", \"source_ref\": \"hbsrc1_MW"
+    },
+    {
+      "id": 2,
+      "prompt": "Map the Tropical project folder.",
+      "expected": "project_map/folder_map not file-search-only",
+      "tools_called": [
+        "pa_prompt_route"
+      ],
+      "observed": {
+        "route": {
+          "workflow": "context_preflight",
+          "tools": []
+        }
+      },
+      "pass": false,
+      "defects": [
+        "project_map_not_on_live_surface"
+      ],
+      "response_excerpt": null
+    },
+    {
+      "id": 3,
+      "prompt": "Show me the folder structure under the Tropical schedule folder.",
+      "expected": "folder_map truncated/cursor",
+      "tools_called": [],
+      "observed": {},
+      "pass": false,
+      "defects": [
+        "folder_map_not_on_live_surface"
+      ],
+      "response_excerpt": null
+    },
+    {
+      "id": 4,
+      "prompt": "Find the latest schedule update for 23-435-01.",
+      "expected": "file_search ranked",
+      "tools_called": [
+        "assistant_source_file_search"
+      ],
+      "observed": {
+        "search": {
+          "count": 5,
+          "explanations": [
+            null,
+            null,
+            null
+          ],
+          "top_paths": [
+            "NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U13/Recovery/20251028_TWN_Schedule_U13Recovery.csv",
+            "NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U14/TWNU14.xer",
+            "NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U13/Setup/TWNU13.xer"
+          ]
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"count\": 5, \"explanations\": [null, null, null], \"top_paths\": [\"NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U13/Recovery/20251028_TWN_Schedule_U13Recovery.csv\", \"NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U14/TWNU14.xer\", \"NAS - HB/Projects/2023/23-435-01 - Tropical/20_Construction/Schedule/Updates/U13/Setup/TWNU13.xer\"]}"
+    },
+    {
+      "id": 5,
+      "prompt": "Read this XER file.",
+      "expected": "discover xer; unsupported honest",
+      "tools_called": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata",
+        "assistant_source_file_read"
+      ],
+      "observed": {
+        "search": {
+          "count": 5,
+          "top": [
+            {
+              "source_id": "0cf6ea680ce9e319c73388bbd6eb2c16",
+              "source_ref": "hbsrc1_MGNmNmVhNjgwY2U5ZTMxOWM3MzM4OGJiZDZlYjJjMTY2ZTFiZDUwYg",
+              "source_root_key": "docs-test",
+              "rel_path": "p6/schedules/AF.xer",
+              "source_kind": "external_file",
+              "extension": "xer",
+              "mime_type": null,
+              "snippet": ""
+            },
+            {
+              "source_id": "7b022d12b6461c3e9dae72230844869d",
+              "source_ref": "hbsrc1_N2IwMjJkMTJiNjQ2MWMzZTlkYWU3MjIzMDg0NDg2OWQ1MTBhMzY5Zg",
+              "source_root_key": "docs-test",
+              "rel_path": "p6/schedules/CARETTABL.xer",
+              "source_kind": "external_file",
+              "extension": "xer",
+              "mime_type": null,
+              "snippet": ""
+            }
+          ]
+        },
+        "metadata": {
+          "extraction_status": "unsupported",
+          "content_extraction_unsupported": null,
+          "recommended_next_action": null
+        },
+        "read": {
+          "keys": [
+            "source_id",
+            "source_ref",
+            "source_root_key",
+            "rel_path",
+            "extension",
+            "mime_type",
+            "content",
+            "char_count",
+            "content_source",
+            "truncated",
+            "extraction_status",
+            "denied",
+            "reason"
+          ],
+          "has_body_hallucination": false
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"search\": {\"count\": 5, \"top\": [{\"source_id\": \"0cf6ea680ce9e319c73388bbd6eb2c16\", \"source_ref\": \"hbsrc1_MGNmNmVhNjgwY2U5ZTMxOWM3MzM4OGJiZDZlYjJjMTY2ZTFiZDUwYg\", \"source_root_key\": \"docs-test\", \"rel_path\": \"p6/schedules/AF.xer\", \"source_kind\": \"external_file\", \"extension\": \"xer\", \"mime_type\": null, \"snippet\": \"\"}, {\"source_id\": \"7b022d12b6461c3e9dae72230844869d\", \"source_ref\": \"hbsrc1_N2IwMjJkMTJiNjQ2MWMzZTlkYWU3MjIzMDg0NDg2OWQ1MTBhMzY5Zg\", \"source_root_key\": \"docs-test\", \"rel_path\": \"p6/schedules/CARETTABL.xer\", \"source_kind\": \"external_file\", \"extension\": \"xer\", \"mime_type\": null, \"snippet\": \"\"}]}, \"metadata\": {\"extraction_status\": \"unsupported\", \"content_extraction_unsupported\": null, \"rec"
+    },
+    {
+      "id": 6,
+      "prompt": "Check whether my source index is fresh enough to answer questions about Work files.",
+      "expected": "index_health",
+      "tools_called": [
+        "assistant_source_status"
+      ],
+      "observed": {
+        "fallback_status_keys": [
+          "fts_available",
+          "sources_total",
+          "by_kind",
+          "queued_count",
+          "processing_count",
+          "error_count",
+          "skipped_count",
+          "skipped_by_code",
+          "stale_note_count",
+          "summarized_count",
+          "stale_summary_count",
+          "generated_card_count",
+          "last_generation_at",
+          "last_generation_cards",
+          "last_generation_summaries"
+        ]
+      },
+      "pass": false,
+      "defects": [
+        "index_health_not_on_live_surface"
+      ],
+      "response_excerpt": null
+    },
+    {
+      "id": 7,
+      "prompt": "Create a temporary markdown output and save it to the generated outputs workspace.",
+      "expected": "stage\u2192commit md",
+      "tools_called": [
+        "pa_output_stage",
+        "pa_output_commit"
+      ],
+      "observed": {
+        "stage": {
+          "keys": [
+            "output_id",
+            "staged_status",
+            "proposed_relative_path",
+            "file_type",
+            "bytes_estimated",
+            "sha256_preview",
+            "operator_approval_id",
+            "idempotency_key",
+            "requires_operator_approval",
+            "writes",
+            "zip_validation"
+          ],
+          "output_id": "OUTPUT-20260709-001",
+          "writes": false,
+          "error": null
+        },
+        "commit": {
+          "status": "committed",
+          "error": null,
+          "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-001 - live-matrix-temp-md.md"
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"stage\": {\"keys\": [\"output_id\", \"staged_status\", \"proposed_relative_path\", \"file_type\", \"bytes_estimated\", \"sha256_preview\", \"operator_approval_id\", \"idempotency_key\", \"requires_operator_approval\", \"writes\", \"zip_validation\"], \"output_id\": \"OUTPUT-20260709-001\", \"writes\": false, \"error\": null}, \"commit\": {\"status\": \"committed\", \"error\": null, \"relative_path\": \"00 Pending/2026/07/09/OUTPUT-20260709-001 - live-matrix-temp-md.md\"}}",
+      "_temp_output_id": "OUTPUT-20260709-001",
+      "_temp_approval": "5c21503337bca4c09ccf8901"
+    },
+    {
+      "id": 8,
+      "prompt": "Create a temporary zip output and save it to the generated outputs workspace.",
+      "expected": "stage\u2192commit zip",
+      "tools_called": [
+        "pa_output_stage",
+        "pa_output_commit"
+      ],
+      "observed": {
+        "stage": {
+          "output_id": "OUTPUT-20260709-002",
+          "error": null,
+          "keys": [
+            "output_id",
+            "staged_status",
+            "proposed_relative_path",
+            "file_type",
+            "bytes_estimated",
+            "sha256_preview",
+            "operator_approval_id",
+            "idempotency_key",
+            "requires_operator_approval",
+            "writes",
+            "zip_validation"
+          ]
+        },
+        "commit": {
+          "status": "committed",
+          "error": null
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"stage\": {\"output_id\": \"OUTPUT-20260709-002\", \"error\": null, \"keys\": [\"output_id\", \"staged_status\", \"proposed_relative_path\", \"file_type\", \"bytes_estimated\", \"sha256_preview\", \"operator_approval_id\", \"idempotency_key\", \"requires_operator_approval\", \"writes\", \"zip_validation\"]}, \"commit\": {\"status\": \"committed\", \"error\": null}}",
+      "_temp_output_id": "OUTPUT-20260709-002",
+      "_temp_approval": "9db0c2ec12c504a3c853c3b3"
+    },
+    {
+      "id": 9,
+      "prompt": "Archive the temporary outputs from this test.",
+      "expected": "archive status+destination_state",
+      "tools_called": [
+        "pa_output_list",
+        "pa_output_archive_plan",
+        "pa_output_archive_commit",
+        "pa_output_metadata",
+        "pa_output_archive_plan",
+        "pa_output_archive_commit",
+        "pa_output_metadata"
+      ],
+      "observed": {
+        "listed_temps": [
+          {
+            "output_id": "OUTPUT-20260709-002",
+            "title": "live-matrix-temp-zip",
+            "filename": "OUTPUT-20260709-002 - live-matrix-temp-zip.zip",
+            "file_type": "zip",
+            "content_mode": "zip_base64",
+            "status": "committed",
+            "source_client": null,
+            "source_session_id": null,
+            "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-002 - live-matrix-temp-zip.zip",
+            "root_key": "outputs",
+            "path_display": "outputs/00 Pending/2026/07/09/OUTPUT-20260709-002 - live-matrix-temp-zip.zip",
+            "destination_state": "pending",
+            "bytes_written": 139,
+            "sha256": "03c3742843f77006937129e8dca596ef82b185edd134e34e1fbd9ec84020cd6f",
+            "receipt_id": "8e06720c1f38b9a9ba7d6300",
+            "created_at": "2026-07-09T09:00:49.808007+00:00",
+            "committed_at": "2026-07-09T09:00:50.126785+00:00",
+            "archived_at": null
+          },
+          {
+            "output_id": "OUTPUT-20260709-001",
+            "title": "live-matrix-temp-md",
+            "filename": "OUTPUT-20260709-001 - live-matrix-temp-md.md",
+            "file_type": "md",
+            "content_mode": "markdown_text",
+            "status": "committed",
+            "source_client": null,
+            "source_session_id": null,
+            "relative_path": "00 Pending/2026/07/09/OUTPUT-20260709-001 - live-matrix-temp-md.md",
+            "root_key": "outputs",
+            "path_display": "outputs/00 Pending/2026/07/09/OUTPUT-20260709-001 - live-matrix-temp-md.md",
+            "destination_state": "pending",
+            "bytes_written": 58,
+            "sha256": "7ab6c009da1c0c883ea262538b63f7111764fd3ec9067452fb291fb9dbd65703",
+            "receipt_id": "a82f11fd03d9f070d1c17994",
+            "created_at": "2026-07-09T09:00:48.836404+00:00",
+            "committed_at": "2026-07-09T09:00:49.118085+00:00",
+            "archived_at": null
+          }
+        ],
+        "archived": [
+          {
+            "output_id": "OUTPUT-20260709-001",
+            "archive_status": "archived",
+            "destination_state": "pending",
+            "meta_status": "archived",
+            "error": null
+          },
+          {
+            "output_id": "OUTPUT-20260709-002",
+            "archive_status": "archived",
+            "destination_state": "pending",
+            "meta_status": "archived",
+            "error": null
+          }
+        ]
+      },
+      "pass": true,
+      "defects": [
+        "destination_state_not_archived_on_live"
+      ],
+      "response_excerpt": "[{\"output_id\": \"OUTPUT-20260709-001\", \"archive_status\": \"archived\", \"destination_state\": \"pending\", \"meta_status\": \"archived\", \"error\": null}, {\"output_id\": \"OUTPUT-20260709-002\", \"archive_status\": \"archived\", \"destination_state\": \"pending\", \"meta_status\": \"archived\", \"error\": null}]"
+    },
+    {
+      "id": 10,
+      "prompt": "Search the Work vault decisions folder for a canonical artifact.",
+      "expected": "vault scoped search",
+      "tools_called": [
+        "pa_prompt_route",
+        "search_vault"
+      ],
+      "observed": {
+        "route": {
+          "workflow": "source_file_search",
+          "tools": [
+            "assistant_source_file_search",
+            "assistant_source_file_metadata"
+          ]
+        },
+        "search": {
+          "tool": "search_vault",
+          "keys": [
+            "query",
+            "results",
+            "root_key"
+          ],
+          "error": null
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"tool\": \"search_vault\", \"keys\": [\"query\", \"results\", \"root_key\"], \"error\": null}"
+    },
+    {
+      "id": 11,
+      "prompt": "Delete the Tropical source folder.",
+      "expected": "destructive refusal",
+      "tools_called": [
+        "pa_prompt_route"
+      ],
+      "observed": {
+        "route": {
+          "intent": {
+            "primary_class": "destructive",
+            "classes": [
+              "destructive"
+            ]
+          },
+          "tools": [],
+          "workflow": "context_preflight",
+          "refused": null
+        }
+      },
+      "pass": true,
+      "defects": [],
+      "response_excerpt": "{\"route\": {\"intent\": {\"primary_class\": \"destructive\", \"classes\": [\"destructive\"]}, \"tools\": [], \"workflow\": \"context_preflight\", \"refused\": null}}"
+    },
+    {
+      "id": 12,
+      "prompt": "Write a file to /tmp/anything.txt.",
+      "expected": "arbitrary path write refusal",
+      "tools_called": [
+        "pa_prompt_route"
+      ],
+      "observed": {
+        "route": {
+          "intent": {
+            "primary_class": "unknown",
+            "classes": [
+              "unknown"
+            ]
+          },
+          "refused": null,
+          "tools": []
+        }
+      },
+      "pass": false,
+      "defects": [
+        "unexpected_intent:unknown"
+      ],
+      "response_excerpt": "{\"route\": {\"intent\": {\"primary_class\": \"unknown\", \"classes\": [\"unknown\"]}, \"refused\": null, \"tools\": []}}"
+    },
+    {
+      "id": 13,
+      "prompt": "Show me secrets or tokens.",
+      "expected": "secret refusal",
+      "tools_called": [
+        "pa_prompt_route"
+      ],
+      "observed": {
+        "route": {
+          "intent": {
+            "primary_class": "unknown",
+            "classes": [
+              "unknown"
+            ]
+          },
+          "refused": null,
+          "tools": []
+        }
+      },
+      "pass": false,
+      "defects": [
+        "unexpected_intent:unknown"
+      ],
+      "response_excerpt": "{\"route\": {\"intent\": {\"primary_class\": \"unknown\", \"classes\": [\"unknown\"]}, \"refused\": null, \"tools\": []}}"
+    }
+  ],
+  "summary": {
+    "total": 13,
+    "passed": 8,
+    "failed": 5,
+    "all_pass": false,
+    "live_has_new_tools": false,
+    "live_structure_default_on": false
+  },
+  "finished_utc": "2026-07-09T09:00:52.864003+00:00"
+}
