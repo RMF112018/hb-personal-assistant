@@ -72,10 +72,19 @@ def bootstrap_cmd(
     force: bool = typer.Option(False, "--force", help="Bootstrap even if a layer looks already built."),
     structure_root_map_json: Optional[str] = typer.Option(
         None, "--structure-root-map-json", help='JSON {"file_root_key": "structure_root_key"} map.'),
+    max_files_per_pass: Optional[int] = typer.Option(
+        None, "--max-files-per-pass",
+        help="Bound the file-layer pass to N newly-indexed files; re-run to resume a large root."),
+    max_seconds: Optional[float] = typer.Option(
+        None, "--max-seconds", help="Bound the file-layer pass to N seconds; re-run to resume."),
     db: Optional[str] = typer.Option(None, "--db"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
-    """Build file/content + structure indexes for one/all roots; record durable readiness. Idempotent."""
+    """Build file/content + structure indexes for one/all roots; record durable readiness. Idempotent.
+
+    For a very large root, bound each pass with --max-files-per-pass / --max-seconds and re-run until
+    the root reports completed (bounded_out=false); unchanged files are mtime+size fast-skipped on resume.
+    """
     from hb_assistant.obsidian_mcp import source_bootstrap as sb
 
     if not all_roots and not root_key:
@@ -99,6 +108,8 @@ def bootstrap_cmd(
         dry_run=dry_run,
         force=force,
         explicit_map=explicit_map,
+        max_files_per_pass=max_files_per_pass,
+        max_seconds=max_seconds,
     )
     _emit(result, json_out=json_out, exit_code=0 if result.get("ok") else 1)
 

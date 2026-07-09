@@ -157,6 +157,26 @@ class SourceIndexRepository:
                 ).fetchall()
             }
 
+    def active_index_state(
+        self, source_root_key: str, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, tuple[int | None, int | None]]:
+        """Preloaded change-detection state for all active files under a root:
+        ``rel_path -> (mtime_ns, size_bytes)``.
+
+        One query so a bounded/resumable rescan can mtime+size fast-skip unchanged files without a
+        per-file DB lookup or a re-hash (the hot path for a 400k-file root). Deleted rows excluded.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT s.rel_path, m.mtime_ns, m.size_bytes "
+                "FROM source_intelligence_sources s "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "WHERE s.source_kind='external_file' AND s.source_root_key=? "
+                "AND s.rel_path IS NOT NULL AND s.deleted=0",
+                (source_root_key,),
+            ).fetchall()
+        return {row[0]: (row[1], row[2]) for row in rows}
+
     def list_root_file_sources(self, source_root_key: str, *,
                                conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         """Active external_file sources under a root: (source_id, rel_path, project_number).
