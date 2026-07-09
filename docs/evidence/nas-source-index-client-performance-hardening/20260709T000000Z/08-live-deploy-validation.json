@@ -1,0 +1,54 @@
+{
+  "captured_utc": "2026-07-09T09:07:03.427265+00:00",
+  "gate": "BLOCKED_AWAITING_OPERATOR_SUDO",
+  "deployed": false,
+  "branch": "ops/source-index-client-performance-hardening-20260709",
+  "local_head": "2a61b4fb01d785d0832c60a0247243a6771b4e77",
+  "origin_main": "2e98a03d56f54b25fef86bd3b4c19a89185988cc",
+  "build": {
+    "image_tag": "hb-personal-assistant:nas",
+    "image_id": "sha256:e33083c0124512562dcd70f6b76b119c60c04489fbe4805f88dce2b60cbefc76",
+    "platform": "linux/amd64",
+    "tarball_sha256": "675a637aeec81a4c594294102bb075c313df835075fc817d5f56fc2a953520f4",
+    "tarball_bytes": 107740471,
+    "nas_staging_path": "/tmp/hb-nas-source-index-2a61b4fb01d7.tar.gz",
+    "operator_script": "/tmp/hb-deploy-source-index.sh"
+  },
+  "blocker": {
+    "type": "deployment_host_privilege",
+    "detail": "sudo password required for docker load and hb-mcp-runner; NOPASSWD path points to missing /volume1 runner",
+    "attempted": "sudo -n /usr/local/bin/docker load < tarball \u2192 password required"
+  },
+  "post_attempt_live_surface": {
+    "health_http": 200,
+    "health_body": {
+      "status": "ok",
+      "surface": "nas_mcp",
+      "nas_readonly": true,
+      "profile": "remote_cloudflare",
+      "origin_auth_required": true
+    },
+    "mcp_noauth_http": 401,
+    "mcp_init_http": 200,
+    "serverInfo": {
+      "name": "hb-nas-mcp",
+      "version": "1.28.1"
+    },
+    "tools_total": 163,
+    "assistant_tools": 78,
+    "required_tools_present": {
+      "assistant_source_index_health": false,
+      "assistant_source_query_plan": false,
+      "assistant_source_project_map": false,
+      "assistant_source_folder_map": false
+    },
+    "assistant_output_alias_count": 0,
+    "trailing_slash": {
+      "http": 307,
+      "location": "http://127.0.0.1:8765/mcp"
+    }
+  },
+  "matrix_rerun": "NOT_RUN_deploy_not_applied",
+  "thirteen_cases": "see 07-live-connected-client-results.md (pre-deploy baseline); not re-run because runtime unchanged",
+  "push_pr_authorized": false
+}

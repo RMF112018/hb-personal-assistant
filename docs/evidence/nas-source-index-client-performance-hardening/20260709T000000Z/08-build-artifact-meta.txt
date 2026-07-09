@@ -1,0 +1,7 @@
+tag=hb-nas-source-index-2a61b4fb01d7
+head=2a61b4fb01d785d0832c60a0247243a6771b4e77
+image_id=sha256:e33083c0124512562dcd70f6b76b119c60c04489fbe4805f88dce2b60cbefc76
+tarball=/tmp/hb-nas-source-index-2a61b4fb01d7.tar.gz
+675a637aeec81a4c594294102bb075c313df835075fc817d5f56fc2a953520f4  /tmp/hb-nas-source-index-2a61b4fb01d7.tar.gz
+nas_path=/tmp/hb-nas-source-index-2a61b4fb01d7.tar.gz
+operator_script=/tmp/hb-deploy-source-index.sh
