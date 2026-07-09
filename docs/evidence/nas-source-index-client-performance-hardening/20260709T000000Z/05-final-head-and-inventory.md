@@ -1,37 +1,46 @@
 # 05 — Final HEAD and inventory
 
-## Authoritative closeout tip
+## Authoritative tip
 
 | Field | Value |
 |-------|-------|
-| **Final HEAD** | `bdced1bede938792aac1c3fd614876bdc6ff50a9` |
+| **Final HEAD** | `38741bcc7ffd501c9c7f8d6e35084d55b6304d43` |
 | **Branch** | `ops/source-index-client-performance-hardening-20260709` |
-| **Working tree after this evidence stamp** | will be clean after the commit that includes this file |
+| **Working tree at generation of this content** | see status below; commit this file for clean tree |
 
-### Commit chain (important hashes)
+### Verify
+
+```bash
+cd /Users/bobbyfetting/hb-personal-assistant-worktrees/ops/source-index-client-performance-hardening-20260709
+git rev-parse HEAD
+git log --oneline --decorate -8
+git status --short
+```
+
+### Commit roles
 
 | Role | Hash |
 |------|------|
-| **Closeout tip (this pack)** | `21d1aa55eedb524839e59557998ebd88ff954125` |
-| Evidence reconcile pack | `b695f3c81ad9d65b3c2cc96a5614e560a4b5a66f` |
+| **Tip when this file content was generated** | `38741bcc7ffd501c9c7f8d6e35084d55b6304d43` |
+| Closeout evidence pack | `b695f3c81ad9d65b3c2cc96a5614e560a4b5a66f` |
 | Docs hash record | `d8dfa5ee4b2044999f2c1cb181f0abfbdc08f89a` |
 | **Implementation** | `6f54bdd017cdb51f6002322b6386f2752324e401` |
-| Base `origin/main` (at branch create) | `4c510db65a4fe7409c80e810baf3fd17e316133d` |
+| Base at branch create | `4c510db65a4fe7409c80e810baf3fd17e316133d` |
 
 ### HEAD mismatch resolved
 
-Earlier session summary reported `d8dfa5ee` as HEAD while `04-final-report.md` listed implementation `6f54bdd0` as final commit. Both were true at different times:
+| Claim | Hash | Meaning |
+|-------|------|---------|
+| Session summary HEAD | `d8dfa5ee` | Tip after docs-only hash note |
+| Old final-report final commit | `6f54bdd0` | Implementation only |
+| **Use for tip** | `38741bcc7ffd501c9c7f8d6e35084d55b6304d43` (then re-run `git rev-parse HEAD` after any later commit) | Branch tip |
 
-1. `6f54bdd0` = feature implementation  
-2. `d8dfa5ee` = docs-only update of the report hash field  
-3. `b695f3c8` + this tip = full closeout evidence reconciliation  
-
-**Authoritative tip for PR/push decisions:** `bdced1bede938792aac1c3fd614876bdc6ff50a9` (after the stamp commit lands, re-read this file from that commit).
-
-### Recent log (at stamp generation)
+### Recent log (at generation)
 
 ```
-21d1aa55 (HEAD -> ops/source-index-client-performance-hardening-20260709) docs(evidence): stamp authoritative closeout HEAD hash
+38741bcc (HEAD -> ops/source-index-client-performance-hardening-20260709) docs(evidence): final HEAD stamp for closeout tip
+bdced1be docs(evidence): fix closeout HEAD inventory text and final report
+21d1aa55 docs(evidence): stamp authoritative closeout HEAD hash
 b695f3c8 docs(evidence): reconcile HEAD, inventory, and MCP client closeout pack
 d8dfa5ee docs(evidence): record final commit hash for source-index hardening
 6f54bdd0 feat(nas): source index health, query plan, default-on structure map
@@ -39,81 +48,66 @@ d8dfa5ee docs(evidence): record final commit hash for source-index hardening
 e06ce14a feat(nas): source-structure layered index + read-only API + default-off MCP tools (V115)
 ```
 
-### status -sb (at stamp generation)
+### status -sb
 
 ```
-## ops/source-index-client-performance-hardening-20260709...origin/main [ahead 4, behind 2]
+## ops/source-index-client-performance-hardening-20260709...origin/main [ahead 6, behind 2]
 ```
 
-### status --short (at stamp generation)
+### status --short
 
 ```
 (clean)
 ```
 
-Also: `05-head-reconciliation.md`, `05-git-snapshot.txt`.
+## Assistant tool inventory
 
-## Assistant tool inventory (worktree code + client-style MCP registration)
+| Metric | Value |
+|--------|-------|
+| Canonical ALL_ASSISTANT_TOOLS | **87** |
+| Groups | **14** |
+| Default client-exposed | **87** (structure default-ON) |
+| Structure kill-switch OFF | **80** |
+| assistant_* with output aliases | **97** (87+10) |
+| Connector tools | **8** |
+| Structure tools | **7** |
 
-| Metric | Value | Proof |
-|--------|-------|-------|
-| Canonical `ALL_ASSISTANT_TOOLS` | **87** | broker constant / inventory tests |
-| Groups | **14** | includes `source_structure` |
-| Default client-exposed | **87** | `hb_mcp_status.assistant_client_exposed_tool_count` with structure ON |
-| Structure kill-switch OFF exposed | **80** | 87 − 7 structure tools |
-| Registered `assistant_*` incl. output aliases | **97** | 87 + 10 `assistant_output_*` (writes enabled) |
-| Connector tools | **8** | includes health + query_plan |
-| Structure tools | **7** | map/route/quality |
+Raw proof: `05-mcp-client-discovery.json.txt`.
 
-Evidence raw dump: `05-mcp-client-discovery.json.txt`.
+## Structure default-ON
 
-## Structure default-ON proof
+- Env unset → enabled true
+- Status exposes 7 structure tools; group `source_structure` present
+- Discoverable: `assistant_source_index_health`, `assistant_source_query_plan`, `assistant_source_project_map`, `assistant_source_folder_map`
 
-With `HB_MCP_ASSISTANT_SOURCE_STRUCTURE` **unset**:
+## Kill-switch HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0
 
-- `assistant_source_structure_enabled()` → **true**
-- `hb_mcp_status.assistant_source_structure_enabled` → **true**
-- `assistant_source_structure_tools` length **7**
-- Exposure groups include **`source_structure`**
-- Tools registered without opt-in: `assistant_source_project_map`, `assistant_source_folder_map`, `assistant_source_index_health`, `assistant_source_query_plan`
+- Structure tools unregistered; dispatch root_map → `assistant_source_structure_disabled`
+- Health/plan remain; exposed 80
 
-## Kill-switch `HB_MCP_ASSISTANT_SOURCE_STRUCTURE=0` proof
+## assistant_output_* aliases
 
-- Structure tools **not** registered
-- `assistant_source_root_map` dispatch → `ok=false`, error `assistant_source_structure_disabled`
-- Connector tools **remain** (health + plan still registered)
-- Exposed count **80**
+All 10 registered and on GATEWAY_ALLOWLIST.
 
-## Discoverability checklist
+## Live NAS MCP
 
-| Tool / class | Result |
-|--------------|--------|
-| `assistant_source_index_health` | registered; dispatch ok |
-| `assistant_source_query_plan` | registered; dispatch ok |
-| `assistant_source_project_map` | registered; gateway query ok |
-| `assistant_source_folder_map` | registered |
-| `assistant_output_*` (10) | registered; all on `GATEWAY_ALLOWLIST` |
+| URL | Result |
+|-----|--------|
+| https://nas-mcp.bobby-fetting.me/health | **200** |
+| https://nas-mcp.bobby-fetting.me/mcp | **401** (origin auth required; no bearer in session) |
 
-## Live hosted NAS MCP
-
-| Check | Result |
-|-------|--------|
-| `https://nas-mcp.bobby-fetting.me/health` | **200** ok, `origin_auth_required=true` |
-| `https://nas-mcp.bobby-fetting.me/mcp` | **401** unauthorized (no origin bearer in session) |
-
-See `05-live-nas-mcp-probe.md`. Authenticated live matrix still pending operator credentials.
+See `05-live-nas-mcp-probe.md`.
 
 ## Pytest
 
-| Artifact | Content |
-|----------|---------|
-| `05-final-pytest-command.txt` | Exact command only |
-| `05-final-pytest-with-command.txt` | Command + full run, **exit 0** |
-| `final-pytest.txt` | Earlier output-only run |
+| File | Purpose |
+|------|---------|
+| `05-final-pytest-command.txt` | Exact command |
+| `05-final-pytest-with-command.txt` | Command + output, exit 0 |
 
-## Push / PR gate
+## Push/PR gate
 
-**Do not push or open a PR** until live connected-client matrix is completed with origin auth, **or** the operator explicitly accepts PR with live validation pending.
+Do not push/PR until live connected-client matrix with origin auth, or operator accepts pending live validation.
 
-Operator script: `03-operator-connected-client-test-script.md`  
+Operator: `03-operator-connected-client-test-script.md`  
 Offline matrix: `05-offline-prompt-matrix.json.txt`
