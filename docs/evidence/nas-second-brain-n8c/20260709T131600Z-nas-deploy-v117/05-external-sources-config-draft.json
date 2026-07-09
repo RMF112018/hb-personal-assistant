@@ -1,0 +1,35 @@
+{
+  "external_source_index_enabled": true,
+  "external_source_watch_enabled": false,
+  "external_sources": [
+    {
+      "source_root_key": "vault",
+      "path": "/volume2/personal-assistant/vault",
+      "enabled": true,
+      "source_kind": "external_file",
+      "sensitive": false
+    },
+    {
+      "source_root_key": "work",
+      "path": "/volume1/homes/bfetting/Work",
+      "enabled": true,
+      "source_kind": "external_file",
+      "sensitive": false
+    },
+    {
+      "source_root_key": "home",
+      "path": "/volume1/homes/bfetting/Home",
+      "enabled": true,
+      "source_kind": "external_file",
+      "sensitive": true
+    },
+    {
+      "source_root_key": "macbook_backup",
+      "path": "/volume1/homes/bfetting/Backup/MacBook-Pro.local/Users/bobbyfetting",
+      "enabled": true,
+      "source_kind": "external_file",
+      "sensitive": true
+    }
+  ],
+  "schema_version": 7
+}
