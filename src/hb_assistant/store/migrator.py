@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 120
+LATEST_SCHEMA_VERSION = 121
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7103,6 +7103,14 @@ class SQLiteMigrator:
 
         return V120_MANIFEST_ENTRY_CLASSIFICATION_STATEMENTS
 
+    @staticmethod
+    def _v121_statements() -> list[str]:
+        from hb_assistant.store.pa_client_tool_manifest_v121 import (
+            V121_CLIENT_TOOL_MANIFEST_STATEMENTS,
+        )
+
+        return V121_CLIENT_TOOL_MANIFEST_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9101,6 +9109,16 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (120, 'v120_manifest_entry_classification', ?)",
+                    (now,),
+                )
+
+            # v121 manifest gateway allowlist snapshot for independent freshness checks.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 121")
+            if cur.fetchone() is None:
+                for stmt in self._v121_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (121, 'v121_manifest_gateway_allowlist', ?)",
                     (now,),
                 )
 

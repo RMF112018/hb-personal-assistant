@@ -1099,18 +1099,18 @@ def _freshness_view(freshness: dict[str, Any] | None, is_write: bool) -> dict[st
         return {"checked": False, "stale": False, "staleness_state": "unknown",
                 "warnings": [], "write_blocked_by_staleness": False}
     state = str(freshness.get("staleness_state") or "unknown")
-    # Honest failure: check_failed / indeterminate never report as current.
-    if state in ("check_failed", "indeterminate", "unknown") and freshness.get("check_error"):
-        stale = True
-    else:
-        stale = bool(freshness.get("stale"))
+    stale = bool(freshness.get("stale")) or state in ("check_failed",)
+    write_blocked = is_write and (
+        stale or state in ("indeterminate", "check_failed")
+    )
     return {
         "checked": True,
         "stale": stale,
         "staleness_state": state,
         "warnings": list(freshness.get("warnings", [])),
-        "write_blocked_by_staleness": bool(stale and is_write),
+        "write_blocked_by_staleness": write_blocked,
         "categories": freshness.get("categories") or {},
+        "category_status": freshness.get("category_status") or {},
     }
 
 

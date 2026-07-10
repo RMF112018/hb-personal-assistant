@@ -51,14 +51,23 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
     On failure returns check_failed (stale=true), never a false current state.
     """
     try:
-        from ..obsidian_mcp.client_tool_manifest import (
-            ClientToolManifestRepository,  # noqa: PLC0415
+        from ..obsidian_mcp.client_tool_manifest import (  # noqa: PLC0415
+            ClientToolManifestRepository,
+            build_live_surface_fingerprints,
         )
+        from .artifact_tools import _build_tool_index, _runtime_manifest_build_kwargs  # noqa: PLC0415
         from .broker import GATEWAY_ALLOWLIST, runtime_commit  # noqa: PLC0415
-        from .live_tool_surface import surface_profile_label  # noqa: PLC0415
+        from .live_tool_surface import gate_state_snapshot, surface_profile_label  # noqa: PLC0415
 
         groups = current_tool_groups(config)
         live_gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
+        build_kwargs = _runtime_manifest_build_kwargs()
+        live_fps = build_live_surface_fingerprints(
+            _build_tool_index(config),
+            surface_profile=build_kwargs.get("surface_profile"),
+            gate_state_snapshot=build_kwargs.get("gate_state_snapshot"),
+            gateway_allowlist=build_kwargs.get("gateway_allowlist"),
+        )
 
         stored_entries: dict[str, dict[str, Any]] | None = None
         stored_gateway: frozenset[str] | None = None
@@ -77,16 +86,12 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
                 stored_exposure = active.get("exposure_checksum")
                 stored_runtime = active.get("generated_from_runtime_commit")
                 stored_profile = active.get("surface_profile")
-                # Gateway snapshot may be absent on legacy rows → leave None (indeterminate).
-                gw = active.get("gateway_allowlist") or active.get("gateway_checksum")
+                gw = active.get("gateway_allowlist")
                 if isinstance(gw, (list, set, frozenset)):
                     stored_gateway = frozenset(gw)
         except Exception:  # noqa: BLE001
             stored_entries = None
 
-        # Only pass stored gateway when independently recorded; never pass live as stored.
-        # When no stored snapshot exists, skip gateway/runtime/semantic compare args so the
-        # report is structural_only (not a false "current", and not a false "stale").
         if stored_entries is None and stored_semantic is None:
             return check_tool_surface(
                 groups,
@@ -100,9 +105,9 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
             stored_gateway_allowlist=stored_gateway,
             live_runtime_commit=runtime_commit(),
             stored_runtime_commit=stored_runtime,
-            live_semantic_checksum=None,
+            live_semantic_checksum=live_fps.get("semantic_surface_checksum"),
             stored_semantic_checksum=stored_semantic,
-            live_exposure_checksum=None,
+            live_exposure_checksum=live_fps.get("exposure_checksum"),
             stored_exposure_checksum=stored_exposure,
             live_profile=surface_profile_label(),
             stored_profile=stored_profile,

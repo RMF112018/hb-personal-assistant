@@ -70,6 +70,9 @@ def check_tool_surface(
             "staleness_state": "check_failed",
             "warnings": [f"freshness_error:{check_error}"],
             "categories": categories,
+            "category_status": {"freshness_check": "check_failed"},
+            "checked_categories": [],
+            "unchecked_categories": ["freshness_check"],
             "review_required": True,
             "check_error": check_error,
             "tool_surface_gateway_current": False,
@@ -159,18 +162,24 @@ def check_tool_surface(
         gateway_current = True
         gateway_checked = False
 
-    if live_semantic_checksum and stored_semantic_checksum:
+    semantic_checksum_mismatch = False
+    if stored_semantic_checksum is not None and live_semantic_checksum is not None:
         if live_semantic_checksum != stored_semantic_checksum:
             categories["checksum_drift"] = True
             categories["semantic_drift"] = True
+            semantic_checksum_mismatch = True
             warnings.append("semantic_surface_checksum_mismatch")
-    elif stored_semantic_checksum is None and stored_entries is None:
+    elif stored_semantic_checksum is not None and live_semantic_checksum is None:
         warnings.append("semantic_checksum_indeterminate")
 
-    if live_exposure_checksum and stored_exposure_checksum:
+    exposure_checksum_mismatch = False
+    if stored_exposure_checksum is not None and live_exposure_checksum is not None:
         if live_exposure_checksum != stored_exposure_checksum:
             categories["exposure_drift"] = True
+            exposure_checksum_mismatch = True
             warnings.append("exposure_checksum_mismatch")
+    elif stored_exposure_checksum is not None and live_exposure_checksum is None:
+        warnings.append("exposure_checksum_indeterminate")
 
     if live_profile and stored_profile and live_profile != stored_profile:
         categories["profile_context_changed"] = True
@@ -203,17 +212,81 @@ def check_tool_surface(
             categories["help_coverage_drift"] = True
             warnings.append(f"help_coverage_missing:{missing_help[:20]}")
 
-    any_drift = any(categories.values()) or bool(unclassified) or bool(workflow_missing_tools)
-    independent = stored_entries is not None or stored_semantic_checksum is not None
+    category_status: dict[str, str] = {}
+    has_stored_baseline = stored_entries is not None or stored_semantic_checksum is not None
 
-    if any_drift or (gateway_checked and not gateway_current):
+    if stored_entries is None:
+        category_status["structural"] = "indeterminate"
+    elif added or removed or unclassified or workflow_missing_tools:
+        category_status["structural"] = "stale"
+    else:
+        category_status["structural"] = "current"
+
+    if stored_entries is None:
+        category_status["classification"] = "indeterminate"
+    elif family_changed or class_changed:
+        category_status["classification"] = "stale"
+    else:
+        category_status["classification"] = "current"
+
+    if stored_semantic_checksum is None:
+        category_status["semantic_checksum"] = "indeterminate"
+    elif live_semantic_checksum is None:
+        category_status["semantic_checksum"] = "indeterminate"
+    elif semantic_checksum_mismatch:
+        category_status["semantic_checksum"] = "stale"
+    else:
+        category_status["semantic_checksum"] = "current"
+
+    if stored_exposure_checksum is None:
+        category_status["exposure_checksum"] = "indeterminate"
+    elif live_exposure_checksum is None:
+        category_status["exposure_checksum"] = "indeterminate"
+    elif exposure_checksum_mismatch:
+        category_status["exposure_checksum"] = "stale"
+    else:
+        category_status["exposure_checksum"] = "current"
+
+    if stored_gateway_allowlist is None:
+        category_status["gateway"] = "indeterminate"
+    elif live_gateway_allowlist is None:
+        category_status["gateway"] = "indeterminate"
+    elif not gateway_current:
+        category_status["gateway"] = "stale"
+    else:
+        category_status["gateway"] = "current"
+
+    if stored_runtime_commit is None:
+        category_status["deployment_runtime"] = "indeterminate"
+    elif categories.get("deployment_runtime_drift"):
+        category_status["deployment_runtime"] = "stale"
+    else:
+        category_status["deployment_runtime"] = "current"
+
+    if stored_profile is None:
+        category_status["profile_context"] = "indeterminate"
+    elif categories.get("profile_context_changed"):
+        category_status["profile_context"] = "stale"
+    else:
+        category_status["profile_context"] = "current"
+
+    checked_categories = sorted(k for k, v in category_status.items() if v != "indeterminate")
+    unchecked_categories = sorted(k for k, v in category_status.items() if v == "indeterminate")
+    status_values = list(category_status.values())
+
+    if "stale" in status_values:
         stale = True
         staleness_state = "stale"
-    elif independent:
+    elif has_stored_baseline and "indeterminate" in status_values:
+        stale = False
+        staleness_state = "indeterminate"
+    elif has_stored_baseline and status_values and all(v == "current" for v in status_values):
         stale = False
         staleness_state = "current"
+    elif has_stored_baseline:
+        stale = False
+        staleness_state = "indeterminate"
     else:
-        # Structural self-consistency only (no independent stored baseline).
         stale = bool(unclassified or workflow_missing_tools)
         staleness_state = "structural_only" if not stale else "stale"
 
@@ -222,6 +295,9 @@ def check_tool_surface(
         "staleness_state": staleness_state,
         "warnings": warnings,
         "categories": categories,
+        "category_status": category_status,
+        "checked_categories": checked_categories,
+        "unchecked_categories": unchecked_categories,
         "unclassified_tools": unclassified,
         "workflow_missing_tools": sorted(set(workflow_missing_tools)),
         "added_tools": added,
@@ -230,9 +306,9 @@ def check_tool_surface(
         "class_changed_tools": class_changed,
         "gateway_added": gateway_added,
         "gateway_removed": gateway_removed,
-        "tool_surface_gateway_current": gateway_current if gateway_checked else True,
+        "tool_surface_gateway_current": gateway_current if gateway_checked else None,
         "live_tool_count": len(live_names),
-        "review_required": stale,
-        "independent_baseline": independent,
+        "review_required": stale or staleness_state == "indeterminate",
+        "independent_baseline": has_stored_baseline,
         "gateway_checked": gateway_checked,
     }

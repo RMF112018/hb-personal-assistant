@@ -276,6 +276,7 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
         "semantic_surface_checksum": semantic_checksum,
         "exposure_checksum": exposure_checksum,
         "gateway_checksum": gateway_checksum,
+        "gateway_allowlist": sorted(gateway_allowlist or []),
         "manifest_payload": semantic_payload,
         "surface_profile": surface_profile or "unknown",
         "gate_state_snapshot": gate_state_snapshot or {},
@@ -283,6 +284,30 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
         "workflow_recipes": WORKFLOW_RECIPES,
         "replacement_map": REPLACEMENT_MAP,
         "negative_instructions": NEGATIVE_INSTRUCTIONS,
+    }
+
+
+def build_live_surface_fingerprints(
+    tool_index: dict[str, dict[str, Any]],
+    *,
+    surface_profile: str | None = None,
+    gate_state_snapshot: dict[str, Any] | None = None,
+    gateway_allowlist: list[str] | None = None,
+) -> dict[str, Any]:
+    """Semantic/exposure/gateway fingerprints from a live tool index (no DB I/O)."""
+    built = build_manifest(
+        tool_index,
+        runtime_commit="live",
+        now="live",
+        surface_profile=surface_profile,
+        gate_state_snapshot=gate_state_snapshot,
+        gateway_allowlist=gateway_allowlist,
+    )
+    return {
+        "semantic_surface_checksum": built["semantic_surface_checksum"],
+        "exposure_checksum": built["exposure_checksum"],
+        "gateway_checksum": built["gateway_checksum"],
+        "gateway_allowlist": built.get("gateway_allowlist") or [],
     }
 
 
@@ -431,6 +456,8 @@ class ClientToolManifestRepository:
                 row["generated_from_package_version"] = manifest.get("generated_from_package_version")
             if "runtime_identity_kind" in manifest:
                 row["runtime_identity_kind"] = manifest.get("runtime_identity_kind")
+            if "gateway_allowlist" in manifest:
+                row["gateway_allowlist_json"] = _cjson(manifest.get("gateway_allowlist") or [])
             _insert(c, "pa_client_tool_manifests", row)
             for e in manifest["entries"]:
                 _insert(c, "pa_tool_manifest_entries", {
@@ -466,23 +493,37 @@ class ClientToolManifestRepository:
             "exposure_checksum", "gateway_checksum", "surface_profile", "gate_state_snapshot_json",
             "generated_from_package_version", "runtime_identity_kind",
         )
+        v121_cols = ("gateway_allowlist_json",)
         with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
             # Prefer V118 select; fall back if columns missing (pre-migrate open DBs).
-            cols = base_cols + v118_cols
+            cols = base_cols + v118_cols + v121_cols
             try:
                 row = c.execute(
                     f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
                     f"ORDER BY generated_at DESC LIMIT 1"
                 ).fetchone()
             except Exception:  # noqa: BLE001
-                cols = base_cols
-                row = c.execute(
-                    f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
-                    f"ORDER BY generated_at DESC LIMIT 1"
-                ).fetchone()
+                try:
+                    cols = base_cols + v118_cols
+                    row = c.execute(
+                        f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                        f"ORDER BY generated_at DESC LIMIT 1"
+                    ).fetchone()
+                except Exception:  # noqa: BLE001
+                    cols = base_cols
+                    row = c.execute(
+                        f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                        f"ORDER BY generated_at DESC LIMIT 1"
+                    ).fetchone()
             if not row:
                 return None
             hdr = dict(zip(cols, row, strict=True))
+            gw_raw = hdr.get("gateway_allowlist_json")
+            if gw_raw:
+                try:
+                    hdr["gateway_allowlist"] = json.loads(gw_raw)
+                except (TypeError, json.JSONDecodeError):
+                    pass
             entry_rows = c.execute(
                 "SELECT tool_name, tool_group, tool_class, safety_class, read_write_class "
                 "FROM pa_tool_manifest_entries WHERE manifest_id=? ORDER BY tool_name",

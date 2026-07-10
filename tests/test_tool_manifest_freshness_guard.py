@@ -20,9 +20,39 @@ LIVE = {
 }
 
 
-def test_matching_surface_is_current() -> None:
+def test_matching_surface_without_checksum_baseline_is_indeterminate() -> None:
     entries = _base_entries(LIVE)
     rep = check_tool_surface(LIVE, stored_entries=entries, check_workflow_coverage=False)
+    assert rep["stale"] is False
+    assert rep["staleness_state"] == "indeterminate"
+    assert "semantic_checksum" in rep["unchecked_categories"]
+
+
+def test_matching_surface_with_checksums_is_current() -> None:
+    from hb_assistant.obsidian_mcp.client_tool_manifest import build_live_surface_fingerprints
+
+    entries = _base_entries(LIVE)
+    fps = build_live_surface_fingerprints(
+        {n: {"group": g} for n, g in LIVE.items()},
+        surface_profile="test",
+        gate_state_snapshot={},
+        gateway_allowlist=sorted(LIVE),
+    )
+    rep = check_tool_surface(
+        LIVE,
+        stored_entries=entries,
+        check_workflow_coverage=False,
+        live_semantic_checksum=fps["semantic_surface_checksum"],
+        stored_semantic_checksum=fps["semantic_surface_checksum"],
+        live_exposure_checksum=fps["exposure_checksum"],
+        stored_exposure_checksum=fps["exposure_checksum"],
+        live_gateway_allowlist=frozenset(LIVE),
+        stored_gateway_allowlist=frozenset(LIVE),
+        live_profile="test",
+        stored_profile="test",
+        live_runtime_commit="deadbeef",
+        stored_runtime_commit="deadbeef",
+    )
     assert rep["stale"] is False
     assert rep["staleness_state"] == "current"
 
@@ -66,6 +96,14 @@ def test_stale_surface_blocks_write_route_not_read() -> None:
     write_plan = route_prompt("Generate a Word document and save it", freshness=stale)
     assert write_plan["freshness"]["write_blocked_by_staleness"] is True
     read_plan = route_prompt("find the source file for the contract", freshness=stale)
+    assert read_plan["freshness"]["write_blocked_by_staleness"] is False
+
+
+def test_indeterminate_surface_blocks_write_route_not_read() -> None:
+    indeterminate = {"stale": False, "staleness_state": "indeterminate", "warnings": ["semantic_checksum_indeterminate"]}
+    write_plan = route_prompt("Generate a Word document and save it", freshness=indeterminate)
+    assert write_plan["freshness"]["write_blocked_by_staleness"] is True
+    read_plan = route_prompt("find the source file for the contract", freshness=indeterminate)
     assert read_plan["freshness"]["write_blocked_by_staleness"] is False
 
 
