@@ -20,7 +20,9 @@ class AvailabilityKind(str, Enum):
 
 
 class RuntimeIdentityKind(str, Enum):
-    EXACT_COMMIT = "exact_commit"
+    EXACT_VERIFIED_COMMIT = "exact_verified_commit"
+    EXACT_UNVERIFIED_STAMP = "exact_unverified_stamp"
+    EXACT_COMMIT = "exact_commit"  # legacy: treat as unverified unless verified flag set
     PACKAGE_ONLY_FALLBACK = "package_only_fallback"
     UNKNOWN = "unknown"
 
@@ -193,9 +195,16 @@ class RuntimeIdentity:
     runtime_commit: str | None
     package_version: str | None
     runtime_identity_kind: RuntimeIdentityKind
+    runtime_identity_verified: bool = False
+    runtime_image_digest: str | None = None
+    runtime_build_timestamp: str | None = None
 
     def as_legacy_string(self) -> str:
-        if self.runtime_identity_kind == RuntimeIdentityKind.EXACT_COMMIT and self.runtime_commit:
+        if self.runtime_commit and self.runtime_identity_kind in (
+            RuntimeIdentityKind.EXACT_COMMIT,
+            RuntimeIdentityKind.EXACT_VERIFIED_COMMIT,
+            RuntimeIdentityKind.EXACT_UNVERIFIED_STAMP,
+        ):
             return self.runtime_commit
         if self.package_version:
             return f"v{self.package_version.lstrip('v')}"
@@ -206,4 +215,7 @@ class RuntimeIdentity:
             "generated_from_runtime_commit": self.runtime_commit,
             "generated_from_package_version": self.package_version,
             "runtime_identity_kind": self.runtime_identity_kind.value,
+            "runtime_identity_verified": self.runtime_identity_verified,
+            "runtime_image_digest": self.runtime_image_digest,
+            "runtime_build_timestamp": self.runtime_build_timestamp,
         }

@@ -262,7 +262,13 @@ def test_runtime_commit_returns_str() -> None:
 
     assert isinstance(runtime_commit(), str)
     ident = runtime_identity()
-    assert ident.runtime_identity_kind.value in ("exact_commit", "package_only_fallback", "unknown")
+    assert ident.runtime_identity_kind.value in (
+        "exact_commit",
+        "exact_verified_commit",
+        "exact_unverified_stamp",
+        "package_only_fallback",
+        "unknown",
+    )
 
 
 def test_bootstrap_no_autopromote_on_drift(tmp_path, monkeypatch) -> None:

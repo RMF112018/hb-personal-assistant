@@ -11,6 +11,12 @@
 # syntax=docker/dockerfile:1
 FROM python:3.12-slim AS base
 
+# Build provenance (set by operator build script — not a secret).
+ARG HB_BUILD_SHA=
+ARG HB_BUILD_COMMIT_VERIFIED=0
+ARG HB_BUILD_IMAGE_DIGEST=
+ARG HB_BUILD_TIMESTAMP=
+
 # Non-root runtime user mapped to the NAS runtime identity (personal-assistant-svc = 1028:100/users)
 # so files written into the mounted app-support tree keep correct NAS ownership.
 RUN set -eux; \
@@ -41,6 +47,12 @@ COPY . /app
 RUN chmod -R a+rX /app
 RUN python -m pip install --upgrade pip \
  && python -m pip install -e ".[analytics-ui,mcp]"
+
+# Bake build provenance into the image (overridable at runtime via compose for HB_RUNTIME_COMMIT).
+ENV HB_BUILD_SHA=${HB_BUILD_SHA} \
+    HB_BUILD_COMMIT_VERIFIED=${HB_BUILD_COMMIT_VERIFIED} \
+    HB_BUILD_IMAGE_DIGEST=${HB_BUILD_IMAGE_DIGEST} \
+    HB_BUILD_TIMESTAMP=${HB_BUILD_TIMESTAMP}
 
 EXPOSE 8000
 USER hbsvc

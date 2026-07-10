@@ -370,14 +370,26 @@ def runtime_identity() -> Any:
     except Exception:
         package_version = None
 
+    verified = os.environ.get("HB_BUILD_COMMIT_VERIFIED", "").strip() == "1"
+    image_digest = (os.environ.get("HB_BUILD_IMAGE_DIGEST") or "").strip() or None
+    build_ts = (os.environ.get("HB_BUILD_TIMESTAMP") or "").strip() or None
+
     sha_re = re.compile(r"^[0-9a-f]{7,40}$", re.I)
     for var in ("HB_RUNTIME_COMMIT", "HB_BUILD_SHA"):
         val = (os.environ.get(var) or "").strip()
         if val and sha_re.match(val):
+            kind = (
+                RuntimeIdentityKind.EXACT_VERIFIED_COMMIT
+                if verified
+                else RuntimeIdentityKind.EXACT_UNVERIFIED_STAMP
+            )
             return RuntimeIdentity(
                 runtime_commit=val.lower(),
                 package_version=package_version,
-                runtime_identity_kind=RuntimeIdentityKind.EXACT_COMMIT,
+                runtime_identity_kind=kind,
+                runtime_identity_verified=verified,
+                runtime_image_digest=image_digest,
+                runtime_build_timestamp=build_ts,
             )
         if val and not sha_re.match(val):
             # Non-SHA stamp is not an exact commit.
@@ -434,6 +446,7 @@ def assistant_client_exposure_status() -> dict[str, Any]:
             label for label, on in groups_enabled.items() if on
         ),
         "runtime_commit": runtime_commit(),
+        **runtime_identity().to_dict(),
     }
 
 

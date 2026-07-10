@@ -90,13 +90,16 @@ def _build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
 
 def _runtime_manifest_build_kwargs() -> dict[str, Any]:
     """Exposure/runtime context stamped into promoted manifests for independent freshness checks."""
-    from .broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
+    from .broker import GATEWAY_ALLOWLIST, runtime_identity  # noqa: PLC0415
     from .live_tool_surface import gate_state_snapshot, surface_profile_label  # noqa: PLC0415
 
+    ident = runtime_identity()
     return {
         "surface_profile": surface_profile_label(),
         "gate_state_snapshot": gate_state_snapshot(),
         "gateway_allowlist": sorted(GATEWAY_ALLOWLIST),
+        "package_version": ident.package_version,
+        "runtime_identity_kind": ident.runtime_identity_kind.value,
     }
 
 
