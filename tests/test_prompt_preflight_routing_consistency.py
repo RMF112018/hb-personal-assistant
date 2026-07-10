@@ -45,6 +45,26 @@ def test_plan_only_source_roots_not_read_authorized() -> None:
     assert plan["authorization"]["advisory_planning_authorized"] is True
     assert plan["authorization"]["read_tool_calls_authorized"] is False
     assert plan["authorization"]["prompt_authorizes_execution"] is False
+    # Per-tool Option A groups
+    assert plan["next_step"]["tool"] == "assistant_source_roots_list"
+    assert plan["next_step"]["tool_group"] == "source_connector"
+    add = {s["tool"]: s["tool_group"] for s in plan["additional_steps"]}
+    assert add.get("assistant_source_root_map") == "source_structure"
+
+
+def test_read_only_repo_truth_audit_authorizes_reads_not_execute_ban() -> None:
+    plan = route_prompt(
+        "Conduct a read-only repo-truth audit.\n"
+        "Do not write, stage, promote, refresh, index, deploy, or mutate anything."
+    )
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] == "read_only_surface_audit"
+    assert auth["read_tool_calls_authorized"] is True
+    assert "execute" not in auth["prohibitions"]
+    for cap in ("write", "stage", "promote", "index", "deploy"):
+        assert cap in auth["prohibitions"]
+    assert auth["promotion_authorized"] is False
+    assert auth["write_authorized"] is False
 
 
 def test_ordinary_search_authorizes_reads() -> None:

@@ -103,20 +103,52 @@ def _is_destructive(prompt_l: str) -> bool:
             and any(o in prompt_l for o in _DESTRUCTIVE_OBJECTS))
 
 
-def _extract_prohibitions(prompt_l: str) -> set[str]:
-    """Return capability names prohibited by scoped negation (not keyword-wide)."""
-    prohibitions: set[str] = set()
-    # Whole-prompt plan-only / read-only audit styles.
-    if re.search(r"\bplan only\b", prompt_l) or re.search(r"\bdo not execute\b", prompt_l):
-        prohibitions.add("execute")
-    if re.search(r"\bread[- ]only\b", prompt_l) and re.search(
-        r"\b(do not|don't|never)\b.*\b(stage|promote|write|execute)\b", prompt_l
-    ):
-        prohibitions.update({"stage", "promote", "write", "execute"})
+def _is_read_only_posture(prompt_l: str) -> bool:
+    """True when the operator frames the request as read-only work (not plan-only identify)."""
+    return bool(re.search(r"\bread[- ]only\b", prompt_l))
 
-    # Phrase-level bans.
+
+def _extract_prohibitions(prompt_l: str) -> set[str]:
+    """Return capability names prohibited by scoped negation (not keyword-wide).
+
+    Critical: ``read-only`` authorizes bounded *read* tool calls. It must never be converted
+    into a generic ``execute`` prohibition. Only an explicit ``do not execute`` / ``plan only``
+    (without a beyond-read-only exception) bans non-advisory tool execution.
+    """
+    prohibitions: set[str] = set()
+
+    # Explicit execute bans (not implied by "read-only").
+    if re.search(r"\bplan only\b", prompt_l):
+        prohibitions.add("execute")
+    if re.search(r"\bdo not execute\b", prompt_l) or re.search(r"\bdon't execute\b", prompt_l):
+        # "beyond read-only analysis" still bans non-read execution classes below.
+        prohibitions.add("execute")
+
+    # Read-only posture: ban mutation classes when listed.
+    # Never add ``execute`` here — bounded read execution is the requested operation.
+    if _is_read_only_posture(prompt_l):
+        for cap, patterns in (
+            ("write", (r"\bwrite\b", r"\bmutat", r"\bno write\b")),
+            ("stage", (r"\bstage\b", r"\bstaging\b")),
+            ("promote", (r"\bpromote\b", r"\bpromotion\b")),
+            ("index", (r"\bindex\b", r"\breindex\b", r"\brefresh\b")),
+            ("deploy", (r"\bdeploy\b",)),
+            ("archive", (r"\barchive\b",)),
+            ("external_action", (r"\bsend\b", r"\bemail\b")),
+        ):
+            if any(re.search(p, prompt_l) for p in patterns):
+                prohibitions.add(cap)
+        if re.search(r"\bmutat", prompt_l):
+            prohibitions.add("write")
+        # "do not execute any action" under read-only identify: still ban mutation classes
+        if re.search(r"\bdo not execute any action\b", prompt_l) or re.search(
+            r"\b(do not|don't) execute\b", prompt_l
+        ):
+            prohibitions.update({"write", "stage", "promote", "external_action"})
+
+    # Phrase-level bans (capability-specific; do not fold write→execute).
     for phrase, caps in (
-        (r"\bno write\b", {"write", "execute"}),
+        (r"\bno write\b", {"write"}),
         (r"\bno staging\b", {"stage"}),
         (r"\bno stage\b", {"stage"}),
         (r"\bdo not write\b", {"write"}),
@@ -127,64 +159,66 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         (r"\bdon't promote\b", {"promote"}),
         (r"\bnever promote\b", {"promote"}),
         (r"\bdo not deploy\b", {"deploy"}),
-        (r"\bdo not.*\bindex\b", {"index"}),
+        (r"\bdo not\b[^\n.]{0,40}\bindex\b", {"index"}),
+        (r"\bdo not\b[^\n.]{0,40}\brefresh\b", {"index"}),
+        (r"\bdo not\b[^\n.]{0,40}\bmutat", {"write"}),
     ):
         if re.search(phrase, prompt_l):
             prohibitions.update(caps)
 
-    # Clause-scoped: split into clauses; within each, if a negator appears, scan a bounded window.
+    # Clause-scoped: negator + nearby capability token within a bounded window.
     clauses = _CLAUSE_SPLIT.split(prompt_l)
     for clause in clauses:
         c = clause.strip()
         if not c:
             continue
-        # "this is not a promotion receipt" — "not a" + receipt context, not a ban on promote ops
         if re.search(r"\bnot a\b", c) and "receipt" in c:
             continue
-        # "without opening" — does not ban write/promote
         if re.search(r"\bwithout\b", c) and not any(
-            tok in c for tok in ("write", "promot", "stag", "execut", "deploy")
+            tok in c for tok in ("write", "promot", "stag", "execut", "deploy", "index")
         ):
             continue
+        # "read-only" is a posture marker, not a capability negator by itself.
+        if re.fullmatch(r"read[- ]only[:.]?", c) or c.startswith("read-only") and "do not" not in c:
+            if "do not" not in c and "don't" not in c and "never" not in c:
+                continue
+
         tokens = c.split()
         for i, tok in enumerate(tokens):
-            # Reconstruct multi-word negators at position.
             window_text = " ".join(tokens[i:i + 3])
-            is_neg = bool(re.match(
-                r"^(do|don't|never|without|not|no|plan|read-only|read)$", tok
-            )) or any(re.search(p, window_text) for p in _NEGATOR_PATTERNS)
-            if not is_neg and not re.search(
-                r"\b(do not|don't|never|without|not a|no write|plan only|read-only)\b",
-                " ".join(tokens[max(0, i - 1):i + 3]),
-            ):
+            # Do NOT treat bare "read-only" / "read" as negators — that caused execute false positives.
+            is_neg = bool(re.match(r"^(do|don't|never|without|not|no|plan)$", tok)) or any(
+                re.search(p, window_text) for p in (
+                    r"\bdo not\b", r"\bdon't\b", r"\bnever\b", r"\bwithout\b",
+                    r"\bnot a\b", r"\bno write\b", r"\bno staging\b", r"\bplan only\b",
+                )
+            )
+            if not is_neg:
                 continue
-            # Only treat as negator start if the multi-word pattern matches near i.
             span = " ".join(tokens[i:i + _PROHIBITION_WINDOW])
-            if not any(re.search(p, " ".join(tokens[max(0, i - 1):i + 4])) for p in _NEGATOR_PATTERNS):
-                # Single-token "never" / "without"
-                if tok not in ("never", "without") and not tok.startswith("no"):
-                    continue
-            # Exception: "do not execute tools beyond read-only analysis" → execute banned, read ok
+            # "beyond read-only" exception: ban non-read classes, keep read execution allowed.
             if "beyond read-only" in span or "beyond read only" in span:
-                prohibitions.add("execute")
-                prohibitions.update({"write", "stage", "promote", "external_action"})
+                prohibitions.update({"write", "stage", "promote", "external_action", "execute"})
+                # execute means "beyond read" here; authorization layer still allows reads.
                 continue
             for cap, cap_tokens in _CAPABILITY_TRIGGER_TOKENS.items():
                 if any(ct in span for ct in cap_tokens):
-                    # Avoid false positive: "not a promotion receipt"
                     if cap == "promote" and "receipt" in span and "not a" in span:
                         continue
-                    # "without opening" already skipped at clause level
-                    if cap == "execute" and "beyond read" in span:
-                        prohibitions.add("execute")
-                        continue
                     prohibitions.add(cap)
+
+    # Posture cleanup: read-only work must not carry a naked execute ban unless explicitly said.
+    if _is_read_only_posture(prompt_l) and not re.search(r"\b(do not|don't|never) execute\b", prompt_l) \
+            and not re.search(r"\bplan only\b", prompt_l) \
+            and not re.search(r"\bbeyond read[- ]only\b", prompt_l):
+        prohibitions.discard("execute")
+
     return prohibitions
 
 
 def _score_workflow(prompt_l: str, wf: dict[str, Any], prohibitions: set[str] | None = None) -> int:
-    prohibitions = prohibitions if prohibitions is not None else set()
     """Score workflow; triggers nested under prohibited capabilities do not add points."""
+    prohibitions = prohibitions if prohibitions is not None else set()
     policy = wf.get("operator_authorization_policy", "read")
     # Entire workflow banned by policy prohibition.
     for cap in prohibitions:
@@ -259,16 +293,23 @@ def _retrieval_budget(wf: dict[str, Any], has_exact_id: bool) -> dict[str, Any]:
 
 
 def _plan_only_or_no_execute(prompt_l: str, prohibitions: set[str]) -> bool:
-    """True when the prompt forbids executing tools (not merely forbids writes)."""
-    if re.search(r"\b(identify which tool|which tool should be used|plan only)\b", prompt_l):
-        if re.search(r"\b(do not execute|don't execute|do not run|plan only|identify)\b", prompt_l):
+    """True when the prompt forbids tool *calls* (identify-only / plan-only).
+
+    Read-only audits are NOT plan-only: they authorize bounded read tool calls.
+    """
+    # Identify-which-tool + do not execute → advisory only (no tool calls).
+    if re.search(r"\b(identify which tool|which tool should be used)\b", prompt_l):
+        if re.search(r"\b(do not execute|don't execute|do not run|do not execute any action)\b", prompt_l):
             return True
-    if "do not execute any action" in prompt_l:
-        return True
-    # "do not execute" without "beyond read-only" → plan-only
-    if re.search(r"\bdo not execute\b", prompt_l) and not _reads_explicitly_allowed(prompt_l):
-        return True
     if re.search(r"\bplan only\b", prompt_l):
+        return True
+    if re.search(r"\bdo not execute any action\b", prompt_l):
+        return True
+    # Bare "do not execute" without read-only posture and without beyond-read-only allow.
+    if re.search(r"\b(do not|don't) execute\b", prompt_l):
+        if _is_read_only_posture(prompt_l) or re.search(r"\bbeyond read[- ]only\b", prompt_l):
+            # Read-only analysis / beyond-read-only still allows read tool calls.
+            return False
         return True
     return False
 
@@ -276,8 +317,10 @@ def _plan_only_or_no_execute(prompt_l: str, prohibitions: set[str]) -> bool:
 def _reads_explicitly_allowed(prompt_l: str) -> bool:
     if any(p in prompt_l for p in _ALLOW_READ_PHRASES):
         return True
-    # "beyond read-only analysis" / "read-only analysis" explicitly permits analysis reads.
     if re.search(r"\bbeyond read[- ]only\b", prompt_l):
+        return True
+    # A read-only posture (audit/analysis) authorizes bounded reads.
+    if _is_read_only_posture(prompt_l) and not _plan_only_or_no_execute(prompt_l, set()):
         return True
     return False
 
@@ -293,15 +336,16 @@ def _authorization(
     action_class = wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
     plan_only = _plan_only_or_no_execute(prompt_l, prohibitions)
-    # Default: read workflows authorize bounded reads unless plan-only / no-execute without read allow.
-    if _reads_explicitly_allowed(prompt_l):
-        allow_read = not is_write
-    elif plan_only:
+    # Read authorization:
+    # - plan-only / identify-do-not-execute → no tool calls
+    # - read workflows & read-only posture → bounded reads authorized
+    # - write/stage/promote workflows → supporting reads ok; writes gated separately
+    if plan_only:
         allow_read = False
     elif not is_write:
         allow_read = True
     else:
-        allow_read = False
+        allow_read = True  # supporting reads for stage/create/promote planning
 
     staging_ok = (
         action_class == "staged_write"
@@ -334,11 +378,10 @@ def _authorization(
     additional_approval = bool(is_write) or bool(wf["additional_approval_points"])
     requires_go = bool(is_write)
 
-    # Deprecated compatibility field: true only when bounded read calls are authorized and
-    # no write/stage/promote/external execution is implied as authorized by the prompt alone.
-    prompt_authorizes_execution = bool(
-        allow_read and not is_write and not plan_only and "execute" not in prohibitions
-    )
+    # Deprecated compatibility field: true when bounded read tool calls are authorized.
+    # Under read-only posture, execute may still be listed for non-read classes from
+    # "beyond read-only" — do not use this field as the sole client signal.
+    prompt_authorizes_execution = bool(allow_read and not plan_only and not is_write)
 
     return {
         "action_class": action_class,
@@ -405,7 +448,9 @@ def _fallback_plan(wf: dict[str, Any], is_write: bool) -> dict[str, Any]:
     }
 
 
-def _tool_group(name: str) -> str | None:
+def _tool_group(name: str, tool_groups: dict[str, str | None] | None = None) -> str | None:
+    if tool_groups and name in tool_groups and tool_groups[name] is not None:
+        return tool_groups[name]
     return KNOWN_TOOL_GROUPS.get(name)
 
 
@@ -414,19 +459,29 @@ def _enrich_tool_steps(
     *,
     available_tools: frozenset[str] | set[str] | None,
     authorized_read: bool,
+    primary_family: str,
+    tool_groups: dict[str, str | None] | None = None,
 ) -> list[dict[str, Any]]:
+    from .tool_family_manifest import family_for_tool  # noqa: PLC0415
+
     steps: list[dict[str, Any]] = []
     for t in tools:
-        group = _tool_group(t)
-        # Prefer live group from available map when we only have names.
+        group = _tool_group(t, tool_groups)
         available = True if available_tools is None else t in available_tools
+        fam = family_for_tool(t, group) or primary_family
         steps.append({
             "tool": t,
             "tool_group": group,
-            "family": None,  # filled by caller when needed
+            "family": fam,
+            "surface": group,
             "arguments": {},
             "call_mode": "direct" if available else "gateway",
             "available": available,
+            "installed": available,
+            "profile_enabled": available,
+            "directly_exposed": available,
+            "gateway_allowlisted": True,
+            "server_policy_available": available,
             "authorized": authorized_read,
             "authorization_reason": "read_authorized" if authorized_read else "plan_only_or_unapproved",
         })
@@ -527,18 +582,13 @@ def route_prompt(
     fam = family_record(primary_family) or {}
     auth_read = bool(authorization["read_tool_calls_authorized"])
 
-    # Resolve groups for recommended tools.
-    def _group_of(t: str) -> str | None:
-        if tool_groups and t in tool_groups:
-            return tool_groups[t]
-        return _tool_group(t)
-
     tool_steps = _enrich_tool_steps(
-        recommended_tools, available_tools=available_tools, authorized_read=auth_read,
+        recommended_tools,
+        available_tools=available_tools,
+        authorized_read=auth_read,
+        primary_family=primary_family,
+        tool_groups=tool_groups,
     )
-    for step in tool_steps:
-        step["tool_group"] = _group_of(step["tool"])
-        step["family"] = primary_family
 
     next_step = tool_steps[0] if tool_steps else None
     additional_steps = tool_steps[1:] if len(tool_steps) > 1 else []

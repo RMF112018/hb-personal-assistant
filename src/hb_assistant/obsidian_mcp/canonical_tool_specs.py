@@ -114,6 +114,8 @@ PROMPT_ROUTING_TOOL_SPECS: dict[str, ToolSpec] = {
 }
 
 # Explicit group for tools whose group is not inferable from ASSISTANT_TOOL_GROUPS alone.
+# Option A: registration group is concrete; family may be broader (e.g. source_structure tools
+# remain family assistant_source_connector via family_for_tool).
 KNOWN_TOOL_GROUPS: dict[str, str] = {
     **dict.fromkeys(PROMPT_ROUTING_TOOL_SPECS, "prompt_routing"),
     "hb_assistant_catalog": "client_bridge",
@@ -126,7 +128,22 @@ KNOWN_TOOL_GROUPS: dict[str, str] = {
     "hb_last_successful_runs": "status",
     "hb_capability_mode": "status",
     "assistant_source_roots_list": "source_connector",
+    "assistant_source_file_search": "source_connector",
+    "assistant_source_file_metadata": "source_connector",
+    "assistant_source_file_read": "source_connector",
+    "assistant_source_status": "source_connector",
+    "assistant_source_index_health": "source_connector",
+    "assistant_source_query_plan": "source_connector",
     "assistant_source_root_map": "source_structure",
+    "assistant_source_folder_map": "source_structure",
+    "assistant_source_folder_summary": "source_structure",
+    "assistant_source_search_route": "source_structure",
+    "assistant_source_scope_explain": "source_structure",
+    "assistant_source_project_map": "source_structure",
+    "assistant_source_quality": "source_structure",
+    "assistant_search_sources": "nav",
+    "assistant_search_cards": "nav",
+    "assistant_get_vault_note": "nav",
 }
 
 # Capabilities exercised by operator_authorization_policy values.

@@ -21,73 +21,41 @@ from .artifact_workspace import ArtifactWorkspaceError, _cjson, _insert, _now, _
 
 REVIEW_CADENCE = "tool_surface: on_change; routing: weekly; safety: on_tool_surface_change; operator: monthly"
 
-# Static, organization-neutral workflow recipes (Part 11.7).
-WORKFLOW_RECIPES: list[dict[str, Any]] = [
-    {"workflow_name": "document_session",
-     "trigger_phrases": ["document this session", "record our discussion", "save the key points",
-                         "turn this into second-brain artifacts", "capture the decisions from this chat"],
-     "description": "Stage a session capture + artifact proposals, review, then operator-approved promotion.",
-     "tool_sequence": ["pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_list",
-                       "pa_artifact_proposal_review", "pa_artifact_proposal_revise",
-                       "pa_artifact_proposal_plan_promotion", "pa_artifact_promotion_validate",
-                       "pa_artifact_promotion_apply", "pa_artifact_promotion_receipt_get"],
-     "required_operator_approval_points": ["pa_artifact_proposal_review", "pa_artifact_promotion_apply"],
-     "negative_instructions": ["never promote without validation", "never invent an approval id",
-                               "never write vault notes directly"],
-     "expected_outputs": ["proposal review packet", "validation receipt", "promotion receipt", "materialized cards"],
-     "failure_recovery": ["on revalidation_required, re-run pa_artifact_promotion_validate"]},
-    {"workflow_name": "find_source_file",
-     "trigger_phrases": ["find the file", "search my documents", "look in the project folder"],
-     "description": "Discover + read source files via the semantic source connector, not root/vault tools.",
-     "tool_sequence": ["assistant_source_query_plan", "assistant_source_file_search",
-                       "assistant_source_file_metadata", "assistant_source_file_read"],
-     "required_operator_approval_points": [], "negative_instructions": ["do not use hb_root_search",
-       "do not use file search alone when a folder map is needed"],
-     "expected_outputs": ["bounded file excerpt with provenance"], "failure_recovery": []},
-    {"workflow_name": "map_source_project",
-     "trigger_phrases": ["map the tropical project", "map project folder", "folder structure under project"],
-     "description": "Folder-first NAS project map using structure tools (not file search only).",
-     "tool_sequence": ["assistant_source_query_plan", "assistant_source_project_map",
-                       "assistant_source_folder_map", "assistant_source_folder_summary"],
-     "required_operator_approval_points": [],
-     "negative_instructions": ["do not fall back to generic file search only for map prompts"],
-     "expected_outputs": ["bounded folder map with folder_ids + counts + freshness"],
-     "failure_recovery": ["assistant_source_index_health if map empty"]},
-    {"workflow_name": "source_index_health_check",
-     "trigger_phrases": ["is my source index fresh", "source index health"],
-     "description": "Per-root source index health for trust decisions.",
-     "tool_sequence": ["assistant_source_index_health"],
-     "required_operator_approval_points": [], "negative_instructions": [],
-     "expected_outputs": ["per-root freshness + safe_for_client_answering"], "failure_recovery": []},
-    {"workflow_name": "generate_client_output",
-     "trigger_phrases": ["create a markdown output", "save as docx", "temporary zip output"],
-     "description": "Stage/commit generated files via pa_output_* or assistant_output_* aliases.",
-     "tool_sequence": ["assistant_output_stage", "assistant_output_commit", "pa_output_stage", "pa_output_commit"],
-     "required_operator_approval_points": ["assistant_output_commit"],
-     "negative_instructions": ["never write arbitrary host paths", "never use vault write for generated files"],
-     "expected_outputs": ["output_id + receipt"], "failure_recovery": []},
-    {"workflow_name": "retrieve_decision",
-     "trigger_phrases": ["what did we decide", "find the decision"],
-     "description": "Retrieve a canonical decision + provenance.",
-     "tool_sequence": ["pa_canonical_artifact_list", "pa_canonical_artifact_get", "assistant_list_decisions"],
-     "required_operator_approval_points": [], "negative_instructions": ["do not use hb_db_select"],
-     "expected_outputs": ["canonical id + links"], "failure_recovery": []},
-    {"workflow_name": "check_tool_manifest_freshness",
-     "trigger_phrases": ["is the tool map current", "check tool manifest"],
-     "description": "Compare the live tool surface to the recorded manifest.",
-     "tool_sequence": ["pa_tool_manifest_freshness_check", "pa_tool_manifest_review_plan"],
-     "required_operator_approval_points": ["pa_tool_manifest_refresh_promote"],
-     "negative_instructions": ["never silently rewrite the manifest"],
-     "expected_outputs": ["staleness state + missing/extra tools"], "failure_recovery": []},
-]
+# Compatibility projection of the preflight WORKFLOWS seed (not an independent authoring list).
+# Authority: workflow_recipe_manifest.WORKFLOWS (routing) + canonical_tool_specs.replacement_map.
 
-REPLACEMENT_MAP: dict[str, str] = {
-    "hb_root_search": "assistant_source_file_search",
-    "hb_root_read_file": "assistant_source_file_read",
-    "search_vault": "assistant_search_sources",
-    "hb_db_select": "assistant_* semantic retrieval tools",
-    "direct_note_creation": "pa_artifact_proposal_stage → review → pa_artifact_promotion_apply",
-}
+
+def _workflow_recipes_from_routing() -> list[dict[str, Any]]:
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
+    out: list[dict[str, Any]] = []
+    for w in WORKFLOWS:
+        fr = w.get("failure_recovery") or ""
+        out.append({
+            "workflow_name": w["workflow_id"],
+            "trigger_phrases": list(w.get("trigger_phrases") or []),
+            "description": w.get("when_to_use") or "",
+            "tool_sequence": list(w.get("tool_sequence") or []),
+            "required_operator_approval_points": list(w.get("additional_approval_points") or []),
+            "negative_instructions": list(w.get("must_not_use") or []),
+            "expected_outputs": list(w.get("expected_outputs") or []),
+            "failure_recovery": [fr] if isinstance(fr, str) and fr else list(fr or []),
+        })
+    return out
+
+
+# Derived compatibility views — do not edit independently of WORKFLOWS / replacement_map().
+WORKFLOW_RECIPES: list[dict[str, Any]] = _workflow_recipes_from_routing()
+
+
+def _replacement_map() -> dict[str, str]:
+    from .canonical_tool_specs import replacement_map  # noqa: PLC0415
+
+    return replacement_map()
+
+
+# Dict snapshot for legacy callers (``REPLACEMENT_MAP[name]``, ``.items()``).
+REPLACEMENT_MAP: dict[str, str] = _replacement_map()
 
 NEGATIVE_INSTRUCTIONS: list[str] = [
     "do not use low-level vault search as the first step for ordinary structured-intelligence queries",
