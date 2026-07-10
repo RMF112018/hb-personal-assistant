@@ -12,7 +12,16 @@ from typing import Any
 from hb_assistant.obsidian_mcp.tool_metadata_types import PluginFailureStage
 
 _ABS_PATH = re.compile(r"(?:/Users/|/home/|/var/|/tmp/|/opt/|[A-Za-z]:\\)")
-_SECRETISH = re.compile(r"(?i)(password|secret|token|api[_-]?key|authorization:\s*bearer\s+\S+)")
+# Redact credential-like values, not policy reason codes such as ``tool_not_in_token_scope``.
+_SECRETISH = re.compile(
+    r"(?i)("
+    r"password\s*[:=]\s*\S+"
+    r"|secret\s*[:=]\s*\S+"
+    r"|api[_-]?key\s*[:=]\s*\S+"
+    r"|authorization:\s*bearer\s+\S+"
+    r"|bearer\s+[A-Za-z0-9\-._~+/]+=*"
+    r")"
+)
 
 
 def sanitize_message(text: str, *, max_len: int = 240) -> str:
