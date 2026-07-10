@@ -350,18 +350,41 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
 
     manifest_id = mrepo.save_manifest(manifest)
     md = render_manifest_md(manifest)
-    import json as _json  # noqa: PLC0415
+    from ..obsidian_mcp.client_tool_manifest import (  # noqa: PLC0415
+        MAX_VAULT_MANIFEST_CHARS,
+        build_vault_client_projection,
+        client_projection_checksum,
+        serialize_vault_projection_json,
+    )
 
-    json_str = _json.dumps({k: manifest[k] for k in ("manifest_version", "generated_at", "checksum",
-                                                     "entries", "workflow_recipes", "replacement_map",
-                                                     "negative_instructions")}, default=str, indent=2)
+    # Vault JSON is a bounded client projection (not the full semantic DB payload).
+    projection = build_vault_client_projection(manifest)
+    json_str = serialize_vault_projection_json(projection)
+    proj_cs = client_projection_checksum(json_str)
+    # Writer enforces character length (mutations._validate_content uses len(content)).
+    if len(md) > MAX_VAULT_MANIFEST_CHARS:
+        raise ArtifactWorkspaceError(
+            f"vault_manifest_md_exceeds_cap:{len(md)}>{MAX_VAULT_MANIFEST_CHARS}"
+        )
+    if len(json_str) > MAX_VAULT_MANIFEST_CHARS:
+        raise ArtifactWorkspaceError(
+            f"vault_manifest_json_exceeds_cap:{len(json_str)}>{MAX_VAULT_MANIFEST_CHARS}"
+        )
+    # Stamp projection checksum into MD frontmatter path via render is already done; attach in return.
     paths = write_manifest_pair(config, "client-tool-operating-manifest", md, json_str,
                                 tool_name="pa_tool_manifest_refresh_promote")
     mrepo.set_manifest_vault_paths(manifest_id, paths["md_path"], paths["json_path"])
     receipt_rel = f"{MANIFESTS_FOLDER}/client-tool-operating-manifest.md"
     mrepo.mark_refresh_promoted(refresh_id, receipt_rel)
-    return {"status": "promoted", "manifest_id": manifest_id, "manifest_paths": paths,
-            "checksum": manifest["checksum"], "idempotent_reuse": False}
+    return {
+        "status": "promoted", "manifest_id": manifest_id, "manifest_paths": paths,
+        "checksum": manifest["checksum"],
+        "full_semantic_checksum": manifest.get("semantic_surface_checksum") or manifest.get("checksum"),
+        "client_projection_checksum": proj_cs,
+        "client_projection_chars": len(json_str),
+        "client_projection_md_chars": len(md),
+        "idempotent_reuse": False,
+    }
 
 
 def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown") -> dict[str, Any]:

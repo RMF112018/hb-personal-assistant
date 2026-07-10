@@ -150,6 +150,7 @@ KNOWN_TOOL_GROUPS: dict[str, str] = {
     "assistant_list_preferences": "decision_memory",
     "assistant_list_open_loops": "decision_memory",
     "assistant_get_open_loop": "decision_memory",
+    # list tools already covered above
     "pa_artifact_proposal_stage": "artifact_workspace",
     "pa_session_capture_stage": "artifact_workspace",
     "pa_artifact_proposal_list": "artifact_workspace",

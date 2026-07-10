@@ -45,9 +45,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_search_sources",
         "tool_group": "nav",
@@ -63,8 +63,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -83,7 +84,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         },
         {
           "tool": "assistant_get_vault_note",
@@ -101,7 +103,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -177,7 +180,7 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": false,
       "execution_blocked_reason": "plan_only",
       "next_step": {
@@ -196,7 +199,8 @@
         "authorized": false,
         "authorization_reason": "plan_only",
         "currently_executable": false,
-        "execution_blocked_reason": "plan_only"
+        "execution_blocked_reason": "plan_only",
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -213,9 +217,10 @@
           "gateway_allowlisted": true,
           "server_policy_available": true,
           "authorized": false,
-          "authorization_reason": "plan_only",
+          "authorization_reason": "awaiting_prior_step",
           "currently_executable": false,
-          "execution_blocked_reason": "plan_only"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -277,9 +282,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
@@ -295,8 +300,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -315,7 +321,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -391,7 +398,7 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
       "next_step": {
@@ -410,7 +417,8 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": true,
-        "execution_blocked_reason": null
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -428,8 +436,9 @@
           "server_policy_available": true,
           "authorized": true,
           "authorization_reason": "authorized",
-          "currently_executable": true,
-          "execution_blocked_reason": null
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         },
         {
           "tool": "hb_assistant_catalog",
@@ -446,8 +455,9 @@
           "server_policy_available": true,
           "authorized": true,
           "authorization_reason": "authorized",
-          "currently_executable": true,
-          "execution_blocked_reason": null
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -513,9 +523,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
@@ -531,8 +541,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -551,7 +562,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -665,9 +677,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_search_sources",
         "tool_group": "nav",
@@ -683,8 +695,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -703,7 +716,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         },
         {
           "tool": "assistant_get_vault_note",
@@ -721,7 +735,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -747,11 +762,15 @@
     "expected": {
       "workflow": "canonical_decision_retrieval",
       "read_authorized": true,
+      "tools_include": [
+        "assistant_list_decisions",
+        "assistant_get_decision"
+      ],
       "per_tool_groups": {
-        "assistant_get_decision": "decision_memory"
+        "assistant_list_decisions": "decision_memory"
       },
       "per_tool_families": {
-        "assistant_get_decision": "assistant_decision_memory"
+        "assistant_list_decisions": "assistant_decision_memory"
       }
     },
     "actual": {
@@ -759,6 +778,7 @@
       "workflow": "canonical_decision_retrieval",
       "family": "assistant_decision_memory",
       "tools": [
+        "assistant_list_decisions",
         "assistant_get_decision"
       ],
       "read_authorized": true,
@@ -784,11 +804,11 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
       "next_step": {
-        "tool": "assistant_get_decision",
+        "tool": "assistant_list_decisions",
         "tool_group": "decision_memory",
         "family": "assistant_decision_memory",
         "surface": "decision_memory",
@@ -803,13 +823,41 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": true,
-        "execution_blocked_reason": null
+        "execution_blocked_reason": null,
+        "missing_required_arguments": [],
+        "topic_query": "x",
+        "topical_discovery_supported": false,
+        "topic_guidance": "List filters by type/status only; apply topic 'x' when selecting from the bounded result set."
       },
-      "additional_steps": [],
+      "additional_steps": [
+        {
+          "tool": "assistant_get_decision",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "decision_id"
+          ]
+        }
+      ],
       "per_tool_groups": {
+        "assistant_list_decisions": "decision_memory",
         "assistant_get_decision": "decision_memory"
       },
       "per_tool_families": {
+        "assistant_list_decisions": "assistant_decision_memory",
         "assistant_get_decision": "assistant_decision_memory"
       },
       "confidence": "high",
@@ -860,9 +908,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
@@ -878,8 +926,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -898,7 +947,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -1016,9 +1066,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
@@ -1034,8 +1084,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -1054,7 +1105,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -1177,9 +1229,9 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
-      "currently_executable": false,
-      "execution_blocked_reason": "missing_arguments",
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
@@ -1195,8 +1247,9 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": false,
-        "execution_blocked_reason": "missing_arguments"
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -1215,7 +1268,8 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "missing_arguments"
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {
@@ -1290,11 +1344,15 @@
     "expected": {
       "workflow": "canonical_preference_retrieval",
       "read_authorized": true,
+      "tools_include": [
+        "assistant_list_preferences",
+        "assistant_get_preference"
+      ],
       "per_tool_groups": {
-        "assistant_get_preference": "decision_memory"
+        "assistant_list_preferences": "decision_memory"
       },
       "per_tool_families": {
-        "assistant_get_preference": "assistant_decision_memory"
+        "assistant_list_preferences": "assistant_decision_memory"
       }
     },
     "actual": {
@@ -1302,6 +1360,7 @@
       "workflow": "canonical_preference_retrieval",
       "family": "assistant_decision_memory",
       "tools": [
+        "assistant_list_preferences",
         "assistant_get_preference"
       ],
       "read_authorized": true,
@@ -1327,11 +1386,11 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
       "next_step": {
-        "tool": "assistant_get_preference",
+        "tool": "assistant_list_preferences",
         "tool_group": "decision_memory",
         "family": "assistant_decision_memory",
         "surface": "decision_memory",
@@ -1346,13 +1405,41 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": true,
-        "execution_blocked_reason": null
+        "execution_blocked_reason": null,
+        "missing_required_arguments": [],
+        "topic_query": "x",
+        "topical_discovery_supported": false,
+        "topic_guidance": "List filters by type/status only; apply topic 'x' when selecting from the bounded result set."
       },
-      "additional_steps": [],
+      "additional_steps": [
+        {
+          "tool": "assistant_get_preference",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "preference_id"
+          ]
+        }
+      ],
       "per_tool_groups": {
+        "assistant_list_preferences": "decision_memory",
         "assistant_get_preference": "decision_memory"
       },
       "per_tool_families": {
+        "assistant_list_preferences": "assistant_decision_memory",
         "assistant_get_preference": "assistant_decision_memory"
       },
       "confidence": "high",
@@ -1368,6 +1455,9 @@
     "expected": {
       "workflow": "canonical_open_loop_retrieval",
       "read_authorized": true,
+      "tools_include": [
+        "assistant_list_open_loops"
+      ],
       "per_tool_groups": {
         "assistant_list_open_loops": "decision_memory"
       },
@@ -1380,7 +1470,8 @@
       "workflow": "canonical_open_loop_retrieval",
       "family": "assistant_decision_memory",
       "tools": [
-        "assistant_list_open_loops"
+        "assistant_list_open_loops",
+        "assistant_get_open_loop"
       ],
       "read_authorized": true,
       "advisory": true,
@@ -1405,7 +1496,7 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
       "next_step": {
@@ -1424,14 +1515,39 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": true,
-        "execution_blocked_reason": null
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
-      "additional_steps": [],
+      "additional_steps": [
+        {
+          "tool": "assistant_get_open_loop",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "open_loop_id"
+          ]
+        }
+      ],
       "per_tool_groups": {
-        "assistant_list_open_loops": "decision_memory"
+        "assistant_list_open_loops": "decision_memory",
+        "assistant_get_open_loop": "decision_memory"
       },
       "per_tool_families": {
-        "assistant_list_open_loops": "assistant_decision_memory"
+        "assistant_list_open_loops": "assistant_decision_memory",
+        "assistant_get_open_loop": "assistant_decision_memory"
       },
       "confidence": "high",
       "freshness_state": "unknown"
@@ -1451,7 +1567,6 @@
       "promotion_authorized": false,
       "currently_executable": false,
       "execution_blocked_reason_in": [
-        "approval_required",
         "missing_arguments"
       ]
     },
@@ -1487,7 +1602,7 @@
       },
       "approval_satisfied": false,
       "currently_executable": false,
-      "execution_blocked_reason": "approval_required",
+      "execution_blocked_reason": "missing_arguments",
       "next_step": {
         "tool": "pa_artifact_proposal_stage",
         "tool_group": "artifact_workspace",
@@ -1504,7 +1619,11 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": false,
-        "execution_blocked_reason": "approval_required"
+        "execution_blocked_reason": "missing_arguments",
+        "missing_required_arguments": [
+          "session_id",
+          "candidate_artifacts"
+        ]
       },
       "additional_steps": [],
       "per_tool_groups": {
@@ -1548,7 +1667,7 @@
         "read": true,
         "stage": false,
         "write": false,
-        "promote": false,
+        "promote": true,
         "external_action": false
       },
       "server_policy_permission": {
@@ -1560,7 +1679,7 @@
       },
       "approval_satisfied": false,
       "currently_executable": false,
-      "execution_blocked_reason": "approval_required",
+      "execution_blocked_reason": "missing_arguments",
       "next_step": {
         "tool": "pa_artifact_promotion_apply",
         "tool_group": "artifact_workspace",
@@ -1574,10 +1693,14 @@
         "directly_exposed": true,
         "gateway_allowlisted": true,
         "server_policy_available": true,
-        "authorized": false,
-        "authorization_reason": "approval_required",
+        "authorized": true,
+        "authorization_reason": "authorized",
         "currently_executable": false,
-        "execution_blocked_reason": "approval_required"
+        "execution_blocked_reason": "missing_arguments",
+        "missing_required_arguments": [
+          "promotion_bundle_id",
+          "operator_approval_id"
+        ]
       },
       "additional_steps": [],
       "per_tool_groups": {
@@ -1684,7 +1807,7 @@
         "promote": false,
         "external_action": false
       },
-      "approval_satisfied": true,
+      "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
       "next_step": {
@@ -1703,7 +1826,8 @@
         "authorized": true,
         "authorization_reason": "authorized",
         "currently_executable": true,
-        "execution_blocked_reason": null
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
       },
       "additional_steps": [
         {
@@ -1721,8 +1845,9 @@
           "server_policy_available": true,
           "authorized": true,
           "authorization_reason": "authorized",
-          "currently_executable": true,
-          "execution_blocked_reason": null
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
         }
       ],
       "per_tool_groups": {

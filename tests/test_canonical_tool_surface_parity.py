@@ -20,13 +20,22 @@ def test_replacement_map_is_single_authority() -> None:
     assert dict(REPLACEMENT_MAP) == replacement_map()
 
 
-def test_workflow_recipes_are_projection_of_workflows() -> None:
+def test_workflow_recipes_are_projection_of_published_workflows() -> None:
+    """WORKFLOW_RECIPES is a list projection of WORKFLOWS with publish_to_client_manifest."""
+    published = [w for w in WORKFLOWS if w.get("publish_to_client_manifest")]
     names = {r["workflow_name"] for r in WORKFLOW_RECIPES}
-    assert names == set(WORKFLOW_IDS)
-    # Every recipe tool sequence matches routing seed.
+    assert names == {w["workflow_id"] for w in published}
+    assert names <= set(WORKFLOW_IDS)
+    # No unpublished workflow appears.
+    unpublished = {w["workflow_id"] for w in WORKFLOWS if not w.get("publish_to_client_manifest")}
+    assert names.isdisjoint(unpublished)
     by_id = {w["workflow_id"]: w for w in WORKFLOWS}
     for r in WORKFLOW_RECIPES:
         assert r["tool_sequence"] == list(by_id[r["workflow_name"]]["tool_sequence"])
+    # Client capability coverage (at least one each).
+    cats = {by_id[n].get("client_capability_category") for n in names}
+    for needed in ("session_capture", "source_search", "source_map", "generation", "decision", "manifest"):
+        assert needed in cats, needed
 
 
 def test_every_workflow_tool_has_family() -> None:

@@ -341,28 +341,79 @@ def _reads_explicitly_allowed(prompt_l: str) -> bool:
     return False
 
 
+# Schema-aligned required args for tools when live schema index is empty (offline tests).
+_TOOL_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
+    "assistant_get_decision": ("decision_id",),
+    "assistant_get_preference": ("preference_id",),
+    "assistant_get_open_loop": ("open_loop_id",),
+    "pa_artifact_proposal_stage": ("session_id", "candidate_artifacts"),
+    "pa_artifact_promotion_apply": ("promotion_bundle_id", "operator_approval_id"),
+    "pa_output_commit": ("output_id", "operator_approval_id"),
+    "assistant_source_file_read": ("source_id",),
+}
+
+
+def required_args_for_tool(tool_name: str) -> list[str]:
+    """Return required argument names (live schema when available; static fallback)."""
+    try:
+        from hb_assistant.nas_mcp.tool_registration import (  # noqa: PLC0415
+            derive_tool_arg_meta,
+            live_tool_schema_index,
+        )
+
+        meta = derive_tool_arg_meta(tool_name, live_tool_schema_index())
+        req = meta.get("required_args") or []
+        if req:
+            return [str(x) for x in req]
+    except Exception:  # noqa: BLE001
+        pass
+    return list(_TOOL_REQUIRED_ARGS.get(tool_name, ()))
+
+
+def _extract_topic_query(prompt_l: str) -> str | None:
+    """Best-effort topical fragment (e.g. 'about X' / 'for X'); not an ID."""
+    m = re.search(r"\b(?:about|for|regarding|on)\s+([a-z0-9][\w\-]{0,64})\b", prompt_l)
+    if m:
+        return m.group(1)
+    return None
+
+
+def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
+    """Extract a workflow-specific ID only when pattern matches repo contracts. Never invent."""
+    # Conservative patterns aligned to PA IDs (alphanumeric with optional prefix/hyphen/underscore).
+    patterns = {
+        "decision_id": r"\b((?:dec|decision)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
+        "preference_id": r"\b((?:pref|preference)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
+        "open_loop_id": r"\b((?:ol|open[_-]?loop)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
+        "operator_approval_id": r"\b((?:appr|approval)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
+        "promotion_bundle_id": r"\b((?:promob|promotion[_-]?bundle)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
+        "session_id": r"\b((?:sess|session)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
+        "source_id": r"\b((?:src|source)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
+    }
+    pat = patterns.get(arg_name)
+    if not pat:
+        return None
+    m = re.search(pat, prompt, flags=re.I)
+    if not m:
+        return None
+    return m.group(1)
+
+
 def _authorization(
     wf: dict[str, Any],
     confident: bool,
     *,
     prompt_l: str,
     prohibitions: set[str],
+    next_tool: str | None = None,
+    next_arguments: dict[str, Any] | None = None,
     has_exact_id: bool = False,
 ) -> dict[str, Any]:
-    """Multi-dimensional authorization; retains deprecated prompt_authorizes_execution."""
+    """Multi-dimensional authorization + request-level executability (does not execute)."""
     action_class = wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
     plan_only = _plan_only_or_no_execute(prompt_l, prohibitions)
-    # Read authorization:
-    # - plan-only / identify-do-not-execute → no tool calls
-    # - read workflows & read-only posture → bounded reads authorized
-    # - write/stage/promote workflows → supporting reads ok; writes gated separately
-    if plan_only:
-        allow_read = False
-    elif not is_write:
-        allow_read = True
-    else:
-        allow_read = True  # supporting reads for stage/create/promote planning
+    allow_read = not plan_only  # supporting reads for write workflows included
 
     non_read_banned = "execute_non_read" in prohibitions or "execute" in prohibitions
     staging_ok = (
@@ -373,66 +424,80 @@ def _authorization(
         and not plan_only
     )
     write_ok = (
-        action_class in ("staged_write",)
+        action_class == "staged_write"
         and "write" not in prohibitions
         and not non_read_banned
         and not plan_only
         and confident
     )
-    # Commit never authorized by prompt alone.
-    commit_ok = False
-    promotion_ok = False  # always requires validation + server approval
-    external_ok = False  # no external-action surface invented
-
-    if action_class == "canonical_promotion":
-        staging_ok = False
-        write_ok = False
-        promotion_ok = False
-    if "promote" in prohibitions:
-        promotion_ok = False
+    # Prompt may request promotion without satisfying approval — permission is separate.
+    promote_requested = action_class == "canonical_promotion" and "promote" not in prohibitions and not plan_only
+    promote_perm = promote_requested  # prompt_permission.promote
+    promotion_authorized = False  # not cleared for execution without validation+approval
+    external_ok = False
     if "external_action" in prohibitions:
         external_ok = False
 
-    additional_approval = bool(is_write) or bool(wf["additional_approval_points"])
-    requires_go = bool(is_write)
-    approval_points = list(wf["additional_approval_points"])
-    # Write/stage/promote always need a server-minted approval that preflight cannot satisfy.
-    approval_satisfied = (not additional_approval) and (not requires_go)
-
-    # Request-level executability (preflight does not execute; it reports whether a follow-on
-    # call is permitted *given known preconditions*).
-    required_inputs = list(wf.get("required_inputs") or [])
-    args_ok = not required_inputs  # without concrete args/context, treat as incomplete
-    if has_exact_id and required_inputs:
-        # Exact id may satisfy a single id-like input.
-        args_ok = True
-    surface_ok = True  # refined by caller when tools filtered
-    prompt_perm_ok = (allow_read and not is_write) or staging_ok or write_ok
-    server_perm_ok = (not is_write) or action_class in _WRITE_CLASSES
-    currently_executable = bool(
-        prompt_perm_ok and server_perm_ok and approval_satisfied and args_ok and surface_ok and not plan_only
+    additional_approval = bool(
+        action_class in ("canonical_promotion", "archive")
+        or bool(wf.get("additional_approval_points"))
+        or (action_class == "staged_write" and next_tool and "commit" in (next_tool or ""))
     )
-    if plan_only:
-        blocked_reason: str | None = "plan_only"
-        currently_executable = False
-    elif is_write and not approval_satisfied:
-        blocked_reason = "approval_required"
-        currently_executable = False
-    elif not args_ok:
-        blocked_reason = "missing_arguments"
-        currently_executable = False
-    elif not allow_read and not staging_ok and not write_ok:
-        blocked_reason = "not_authorized"
-        currently_executable = False
-    else:
-        blocked_reason = None if currently_executable else "preconditions_incomplete"
+    # Stage tools do not require approval IDs; commit/promote do.
+    tool_needs_approval = bool(
+        next_tool and (
+            next_tool in ("pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote", "pa_output_commit")
+            or next_tool.endswith("_commit")
+            or "promotion_apply" in next_tool
+        )
+    )
+    approval_points = list(wf["additional_approval_points"])
+    approval_satisfied = False  # preflight never holds server-minted approval
 
-    # For authorized pure reads with no required inputs, currently_executable is True.
-    if not is_write and allow_read and not plan_only and approval_satisfied and args_ok:
+    next_arguments = dict(next_arguments or {})
+    req_args = required_args_for_tool(next_tool) if next_tool else []
+    missing = [a for a in req_args if next_arguments.get(a) in (None, "", [], {})]
+    # has_exact_id alone never invents IDs — only reduces ambiguity when args already present.
+    if has_exact_id and missing and not any(_extract_validated_id(prompt_l, a) for a in missing):
+        pass  # still missing
+
+    # --- precedence for primary blocker ---
+    blocked_reason: str | None = None
+    currently_executable = False
+    approval_required_flag = False
+
+    if plan_only or "execute" in prohibitions and not allow_read:
+        blocked_reason = "plan_only" if plan_only else "operation_prohibited"
+    elif next_tool is None:
+        blocked_reason = "no_recommended_tool"
+    elif missing:
+        blocked_reason = "missing_arguments"
+        # If only approval-shaped args remain among missing after non-approval filled, note approval.
+        non_appr_missing = [a for a in missing if a != "operator_approval_id"]
+        if not non_appr_missing and "operator_approval_id" in missing:
+            blocked_reason = "approval_required"
+            approval_required_flag = True
+        elif tool_needs_approval:
+            approval_required_flag = True
+    elif tool_needs_approval and not approval_satisfied:
+        blocked_reason = "approval_required"
+        approval_required_flag = True
+    elif promote_requested and not approval_satisfied:
+        # Non-approval target args may still be missing; if not in missing list above, approval.
+        blocked_reason = "approval_required"
+        approval_required_flag = True
+    elif not allow_read and not staging_ok and not write_ok and not promote_perm:
+        blocked_reason = "not_authorized"
+    else:
         currently_executable = True
         blocked_reason = None
 
-    # Deprecated: true when bounded *read* tool calls are authorized (not a sole client signal).
+    # Stage: never attribute approval when stage tool only needs session/artifacts.
+    if next_tool == "pa_artifact_proposal_stage" and missing:
+        blocked_reason = "missing_arguments"
+        approval_required_flag = False
+        currently_executable = False
+
     prompt_authorizes_execution = bool(allow_read and not plan_only and not is_write)
 
     return {
@@ -444,7 +509,7 @@ def _authorization(
             "read": allow_read,
             "stage": staging_ok,
             "write": write_ok,
-            "promote": promotion_ok,
+            "promote": promote_perm,
             "external_action": external_ok,
         },
         "server_policy_permission": {
@@ -455,19 +520,20 @@ def _authorization(
             "external_action": False,
         },
         "approval_satisfied": approval_satisfied,
+        "approval_required": approval_required_flag or tool_needs_approval,
         "currently_executable": currently_executable,
         "execution_blocked_reason": blocked_reason,
-        "read_tool_calls_authorized": allow_read,  # includes supporting reads for write workflows
+        "missing_required_arguments": missing,
+        "read_tool_calls_authorized": allow_read and not plan_only,
         "advisory_planning_authorized": True,
         "staging_authorized": staging_ok,
         "external_action_authorized": external_ok,
-        "write_authorized": write_ok and commit_ok,
-        "promotion_authorized": promotion_ok,
-        "additional_approval_required": additional_approval,
-        "requires_explicit_operator_go": requires_go,
+        "write_authorized": False,  # commit never authorized by prompt alone
+        "promotion_authorized": promotion_authorized,
+        "additional_approval_required": additional_approval or tool_needs_approval,
+        "requires_explicit_operator_go": bool(is_write),
         "approval_points": approval_points,
         "prohibitions": sorted(prohibitions),
-        # Deprecated — retained for current contract cycle; derive only; not sole client signal.
         "prompt_authorizes_execution": prompt_authorizes_execution,
         "prompt_authorizes_execution_deprecated": True,
     }
@@ -514,26 +580,49 @@ def _enrich_tool_steps(
     authorization: dict[str, Any],
     primary_family: str,
     tool_groups: dict[str, str | None] | None = None,
+    next_tool: str | None = None,
+    next_arguments: dict[str, Any] | None = None,
+    topic_query: str | None = None,
 ) -> list[dict[str, Any]]:
     from .tool_family_manifest import family_for_tool  # noqa: PLC0415
 
     steps: list[dict[str, Any]] = []
-    for t in tools:
+    for i, t in enumerate(tools):
         group = _tool_group(t, tool_groups)
         available = True if available_tools is None else t in available_tools
         fam = family_for_tool(t, group) or primary_family
-        # Per-tool authorized follows request-level permission for that class.
+        args: dict[str, Any] = {}
+        if t == next_tool and next_arguments:
+            args = dict(next_arguments)
+        # List/discovery tools: do not inject unsupported query args; surface topic separately.
+        req = required_args_for_tool(t)
+        missing = [a for a in req if args.get(a) in (None, "", [], {})]
+        is_next = (t == next_tool) or (i == 0)
         step_auth = bool(authorization.get("read_tool_calls_authorized"))
         if t.startswith("pa_artifact") or "stage" in t or "session_capture" in t:
-            step_auth = bool(authorization.get("staging_authorized") or authorization.get("read_tool_calls_authorized"))
-        if "promotion" in t or t == "ai_outputs_card_upsert":
-            step_auth = bool(authorization.get("promotion_authorized"))
-        steps.append({
+            step_auth = bool(
+                authorization.get("staging_authorized")
+                or authorization.get("read_tool_calls_authorized")
+            )
+        if "promotion_apply" in t or t == "ai_outputs_card_upsert":
+            step_auth = bool(authorization.get("prompt_permission", {}).get("promote"))
+        # Executability only for the next_step tool with full preconditions.
+        if is_next:
+            cex = bool(authorization.get("currently_executable")) and available and step_auth
+            blocked = None if cex else (
+                authorization.get("execution_blocked_reason")
+                or ("missing_arguments" if missing else "not_authorized")
+            )
+        else:
+            # Subsequent getter/list steps are not currently executable until prior selection.
+            cex = False
+            blocked = "awaiting_prior_step" if not missing else "missing_arguments"
+        step: dict[str, Any] = {
             "tool": t,
             "tool_group": group,
             "family": fam,
             "surface": group,
-            "arguments": {},
+            "arguments": args,
             "call_mode": "direct" if available else "gateway",
             "available": available,
             "installed": available,
@@ -544,19 +633,20 @@ def _enrich_tool_steps(
             "authorized": step_auth and available,
             "authorization_reason": (
                 "authorized" if step_auth and available
-                else (authorization.get("execution_blocked_reason") or "not_authorized")
+                else (blocked or "not_authorized")
             ),
-            "currently_executable": bool(
-                step_auth and available and authorization.get("currently_executable")
-            ) if not authorization.get("additional_approval_required") else False,
-            "execution_blocked_reason": (
-                None if (step_auth and available and authorization.get("currently_executable")
-                         and not authorization.get("additional_approval_required"))
-                else (authorization.get("execution_blocked_reason")
-                      or ("approval_required" if authorization.get("additional_approval_required")
-                          else "not_authorized"))
-            ),
-        })
+            "currently_executable": cex,
+            "execution_blocked_reason": blocked,
+            "missing_required_arguments": missing,
+        }
+        if topic_query and t.startswith("assistant_list_"):
+            step["topic_query"] = topic_query
+            step["topical_discovery_supported"] = False
+            step["topic_guidance"] = (
+                f"List filters by type/status only; apply topic '{topic_query}' when selecting "
+                f"from the bounded result set."
+            )
+        steps.append(step)
     return steps
 
 
@@ -652,20 +742,29 @@ def route_prompt(
         recommended_tools = seq
     workflow_available = not unavailable
 
+    topic = _extract_topic_query(prompt_l)
+    next_tool = recommended_tools[0] if recommended_tools else None
+    next_args: dict[str, Any] = {}
+    # Populate only validated extracted IDs for the *next* tool's required args.
+    if next_tool:
+        for arg in required_args_for_tool(next_tool):
+            extracted = _extract_validated_id(prompt, arg)
+            if extracted:
+                next_args[arg] = extracted
+    # has_exact_id never invents: if set without extractable ID, args stay empty.
+
     action_class = best_wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
     authorization = _authorization(
-        best_wf, confident, prompt_l=prompt_l, prohibitions=prohibitions, has_exact_id=has_exact_id,
+        best_wf, confident,
+        prompt_l=prompt_l, prohibitions=prohibitions,
+        next_tool=next_tool, next_arguments=next_args, has_exact_id=has_exact_id,
     )
-    # Surface availability affects request-level executability when tools are missing.
-    if available_tools is not None and recommended_tools and any(
-        t not in available_tools for t in recommended_tools
-    ):
+    if available_tools is not None and next_tool and next_tool not in available_tools:
         authorization = dict(authorization)
         authorization["currently_executable"] = False
-        authorization["execution_blocked_reason"] = (
-            authorization.get("execution_blocked_reason") or "surface_unavailable"
-        )
+        authorization["execution_blocked_reason"] = "surface_unavailable"
+
     fam = family_record(primary_family) or {}
 
     tool_steps = _enrich_tool_steps(
@@ -674,6 +773,9 @@ def route_prompt(
         authorization=authorization,
         primary_family=primary_family,
         tool_groups=tool_groups,
+        next_tool=next_tool,
+        next_arguments=next_args,
+        topic_query=topic,
     )
 
     next_step = tool_steps[0] if tool_steps else None
@@ -683,6 +785,13 @@ def route_prompt(
     must_not = list(best_wf["must_not_use"]) + list(fam.get("family_level_negative_instructions", []))
     if prohibitions:
         must_not = must_not + [f"prompt prohibits: {', '.join(sorted(prohibitions))}"]
+    # Topical discovery limitation for list tools without a query arg.
+    if topic and next_tool and next_tool.startswith("assistant_list_"):
+        constraints.append(
+            f"topic_query={topic}; list tools filter by type/status only — "
+            f"apply topic '{topic}' when selecting from the bounded list "
+            f"(topical discovery arg not supported on {next_tool})."
+        )
 
     plan: dict[str, Any] = {
         "route_schema_version": ROUTE_SCHEMA_VERSION,

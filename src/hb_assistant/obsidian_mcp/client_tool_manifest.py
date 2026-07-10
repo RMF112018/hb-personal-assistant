@@ -23,29 +23,109 @@ REVIEW_CADENCE = "tool_surface: on_change; routing: weekly; safety: on_tool_surf
 
 # Compatibility projection of the preflight WORKFLOWS seed (not an independent authoring list).
 # Authority: workflow_recipe_manifest.WORKFLOWS (routing) + canonical_tool_specs.replacement_map.
+# Public contract: WORKFLOW_RECIPES is a **list** of recipe dicts with key ``workflow_name``
+# (stable for rendering, stage_refresh, and pa_tool_manifest_workflow_get).
+
+CLIENT_PROJECTION_SCHEMA_VERSION = 1
+# Fixed vault write bound (characters) for client-tool operating manifest MD/JSON under
+# 99 System/Manifests. Must not be payload-driven. Aligns with Obsidian max_write_chars default.
+MAX_VAULT_MANIFEST_CHARS = 120_000
+
+
+def project_workflow_for_client(w: dict[str, Any]) -> dict[str, Any]:
+    """Project one authoritative WORKFLOWS record into the public client-recipe shape."""
+    fr = w.get("failure_recovery") or ""
+    return {
+        "workflow_name": w["workflow_id"],
+        "trigger_phrases": list(w.get("trigger_phrases") or []),
+        "description": w.get("when_to_use") or "",
+        "tool_sequence": list(w.get("tool_sequence") or []),
+        "required_operator_approval_points": list(w.get("additional_approval_points") or []),
+        "negative_instructions": list(w.get("must_not_use") or []),
+        "expected_outputs": list(w.get("expected_outputs") or []),
+        "failure_recovery": [fr] if isinstance(fr, str) and fr else list(fr or []),
+    }
 
 
 def _workflow_recipes_from_routing() -> list[dict[str, Any]]:
+    """List projection of WORKFLOWS where publish_to_client_manifest is True (deterministic order)."""
     from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
 
-    out: list[dict[str, Any]] = []
-    for w in WORKFLOWS:
-        fr = w.get("failure_recovery") or ""
-        out.append({
-            "workflow_name": w["workflow_id"],
-            "trigger_phrases": list(w.get("trigger_phrases") or []),
-            "description": w.get("when_to_use") or "",
-            "tool_sequence": list(w.get("tool_sequence") or []),
-            "required_operator_approval_points": list(w.get("additional_approval_points") or []),
-            "negative_instructions": list(w.get("must_not_use") or []),
-            "expected_outputs": list(w.get("expected_outputs") or []),
-            "failure_recovery": [fr] if isinstance(fr, str) and fr else list(fr or []),
-        })
-    return out
+    published = [w for w in WORKFLOWS if w.get("publish_to_client_manifest")]
+    # Stable order by workflow_id for deterministic checksums.
+    published.sort(key=lambda w: w["workflow_id"])
+    return [project_workflow_for_client(w) for w in published]
 
 
 # Derived compatibility views — do not edit independently of WORKFLOWS / replacement_map().
 WORKFLOW_RECIPES: list[dict[str, Any]] = _workflow_recipes_from_routing()
+
+
+def client_projection_meta() -> dict[str, Any]:
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
+    total = len(WORKFLOWS)
+    published = sum(1 for w in WORKFLOWS if w.get("publish_to_client_manifest"))
+    return {
+        "client_projection_schema_version": CLIENT_PROJECTION_SCHEMA_VERSION,
+        "published_workflow_count": published,
+        "omitted_workflow_count": total - published,
+    }
+
+
+def build_vault_client_projection(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Bounded vault-facing object (not the full semantic payload)."""
+    # Slim entries: identity + classification only (no empty optional noise).
+    slim_entries = []
+    for e in manifest.get("entries") or []:
+        slim_entries.append({
+            "tool_name": e.get("tool_name"),
+            "tool_group": e.get("tool_group"),
+            "tool_class": e.get("tool_class"),
+            "safety_class": e.get("safety_class"),
+            "read_write_class": e.get("read_write_class"),
+            "purpose": e.get("purpose") or "",
+            "required_args": e.get("required_args") or [],
+            "optional_args": e.get("optional_args") or [],
+            "replacement_tools": e.get("replacement_tools") or [],
+        })
+    meta = client_projection_meta()
+    return {
+        "manifest_version": manifest.get("manifest_version"),
+        "client_projection_schema_version": meta["client_projection_schema_version"],
+        "published_workflow_count": meta["published_workflow_count"],
+        "omitted_workflow_count": meta["omitted_workflow_count"],
+        "full_semantic_checksum": manifest.get("semantic_surface_checksum") or manifest.get("checksum"),
+        "generated_at": manifest.get("generated_at"),
+        "generated_from_runtime_commit": manifest.get("generated_from_runtime_commit"),
+        "tool_count": len(slim_entries),
+        "workflow_count": len(manifest.get("workflow_recipes") or WORKFLOW_RECIPES),
+        "entries": slim_entries,
+        "workflow_recipes": list(manifest.get("workflow_recipes") or WORKFLOW_RECIPES),
+        "replacement_map": dict(manifest.get("replacement_map") or REPLACEMENT_MAP),
+        "negative_instructions": list(manifest.get("negative_instructions") or NEGATIVE_INSTRUCTIONS),
+    }
+
+
+def serialize_vault_projection_json(projection: dict[str, Any]) -> str:
+    """Deterministic compact JSON string used for write-cap measurement and vault write."""
+    import json  # noqa: PLC0415
+
+    from .canonical_json import canonicalize  # noqa: PLC0415
+
+    return json.dumps(canonicalize(projection), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def client_projection_checksum(projection: dict[str, Any] | str) -> str:
+    from .canonical_json import sha256_fingerprint  # noqa: PLC0415
+
+    if isinstance(projection, str):
+        import hashlib  # noqa: PLC0415
+
+        return "sha256:" + hashlib.sha256(projection.encode("utf-8")).hexdigest()
+    # Checksum of exact serialized projection string (character-oriented, matches writer unit).
+    s = serialize_vault_projection_json(projection)
+    return client_projection_checksum(s)
 
 
 def _replacement_map() -> dict[str, str]:

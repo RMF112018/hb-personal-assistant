@@ -117,8 +117,9 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_decision_retrieval",
             "read_authorized": True,
-            "per_tool_groups": {"assistant_get_decision": "decision_memory"},
-            "per_tool_families": {"assistant_get_decision": "assistant_decision_memory"},
+            "tools_include": ["assistant_list_decisions", "assistant_get_decision"],
+            "per_tool_groups": {"assistant_list_decisions": "decision_memory"},
+            "per_tool_families": {"assistant_list_decisions": "assistant_decision_memory"},
         },
     },
     {
@@ -183,8 +184,9 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_preference_retrieval",
             "read_authorized": True,
-            "per_tool_groups": {"assistant_get_preference": "decision_memory"},
-            "per_tool_families": {"assistant_get_preference": "assistant_decision_memory"},
+            "tools_include": ["assistant_list_preferences", "assistant_get_preference"],
+            "per_tool_groups": {"assistant_list_preferences": "decision_memory"},
+            "per_tool_families": {"assistant_list_preferences": "assistant_decision_memory"},
         },
     },
     {
@@ -193,6 +195,7 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_open_loop_retrieval",
             "read_authorized": True,
+            "tools_include": ["assistant_list_open_loops"],
             "per_tool_groups": {"assistant_list_open_loops": "decision_memory"},
             "per_tool_families": {"assistant_list_open_loops": "assistant_decision_memory"},
         },
@@ -206,8 +209,8 @@ CASES: list[dict] = [
             "staging_authorized": True,
             "staging_authorized_or_write_class": True,
             "promotion_authorized": False,
-            "currently_executable": False,  # approval required
-            "execution_blocked_reason_in": ["approval_required", "missing_arguments"],
+            "currently_executable": False,
+            "execution_blocked_reason_in": ["missing_arguments"],
         },
     },
     {

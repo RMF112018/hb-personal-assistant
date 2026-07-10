@@ -1,0 +1,51 @@
+{
+  "feature_sha": "1ec82d7e01ad40e3b7b07458b09049fd53ddb851",
+  "baseline_sha": "05765b6512593d7383cfc6a2c1f6603ac3bbd215",
+  "command": "pytest -q --tb=no <modules>",
+  "python": "3.14.5",
+  "feature": {
+    "failed_nodes": [
+      "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+      "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive"
+    ],
+    "started": "2026-07-10T10:08:17.782950+00:00",
+    "ended": "2026-07-10T10:09:17.246444+00:00",
+    "duration_s": 59.5,
+    "modules": [
+      "tests/test_n8c23_mcp_surface_safety.py",
+      "tests/test_prompt_preflight_routing_consistency.py",
+      "tests/test_canonical_tool_surface_parity.py",
+      "tests/test_nas_mcp_tool_annotations.py",
+      "tests/test_n8c_final_validation.py"
+    ],
+    "exit_hint": "see per-module"
+  },
+  "baseline": {
+    "failed_nodes": [
+      "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+      "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head",
+      "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive"
+    ],
+    "started": "2026-07-10T10:09:17.246508+00:00",
+    "ended": "2026-07-10T10:10:00.583928+00:00",
+    "duration_s": 43.3,
+    "modules": [
+      "tests/test_n8c23_mcp_surface_safety.py",
+      "tests/test_prompt_preflight_routing_consistency.py",
+      "tests/test_canonical_tool_surface_parity.py",
+      "tests/test_nas_mcp_tool_annotations.py",
+      "tests/test_n8c_final_validation.py"
+    ],
+    "exit_hint": "see per-module"
+  },
+  "common_failing_both": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive"
+  ],
+  "common_failing_only_feature": [],
+  "common_fixed_on_feature": [
+    "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head"
+  ],
+  "feature_failed_count": 2,
+  "baseline_failed_count": 3
+}

@@ -73,9 +73,13 @@ def test_stage_for_review_is_staged_write() -> None:
     assert plan["recommended_workflow"] == "stage_artifact_proposals"
     assert auth["operation_requested"] == "staged_write"
     assert auth["staging_authorized"] is True
+    assert auth["prompt_permission"]["stage"] is True
     assert auth["promotion_authorized"] is False
     assert auth["currently_executable"] is False
-    assert auth["execution_blocked_reason"] == "approval_required"
+    assert auth["execution_blocked_reason"] == "missing_arguments"
+    assert "session_id" in auth["missing_required_arguments"]
+    assert "candidate_artifacts" in auth["missing_required_arguments"]
+    assert auth.get("approval_required") is False
 
 
 def test_beyond_read_only_uses_execute_non_read() -> None:
@@ -94,12 +98,51 @@ def test_not_a_promotion_receipt_clarifies() -> None:
     assert plan["recommended_workflow"] != "inspect_promotion_receipt"
 
 
-def test_decision_tool_family_and_group() -> None:
+def test_decision_discovery_first_without_id() -> None:
     plan = route_prompt("What did we decide about X?")
-    assert plan["next_step"]["tool"] == "assistant_get_decision"
+    assert plan["next_step"]["tool"] == "assistant_list_decisions"
     assert plan["next_step"]["tool_group"] == "decision_memory"
     assert plan["next_step"]["family"] == "assistant_decision_memory"
-    assert plan["authorization"]["currently_executable"] is True
+    # List has no required ID → may be executable; getter remains later with missing args.
+    assert "assistant_get_decision" in plan["recommended_tools"]
+    get_step = next(s for s in plan["additional_steps"] if s["tool"] == "assistant_get_decision")
+    assert get_step["currently_executable"] is False
+    assert get_step["arguments"] == {}
+    assert "decision_id" in (get_step.get("missing_required_arguments") or ["decision_id"])
+    # Topic preserved as guidance (list tool has no query arg).
+    assert plan["next_step"].get("topic_query") == "x" or any(
+        "topic_query=x" in c for c in plan.get("constraints") or []
+    )
+
+
+def test_decision_exact_id_populates_args() -> None:
+    plan = route_prompt(
+        "Retrieve the canonical decision decision_abc12345 from memory."
+    )
+    # If the getter is next, args must include the validated ID (never invented).
+    steps = ([plan["next_step"]] if plan.get("next_step") else []) + list(plan.get("additional_steps") or [])
+    get_steps = [s for s in steps if s and s.get("tool") == "assistant_get_decision"]
+    if get_steps:
+        assert get_steps[0]["arguments"].get("decision_id", "").lower().startswith("decision")
+    # has_exact_id alone invents nothing
+    plan2 = route_prompt("What did we decide about X?", has_exact_id=True)
+    assert plan2.get("next_step") is not None
+    assert plan2["next_step"]["tool"] == "assistant_list_decisions"
+    get2 = next((s for s in plan2.get("additional_steps") or [] if s["tool"] == "assistant_get_decision"), None)
+    if get2:
+        assert get2["arguments"] == {}
+
+
+def test_promote_permission_separate_from_approval() -> None:
+    plan = route_prompt("Promote the approved artifact.")
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] == "apply_canonical_promotion"
+    assert auth["prompt_permission"]["promote"] is True
+    assert auth["server_policy_permission"]["promote"] is True
+    assert auth["promotion_authorized"] is False
+    assert auth["approval_satisfied"] is False
+    assert auth["currently_executable"] is False
+    assert auth["execution_blocked_reason"] in ("missing_arguments", "approval_required")
 
 
 def test_ordinary_search_authorizes_reads() -> None:

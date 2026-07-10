@@ -22,6 +22,9 @@ def _w(**kw: Any) -> dict[str, Any]:
         "write_risk": "none", "default_retrieval_layer": "route_only", "max_default_candidates": 10,
         "max_default_chars": 4000, "expected_outputs": [], "required_provenance": [], "must_not_use": [],
         "fallback_rules": [], "failure_recovery": "",
+        # Client vault operating-manifest projection (default off — routing-only unless published).
+        "publish_to_client_manifest": False,
+        "client_capability_category": "",  # session_capture|source_search|source_map|generation|decision|manifest
     }
     base.update(kw)
     return base
@@ -67,12 +70,14 @@ WORKFLOWS: list[dict[str, Any]] = [
        when_to_use="Read the versioned tool operating manifest.", when_not_to_use="Routing a task.",
        tool_sequence=["pa_tool_manifest_get"], expected_outputs=["manifest record"]),
     _w(workflow_id="manifest_freshness_check", family_id="client_tool_manifest",
+       publish_to_client_manifest=True, client_capability_category="manifest",
        trigger_phrases=["is the manifest current", "manifest freshness"], intent_classes=["discovery"],
        when_to_use="Check whether the manifest drifted from the live surface.", when_not_to_use="",
        tool_sequence=["pa_tool_manifest_freshness_check", "pa_tool_surface_freshness_check"],
        expected_outputs=["freshness/staleness state"]),
     # ---- read / retrieval ----
     _w(workflow_id="source_file_search", family_id="assistant_source_connector",
+       publish_to_client_manifest=True, client_capability_category="source_search",
        trigger_phrases=["find the source", "find the file", "find the project file",
                         "find a file", "find a source file", "search my work files",
                         "search work files", "work files", "source file", "source files",
@@ -112,6 +117,7 @@ WORKFLOWS: list[dict[str, Any]] = [
        default_retrieval_layer="route_only",
        expected_outputs=["intent + recommended tool sequence"], required_provenance=[]),
     _w(workflow_id="source_index_health", family_id="assistant_source_connector",
+       publish_to_client_manifest=True, client_capability_category="source_map",
        trigger_phrases=["source index health", "is my source index fresh", "index fresh enough",
                         "source freshness", "can i trust the source index"],
        intent_classes=["status"],
@@ -120,6 +126,7 @@ WORKFLOWS: list[dict[str, Any]] = [
        tool_sequence=["assistant_source_index_health", "assistant_source_status"],
        default_retrieval_layer="route_only"),
     _w(workflow_id="source_project_map", family_id="assistant_source_connector",
+       publish_to_client_manifest=True, client_capability_category="source_map",
        trigger_phrases=["map the project", "map project", "project folder map",
                         "project map", "where is project", "folders for project",
                         "map project folder", "map the project folder", "project folder",
@@ -180,22 +187,30 @@ WORKFLOWS: list[dict[str, Any]] = [
        tool_sequence=["assistant_get_context_pack"], default_retrieval_layer="candidate_triage",
        required_provenance=["source_id"]),
     _w(workflow_id="canonical_decision_retrieval", family_id="assistant_decision_memory",
+       publish_to_client_manifest=True, client_capability_category="decision",
        trigger_phrases=["what did we decide", "the decision on", "was it decided"],
        intent_classes=["retrieval"], when_to_use="Retrieve a canonical decision record.",
        when_not_to_use="Free-text source search.",
-       tool_sequence=["assistant_get_decision"], required_provenance=["source_id", "decision_id"],
+       # Discovery-first: list/bounded discovery before get-by-id.
+       tool_sequence=["assistant_list_decisions", "assistant_get_decision"],
+       required_inputs=["decision_id"],  # for getter; list step has no topic query arg
+       required_provenance=["source_id", "decision_id"],
        fallback_rules=["if no canonical decision, fall back to source search — clearly labeled non-canonical"]),
     _w(workflow_id="canonical_preference_retrieval", family_id="assistant_decision_memory",
        trigger_phrases=["standing preference", "how do we usually", "the preference for",
                         "what preferences", "preferences do i have", "preferences for"],
        intent_classes=["retrieval"], when_to_use="Retrieve a standing preference.", when_not_to_use="",
-       tool_sequence=["assistant_get_preference"], required_provenance=["source_id"]),
+       tool_sequence=["assistant_list_preferences", "assistant_get_preference"],
+       required_inputs=["preference_id"],
+       required_provenance=["source_id"]),
     _w(workflow_id="canonical_open_loop_retrieval", family_id="assistant_decision_memory",
        trigger_phrases=["open loops", "what is pending", "unresolved", "what open loops remain",
                         "open loops remain"],
        intent_classes=["retrieval"],
        when_to_use="List open loops / unresolved threads.", when_not_to_use="",
-       tool_sequence=["assistant_list_open_loops"], required_provenance=["source_id"]),
+       tool_sequence=["assistant_list_open_loops", "assistant_get_open_loop"],
+       required_inputs=["open_loop_id"],
+       required_provenance=["source_id"]),
     _w(workflow_id="quality_findings_review", family_id="assistant_quality",
        trigger_phrases=["quality findings", "what needs review", "review queue"],
        intent_classes=["retrieval"], when_to_use="Review advisory quality findings / review queue.",
@@ -212,6 +227,7 @@ WORKFLOWS: list[dict[str, Any]] = [
        must_not_use=["executing staged actions; no send/email/calendar"]),
     # ---- artifact workspace (session capture → staged canonical) ----
     _w(workflow_id="document_session", family_id="artifact_workspace",
+       publish_to_client_manifest=True, client_capability_category="session_capture",
        trigger_phrases=["document this session", "capture this", "remember this", "save to memory",
                         "write this down", "log our decisions",
                         # artifact-authoring phrasings (were classified "unknown" before)
@@ -277,6 +293,7 @@ WORKFLOWS: list[dict[str, Any]] = [
        tool_sequence=["pa_artifact_promotion_receipt_get", "pa_artifact_manifest_get"]),
     # ---- generated file output workspace (N8C-24) ----
     _w(workflow_id="generate_docx_output", family_id="client_output_workspace",
+       publish_to_client_manifest=True, client_capability_category="generation",
        trigger_phrases=["generate a word doc", "make a word document", "save this as docx",
                         "write a report and save it"],
        intent_classes=["generate_file", "staged_write"],
