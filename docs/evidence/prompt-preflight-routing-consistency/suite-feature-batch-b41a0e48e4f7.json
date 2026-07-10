@@ -1,0 +1,28 @@
+{
+  "label": "feature",
+  "sha": "b41a0e48e4f7ee2358dd242ec8ec2eb43268138f",
+  "title": "docs(evidence): node-level suite comparison at final closeout HEAD",
+  "started_utc": "2026-07-10T10:18:13.714884+00:00",
+  "ended_utc": "2026-07-10T10:34:42.470453+00:00",
+  "duration_s": 988.8,
+  "python": "3.14.5",
+  "pass_modules": 73,
+  "fail_modules": 4,
+  "timeout_modules": 0,
+  "total_modules": 77,
+  "failed_nodes": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive",
+    "tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions",
+    "tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots"
+  ],
+  "patterns": [
+    "test_prompt*.py",
+    "test_tool*.py",
+    "test_n8c*.py",
+    "test_nas*.py",
+    "test_source*.py",
+    "test_canonical*.py"
+  ],
+  "per_module_timeout_s": 120
+}

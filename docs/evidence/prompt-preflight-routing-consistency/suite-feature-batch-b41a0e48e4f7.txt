@@ -1,11 +1,16 @@
-### SUPERSEDED — do not use for PR review. See SUPERSEDED.md and suite-comparison-current.md
+=== feature modules=77 ===
+sha=b41a0e48e4f7ee2358dd242ec8ec2eb43268138f
+title=docs(evidence): node-level suite comparison at final closeout HEAD
+started_utc=2026-07-10T10:18:13.714884+00:00
+python=3.14.5
+command=pytest -q --tb=line <module> (timeout 120s per module)
+patterns=['test_prompt*.py', 'test_tool*.py', 'test_n8c*.py', 'test_nas*.py', 'test_source*.py', 'test_canonical*.py']
 
-=== feature modules=77 head=fix-prompt-preflight-routing-consistency ===
 PASS tests/test_canonical_tool_surface_parity.py
 PASS tests/test_n8c23_artifact_workspace.py
 PASS tests/test_n8c23_canonical_promotion.py
 PASS tests/test_n8c23_client_tool_manifest.py
-FAIL tests/test_n8c23_mcp_surface_safety.py :: FAILED tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved | FAILED tests/test_n8c23_mcp_surface_safety.py::test_full_loop_and_manifest_refresh_via_mcp
+FAIL tests/test_n8c23_mcp_surface_safety.py nodes=['tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved']
 PASS tests/test_n8c23_obsidian_card_renderer.py
 PASS tests/test_n8c23_org_neutral_scan.py
 PASS tests/test_n8c23_vault_path_resolver.py
@@ -45,7 +50,7 @@ PASS tests/test_nas_mcp_research_packets.py
 PASS tests/test_nas_mcp_review.py
 PASS tests/test_nas_mcp_safe_mode_limits_freshness.py
 PASS tests/test_nas_mcp_source_connector.py
-FAIL tests/test_nas_mcp_tool_annotations.py :: =========================== short test summary info ============================ | FAILED tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive
+FAIL tests/test_nas_mcp_tool_annotations.py nodes=['tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive']
 PASS tests/test_nas_mcp_tool_arg_and_config_fixes_n8b.py
 PASS tests/test_nas_mcp_workflows.py
 PASS tests/test_nas_mcp_ws2_client_usability.py
@@ -59,7 +64,7 @@ PASS tests/test_prompt_preflight_route_schema.py
 PASS tests/test_prompt_preflight_routing_consistency.py
 PASS tests/test_prompt_preflight_source_of_truth.py
 PASS tests/test_prompt_preflight_workflow_routing.py
-FAIL tests/test_source_connector_eval.py :: =========================== short test summary info ============================ | FAILED tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+FAIL tests/test_source_connector_eval.py nodes=['tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions']
 PASS tests/test_source_connector_service.py
 PASS tests/test_source_identity_v99_migration.py
 PASS tests/test_source_index_client_performance_hardening.py
@@ -69,7 +74,7 @@ PASS tests/test_source_index_streaming_walk.py
 PASS tests/test_source_index_watcher_automated_refresh.py
 PASS tests/test_source_record_map.py
 PASS tests/test_source_registry_projection.py
-FAIL tests/test_source_structure_cli.py :: =========================== short test summary info ============================ | FAILED tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+FAIL tests/test_source_structure_cli.py nodes=['tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots']
 PASS tests/test_source_structure_mcp_tools.py
 PASS tests/test_source_structure_parser_classifier.py
 PASS tests/test_source_structure_repository_service.py
@@ -78,9 +83,10 @@ PASS tests/test_source_structure_schema.py
 PASS tests/test_sources_refresh.py
 PASS tests/test_tool_manifest_freshness_guard.py
 PASS tests/test_tool_surface_maintenance_contract.py
-SUMMARY feature pass=73 fail=4 timeout=0 total=77 duration_s=654.1
-FAILURES:
-tests/test_n8c23_mcp_surface_safety.py
-tests/test_nas_mcp_tool_annotations.py
-tests/test_source_connector_eval.py
-tests/test_source_structure_cli.py
+SUMMARY feature pass=73 fail=4 timeout=0 total=77 duration_s=988.8 failed_nodes=4
+ended_utc=2026-07-10T10:34:42.470453+00:00
+FAILED_NODES:
+tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved
+tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive
+tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots

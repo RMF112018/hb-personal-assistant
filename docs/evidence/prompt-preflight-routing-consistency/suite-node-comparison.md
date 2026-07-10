@@ -1,3 +1,8 @@
+### TARGETED ONLY (narrow module set)
+
+This file covers a small module subset for quick triage.
+**Authoritative 77-module node classification:** `suite-comparison-current.md` (feature SHA `b41a0e48`).
+
 # Suite node comparison
 
 - Feature SHA: `e7744f3d0789de6c93822a5e74e6256045770667`

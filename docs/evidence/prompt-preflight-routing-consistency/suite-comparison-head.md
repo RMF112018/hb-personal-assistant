@@ -1,3 +1,5 @@
+### SUPERSEDED — do not use for PR review. See SUPERSEDED.md and suite-comparison-current.md
+
 # Suite comparison at closeout HEAD
 
 ## Scope

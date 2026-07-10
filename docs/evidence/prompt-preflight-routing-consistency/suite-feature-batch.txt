@@ -1,3 +1,5 @@
+### SUPERSEDED — do not use for PR review. See SUPERSEDED.md and suite-comparison-current.md
+
 === feature modules=77 ===
 PASS tests/test_canonical_tool_surface_parity.py :: ......                                                                   [100%]
 PASS tests/test_n8c23_artifact_workspace.py :: ..........                                                               [100%]

@@ -1,3 +1,5 @@
+### SUPERSEDED — do not use for PR review. See SUPERSEDED.md and suite-comparison-current.md
+
 # Suite comparison (offline-safe module batch)
 
 Scope: tests matching `test_prompt*`, `test_tool*`, `test_n8c*`, `test_nas*`, `test_source*`, `test_canonical*` with 120s per-module timeout.

@@ -1,3 +1,5 @@
+### SUPERSEDED — do not use for PR review. See SUPERSEDED.md and suite-comparison-current.md
+
 === baseline modules=75 ===
 PASS tests/test_n8c23_artifact_workspace.py :: ..........                                                               [100%]
 PASS tests/test_n8c23_canonical_promotion.py :: .....                                                                    [100%]
