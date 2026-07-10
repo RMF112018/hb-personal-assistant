@@ -1,0 +1,25 @@
+{
+  "deploy_sha": "f53cba1c7b4bcba0c5d7bb82aa63694c3041f0e3",
+  "previous_deployed_sha": "14dfc3a0e007475543e19f1d8efd999b23f3e28b",
+  "runtime_identity_kind": "exact_commit",
+  "image_id": "sha256:08b9fb0531ffa95f990ce3296e2f027cfbe1b4a6c44a105cad1260a7b6db0e24",
+  "container_id": "b246085bd52827bc4665bb7754d92698223afe8c2ca191c96624c200bb466537",
+  "schema_head": 119,
+  "audit_matrix": {
+    "pass": true,
+    "pass_count": 40,
+    "fail_count": 0,
+    "total": 40,
+    "mode": "live_container_env"
+  },
+  "routing_smoke": [
+    {"prompt": "Search my work files.", "workflow": "source_file_search", "executable": true, "pass": true},
+    {"prompt": "Search the vault for meeting notes.", "workflow": "vault_note_search", "executable": true, "pass": true},
+    {"prompt": "Do not promote anything.", "workflow": "context_preflight", "executable": false, "pass": true}
+  ],
+  "failure_envelope_r5": "ok",
+  "health": "ok",
+  "origin_auth_unauth_mcp": 401,
+  "disposition": "DEPLOYED_AND_VALIDATED",
+  "manifest_refresh": "deferred_manual"
+}

@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-10  
 **Bundle:** `20260710T135204Z-routing-remediation`  
-**Disposition:** `PREPARED_FOR_DEPLOY` (offline gates green; NAS deploy not performed in this session)
+**Disposition:** `DEPLOYED_AND_VALIDATED` — see `12-deploy-closeout.md`
 
 ## Scope
 

@@ -15,7 +15,11 @@
 | Transfer tarball to NAS | success (`gzip -t` ok on NAS) |
 | Transfer deploy + probe scripts | `/tmp/hb-deploy-routing-remediation.sh`, `/tmp/hb-live-40-prompt-probe.sh` |
 
-## Blocked (requires operator sudo TTY)
+## Deploy outcome (2026-07-10 operator run)
+
+Deploy and live probe **PASSED** after amd64 image rebuild. See `12-deploy-closeout.md` and `13-live-probe-summary.json`.
+
+## Initial attempt (blocked)
 
 ```text
 sudo: a terminal is required to read the password
