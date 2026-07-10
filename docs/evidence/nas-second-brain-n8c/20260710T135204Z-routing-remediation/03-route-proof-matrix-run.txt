@@ -1,0 +1,2 @@
+wrote /Users/bobbyfetting/hb-personal-assistant/docs/evidence/prompt-preflight-routing-consistency
+pass=20 fail=0 total=20

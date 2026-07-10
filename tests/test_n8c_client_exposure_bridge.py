@@ -215,8 +215,10 @@ def test_help_returns_schema_for_known_tool(surface) -> None:
 # ai_outputs_card_upsert is now gateway-reachable. Denied/root-db/legacy/unknown stay rejected.
 @pytest.mark.parametrize("bad", ["hb_db_select", "raw_sql", "shell", "hb_output_write_file", "bogus_tool"])
 def test_help_rejects_unknown_denied_and_non_assistant(surface, bad) -> None:
-    with pytest.raises(ValueError):
-        surface["tools"]["hb_assistant_tool_help"].fn(bad)
+    receipt = surface["tools"]["hb_assistant_tool_help"].fn(bad)
+    assert receipt["ok"] is False
+    assert receipt["failure_stage"] in ("gateway_allowlist", "broker_policy")
+    assert receipt["tool"] == bad
 
 
 # ---------- gateway ----------
@@ -247,18 +249,26 @@ def test_gateway_calls_allowlisted_assistant_tool(surface) -> None:
 def test_gateway_rejects_denied_write_and_non_allowlisted(surface, tool_name, args) -> None:
     # N8C-24: ai_outputs_card_upsert and the pa_* write surfaces are now gateway-reachable (operator-
     # authorized); denied tools, root/db tools, legacy hb_output_*, and non-allowlisted names stay rejected.
-    with pytest.raises(ValueError):
-        surface["tools"]["hb_assistant_tool_query"].fn(tool_name, args)
+    receipt = surface["tools"]["hb_assistant_tool_query"].fn(tool_name, args)
+    assert receipt["ok"] is False
+    assert receipt["failure_stage"] in ("gateway_allowlist", "broker_policy")
+    assert receipt["tool"] == tool_name
 
 
 def test_gateway_rejects_bad_args_and_unbounded_limits(surface) -> None:
     q = surface["tools"]["hb_assistant_tool_query"].fn
-    with pytest.raises(ValueError, match="arguments_must_be_object"):
-        q("assistant_search_sources", ["not", "a", "dict"])
-    with pytest.raises(ValueError, match="limit_exceeds_max"):
-        q("assistant_search_sources", {"query": "x", "limit": 100000})
-    with pytest.raises(ValueError, match="limit_exceeds_max"):
-        q("assistant_source_file_read", {"source_ref": "x", "max_chars": 10_000_000})
+    bad_type = q("assistant_search_sources", ["not", "a", "dict"])
+    assert bad_type["ok"] is False
+    assert bad_type["failure_stage"] == "schema_validation"
+    assert bad_type["safe_message"] == "arguments_must_be_object"
+    over_limit = q("assistant_search_sources", {"query": "x", "limit": 100000})
+    assert over_limit["ok"] is False
+    assert over_limit["failure_stage"] == "schema_validation"
+    assert "limit_exceeds_max" in over_limit["safe_message"]
+    over_chars = q("assistant_source_file_read", {"source_ref": "x", "max_chars": 10_000_000})
+    assert over_chars["ok"] is False
+    assert over_chars["failure_stage"] == "schema_validation"
+    assert "limit_exceeds_max" in over_chars["safe_message"]
 
 
 def test_gateway_preserves_group_kill_switch(surface, monkeypatch) -> None:

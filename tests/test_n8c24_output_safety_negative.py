@@ -66,6 +66,7 @@ def test_safe_mode_denies_output_writes(surface, monkeypatch) -> None:
 
 def test_denied_and_legacy_stay_out_of_gateway(surface) -> None:
     for bad in ("raw_sql", "shell", "exec", "hb_output_write_file", "hb_output_delete", "hb_db_select"):
-        with pytest.raises(ValueError):
-            surface["fn"]["hb_assistant_tool_query"](bad, {})
+        receipt = surface["fn"]["hb_assistant_tool_query"](bad, {})
+        assert receipt["ok"] is False
+        assert receipt["failure_stage"] in ("gateway_allowlist", "broker_policy")
     assert DENIED_TOOL_NAMES.isdisjoint(surface["names"])

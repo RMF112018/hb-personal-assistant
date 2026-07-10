@@ -55,8 +55,9 @@ def test_gateway_reaches_pa_tools_but_stays_write_gated(surface) -> None:
             assert "not_an_allowlisted_assistant_tool" not in str(exc)
     # denied + legacy stay rejected at the gateway
     for bad in ("raw_sql", "hb_output_write_file", "hb_db_select"):
-        with pytest.raises(ValueError):
-            surface["fn"]["hb_assistant_tool_query"](bad, {})
+        receipt = surface["fn"]["hb_assistant_tool_query"](bad, {})
+        assert receipt["ok"] is False
+        assert receipt["failure_stage"] in ("gateway_allowlist", "broker_policy")
 
 
 def test_status_reports_workspace_and_manifest_fields(surface) -> None:

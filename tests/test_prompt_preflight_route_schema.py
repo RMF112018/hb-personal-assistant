@@ -20,6 +20,7 @@ def test_route_plan_has_full_schema() -> None:
     assert set(plan["intent"]) == {"primary_class", "classes"}
     auth = plan["authorization"]
     assert {"action_class", "prompt_authorizes_execution", "additional_approval_required"} <= set(auth)
+    assert {"runtime_policy_permission", "capability_gates", "argument_extraction"} <= set(auth)
     rb = plan["retrieval_budget"]
     assert {"default_layer", "recommended_next_layer", "max_candidates", "max_chars"} <= set(rb)
 

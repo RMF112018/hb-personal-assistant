@@ -1,0 +1,23 @@
+PASS - generate-file -> client_output_workspace 
+PASS - generate-file uses pa_output_* tools 
+PASS - generate-file not vault/canonical 
+PASS - generate-file write needs approval 
+PASS - document-session -> artifact_workspace 
+PASS - document-session staging authorization 
+PASS - promotion -> canonical_promotion needs approval 
+PASS - source search -> source connector 
+PASS - source search starts at metadata_discovery 
+PASS - decision -> canonical decision records 
+PASS - broad retrieval requires operator selection before deep parse 
+PASS - stale surface blocks WRITE route 
+PASS - stale surface does NOT block READ route 
+PASS - gateway scope change detected 
+PASS - live surface is current 
+PASS - preflight is read-only 
+PASS - controlled write blocks unsafe fallback 
+PASS - no outputs committed by preflight 
+PASS - no files written under outputs root 
+PASS - 87 canonical assistant tools preserved 
+PASS - pa_prompt_route registered + gateway-reachable 
+
+SMOKE PASSED

@@ -34,8 +34,22 @@ def test_workflow_recipes_are_projection_of_published_workflows() -> None:
         assert r["tool_sequence"] == list(by_id[r["workflow_name"]]["tool_sequence"])
     # Client capability coverage (at least one each).
     cats = {by_id[n].get("client_capability_category") for n in names}
-    for needed in ("session_capture", "source_search", "source_map", "generation", "decision", "manifest"):
+    for needed in (
+        "session_capture",
+        "source_search",
+        "source_map",
+        "generation",
+        "decision",
+        "manifest",
+        "vault_read",
+        "preference",
+        "open_loop",
+        "staging",
+        "promotion",
+        "surface_audit",
+    ):
         assert needed in cats, needed
+    assert len(names) >= 14
 
 
 def test_every_workflow_tool_has_family() -> None:

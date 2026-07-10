@@ -150,8 +150,8 @@ def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[st
     }
 
 
-def _reject_unbounded_gateway_args(arguments: dict[str, Any]) -> None:
-    """Fail closed if any numeric limit-like arg exceeds its cap (booleans/non-ints pass to the handler)."""
+def _gateway_arg_validation_error(arguments: dict[str, Any]) -> str | None:
+    """Return a bounded reason if any limit-like arg exceeds its cap."""
     for key, cap in _GATEWAY_LIMIT_CAPS.items():
         if key not in arguments:
             continue
@@ -159,7 +159,25 @@ def _reject_unbounded_gateway_args(arguments: dict[str, Any]) -> None:
         if isinstance(val, bool):
             continue
         if isinstance(val, int) and val > cap:
-            raise ValueError(f"limit_exceeds_max:{key}:{val}>{cap}")
+            return f"limit_exceeds_max:{key}:{val}>{cap}"
+    return None
+
+
+def _gateway_failure(
+    gateway_tool: str,
+    reason: str,
+    *,
+    subject_tool: str | None = None,
+) -> dict[str, Any]:
+    from .broker import runtime_commit  # noqa: PLC0415
+    from .failure_envelope import gateway_plugin_failure  # noqa: PLC0415
+
+    return gateway_plugin_failure(
+        tool=subject_tool or gateway_tool,
+        reason=reason,
+        gateway_tool=gateway_tool,
+        runtime_commit=runtime_commit(),
+    )
 
 
 # Gateway proxy that can route to a canonical write tool. The broker classifies its own access mode
@@ -1262,9 +1280,17 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         canonical 78). Rejects unknown, denied, and non-assistant tool names. Use before calling a tool
         directly or via ``hb_assistant_tool_query``."""
         if tool_name in DENIED_TOOL_NAMES:
-            raise ValueError(f"denied_tool:{tool_name}")
+            return _gateway_failure(
+                "hb_assistant_tool_help",
+                f"denied_tool:{tool_name}",
+                subject_tool=tool_name,
+            )
         if tool_name not in GATEWAY_ALLOWLIST:
-            raise ValueError(f"unknown_or_non_assistant_tool:{tool_name}")
+            return _gateway_failure(
+                "hb_assistant_tool_help",
+                f"unknown_or_non_assistant_tool:{tool_name}",
+                subject_tool=tool_name,
+            )
         index = _extract_client_tool_index(mcp)
         meta = _assistant_tool_meta(tool_name, index)
         entry = index.get(tool_name) or {}
@@ -1284,16 +1310,33 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         it returns the same audited, bounded broker receipt (``ok``/``result``/``request_id``) the direct
         wrappers use; the same profile gates, per-group kill switches, and audit logging apply."""
         if not isinstance(tool_name, str) or not tool_name:
-            raise ValueError("tool_name_required")
+            return _gateway_failure("hb_assistant_tool_query", "tool_name_required")
         if tool_name in DENIED_TOOL_NAMES:
-            raise ValueError(f"denied_tool:{tool_name}")
+            return _gateway_failure(
+                "hb_assistant_tool_query",
+                f"denied_tool:{tool_name}",
+                subject_tool=tool_name,
+            )
         if tool_name not in GATEWAY_ALLOWLIST:
-            raise ValueError(f"not_an_allowlisted_assistant_tool:{tool_name}")
+            return _gateway_failure(
+                "hb_assistant_tool_query",
+                f"not_an_allowlisted_assistant_tool:{tool_name}",
+                subject_tool=tool_name,
+            )
         if arguments is None:
             arguments = {}
         if not isinstance(arguments, dict):
-            raise ValueError("arguments_must_be_object")
-        _reject_unbounded_gateway_args(arguments)
+            return _gateway_failure(
+                "hb_assistant_tool_query",
+                "arguments_must_be_object",
+                subject_tool=tool_name,
+            )
+        if arg_err := _gateway_arg_validation_error(arguments):
+            return _gateway_failure(
+                "hb_assistant_tool_query",
+                arg_err,
+                subject_tool=tool_name,
+            )
         return broker.dispatch(tool_name, arguments)
 
     # N8C-23 Structured Intelligence Artifact Workspace tools. Read/advisory + staged-write (never the vault);

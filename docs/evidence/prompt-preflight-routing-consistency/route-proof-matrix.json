@@ -38,6 +38,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -48,12 +49,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_search_sources",
+      "next_step_arguments": {
+        "query": "my project notes"
+      },
       "next_step": {
         "tool": "assistant_search_sources",
         "tool_group": "nav",
         "family": "assistant_navigation",
         "surface": "nav",
-        "arguments": {},
+        "arguments": {
+          "query": "my project notes"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -84,8 +92,10 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "awaiting_prior_step",
-          "missing_required_arguments": []
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "query"
+          ]
         },
         {
           "tool": "assistant_get_vault_note",
@@ -173,6 +183,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -183,6 +194,9 @@
       "approval_satisfied": false,
       "currently_executable": false,
       "execution_blocked_reason": "plan_only",
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_roots_list",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "assistant_source_roots_list",
         "tool_group": "source_connector",
@@ -275,6 +289,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -285,8 +300,11 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_file_metadata",
+      "next_step_arguments": {},
       "next_step": {
-        "tool": "assistant_source_file_search",
+        "tool": "assistant_source_file_metadata",
         "tool_group": "source_connector",
         "family": "assistant_source_connector",
         "surface": "source_connector",
@@ -306,7 +324,7 @@
       },
       "additional_steps": [
         {
-          "tool": "assistant_source_file_metadata",
+          "tool": "assistant_source_file_search",
           "tool_group": "source_connector",
           "family": "assistant_source_connector",
           "surface": "source_connector",
@@ -321,17 +339,19 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "awaiting_prior_step",
-          "missing_required_arguments": []
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "query"
+          ]
         }
       ],
       "per_tool_groups": {
-        "assistant_source_file_search": "source_connector",
-        "assistant_source_file_metadata": "source_connector"
+        "assistant_source_file_metadata": "source_connector",
+        "assistant_source_file_search": "source_connector"
       },
       "per_tool_families": {
-        "assistant_source_file_search": "assistant_source_connector",
-        "assistant_source_file_metadata": "assistant_source_connector"
+        "assistant_source_file_metadata": "assistant_source_connector",
+        "assistant_source_file_search": "assistant_source_connector"
       },
       "confidence": "high",
       "freshness_state": "unknown"
@@ -391,6 +411,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -399,8 +420,11 @@
         "external_action": false
       },
       "approval_satisfied": false,
-      "currently_executable": true,
-      "execution_blocked_reason": null,
+      "currently_executable": false,
+      "execution_blocked_reason": "gateway_denied",
+      "operation_modality": "imperative",
+      "next_step_tool": "hb_mcp_status",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "hb_mcp_status",
         "tool_group": "status",
@@ -416,8 +440,8 @@
         "server_policy_available": true,
         "authorized": true,
         "authorization_reason": "authorized",
-        "currently_executable": true,
-        "execution_blocked_reason": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "gateway_denied",
         "missing_required_arguments": []
       },
       "additional_steps": [
@@ -487,9 +511,9 @@
         "execute",
         "write"
       ],
+      "currently_executable": true,
       "execution_blocked_reason_in": [
-        null,
-        "missing_arguments"
+        null
       ]
     },
     "actual": {
@@ -516,6 +540,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -526,12 +551,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_file_search",
+      "next_step_arguments": {
+        "query": "work files"
+      },
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
         "family": "assistant_source_connector",
         "surface": "source_connector",
-        "arguments": {},
+        "arguments": {
+          "query": "work files"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -614,6 +646,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -624,6 +657,9 @@
       "approval_satisfied": true,
       "currently_executable": false,
       "execution_blocked_reason": "not_authorized",
+      "operation_modality": "imperative",
+      "next_step_tool": null,
+      "next_step_arguments": {},
       "next_step": null,
       "additional_steps": [],
       "per_tool_groups": {},
@@ -643,6 +679,10 @@
       "read_authorized": true,
       "prohibitions_exclude": [
         "execute"
+      ],
+      "currently_executable": true,
+      "execution_blocked_reason_in": [
+        null
       ]
     },
     "actual": {
@@ -670,6 +710,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -680,12 +721,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_search_sources",
+      "next_step_arguments": {
+        "query": "meeting notes"
+      },
       "next_step": {
         "tool": "assistant_search_sources",
         "tool_group": "nav",
         "family": "assistant_navigation",
         "surface": "nav",
-        "arguments": {},
+        "arguments": {
+          "query": "meeting notes"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -716,8 +764,10 @@
           "authorized": true,
           "authorization_reason": "authorized",
           "currently_executable": false,
-          "execution_blocked_reason": "awaiting_prior_step",
-          "missing_required_arguments": []
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "query"
+          ]
         },
         {
           "tool": "assistant_get_vault_note",
@@ -797,6 +847,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -807,6 +858,9 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "advisory",
+      "next_step_tool": "assistant_list_decisions",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "assistant_list_decisions",
         "tool_group": "decision_memory",
@@ -901,6 +955,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -911,12 +966,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_file_search",
+      "next_step_arguments": {
+        "query": "work files"
+      },
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
         "family": "assistant_source_connector",
         "surface": "source_connector",
-        "arguments": {},
+        "arguments": {
+          "query": "work files"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -999,6 +1061,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1009,6 +1072,9 @@
       "approval_satisfied": true,
       "currently_executable": false,
       "execution_blocked_reason": "not_authorized",
+      "operation_modality": "imperative",
+      "next_step_tool": null,
+      "next_step_arguments": {},
       "next_step": null,
       "additional_steps": [],
       "per_tool_groups": {},
@@ -1059,6 +1125,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1069,12 +1136,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_file_search",
+      "next_step_arguments": {
+        "query": "without writing anything"
+      },
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
         "family": "assistant_source_connector",
         "surface": "source_connector",
-        "arguments": {},
+        "arguments": {
+          "query": "without writing anything"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -1166,6 +1240,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1176,6 +1251,9 @@
       "approval_satisfied": true,
       "currently_executable": false,
       "execution_blocked_reason": "no_recommended_tool",
+      "operation_modality": "imperative",
+      "next_step_tool": null,
+      "next_step_arguments": {},
       "next_step": null,
       "additional_steps": [],
       "per_tool_groups": {},
@@ -1222,6 +1300,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1232,12 +1311,19 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_file_search",
+      "next_step_arguments": {
+        "query": "file without opening it"
+      },
       "next_step": {
         "tool": "assistant_source_file_search",
         "tool_group": "source_connector",
         "family": "assistant_source_connector",
         "surface": "source_connector",
-        "arguments": {},
+        "arguments": {
+          "query": "file without opening it"
+        },
         "call_mode": "direct",
         "available": true,
         "installed": true,
@@ -1317,6 +1403,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1327,6 +1414,9 @@
       "approval_satisfied": true,
       "currently_executable": false,
       "execution_blocked_reason": "not_authorized",
+      "operation_modality": "advisory",
+      "next_step_tool": null,
+      "next_step_arguments": {},
       "next_step": null,
       "additional_steps": [],
       "per_tool_groups": {},
@@ -1379,6 +1469,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1389,6 +1480,9 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "advisory",
+      "next_step_tool": "assistant_list_preferences",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "assistant_list_preferences",
         "tool_group": "decision_memory",
@@ -1489,6 +1583,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1499,6 +1594,9 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "advisory",
+      "next_step_tool": "assistant_list_open_loops",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "assistant_list_open_loops",
         "tool_group": "decision_memory",
@@ -1589,10 +1687,11 @@
       "prompt_permission": {
         "read": true,
         "stage": true,
-        "write": true,
+        "write": false,
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": true,
@@ -1603,6 +1702,9 @@
       "approval_satisfied": false,
       "currently_executable": false,
       "execution_blocked_reason": "missing_arguments",
+      "operation_modality": "imperative",
+      "next_step_tool": "pa_artifact_proposal_stage",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "pa_artifact_proposal_stage",
         "tool_group": "artifact_workspace",
@@ -1670,6 +1772,7 @@
         "promote": true,
         "external_action": false
       },
+      "prompt_permission_promote": true,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1680,6 +1783,9 @@
       "approval_satisfied": false,
       "currently_executable": false,
       "execution_blocked_reason": "missing_arguments",
+      "operation_modality": "imperative",
+      "next_step_tool": "pa_artifact_promotion_apply",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "pa_artifact_promotion_apply",
         "tool_group": "artifact_workspace",
@@ -1743,6 +1849,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1753,6 +1860,9 @@
       "approval_satisfied": true,
       "currently_executable": false,
       "execution_blocked_reason": "not_authorized",
+      "operation_modality": "imperative",
+      "next_step_tool": null,
+      "next_step_arguments": {},
       "next_step": null,
       "additional_steps": [],
       "per_tool_groups": {},
@@ -1800,6 +1910,7 @@
         "promote": false,
         "external_action": false
       },
+      "prompt_permission_promote": false,
       "server_policy_permission": {
         "read": true,
         "stage": false,
@@ -1810,6 +1921,9 @@
       "approval_satisfied": false,
       "currently_executable": true,
       "execution_blocked_reason": null,
+      "operation_modality": "imperative",
+      "next_step_tool": "assistant_source_roots_list",
+      "next_step_arguments": {},
       "next_step": {
         "tool": "assistant_source_roots_list",
         "tool_group": "source_connector",

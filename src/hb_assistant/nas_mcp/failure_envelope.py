@@ -7,6 +7,7 @@ refusals are documentation concerns — never authoritative envelope stages.
 from __future__ import annotations
 
 import re
+import uuid
 from typing import Any
 
 from hb_assistant.obsidian_mcp.tool_metadata_types import PluginFailureStage
@@ -75,8 +76,18 @@ def plugin_failure(
 
 
 def map_deny_reason(reason: str) -> tuple[PluginFailureStage, str, bool]:
-    """Map broker deny_reason string → (stage, error_code, retryable)."""
-    r = str(reason or "")
+    """Map broker/gateway deny_reason string → (stage, error_code, retryable)."""
+    r = str(reason or "").strip()
+    if r.startswith("tool_not_registered"):
+        return PluginFailureStage.BROKER_DISPATCH, "tool_not_registered", False
+    if r.startswith("missing_required_arg"):
+        return PluginFailureStage.SCHEMA_VALIDATION, "invalid_arguments", False
+    if r.startswith("unknown_or_non_assistant_tool") or r.startswith("not_an_allowlisted_assistant_tool"):
+        return PluginFailureStage.GATEWAY_ALLOWLIST, "gateway_denied", False
+    if r.startswith("denied_tool:"):
+        return PluginFailureStage.BROKER_POLICY, "policy_denied", False
+    if r in ("tool_name_required", "arguments_must_be_object") or r.startswith("limit_exceeds_max"):
+        return PluginFailureStage.SCHEMA_VALIDATION, "invalid_arguments", False
     if r.startswith("safe_mode") or "denied_by_policy" in r or "blocked_by_profile" in r:
         return PluginFailureStage.BROKER_POLICY, "policy_denied", False
     if "token_scope" in r or "not_in_token" in r:
@@ -90,3 +101,29 @@ def map_deny_reason(reason: str) -> tuple[PluginFailureStage, str, bool]:
     if "allowlist" in r or "not_gateway" in r:
         return PluginFailureStage.GATEWAY_ALLOWLIST, "gateway_denied", False
     return PluginFailureStage.BROKER_DISPATCH, "dispatch_denied", False
+
+
+def gateway_plugin_failure(
+    *,
+    tool: str,
+    reason: str,
+    gateway_tool: str | None = None,
+    request_id: str | None = None,
+    runtime_commit: str | None = None,
+) -> dict[str, Any]:
+    """Structured envelope for pre-broker gateway validation failures."""
+    stage, code, retryable = map_deny_reason(reason)
+    extra = {"gateway_tool": gateway_tool} if gateway_tool else None
+    return plugin_failure(
+        tool=tool,
+        request_id=request_id or uuid.uuid4().hex,
+        failure_stage=stage,
+        error_code=code,
+        safe_message=reason,
+        retryable=retryable,
+        reached_gateway=True,
+        reached_broker=False,
+        reached_handler=False,
+        runtime_commit=runtime_commit,
+        extra=extra,
+    )

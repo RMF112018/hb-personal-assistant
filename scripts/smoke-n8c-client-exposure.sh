@@ -111,10 +111,8 @@ check("quality findings (reach)", reachable("assistant_get_quality_findings"))
 
 # --- negatives: all must fail closed ---
 def rejected(name, args=None):
-    try:
-        q(name, args or {}); return False
-    except ValueError:
-        return True
+    r = q(name, args or {})
+    return isinstance(r, dict) and r.get("ok") is False
 check("negative: denied tool (raw_sql) rejected", rejected("raw_sql"))
 check("negative: raw SQL (hb_db_select) rejected", rejected("hb_db_select", {"table_key": "x", "columns": ["a"]}))
 check("negative: shell/exec rejected", rejected("shell") and rejected("exec"))

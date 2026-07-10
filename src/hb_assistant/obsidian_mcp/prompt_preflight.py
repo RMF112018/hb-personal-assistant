@@ -70,7 +70,10 @@ _CAPABILITY_POLICIES: dict[str, frozenset[str]] = {
 _CAPABILITY_TRIGGER_TOKENS: dict[str, tuple[str, ...]] = {
     "promote": ("promote", "make canonical", "finalize the decision", "apply promotion", "canonical"),
     "write": ("write", "create the file", "save as", "generate a", "commit the", "export"),
-    "stage": ("stage", "staging"),
+    "stage": (
+        "stage", "staging", "document this", "document the", "document", "capture this", "capture",
+        "submit for review", "queue for review", "put this up for review", "for review",
+    ),
     "archive": ("archive",),
     "execute": ("execute", "go ahead and", "send it", "run the"),
     "index": ("reindex", "rebuild index", "refresh index"),
@@ -84,9 +87,27 @@ _NEGATOR_PATTERNS = (
     r"\bno write\b", r"\bno staging\b", r"\bno stage\b", r"\bno promote\b",
     r"\bplan only\b", r"\bread-only\b", r"\bread only\b",
 )
-_CLAUSE_SPLIT = re.compile(r"[.;\n]|,\s+and\b")
-# Window after negator: tokens to scan for capability words.
+_CLAUSE_SPLIT = re.compile(
+    r"(?<=[.!?])\s+|[;\n]|,\s+and\b|\s+—\s+|\s+-\s+|\s+but\s+|\s+however\s+|\s+yet\s+",
+    re.IGNORECASE,
+)
+# Window after negator: tokens to scan for capability words (clause-local).
 _PROHIBITION_WINDOW = 12
+
+_MODALITY_CAPABILITY_INQUIRY = re.compile(
+    r"\b(can you|could you|how do i|how to|what tool|which tool|is it possible|"
+    r"does the system|are you able to)\b",
+    re.IGNORECASE,
+)
+_MODALITY_HYPOTHETICAL = re.compile(
+    r"\b(what if|suppose|imagine|would it|could we)\b",
+    re.IGNORECASE,
+)
+_QUOTED_SPAN = re.compile(r'"([^"]*)"|\'([^\']*)\'')
+_WRITE_CAPABILITY_WORD = re.compile(
+    r"\b(promot\w*|stag\w*|writ\w*|archiv\w*|deploy\w*|commit\w*|mutat\w*|send\w*|email\w*)\b",
+    re.IGNORECASE,
+)
 
 # Explicit allow-read phrases even when execute is banned.
 _ALLOW_READ_PHRASES = (
@@ -107,6 +128,129 @@ def _is_destructive(prompt_l: str) -> bool:
 def _is_read_only_posture(prompt_l: str) -> bool:
     """True when the operator frames the request as read-only work (not plan-only identify)."""
     return bool(re.search(r"\bread[- ]only\b", prompt_l))
+
+
+def _split_clauses(prompt_l: str) -> list[str]:
+    return [p.strip() for p in _CLAUSE_SPLIT.split(prompt_l) if p.strip()]
+
+
+def _strip_quoted_spans(text: str) -> str:
+    return _QUOTED_SPAN.sub(" ", text)
+
+
+def _classify_clause_modality(clause: str) -> str:
+    """Classify a clause for routing: imperative | advisory | hypothetical | quoted | capability_inquiry."""
+    c = clause.strip()
+    if not c:
+        return "advisory"
+    if re.fullmatch(r'\s*["\'].*["\']\s*', c):
+        return "quoted"
+    if not _strip_quoted_spans(c).strip():
+        return "quoted"
+    if _MODALITY_HYPOTHETICAL.search(c):
+        return "hypothetical"
+    if c.endswith("?"):
+        if _MODALITY_CAPABILITY_INQUIRY.search(c):
+            return "capability_inquiry"
+        return "advisory"
+    if _MODALITY_CAPABILITY_INQUIRY.search(c) and not re.search(
+        r"\b(search|find|list|show|retrieve|read|audit|explain|identify)\b",
+        c,
+        re.IGNORECASE,
+    ):
+        return "capability_inquiry"
+    if re.search(
+        r"\b("
+        r"do|don't|never|stage|promote|search|find|write|archive|deploy|execute|"
+        r"generate|create|save|commit|go ahead|list|retrieve|read|conduct|map|document|capture|record|log|"
+        r"make|bundle|remember|export|build|package|submit|queue|put"
+        r")\b",
+        c,
+        re.IGNORECASE,
+    ):
+        return "imperative"
+    return "advisory"
+
+
+def _dominant_operation_modality(prompt_l: str) -> str:
+    """Highest-signal modality across clauses (imperative wins over advisory)."""
+    order = ("imperative", "advisory", "capability_inquiry", "hypothetical", "quoted")
+    seen: set[str] = set()
+    for clause in _split_clauses(prompt_l):
+        seen.add(_classify_clause_modality(clause))
+    for mod in order:
+        if mod in seen:
+            return mod
+    return "advisory"
+
+
+def _scoring_text(prompt_l: str, *, write_policy: bool) -> str:
+    """Text surface used for workflow trigger scoring (modality- and quote-aware)."""
+    clauses = _split_clauses(prompt_l)
+    blocked_modalities = frozenset({"hypothetical", "capability_inquiry"})
+    if any(_classify_clause_modality(c) in blocked_modalities for c in clauses):
+        # Whole prompt carries advisory/hypothetical/inquiry framing — never score writes from it.
+        if write_policy:
+            return ""
+        blocked_modalities = frozenset({"hypothetical"})
+
+    chunks: list[str] = []
+    for clause in clauses:
+        mod = _classify_clause_modality(clause)
+        if mod in ("quoted", "hypothetical"):
+            continue
+        if write_policy:
+            if mod == "capability_inquiry":
+                continue
+            if mod != "imperative":
+                continue
+        elif mod == "capability_inquiry" and _WRITE_CAPABILITY_WORD.search(clause):
+            continue
+        chunk = _strip_quoted_spans(clause).strip()
+        if chunk:
+            chunks.append(chunk)
+    if chunks:
+        return " ".join(chunks)
+
+    if write_policy:
+        # Minimal capture/generation trigger phrases (e.g. "remember this") without imperative verbs.
+        fallback: list[str] = []
+        for clause in clauses:
+            mod = _classify_clause_modality(clause)
+            if mod in ("quoted", "hypothetical", "capability_inquiry"):
+                continue
+            chunk = _strip_quoted_spans(clause).strip()
+            if chunk:
+                fallback.append(chunk)
+        return " ".join(fallback)
+    return ""
+
+
+def _capability_token_in_text(cap: str, text: str) -> bool:
+    for ct in _CAPABILITY_TRIGGER_TOKENS.get(cap, ()):
+        if " " in ct:
+            if ct in text:
+                return True
+        elif re.search(rf"\b{re.escape(ct)}", text, re.IGNORECASE):
+            return True
+    return False
+
+
+def _has_imperative_capability_intent(prompt_l: str, capability: str) -> bool:
+    """True when an imperative, non-quoted clause exercises a write/stage/promote capability."""
+    cap_tokens = _CAPABILITY_TRIGGER_TOKENS.get(capability, ())
+    if not cap_tokens:
+        return False
+    for clause in _split_clauses(prompt_l):
+        if _classify_clause_modality(clause) != "imperative":
+            continue
+        surface = _strip_quoted_spans(clause)
+        if any(
+            (ct in surface if " " in ct else re.search(rf"\b{re.escape(ct)}", surface, re.IGNORECASE))
+            for ct in cap_tokens
+        ):
+            return True
+    return False
 
 
 def _extract_prohibitions(prompt_l: str) -> set[str]:
@@ -175,7 +319,7 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
             prohibitions.update(caps)
 
     # Clause-scoped: negator + nearby capability token within a bounded window.
-    clauses = _CLAUSE_SPLIT.split(prompt_l)
+    clauses = _split_clauses(prompt_l)
     for clause in clauses:
         c = clause.strip()
         if not c:
@@ -209,8 +353,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
                 prohibitions.add("execute_non_read")
                 prohibitions.update({"write", "stage", "promote", "external_action"})
                 continue
-            for cap, cap_tokens in _CAPABILITY_TRIGGER_TOKENS.items():
-                if any(ct in span for ct in cap_tokens):
+            for cap in _CAPABILITY_TRIGGER_TOKENS:
+                if _capability_token_in_text(cap, span):
                     if cap == "promote" and "receipt" in span and "not a" in span:
                         continue
                     if cap == "execute" and beyond_read_only:
@@ -236,6 +380,10 @@ def _score_workflow(prompt_l: str, wf: dict[str, Any], prohibitions: set[str] | 
     """Score workflow; triggers nested under prohibited capabilities do not add points."""
     prohibitions = prohibitions if prohibitions is not None else set()
     policy = wf.get("operator_authorization_policy", "read")
+    write_policy = policy in _WRITE_CLASSES
+    score_surface = _scoring_text(prompt_l, write_policy=write_policy)
+    if not score_surface:
+        return 0
     # Entire workflow banned by policy prohibition.
     for cap in prohibitions:
         banned_policies = _CAPABILITY_POLICIES.get(cap, frozenset())
@@ -250,7 +398,7 @@ def _score_workflow(prompt_l: str, wf: dict[str, Any], prohibitions: set[str] | 
     score = 0
     for phrase in wf["trigger_phrases"]:
         p = phrase.lower()
-        if not p or p not in prompt_l:
+        if not p or p not in score_surface:
             continue
         # If this phrase is itself a capability token under prohibition, skip.
         skip = False
@@ -343,14 +491,33 @@ def _reads_explicitly_allowed(prompt_l: str) -> bool:
 
 # Schema-aligned required args for tools when live schema index is empty (offline tests).
 _TOOL_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
+    "assistant_source_file_search": ("query",),
+    "assistant_search_sources": ("query",),
+    "assistant_search_cards": ("query",),
+    "assistant_source_query_plan": ("prompt",),
     "assistant_get_decision": ("decision_id",),
     "assistant_get_preference": ("preference_id",),
     "assistant_get_open_loop": ("open_loop_id",),
+    "pa_session_capture_stage": ("source_client", "session_title", "capture_trigger", "session_summary"),
     "pa_artifact_proposal_stage": ("session_id", "candidate_artifacts"),
     "pa_artifact_promotion_apply": ("promotion_bundle_id", "operator_approval_id"),
     "pa_output_commit": ("output_id", "operator_approval_id"),
+    "pa_output_stage": ("title", "content", "content_mode"),
+    "pa_output_archive_plan": ("output_id",),
     "assistant_source_file_read": ("source_id",),
 }
+
+_QUERY_ARG_NAMES = frozenset({"query", "search_term"})
+_PROMPT_ARG_NAMES = frozenset({"prompt"})
+_TEXT_ARG_NAMES = frozenset({"session_summary", "session_title", "capture_trigger", "objective"})
+_ID_ARG_SUFFIX = "_id"
+_GETTER_TOOLS = frozenset({
+    "assistant_get_decision",
+    "assistant_get_preference",
+    "assistant_get_open_loop",
+    "assistant_get_vault_note",
+    "assistant_source_file_read",
+})
 
 
 def required_args_for_tool(tool_name: str) -> list[str]:
@@ -372,31 +539,298 @@ def required_args_for_tool(tool_name: str) -> list[str]:
 
 def _extract_topic_query(prompt_l: str) -> str | None:
     """Best-effort topical fragment (e.g. 'about X' / 'for X'); not an ID."""
-    m = re.search(r"\b(?:about|for|regarding|on)\s+([a-z0-9][\w\-]{0,64})\b", prompt_l)
+    m = re.search(
+        r"\b(?:about|for|regarding|on)\s+([a-z0-9][\w\s\-]{0,64}?)(?:\?|\.|$)",
+        prompt_l,
+    )
     if m:
-        return m.group(1)
+        return m.group(1).strip()
     return None
 
 
 def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
     """Extract a workflow-specific ID only when pattern matches repo contracts. Never invent."""
-    # Conservative patterns aligned to PA IDs (alphanumeric with optional prefix/hyphen/underscore).
+    # Require delimiter or suffix so bare nouns (e.g. "decision" in "canonical decision") do not match.
     patterns = {
-        "decision_id": r"\b((?:dec|decision)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
-        "preference_id": r"\b((?:pref|preference)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
-        "open_loop_id": r"\b((?:ol|open[_-]?loop)[_-]?[a-z0-9][a-z0-9_\-]{3,64})\b",
-        "operator_approval_id": r"\b((?:appr|approval)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
-        "promotion_bundle_id": r"\b((?:promob|promotion[_-]?bundle)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
-        "session_id": r"\b((?:sess|session)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
-        "source_id": r"\b((?:src|source)[_-]?[a-z0-9][a-z0-9_\-]{6,64})\b",
+        "decision_id": (
+            r"\b((?:dec|decision)[_-][a-z0-9][a-z0-9_\-]{3,64}|decision_[a-z0-9][a-z0-9_\-]{3,64})\b"
+        ),
+        "preference_id": (
+            r"\b((?:pref|preference)[_-][a-z0-9][a-z0-9_\-]{3,64}|preference_[a-z0-9][a-z0-9_\-]{3,64})\b"
+        ),
+        "open_loop_id": (
+            r"\b((?:ol|open[_-]?loop)[_-][a-z0-9][a-z0-9_\-]{3,64}|open[_-]?loop_[a-z0-9][a-z0-9_\-]{3,64})\b"
+        ),
+        "operator_approval_id": r"\b((?:appr|approval)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
+        "promotion_bundle_id": (
+            r"\b((?:promob|promotion[_-]?bundle)[_-][a-z0-9][a-z0-9_\-]{6,64})\b"
+        ),
+        "session_id": r"\b((?:sess|session)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
+        "source_id": r"\b((?:src|source)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
     }
     pat = patterns.get(arg_name)
     if not pat:
         return None
-    m = re.search(pat, prompt, flags=re.I)
+    matches = [m.group(1) for m in re.finditer(pat, prompt, flags=re.I)]
+    if not matches:
+        return None
+    return max(matches, key=len)
+
+
+def _extract_quoted_fragment(prompt: str) -> str | None:
+    m = re.search(r'"([^"]{1,200})"|\'([^\']{1,200})\'', prompt)
     if not m:
         return None
-    return m.group(1)
+    return (m.group(1) or m.group(2) or "").strip()
+
+
+def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
+    """Extract a bounded search/query string from natural-language retrieval prompts."""
+    quoted = _extract_quoted_fragment(prompt)
+    if quoted:
+        return quoted[:200]
+
+    patterns: list[tuple[str, str | None]] = [
+        (r"\bsearch\s+the\s+vault\s+for\s+(.+?)(?:[.?!]|$)", None),
+        (r"\bsearch\s+(?:my\s+)?work\s+files?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "work files"),
+        (r"\bsearch(?:\s+the)?\s+nas(?:\s+files?)?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "nas files"),
+        (r"\bsearch(?:\s+indexed)?(?:\s+\w+){0,4}\s+for\s+(.+?)(?:[.?!]|$)", None),
+        (r"\b(?:find|look for|search for)\s+(?:the\s+)?(.+?)(?:[.?!]|$)", None),
+        (r"\bfind\s+(?:my\s+)?project\s+notes(?:\s+about\s+(.+?))?(?:[.?!]|$)", "project notes"),
+        (r"\bsearch\s+(?:my\s+)?(.+?)(?:[.?!]|$)", None),
+    ]
+    for pat, default in patterns:
+        m = re.search(pat, prompt_l, flags=re.I)
+        if not m:
+            continue
+        q = (m.group(1) or "").strip()
+        if not q and default:
+            q = default
+        if q:
+            return q[:200]
+    topic = _extract_topic_query(prompt_l)
+    if topic:
+        return topic[:200]
+    return None
+
+
+def _extract_session_fields(prompt: str, prompt_l: str) -> dict[str, str]:
+    """Bounded session-capture fields for document_session (never invents approval/session ids)."""
+    out: dict[str, str] = {}
+    summary = ""
+    for cue in ("document this session", "capture this session", "document this as"):
+        if cue in prompt_l:
+            summary = prompt.split(cue, 1)[-1].strip(" :.-")
+            break
+    if not summary:
+        summary = prompt.strip()
+    if summary:
+        out["session_summary"] = summary[:2000]
+        title = summary.split("\n", 1)[0].strip()
+        out["session_title"] = (title[:120] if title else "session capture")
+    out.setdefault("source_client", "connected_client")
+    out.setdefault("capture_trigger", "operator_request")
+    return out
+
+
+def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[str, Any]:
+    """Populate tool arguments from the prompt using schema arg names (never invents IDs)."""
+    args: dict[str, Any] = {}
+    for arg in required_args_for_tool(tool_name):
+        if arg in _QUERY_ARG_NAMES or arg in _PROMPT_ARG_NAMES:
+            if arg in _PROMPT_ARG_NAMES:
+                val = _extract_search_query(prompt, prompt_l) or prompt.strip()
+                if val:
+                    args[arg] = val[:2000]
+            else:
+                val = _extract_search_query(prompt, prompt_l)
+                if val:
+                    args[arg] = val
+        elif arg.endswith(_ID_ARG_SUFFIX):
+            extracted = _extract_validated_id(prompt, arg)
+            if extracted:
+                args[arg] = extracted
+        elif arg == "source_client":
+            args[arg] = "connected_client"
+        elif arg == "capture_trigger":
+            args[arg] = "operator_request"
+        elif arg in _TEXT_ARG_NAMES:
+            if arg in ("session_summary", "session_title"):
+                for k, v in _extract_session_fields(prompt, prompt_l).items():
+                    if k == arg:
+                        args[arg] = v
+    return args
+
+
+def _missing_required_args(tool_name: str, arguments: dict[str, Any]) -> list[str]:
+    return [
+        a for a in required_args_for_tool(tool_name)
+        if arguments.get(a) in (None, "", [], {})
+    ]
+
+
+def _resolve_next_tool_step(
+    tools: list[str],
+    prompt: str,
+    prompt_l: str,
+) -> tuple[str | None, dict[str, Any], str | None]:
+    """Pick the executable next tool and extracted args (exact-ID getter overrides discovery-first list)."""
+    if not tools:
+        return None, {}, None
+
+    # Exact-ID getter: skip list/discovery when a validated id is present.
+    for tool in tools:
+        if tool not in _GETTER_TOOLS:
+            continue
+        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        id_args = [a for a in required_args_for_tool(tool) if a.endswith(_ID_ARG_SUFFIX)]
+        if id_args and all(args.get(a) for a in id_args) and not _missing_required_args(tool, args):
+            return tool, args, "exact_id_getter"
+
+    for tool in tools:
+        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        if not _missing_required_args(tool, args):
+            return tool, args, "extracted"
+
+    tool = tools[0]
+    return tool, _extract_tool_arguments(prompt, prompt_l, tool), None
+
+
+def _argument_extraction_view(
+    tool_name: str | None,
+    arguments: dict[str, Any],
+    *,
+    source: str | None,
+) -> dict[str, Any]:
+    req = required_args_for_tool(tool_name) if tool_name else []
+    populated = sorted(k for k in req if arguments.get(k) not in (None, "", [], {}))
+    missing = [a for a in req if a not in populated]
+    return {
+        "populated": populated,
+        "missing": missing,
+        "source": source if populated else "none",
+    }
+
+
+def _runtime_policy_permission(
+    next_tool: str | None,
+    *,
+    available_tools: frozenset[str] | set[str] | None,
+    runtime_policy: dict[str, Any] | None,
+    freshness: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Best-effort runtime gate signals (additive; defaults optimistic when unknown)."""
+    rp = dict(runtime_policy or {})
+    fresh = freshness or {}
+    safe_mode = bool(rp.get("safe_mode")) or bool(fresh.get("safe_mode"))
+    token_scope_allowed = rp.get("token_scope_allowed")
+    if token_scope_allowed is None:
+        token_scope_allowed = True
+
+    surface_available = True
+    profile_enabled = True
+    gateway_allowlisted = True
+    if rp.get("surface_available") is not None:
+        surface_available = bool(rp["surface_available"])
+    elif next_tool and available_tools is not None:
+        surface_available = next_tool in available_tools
+    if rp.get("profile_enabled") is not None:
+        profile_enabled = bool(rp["profile_enabled"])
+    elif next_tool and available_tools is not None:
+        profile_enabled = next_tool in available_tools
+    if next_tool:
+        if rp.get("gateway_allowlisted") is not None:
+            gateway_allowlisted = bool(rp["gateway_allowlisted"])
+        else:
+            try:
+                from hb_assistant.nas_mcp.broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
+
+                gateway_allowlisted = next_tool in GATEWAY_ALLOWLIST
+            except Exception:  # noqa: BLE001
+                gateway_allowlisted = True
+
+    return {
+        "safe_mode": safe_mode,
+        "token_scope_allowed": bool(token_scope_allowed),
+        "profile_enabled": profile_enabled,
+        "gateway_allowlisted": gateway_allowlisted,
+        "surface_available": surface_available,
+    }
+
+
+def _capability_gates(prohibitions: set[str], *, action_class: str) -> dict[str, Any]:
+    """Prompt-scoped capability gates (index/deploy/archive/external) with blocked reasons."""
+    gates: dict[str, Any] = {}
+    for cap in ("index", "deploy", "archive", "external_action"):
+        blocked = cap in prohibitions
+        gates[cap] = {
+            "allowed": not blocked,
+            "blocked_reason": f"prompt_prohibits_{cap}" if blocked else None,
+        }
+    if action_class == "archive" and "archive" not in prohibitions:
+        gates["archive"]["allowed"] = True
+        gates["archive"]["blocked_reason"] = None
+    return gates
+
+
+def _evaluate_executability(
+    *,
+    plan_only: bool,
+    prohibitions: set[str],
+    allow_read: bool,
+    next_tool: str | None,
+    missing: list[str],
+    tool_needs_approval: bool,
+    approval_satisfied: bool,
+    promote_requested: bool,
+    staging_ok: bool,
+    write_ok: bool,
+    promote_perm: bool,
+    is_write: bool,
+    runtime_policy: dict[str, Any],
+    freshness_stale: bool,
+) -> tuple[bool, str | None, bool]:
+    """Ordered gate precedence for ``currently_executable`` (does not execute)."""
+    approval_required_flag = False
+
+    if plan_only or ("execute" in prohibitions and not allow_read):
+        return False, "plan_only" if plan_only else "operation_prohibited", False
+
+    if not runtime_policy.get("surface_available", True):
+        return False, "surface_unavailable", False
+    if not runtime_policy.get("gateway_allowlisted", True):
+        return False, "gateway_denied", False
+    if not runtime_policy.get("profile_enabled", True):
+        return False, "profile_disabled", False
+    if not runtime_policy.get("token_scope_allowed", True):
+        return False, "token_scope_denied", False
+
+    if next_tool is None:
+        return False, "no_recommended_tool", False
+
+    if missing:
+        non_appr_missing = [a for a in missing if a != "operator_approval_id"]
+        if not non_appr_missing and "operator_approval_id" in missing:
+            return False, "approval_required", True
+        if next_tool == "pa_artifact_proposal_stage":
+            return False, "missing_arguments", False
+        approval_required_flag = tool_needs_approval
+        return False, "missing_arguments", approval_required_flag
+
+    if tool_needs_approval and not approval_satisfied:
+        return False, "approval_required", True
+    if promote_requested and not approval_satisfied:
+        return False, "approval_required", True
+
+    if is_write and runtime_policy.get("safe_mode"):
+        return False, "safe_mode_active", False
+    if is_write and freshness_stale:
+        return False, "surface_stale", False
+
+    if not allow_read and not staging_ok and not write_ok and not promote_perm:
+        return False, "not_authorized", False
+
+    return True, None, approval_required_flag or tool_needs_approval
 
 
 def _authorization(
@@ -408,6 +842,10 @@ def _authorization(
     next_tool: str | None = None,
     next_arguments: dict[str, Any] | None = None,
     has_exact_id: bool = False,
+    argument_extraction: dict[str, Any] | None = None,
+    available_tools: frozenset[str] | set[str] | None = None,
+    runtime_policy: dict[str, Any] | None = None,
+    freshness: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Multi-dimensional authorization + request-level executability (does not execute)."""
     action_class = wf["operator_authorization_policy"]
@@ -422,6 +860,10 @@ def _authorization(
         and "write" not in prohibitions
         and not non_read_banned
         and not plan_only
+        and (
+            _has_imperative_capability_intent(prompt_l, "stage")
+            or _has_imperative_capability_intent(prompt_l, "write")
+        )
     )
     write_ok = (
         action_class == "staged_write"
@@ -429,9 +871,15 @@ def _authorization(
         and not non_read_banned
         and not plan_only
         and confident
+        and _has_imperative_capability_intent(prompt_l, "write")
     )
     # Prompt may request promotion without satisfying approval — permission is separate.
-    promote_requested = action_class == "canonical_promotion" and "promote" not in prohibitions and not plan_only
+    promote_requested = (
+        action_class == "canonical_promotion"
+        and "promote" not in prohibitions
+        and not plan_only
+        and _has_imperative_capability_intent(prompt_l, "promote")
+    )
     promote_perm = promote_requested  # prompt_permission.promote
     promotion_authorized = False  # not cleared for execution without validation+approval
     external_ok = False
@@ -461,42 +909,31 @@ def _authorization(
     if has_exact_id and missing and not any(_extract_validated_id(prompt_l, a) for a in missing):
         pass  # still missing
 
-    # --- precedence for primary blocker ---
-    blocked_reason: str | None = None
-    currently_executable = False
-    approval_required_flag = False
+    freshness_stale = bool(_freshness_view(freshness, is_write).get("stale"))
+    runtime_perm = _runtime_policy_permission(
+        next_tool,
+        available_tools=available_tools,
+        runtime_policy=runtime_policy,
+        freshness=freshness,
+    )
+    capability_gates = _capability_gates(prohibitions, action_class=action_class)
 
-    if plan_only or "execute" in prohibitions and not allow_read:
-        blocked_reason = "plan_only" if plan_only else "operation_prohibited"
-    elif next_tool is None:
-        blocked_reason = "no_recommended_tool"
-    elif missing:
-        blocked_reason = "missing_arguments"
-        # If only approval-shaped args remain among missing after non-approval filled, note approval.
-        non_appr_missing = [a for a in missing if a != "operator_approval_id"]
-        if not non_appr_missing and "operator_approval_id" in missing:
-            blocked_reason = "approval_required"
-            approval_required_flag = True
-        elif tool_needs_approval:
-            approval_required_flag = True
-    elif tool_needs_approval and not approval_satisfied:
-        blocked_reason = "approval_required"
-        approval_required_flag = True
-    elif promote_requested and not approval_satisfied:
-        # Non-approval target args may still be missing; if not in missing list above, approval.
-        blocked_reason = "approval_required"
-        approval_required_flag = True
-    elif not allow_read and not staging_ok and not write_ok and not promote_perm:
-        blocked_reason = "not_authorized"
-    else:
-        currently_executable = True
-        blocked_reason = None
-
-    # Stage: never attribute approval when stage tool only needs session/artifacts.
-    if next_tool == "pa_artifact_proposal_stage" and missing:
-        blocked_reason = "missing_arguments"
-        approval_required_flag = False
-        currently_executable = False
+    currently_executable, blocked_reason, approval_required_flag = _evaluate_executability(
+        plan_only=plan_only,
+        prohibitions=prohibitions,
+        allow_read=allow_read,
+        next_tool=next_tool,
+        missing=missing,
+        tool_needs_approval=tool_needs_approval,
+        approval_satisfied=approval_satisfied,
+        promote_requested=promote_requested,
+        staging_ok=staging_ok,
+        write_ok=write_ok,
+        promote_perm=promote_perm,
+        is_write=is_write,
+        runtime_policy=runtime_perm,
+        freshness_stale=freshness_stale,
+    )
 
     prompt_authorizes_execution = bool(allow_read and not plan_only and not is_write)
 
@@ -534,6 +971,13 @@ def _authorization(
         "requires_explicit_operator_go": bool(is_write),
         "approval_points": approval_points,
         "prohibitions": sorted(prohibitions),
+        "operation_modality": _dominant_operation_modality(prompt_l),
+        "argument_extraction": argument_extraction or _argument_extraction_view(
+            next_tool, next_arguments, source=None,
+        ),
+        "runtime_policy_permission": runtime_perm,
+        "capability_gates": capability_gates,
+        "write_blocked_by_staleness": bool(freshness_stale and is_write),
         "prompt_authorizes_execution": prompt_authorizes_execution,
         "prompt_authorizes_execution_deprecated": True,
     }
@@ -597,7 +1041,7 @@ def _enrich_tool_steps(
         # List/discovery tools: do not inject unsupported query args; surface topic separately.
         req = required_args_for_tool(t)
         missing = [a for a in req if args.get(a) in (None, "", [], {})]
-        is_next = (t == next_tool) or (i == 0)
+        is_next = t == next_tool
         step_auth = bool(authorization.get("read_tool_calls_authorized"))
         if t.startswith("pa_artifact") or "stage" in t or "session_capture" in t:
             step_auth = bool(
@@ -677,6 +1121,7 @@ def route_prompt(
     has_exact_id: bool = False,
     freshness: dict[str, Any] | None = None,
     tool_groups: dict[str, str | None] | None = None,
+    runtime_policy: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return a read-only route plan for ``prompt`` (schema v2, additive). Never writes or reads content."""
     prompt_l = _norm(prompt)
@@ -743,27 +1188,27 @@ def route_prompt(
     workflow_available = not unavailable
 
     topic = _extract_topic_query(prompt_l)
-    next_tool = recommended_tools[0] if recommended_tools else None
-    next_args: dict[str, Any] = {}
-    # Populate only validated extracted IDs for the *next* tool's required args.
-    if next_tool:
-        for arg in required_args_for_tool(next_tool):
-            extracted = _extract_validated_id(prompt, arg)
-            if extracted:
-                next_args[arg] = extracted
+    next_tool, next_args, extraction_source = _resolve_next_tool_step(recommended_tools, prompt, prompt_l)
     # has_exact_id never invents: if set without extractable ID, args stay empty.
 
     action_class = best_wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
+    arg_view = _argument_extraction_view(next_tool, next_args, source=extraction_source)
+    merged_runtime_policy = dict(runtime_policy or {})
+    if available_tools is not None:
+        if next_tool:
+            merged_runtime_policy["surface_available"] = next_tool in available_tools
+        elif unavailable:
+            merged_runtime_policy["surface_available"] = False
     authorization = _authorization(
         best_wf, confident,
         prompt_l=prompt_l, prohibitions=prohibitions,
         next_tool=next_tool, next_arguments=next_args, has_exact_id=has_exact_id,
+        argument_extraction=arg_view,
+        available_tools=available_tools,
+        runtime_policy=merged_runtime_policy,
+        freshness=freshness,
     )
-    if available_tools is not None and next_tool and next_tool not in available_tools:
-        authorization = dict(authorization)
-        authorization["currently_executable"] = False
-        authorization["execution_blocked_reason"] = "surface_unavailable"
 
     fam = family_record(primary_family) or {}
 
@@ -778,10 +1223,17 @@ def route_prompt(
         topic_query=topic,
     )
 
-    next_step = tool_steps[0] if tool_steps else None
-    additional_steps = tool_steps[1:] if len(tool_steps) > 1 else []
+    next_step = next(
+        (s for s in tool_steps if s.get("tool") == next_tool),
+        tool_steps[0] if tool_steps else None,
+    )
+    additional_steps = [s for s in tool_steps if s is not next_step]
 
     constraints = [f"prohibited:{c}" for c in sorted(prohibitions)]
+    if extraction_source == "exact_id_getter" and next_tool in _GETTER_TOOLS:
+        constraints.append(
+            f"exact_id_getter={next_tool}; discovery list step deferred because a validated id was extracted"
+        )
     must_not = list(best_wf["must_not_use"]) + list(fam.get("family_level_negative_instructions", []))
     if prohibitions:
         must_not = must_not + [f"prompt prohibits: {', '.join(sorted(prohibitions))}"]
@@ -927,7 +1379,9 @@ def _ambiguous_notes_route(
     return base
 
 
-def _base_auth_read_only(prohibitions: set[str], *, allow_read: bool = False) -> dict[str, Any]:
+def _base_auth_read_only(
+    prohibitions: set[str], *, allow_read: bool = False, prompt_l: str = "",
+) -> dict[str, Any]:
     # Clarify routes recommend no tools — not currently executable even if reads are permitted.
     blocked = None if allow_read else "not_authorized"
     if allow_read:
@@ -956,6 +1410,14 @@ def _base_auth_read_only(prohibitions: set[str], *, allow_read: bool = False) ->
         "requires_explicit_operator_go": False,
         "approval_points": [],
         "prohibitions": sorted(prohibitions),
+        "operation_modality": _dominant_operation_modality(prompt_l) if prompt_l else "advisory",
+        "argument_extraction": {"populated": [], "missing": [], "source": "none"},
+        "runtime_policy_permission": _runtime_policy_permission(
+            None, available_tools=None, runtime_policy=None, freshness=None,
+        ),
+        "capability_gates": _capability_gates(prohibitions, action_class="read"),
+        "write_blocked_by_staleness": False,
+        "missing_required_arguments": [],
         "prompt_authorizes_execution": allow_read,
         "prompt_authorizes_execution_deprecated": True,
     }
@@ -980,7 +1442,7 @@ def _unknown_route(
         "recommended_tools": [],
         "workflow_available": True,
         "unavailable_tools": [],
-        "authorization": _base_auth_read_only(prohibitions, allow_read=allow_read),
+        "authorization": _base_auth_read_only(prohibitions, allow_read=allow_read, prompt_l=prompt_l),
         "retrieval_budget": {
             "default_layer": "route_only", "recommended_next_layer": "metadata_discovery",
             "max_candidates": 10, "max_chars": 4000, "deep_parse_requires_operator_selection": True,
@@ -1011,7 +1473,7 @@ def _safety_refusal_route(
     prompt: str, prompt_l: str, freshness: dict[str, Any] | None, prohibitions: set[str],
     *, intent: str, rationale: str,
 ) -> dict[str, Any]:
-    auth = _base_auth_read_only(prohibitions, allow_read=False)
+    auth = _base_auth_read_only(prohibitions, allow_read=False, prompt_l=prompt_l)
     auth["additional_approval_required"] = True
     auth["requires_explicit_operator_go"] = True
     auth["approval_points"] = ["refusal — do not execute"]
@@ -1057,7 +1519,7 @@ def _safety_refusal_route(
 def _destructive_route(
     prompt: str, prompt_l: str, freshness: dict[str, Any] | None, prohibitions: set[str],
 ) -> dict[str, Any]:
-    auth = _base_auth_read_only(prohibitions | {"write", "execute"}, allow_read=False)
+    auth = _base_auth_read_only(prohibitions | {"write", "execute"}, allow_read=False, prompt_l=prompt_l)
     auth["action_class"] = "destructive"
     auth["write_risk"] = "high"
     auth["requested_operation_class"] = "destructive"

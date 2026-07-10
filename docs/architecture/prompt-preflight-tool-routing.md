@@ -36,6 +36,16 @@ sorted, workflow step order preserved, form `sha256:<hex>`.
 Deprecated **`prompt_authorizes_execution`** is retained for this contract cycle, derived deterministically,
 and must not be the sole client signal.
 
+**Executability (schema v2 additive):** `currently_executable` and `execution_blocked_reason` are computed by a
+central gate evaluator with fixed precedence: plan-only/execute ban → surface/profile/gateway/token scope →
+missing arguments → approval → safe-mode (writes) → surface staleness (writes) → prompt permission. Additive
+fields: `runtime_policy_permission` (`safe_mode`, `token_scope_allowed`, `profile_enabled`,
+`gateway_allowlisted`, `surface_available`), `capability_gates` (`index` / `deploy` / `archive` /
+`external_action` each with `allowed` + `blocked_reason`), `operation_modality`, `argument_extraction`, and
+`write_blocked_by_staleness`. Optional `runtime_policy` may be passed into `route_prompt` for live connector
+context; when omitted, gates default optimistic except where `available_tools` / `freshness` supply signals.
+Read routes proceed when stale; write/stage/promote/archive routes fail closed on staleness.
+
 **Negation:** clause-scoped capability prohibitions (`do not promote`, `without writing`, `plan only`, …) —
 not keyword-wide NLP. Prohibited capabilities never positively score matching write/promote workflows.
 
@@ -70,7 +80,8 @@ Deterministic. `route_prompt(...)` returns route schema **v2** (additive):
 
 - Existing fields preserved: intent, source_of_truth, families, workflow, tools, authorization.action_class,
   write_risk, prompt_authorizes_execution (deprecated), retrieval_budget, …
-- New: `route_schema_version`, dimensional auth, `prohibitions`, `next_step` / `additional_steps` with
+- New: `route_schema_version`, dimensional auth, `prohibitions`, `runtime_policy_permission`,
+  `capability_gates`, `argument_extraction`, `write_blocked_by_staleness`, `next_step` / `additional_steps` with
   `tool_group`, constraints/warnings, compact `route` object
 - `explain_route` explains the **same** normalized route + detail records
 
