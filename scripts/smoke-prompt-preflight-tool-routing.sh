@@ -104,9 +104,12 @@ check("no outputs committed by preflight", st.get("client_output_committed_count
 committed_files = [p for p in (out / "01 Final").rglob("*") if p.is_file()]
 check("no files written under outputs root", committed_files == [], committed_files)
 
-# 9) canonical 78 preserved; prompt tools gateway-reachable but not canonical
+# 9) canonical assistant inventory preserved; prompt tools gateway-reachable but not in ALL_ASSISTANT_TOOLS
+from hb_assistant.nas_mcp.broker import ALL_ASSISTANT_TOOLS as _CANON
 names = [t.name for t in mcp._tool_manager.list_tools()]
-check("78 canonical assistant tools preserved", len([n for n in names if n.startswith("assistant_")]) == 78)
+_canon_n = len(_CANON)
+check(f"{_canon_n} canonical assistant tools preserved",
+      all(n in names for n in _CANON) and len([n for n in names if n in _CANON]) == _canon_n)
 check("pa_prompt_route registered + gateway-reachable", "pa_prompt_route" in names and "pa_prompt_route" in GATEWAY_ALLOWLIST)
 
 print()

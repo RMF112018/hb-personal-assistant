@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 117
+LATEST_SCHEMA_VERSION = 118
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7074,6 +7074,16 @@ class SQLiteMigrator:
 
         return V117_SOURCE_INDEX_BOOTSTRAP_STATEMENTS
 
+    @staticmethod
+    def _v118_statements() -> list[str]:
+        # Client tool operating manifest: independent semantic/exposure/gateway checksums + payload
+        # for truthful freshness (no live-vs-live false current). Additive columns; legacy rows ok.
+        from hb_assistant.store.pa_client_tool_manifest_v118 import (
+            V118_CLIENT_TOOL_MANIFEST_STATEMENTS,
+        )
+
+        return V118_CLIENT_TOOL_MANIFEST_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9039,6 +9049,17 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (117, 'v117_source_index_bootstrap', ?)",
+                    (now,),
+                )
+
+            # v118 (client tool manifest semantic payload + independent checksums): additive columns
+            # on pa_client_tool_manifests for truthful freshness vs a persisted snapshot.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 118")
+            if cur.fetchone() is None:
+                for stmt in self._v118_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (118, 'v118_tool_manifest_semantic_payload', ?)",
                     (now,),
                 )
 

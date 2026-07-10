@@ -39,42 +39,99 @@ def _require(a: dict[str, Any], key: str) -> Any:
 
 def current_tool_groups(config: NasMcpConfig) -> dict[str, str | None]:
     """Live tool name -> group, including the routing-layer tools. Read-only view for freshness."""
-    from .artifact_tools import current_tool_names  # noqa: PLC0415
-    from .broker import ASSISTANT_TOOL_GROUPS  # noqa: PLC0415
+    from .live_tool_surface import tool_group_map  # noqa: PLC0415
 
-    tool_to_group = {t: g for g, tools in ASSISTANT_TOOL_GROUPS.items() for t in tools}
-    names = set(current_tool_names(config)) | set(PROMPT_ROUTING_TOOLS)
-    return {name: tool_to_group.get(name) for name in names}
+    return tool_group_map(config)
 
 
 def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
-    """Compute the live tool-surface freshness report (structural + gateway scope). Never raises."""
+    """Compute live tool-surface freshness vs independent stored baseline when available.
+
+    Never self-compares live gateway to itself as the sole baseline and claims current.
+    On failure returns check_failed (stale=true), never a false current state.
+    """
     try:
-        from .broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
+        from ..obsidian_mcp.client_tool_manifest import (
+            ClientToolManifestRepository,  # noqa: PLC0415
+        )
+        from .broker import GATEWAY_ALLOWLIST, runtime_commit  # noqa: PLC0415
+        from .live_tool_surface import surface_profile_label  # noqa: PLC0415
 
         groups = current_tool_groups(config)
-        gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
+        live_gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
+
+        stored_entries: dict[str, dict[str, Any]] | None = None
+        stored_gateway: frozenset[str] | None = None
+        stored_semantic: str | None = None
+        stored_exposure: str | None = None
+        stored_runtime: str | None = None
+        stored_profile: str | None = None
+        try:
+            mrepo = ClientToolManifestRepository(str(config.db_path))
+            active = mrepo.get_active()
+            if active:
+                stored_entries = {
+                    e["tool_name"]: e for e in active.get("entries") or []
+                }
+                stored_semantic = active.get("semantic_surface_checksum")
+                stored_exposure = active.get("exposure_checksum")
+                stored_runtime = active.get("generated_from_runtime_commit")
+                stored_profile = active.get("surface_profile")
+                # Gateway snapshot may be absent on legacy rows → leave None (indeterminate).
+                gw = active.get("gateway_allowlist") or active.get("gateway_checksum")
+                if isinstance(gw, (list, set, frozenset)):
+                    stored_gateway = frozenset(gw)
+        except Exception:  # noqa: BLE001
+            stored_entries = None
+
+        # Only pass stored gateway when independently recorded; never pass live as stored.
+        # When no stored snapshot exists, skip gateway/runtime/semantic compare args so the
+        # report is structural_only (not a false "current", and not a false "stale").
+        if stored_entries is None and stored_semantic is None:
+            return check_tool_surface(
+                groups,
+                stored_entries=None,
+                check_workflow_coverage=True,
+            )
         return check_tool_surface(
             groups,
-            live_gateway_allowlist=gateway,
-            stored_gateway_allowlist=gateway,  # self-consistency baseline; drift vs a stored snapshot
+            stored_entries=stored_entries,
+            live_gateway_allowlist=live_gateway,
+            stored_gateway_allowlist=stored_gateway,
+            live_runtime_commit=runtime_commit(),
+            stored_runtime_commit=stored_runtime,
+            live_semantic_checksum=None,
+            stored_semantic_checksum=stored_semantic,
+            live_exposure_checksum=None,
+            stored_exposure_checksum=stored_exposure,
+            live_profile=surface_profile_label(),
+            stored_profile=stored_profile,
+            help_index=dict.fromkeys(groups, True),
         )
     except Exception as exc:  # noqa: BLE001 — freshness must never crash status/routing
-        return {"stale": False, "staleness_state": "unknown", "warnings": [f"freshness_error:{exc}"],
-                "review_required": False, "tool_surface_gateway_current": True}
+        return check_tool_surface(
+            {},
+            check_error=str(type(exc).__name__),
+        )
 
 
 def dispatch_prompt_routing_tool(config: NasMcpConfig, tool_name: str, arguments: dict[str, Any], *,
                                  runtime_commit: str = "unknown") -> dict[str, Any]:
     a = arguments or {}
     available = frozenset(current_tool_groups(config))
+    groups = current_tool_groups(config)
 
     if tool_name in ("pa_prompt_route", "pa_prompt_route_explain"):
         prompt = str(_require(a, "prompt"))
         fresh = live_freshness(config)
         fn = explain_route if tool_name == "pa_prompt_route_explain" else route_prompt
-        return fn(prompt, available_tools=available, has_exact_id=bool(a.get("has_exact_id", False)),
-                  freshness=fresh)
+        return fn(
+            prompt,
+            available_tools=available,
+            has_exact_id=bool(a.get("has_exact_id", False)),
+            freshness=fresh,
+            tool_groups=groups,
+        )
     if tool_name == "pa_tool_family_get":
         fid = a.get("family_id")
         if fid:
@@ -124,5 +181,6 @@ def prompt_preflight_status(config: NasMcpConfig) -> dict[str, Any]:
             "tool_surface_staleness_state": fr.get("staleness_state", "unknown"),
         })
     except Exception:  # noqa: BLE001
-        pass
+        out["tool_surface_staleness_state"] = "check_failed"
+        out["tool_surface_manifest_current"] = False
     return out

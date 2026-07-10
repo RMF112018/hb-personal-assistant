@@ -21,73 +21,121 @@ from .artifact_workspace import ArtifactWorkspaceError, _cjson, _insert, _now, _
 
 REVIEW_CADENCE = "tool_surface: on_change; routing: weekly; safety: on_tool_surface_change; operator: monthly"
 
-# Static, organization-neutral workflow recipes (Part 11.7).
-WORKFLOW_RECIPES: list[dict[str, Any]] = [
-    {"workflow_name": "document_session",
-     "trigger_phrases": ["document this session", "record our discussion", "save the key points",
-                         "turn this into second-brain artifacts", "capture the decisions from this chat"],
-     "description": "Stage a session capture + artifact proposals, review, then operator-approved promotion.",
-     "tool_sequence": ["pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_list",
-                       "pa_artifact_proposal_review", "pa_artifact_proposal_revise",
-                       "pa_artifact_proposal_plan_promotion", "pa_artifact_promotion_validate",
-                       "pa_artifact_promotion_apply", "pa_artifact_promotion_receipt_get"],
-     "required_operator_approval_points": ["pa_artifact_proposal_review", "pa_artifact_promotion_apply"],
-     "negative_instructions": ["never promote without validation", "never invent an approval id",
-                               "never write vault notes directly"],
-     "expected_outputs": ["proposal review packet", "validation receipt", "promotion receipt", "materialized cards"],
-     "failure_recovery": ["on revalidation_required, re-run pa_artifact_promotion_validate"]},
-    {"workflow_name": "find_source_file",
-     "trigger_phrases": ["find the file", "search my documents", "look in the project folder"],
-     "description": "Discover + read source files via the semantic source connector, not root/vault tools.",
-     "tool_sequence": ["assistant_source_query_plan", "assistant_source_file_search",
-                       "assistant_source_file_metadata", "assistant_source_file_read"],
-     "required_operator_approval_points": [], "negative_instructions": ["do not use hb_root_search",
-       "do not use file search alone when a folder map is needed"],
-     "expected_outputs": ["bounded file excerpt with provenance"], "failure_recovery": []},
-    {"workflow_name": "map_source_project",
-     "trigger_phrases": ["map the tropical project", "map project folder", "folder structure under project"],
-     "description": "Folder-first NAS project map using structure tools (not file search only).",
-     "tool_sequence": ["assistant_source_query_plan", "assistant_source_project_map",
-                       "assistant_source_folder_map", "assistant_source_folder_summary"],
-     "required_operator_approval_points": [],
-     "negative_instructions": ["do not fall back to generic file search only for map prompts"],
-     "expected_outputs": ["bounded folder map with folder_ids + counts + freshness"],
-     "failure_recovery": ["assistant_source_index_health if map empty"]},
-    {"workflow_name": "source_index_health_check",
-     "trigger_phrases": ["is my source index fresh", "source index health"],
-     "description": "Per-root source index health for trust decisions.",
-     "tool_sequence": ["assistant_source_index_health"],
-     "required_operator_approval_points": [], "negative_instructions": [],
-     "expected_outputs": ["per-root freshness + safe_for_client_answering"], "failure_recovery": []},
-    {"workflow_name": "generate_client_output",
-     "trigger_phrases": ["create a markdown output", "save as docx", "temporary zip output"],
-     "description": "Stage/commit generated files via pa_output_* or assistant_output_* aliases.",
-     "tool_sequence": ["assistant_output_stage", "assistant_output_commit", "pa_output_stage", "pa_output_commit"],
-     "required_operator_approval_points": ["assistant_output_commit"],
-     "negative_instructions": ["never write arbitrary host paths", "never use vault write for generated files"],
-     "expected_outputs": ["output_id + receipt"], "failure_recovery": []},
-    {"workflow_name": "retrieve_decision",
-     "trigger_phrases": ["what did we decide", "find the decision"],
-     "description": "Retrieve a canonical decision + provenance.",
-     "tool_sequence": ["pa_canonical_artifact_list", "pa_canonical_artifact_get", "assistant_list_decisions"],
-     "required_operator_approval_points": [], "negative_instructions": ["do not use hb_db_select"],
-     "expected_outputs": ["canonical id + links"], "failure_recovery": []},
-    {"workflow_name": "check_tool_manifest_freshness",
-     "trigger_phrases": ["is the tool map current", "check tool manifest"],
-     "description": "Compare the live tool surface to the recorded manifest.",
-     "tool_sequence": ["pa_tool_manifest_freshness_check", "pa_tool_manifest_review_plan"],
-     "required_operator_approval_points": ["pa_tool_manifest_refresh_promote"],
-     "negative_instructions": ["never silently rewrite the manifest"],
-     "expected_outputs": ["staleness state + missing/extra tools"], "failure_recovery": []},
-]
+# Compatibility projection of the preflight WORKFLOWS seed (not an independent authoring list).
+# Authority: workflow_recipe_manifest.WORKFLOWS (routing) + canonical_tool_specs.replacement_map.
+# Public contract: WORKFLOW_RECIPES is a **list** of recipe dicts with key ``workflow_name``
+# (stable for rendering, stage_refresh, and pa_tool_manifest_workflow_get).
 
-REPLACEMENT_MAP: dict[str, str] = {
-    "hb_root_search": "assistant_source_file_search",
-    "hb_root_read_file": "assistant_source_file_read",
-    "search_vault": "assistant_search_sources",
-    "hb_db_select": "assistant_* semantic retrieval tools",
-    "direct_note_creation": "pa_artifact_proposal_stage → review → pa_artifact_promotion_apply",
-}
+CLIENT_PROJECTION_SCHEMA_VERSION = 1
+# Fixed vault write bound (characters) for client-tool operating manifest MD/JSON under
+# 99 System/Manifests. Must not be payload-driven. Aligns with Obsidian max_write_chars default.
+MAX_VAULT_MANIFEST_CHARS = 120_000
+
+
+def project_workflow_for_client(w: dict[str, Any]) -> dict[str, Any]:
+    """Project one authoritative WORKFLOWS record into the public client-recipe shape."""
+    fr = w.get("failure_recovery") or ""
+    return {
+        "workflow_name": w["workflow_id"],
+        "trigger_phrases": list(w.get("trigger_phrases") or []),
+        "description": w.get("when_to_use") or "",
+        "tool_sequence": list(w.get("tool_sequence") or []),
+        "required_operator_approval_points": list(w.get("additional_approval_points") or []),
+        "negative_instructions": list(w.get("must_not_use") or []),
+        "expected_outputs": list(w.get("expected_outputs") or []),
+        "failure_recovery": [fr] if isinstance(fr, str) and fr else list(fr or []),
+    }
+
+
+def _workflow_recipes_from_routing() -> list[dict[str, Any]]:
+    """List projection of WORKFLOWS where publish_to_client_manifest is True (deterministic order)."""
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
+    published = [w for w in WORKFLOWS if w.get("publish_to_client_manifest")]
+    # Stable order by workflow_id for deterministic checksums.
+    published.sort(key=lambda w: w["workflow_id"])
+    return [project_workflow_for_client(w) for w in published]
+
+
+# Derived compatibility views — do not edit independently of WORKFLOWS / replacement_map().
+WORKFLOW_RECIPES: list[dict[str, Any]] = _workflow_recipes_from_routing()
+
+
+def client_projection_meta() -> dict[str, Any]:
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
+    total = len(WORKFLOWS)
+    published = sum(1 for w in WORKFLOWS if w.get("publish_to_client_manifest"))
+    return {
+        "client_projection_schema_version": CLIENT_PROJECTION_SCHEMA_VERSION,
+        "published_workflow_count": published,
+        "omitted_workflow_count": total - published,
+    }
+
+
+def build_vault_client_projection(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Bounded vault-facing object (not the full semantic payload)."""
+    # Slim entries: identity + classification only (no empty optional noise).
+    slim_entries = []
+    for e in manifest.get("entries") or []:
+        slim_entries.append({
+            "tool_name": e.get("tool_name"),
+            "tool_group": e.get("tool_group"),
+            "tool_class": e.get("tool_class"),
+            "safety_class": e.get("safety_class"),
+            "read_write_class": e.get("read_write_class"),
+            "purpose": e.get("purpose") or "",
+            "required_args": e.get("required_args") or [],
+            "optional_args": e.get("optional_args") or [],
+            "replacement_tools": e.get("replacement_tools") or [],
+        })
+    meta = client_projection_meta()
+    return {
+        "manifest_version": manifest.get("manifest_version"),
+        "client_projection_schema_version": meta["client_projection_schema_version"],
+        "published_workflow_count": meta["published_workflow_count"],
+        "omitted_workflow_count": meta["omitted_workflow_count"],
+        "full_semantic_checksum": manifest.get("semantic_surface_checksum") or manifest.get("checksum"),
+        "generated_at": manifest.get("generated_at"),
+        "generated_from_runtime_commit": manifest.get("generated_from_runtime_commit"),
+        "tool_count": len(slim_entries),
+        "workflow_count": len(manifest.get("workflow_recipes") or WORKFLOW_RECIPES),
+        "entries": slim_entries,
+        "workflow_recipes": list(manifest.get("workflow_recipes") or WORKFLOW_RECIPES),
+        "replacement_map": dict(manifest.get("replacement_map") or REPLACEMENT_MAP),
+        "negative_instructions": list(manifest.get("negative_instructions") or NEGATIVE_INSTRUCTIONS),
+    }
+
+
+def serialize_vault_projection_json(projection: dict[str, Any]) -> str:
+    """Deterministic compact JSON string used for write-cap measurement and vault write."""
+    import json  # noqa: PLC0415
+
+    from .canonical_json import canonicalize  # noqa: PLC0415
+
+    return json.dumps(canonicalize(projection), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def client_projection_checksum(projection: dict[str, Any] | str) -> str:
+    from .canonical_json import sha256_fingerprint  # noqa: PLC0415
+
+    if isinstance(projection, str):
+        import hashlib  # noqa: PLC0415
+
+        return "sha256:" + hashlib.sha256(projection.encode("utf-8")).hexdigest()
+    # Checksum of exact serialized projection string (character-oriented, matches writer unit).
+    s = serialize_vault_projection_json(projection)
+    return client_projection_checksum(s)
+
+
+def _replacement_map() -> dict[str, str]:
+    from .canonical_tool_specs import replacement_map  # noqa: PLC0415
+
+    return replacement_map()
+
+
+# Dict snapshot for legacy callers (``REPLACEMENT_MAP[name]``, ``.items()``).
+REPLACEMENT_MAP: dict[str, str] = _replacement_map()
 
 NEGATIVE_INSTRUCTIONS: list[str] = [
     "do not use low-level vault search as the first step for ordinary structured-intelligence queries",
@@ -102,71 +150,142 @@ NEGATIVE_INSTRUCTIONS: list[str] = [
     "do not use receipt tools as primary semantic retrieval unless auditing promotion history",
 ]
 
-_DENIED = {"raw_sql", "sql", "shell", "exec", "read_file_absolute", "hb_output_delete"}
-_LEGACY_LOW_LEVEL = {"hb_db_select", "hb_root_list", "hb_root_stat", "hb_root_search", "hb_root_read_file",
-                     "hb_root_read_excerpt", "search_vault"}
-
-
 def classify_tool(name: str, group: str | None) -> tuple[str, str, str]:
-    """Return (tool_class, safety_class, read_write_class)."""
-    if name in _DENIED:
-        return "blocked_or_deprecated", "blocked", "blocked"
-    if name == "ai_outputs_card_upsert":
-        return "canonical_promotion", "canonical_promotion_requires_explicit_approval", "canonical_write"
-    if name in ("pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote"):
-        return "canonical_promotion", "canonical_promotion_requires_explicit_approval", "canonical_write"
-    if name in ("pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_revise",
-                "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage"):
-        return "staged_write", "staged_write_requires_review", "staged_write"
-    # N8C-24 client generated-output workspace: 3 controlled writes + 7 bounded reads.
-    if name in ("pa_output_stage", "pa_output_commit", "pa_output_archive_commit"):
-        return "staged_write", "staged_write_requires_review", "staged_write"
-    if name.startswith("pa_output_"):
-        return "read_only_retrieval", "bounded_read", "read_only"
-    if name in ("pa_artifact_proposal_plan_promotion", "pa_artifact_promotion_validate",
-                "pa_tool_manifest_review_plan", "pa_vault_path_resolve"):
-        return "advisory_routing", "advisory_only", "read_only"
-    if name.startswith("pa_tool_manifest") or name in ("hb_assistant_catalog", "hb_assistant_tool_help",
-                                                        "hb_assistant_tool_query"):
-        return "manifest_lookup", "bounded_read", "read_only"
-    if name in ("hb_mcp_status", "hb_data_freshness", "hb_queue_status", "hb_recent_failures",
-                "hb_last_successful_runs", "hb_capability_mode"):
-        return "read_only_status", "safe_read", "read_only"
-    if name in _LEGACY_LOW_LEVEL or name.startswith("hb_output_"):
-        return "legacy_low_level", "bounded_read", "read_only"
-    if group == "review" or "review" in name:
-        return "read_only_review", "bounded_read", "read_only"
-    return "read_only_retrieval", "bounded_read", "read_only"
+    """Return (tool_class, safety_class, read_write_class). Compatibility view of canonical classification."""
+    from .canonical_tool_specs import classify_tool as _canonical_classify  # noqa: PLC0415
+
+    return _canonical_classify(name, group)
 
 
 def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str, now: str,
-                   manifest_version: int = 1) -> dict[str, Any]:
-    """Build the manifest object from a live tool index {name: {group, required_args, optional_args, limits}}."""
+                   manifest_version: int = 1,
+                   surface_profile: str | None = None,
+                   gate_state_snapshot: dict[str, Any] | None = None,
+                   gateway_allowlist: list[str] | None = None,
+                   package_version: str | None = None,
+                   runtime_identity_kind: str | None = None) -> dict[str, Any]:
+    """Build the manifest object from a live tool index.
+
+    ``manifest_version`` is the **revision counter** (not schema version).
+    ``manifest_schema_version`` describes the payload contract (1 = expanded semantics).
+    """
+    from .canonical_json import sha256_fingerprint  # noqa: PLC0415
+    from .tool_metadata_types import MANIFEST_SCHEMA_VERSION  # noqa: PLC0415
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
     entries = []
     for name in sorted(tool_index):
         info = tool_index[name] or {}
-        tool_class, safety_class, rw = classify_tool(name, info.get("group"))
+        group = info.get("group") or info.get("tool_group")
+        tool_class, safety_class, rw = classify_tool(name, group)
         entries.append({
-            "tool_name": name, "tool_group": info.get("group"), "tool_class": tool_class,
-            "safety_class": safety_class, "read_write_class": rw, "purpose": info.get("purpose", ""),
-            "preferred_for": info.get("preferred_for", []), "avoid_when": info.get("avoid_when", []),
-            "required_args": info.get("required_args", []), "optional_args": info.get("optional_args", []),
-            "limits": info.get("limits", {}), "workflow_roles": info.get("workflow_roles", []),
-            "replacement_tools": [REPLACEMENT_MAP[name]] if name in REPLACEMENT_MAP else [],
-            "common_failure_modes": info.get("common_failure_modes", []), "examples": info.get("examples", []),
+            "tool_name": name,
+            "tool_group": group,
+            "tool_family": info.get("tool_family") or info.get("family"),
+            "tool_class": tool_class,
+            "safety_class": safety_class,
+            "read_write_class": rw,
+            "purpose": info.get("purpose", ""),
+            "preferred_for": info.get("preferred_for", []),
+            "avoid_when": info.get("avoid_when", []),
+            "required_args": info.get("required_args", []),
+            "optional_args": info.get("optional_args", []),
+            "limits": info.get("limits", {}),
+            "workflow_roles": info.get("workflow_roles", []),
+            "replacement_tools": (
+                info.get("replacement_tools")
+                or ([REPLACEMENT_MAP[name]] if name in REPLACEMENT_MAP else [])
+            ),
+            "common_failure_modes": info.get("common_failure_modes", []),
+            "examples": info.get("examples", []),
+            "directly_exposed": info.get("directly_exposed"),
+            "gateway_allowlisted": info.get("gateway_allowlisted"),
+            "profile_enabled": info.get("profile_enabled"),
         })
-    checksum = _manifest_checksum(entries)
+
+    # Workflow semantic payload (order of tool_sequence preserved).
+    workflow_payload = [
+        {
+            "workflow_id": w["workflow_id"],
+            "family_id": w["family_id"],
+            "tool_sequence": list(w["tool_sequence"]),
+            "trigger_phrases": sorted(w["trigger_phrases"]),
+            "operator_authorization_policy": w["operator_authorization_policy"],
+            "additional_approval_points": list(w.get("additional_approval_points") or []),
+        }
+        for w in WORKFLOWS
+    ]
+    semantic_payload = {
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "entries": [
+            {
+                "tool_name": e["tool_name"],
+                "tool_group": e["tool_group"],
+                "tool_family": e.get("tool_family"),
+                "tool_class": e["tool_class"],
+                "safety_class": e["safety_class"],
+                "read_write_class": e["read_write_class"],
+                "purpose": e["purpose"],
+                "required_args": sorted(e["required_args"]) if isinstance(e["required_args"], list) else e["required_args"],
+                "optional_args": sorted(e["optional_args"]) if isinstance(e["optional_args"], list) else e["optional_args"],
+                "limits": e["limits"],
+                "replacement_tools": sorted(e["replacement_tools"]) if isinstance(e["replacement_tools"], list) else e["replacement_tools"],
+            }
+            for e in entries
+        ],
+        "workflows": workflow_payload,
+        "replacement_map": dict(sorted(REPLACEMENT_MAP.items())),
+    }
+    exposure_payload = {
+        "surface_profile": surface_profile or "unknown",
+        "gate_state_snapshot": gate_state_snapshot or {},
+        "tools": [
+            {
+                "tool_name": e["tool_name"],
+                "directly_exposed": e.get("directly_exposed"),
+                "gateway_allowlisted": e.get("gateway_allowlisted"),
+                "profile_enabled": e.get("profile_enabled"),
+            }
+            for e in entries
+        ],
+    }
+    gateway_payload = {"gateway_allowlist": sorted(gateway_allowlist or [])}
+
+    semantic_checksum = sha256_fingerprint(semantic_payload)
+    exposure_checksum = sha256_fingerprint(exposure_payload)
+    gateway_checksum = sha256_fingerprint(gateway_payload)
+    # Legacy checksum field retained for older readers (narrow class triad) — still stable.
+    legacy_checksum = _manifest_checksum(entries)
+
     return {
-        "manifest_version": manifest_version, "manifest_status": "active", "generated_at": now,
-        "generated_from_runtime_commit": runtime_commit, "tool_count": len(entries),
-        "workflow_count": len(WORKFLOW_RECIPES), "mapping_count": len(REPLACEMENT_MAP),
-        "staleness_state": "fresh", "review_cadence": REVIEW_CADENCE, "checksum": checksum,
-        "entries": entries, "workflow_recipes": WORKFLOW_RECIPES, "replacement_map": REPLACEMENT_MAP,
+        "manifest_version": manifest_version,
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "manifest_status": "active",
+        "generated_at": now,
+        "generated_from_runtime_commit": runtime_commit,
+        "generated_from_package_version": package_version,
+        "runtime_identity_kind": runtime_identity_kind or "unknown",
+        "tool_count": len(entries),
+        "workflow_count": len(WORKFLOW_RECIPES),
+        "mapping_count": len(REPLACEMENT_MAP),
+        "staleness_state": "fresh",
+        "review_cadence": REVIEW_CADENCE,
+        "checksum": legacy_checksum,
+        "semantic_surface_checksum": semantic_checksum,
+        "exposure_checksum": exposure_checksum,
+        "gateway_checksum": gateway_checksum,
+        "manifest_payload": semantic_payload,
+        "surface_profile": surface_profile or "unknown",
+        "gate_state_snapshot": gate_state_snapshot or {},
+        "entries": entries,
+        "workflow_recipes": WORKFLOW_RECIPES,
+        "replacement_map": REPLACEMENT_MAP,
         "negative_instructions": NEGATIVE_INSTRUCTIONS,
     }
 
 
 def _manifest_checksum(entries: list[dict[str, Any]]) -> str:
+    """Legacy narrow checksum (class triad) for backward-compatible comparison of pre-schema rows."""
     key = [(e["tool_name"], e["tool_class"], e["read_write_class"], e["safety_class"]) for e in entries]
     return _sha("manifest-v1", _cjson(key), _cjson([r["workflow_name"] for r in WORKFLOW_RECIPES]))
 
@@ -238,14 +357,35 @@ class ClientToolManifestRepository:
         self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_status='superseded' WHERE manifest_status='active'")
-            _insert(c, "pa_client_tool_manifests", {
+            row = {
                 "manifest_id": manifest_id, "manifest_version": manifest["manifest_version"],
                 "manifest_status": "active", "generated_at": now,
                 "generated_from_runtime_commit": manifest["generated_from_runtime_commit"],
                 "tool_count": manifest["tool_count"], "workflow_count": manifest["workflow_count"],
                 "mapping_count": manifest["mapping_count"], "staleness_state": manifest["staleness_state"],
                 "review_cadence": manifest["review_cadence"], "checksum": manifest["checksum"],
-                "created_at": now, "updated_at": now})
+                "created_at": now, "updated_at": now,
+            }
+            # V118 columns (best-effort; present after schema 118).
+            if "manifest_schema_version" in manifest:
+                row["manifest_schema_version"] = manifest.get("manifest_schema_version", 0)
+            if "manifest_payload" in manifest:
+                row["manifest_payload_json"] = _cjson(manifest["manifest_payload"])
+            if "semantic_surface_checksum" in manifest:
+                row["semantic_surface_checksum"] = manifest["semantic_surface_checksum"]
+            if "exposure_checksum" in manifest:
+                row["exposure_checksum"] = manifest["exposure_checksum"]
+            if "gateway_checksum" in manifest:
+                row["gateway_checksum"] = manifest["gateway_checksum"]
+            if "surface_profile" in manifest:
+                row["surface_profile"] = manifest.get("surface_profile")
+            if "gate_state_snapshot" in manifest:
+                row["gate_state_snapshot_json"] = _cjson(manifest.get("gate_state_snapshot") or {})
+            if "generated_from_package_version" in manifest:
+                row["generated_from_package_version"] = manifest.get("generated_from_package_version")
+            if "runtime_identity_kind" in manifest:
+                row["runtime_identity_kind"] = manifest.get("runtime_identity_kind")
+            _insert(c, "pa_client_tool_manifests", row)
             for e in manifest["entries"]:
                 _insert(c, "pa_tool_manifest_entries", {
                     "manifest_entry_id": _sha(manifest_id, e["tool_name"]), "manifest_id": manifest_id,
@@ -269,13 +409,31 @@ class ClientToolManifestRepository:
         return manifest_id
 
     def get_active(self, *, conn: Any = None) -> dict[str, Any] | None:
-        cols = ("manifest_id", "manifest_version", "manifest_status", "generated_at",
-                "generated_from_runtime_commit", "tool_count", "workflow_count", "mapping_count",
-                "staleness_state", "freshness_checked_at", "next_review_due_at", "review_cadence", "checksum",
-                "manifest_vault_path", "manifest_json_path")
+        base_cols = (
+            "manifest_id", "manifest_version", "manifest_status", "generated_at",
+            "generated_from_runtime_commit", "tool_count", "workflow_count", "mapping_count",
+            "staleness_state", "freshness_checked_at", "next_review_due_at", "review_cadence", "checksum",
+            "manifest_vault_path", "manifest_json_path",
+        )
+        v118_cols = (
+            "manifest_schema_version", "manifest_payload_json", "semantic_surface_checksum",
+            "exposure_checksum", "gateway_checksum", "surface_profile", "gate_state_snapshot_json",
+            "generated_from_package_version", "runtime_identity_kind",
+        )
         with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
-            row = c.execute(f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
-                            f"ORDER BY generated_at DESC LIMIT 1").fetchone()
+            # Prefer V118 select; fall back if columns missing (pre-migrate open DBs).
+            cols = base_cols + v118_cols
+            try:
+                row = c.execute(
+                    f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                    f"ORDER BY generated_at DESC LIMIT 1"
+                ).fetchone()
+            except Exception:  # noqa: BLE001
+                cols = base_cols
+                row = c.execute(
+                    f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                    f"ORDER BY generated_at DESC LIMIT 1"
+                ).fetchone()
             if not row:
                 return None
             hdr = dict(zip(cols, row, strict=True))
@@ -338,3 +496,15 @@ class ClientToolManifestRepository:
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_vault_path=?, manifest_json_path=?, "
                       "freshness_checked_at=? WHERE manifest_id=?", (md_path, json_path, _now(), manifest_id))
+
+    def mark_active_stale(self, *, reason: str = "drift") -> None:
+        """Mark the active manifest stale / review_required without rewriting payload."""
+        self._guard_writable()
+        with open_connection(self._path()) as c, transaction(c):
+            c.execute(
+                "UPDATE pa_client_tool_manifests SET staleness_state=?, updated_at=? "
+                "WHERE manifest_status='active'",
+                ("requires_operator_review", _now()),
+            )
+            # reason retained for audit callers; column may not exist on legacy schemas.
+            _ = reason

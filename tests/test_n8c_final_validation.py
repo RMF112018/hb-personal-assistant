@@ -65,7 +65,8 @@ def _tables(db: Path) -> set[str]:
 def test_fresh_db_migrates_to_head(tmp_path: Path) -> None:
     db = tmp_path / "final.db"
     head = SQLiteMigrator(db_path=str(db)).apply()
-    assert head == LATEST_SCHEMA_VERSION == 116
+    assert head == LATEST_SCHEMA_VERSION
+    assert LATEST_SCHEMA_VERSION >= 116
 
 
 def test_migration_is_idempotent(tmp_path: Path) -> None:

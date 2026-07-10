@@ -1,0 +1,31 @@
+{
+  "label": "baseline",
+  "sha": "05765b6512593d7383cfc6a2c1f6603ac3bbd215",
+  "title": "Merge pull request #292 from RMF112018/ops/source-index-resumable-apply-p2-20260709",
+  "started_utc": "2026-07-10T10:34:42.518230+00:00",
+  "ended_utc": "2026-07-10T10:50:42.622587+00:00",
+  "duration_s": 960.1,
+  "python": "3.14.5",
+  "pass_modules": 69,
+  "fail_modules": 6,
+  "timeout_modules": 0,
+  "total_modules": 75,
+  "failed_nodes": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_n8c23_org_neutral_scan.py::test_client_tool_operating_manifest_is_org_neutral",
+    "tests/test_n8c23_org_neutral_scan.py::test_new_source_modules_have_no_org_tokens_in_string_literals",
+    "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive",
+    "tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions",
+    "tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots"
+  ],
+  "patterns": [
+    "test_prompt*.py",
+    "test_tool*.py",
+    "test_n8c*.py",
+    "test_nas*.py",
+    "test_source*.py",
+    "test_canonical*.py"
+  ],
+  "per_module_timeout_s": 120
+}
