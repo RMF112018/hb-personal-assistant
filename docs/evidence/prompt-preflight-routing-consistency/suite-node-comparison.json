@@ -1,5 +1,5 @@
 {
-  "feature_sha": "1ec82d7e01ad40e3b7b07458b09049fd53ddb851",
+  "feature_sha": "e7744f3d0789de6c93822a5e74e6256045770667",
   "baseline_sha": "05765b6512593d7383cfc6a2c1f6603ac3bbd215",
   "command": "pytest -q --tb=no <modules>",
   "python": "3.14.5",
@@ -8,9 +8,9 @@
       "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
       "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive"
     ],
-    "started": "2026-07-10T10:08:17.782950+00:00",
-    "ended": "2026-07-10T10:09:17.246444+00:00",
-    "duration_s": 59.5,
+    "started": "2026-07-10T10:10:16.436117+00:00",
+    "ended": "2026-07-10T10:11:15.857051+00:00",
+    "duration_s": 59.4,
     "modules": [
       "tests/test_n8c23_mcp_surface_safety.py",
       "tests/test_prompt_preflight_routing_consistency.py",
@@ -26,9 +26,9 @@
       "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head",
       "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive"
     ],
-    "started": "2026-07-10T10:09:17.246508+00:00",
-    "ended": "2026-07-10T10:10:00.583928+00:00",
-    "duration_s": 43.3,
+    "started": "2026-07-10T10:11:15.857111+00:00",
+    "ended": "2026-07-10T10:11:58.502288+00:00",
+    "duration_s": 42.6,
     "modules": [
       "tests/test_n8c23_mcp_surface_safety.py",
       "tests/test_prompt_preflight_routing_consistency.py",
