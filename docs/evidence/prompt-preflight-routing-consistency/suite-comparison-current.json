@@ -1,0 +1,48 @@
+{
+  "feature_sha": "b41a0e48e4f7ee2358dd242ec8ec2eb43268138f",
+  "baseline_sha": "05765b6512593d7383cfc6a2c1f6603ac3bbd215",
+  "feature_title": "docs(evidence): node-level suite comparison at final closeout HEAD",
+  "baseline_title": "Merge pull request #292 from RMF112018/ops/source-index-resumable-apply-p2-20260709",
+  "common_failing_both": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive",
+    "tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions",
+    "tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots"
+  ],
+  "common_failing_only_feature": [],
+  "common_fixed_on_feature": [
+    "tests/test_n8c23_org_neutral_scan.py::test_client_tool_operating_manifest_is_org_neutral",
+    "tests/test_n8c23_org_neutral_scan.py::test_new_source_modules_have_no_org_tokens_in_string_literals",
+    "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head"
+  ],
+  "feature_failed_nodes": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive",
+    "tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions",
+    "tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots"
+  ],
+  "baseline_failed_nodes": [
+    "tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved",
+    "tests/test_n8c23_org_neutral_scan.py::test_client_tool_operating_manifest_is_org_neutral",
+    "tests/test_n8c23_org_neutral_scan.py::test_new_source_modules_have_no_org_tokens_in_string_literals",
+    "tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head",
+    "tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive",
+    "tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions",
+    "tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots"
+  ],
+  "feature_module_summary": {
+    "pass": 73,
+    "fail": 4,
+    "timeout": 0,
+    "total": 77,
+    "duration_s": 988.8
+  },
+  "baseline_module_summary": {
+    "pass": 69,
+    "fail": 6,
+    "timeout": 0,
+    "total": 75,
+    "duration_s": 960.1
+  },
+  "note": "Node-level classification for the full 77-module offline-safe batch. Supersedes suite-feature-head-ee06db39.txt and suite-comparison-head.md."
+}

@@ -1,0 +1,1868 @@
+[
+  {
+    "id": "project_notes",
+    "prompt": "Find my project notes.",
+    "expected": {
+      "workflow": "vault_note_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "execute"
+      ],
+      "tools_include": [
+        "assistant_search_sources"
+      ],
+      "require_route_schema_v2": true
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "vault_note_search",
+      "family": "assistant_navigation",
+      "tools": [
+        "assistant_search_sources",
+        "assistant_search_cards",
+        "assistant_get_vault_note"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_search_sources",
+        "tool_group": "nav",
+        "family": "assistant_navigation",
+        "surface": "nav",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_search_cards",
+          "tool_group": "nav",
+          "family": "assistant_navigation",
+          "surface": "nav",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        },
+        {
+          "tool": "assistant_get_vault_note",
+          "tool_group": "nav",
+          "family": "assistant_navigation",
+          "surface": "nav",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_search_sources": "nav",
+        "assistant_search_cards": "nav",
+        "assistant_get_vault_note": "nav"
+      },
+      "per_tool_families": {
+        "assistant_search_sources": "assistant_navigation",
+        "assistant_search_cards": "assistant_navigation",
+        "assistant_get_vault_note": "assistant_navigation"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for project_notes against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "identify_source_roots_plan_only",
+    "prompt": "Read-only: identify which tool should be used to list configured source roots.\nDo not execute any action.",
+    "expected": {
+      "workflow": "source_root_map",
+      "read_authorized": false,
+      "prohibitions_include": [
+        "execute"
+      ],
+      "tools_include": [
+        "assistant_source_roots_list",
+        "assistant_source_root_map"
+      ],
+      "per_tool_groups": {
+        "assistant_source_roots_list": "source_connector",
+        "assistant_source_root_map": "source_structure"
+      },
+      "currently_executable": false
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_root_map",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_roots_list",
+        "assistant_source_root_map"
+      ],
+      "read_authorized": false,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "execute",
+        "external_action",
+        "promote",
+        "stage",
+        "write"
+      ],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": false,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": false,
+      "execution_blocked_reason": "plan_only",
+      "next_step": {
+        "tool": "assistant_source_roots_list",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": false,
+        "authorization_reason": "plan_only",
+        "currently_executable": false,
+        "execution_blocked_reason": "plan_only",
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_root_map",
+          "tool_group": "source_structure",
+          "family": "assistant_source_connector",
+          "surface": "source_structure",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": false,
+          "authorization_reason": "awaiting_prior_step",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_roots_list": "source_connector",
+        "assistant_source_root_map": "source_structure"
+      },
+      "per_tool_families": {
+        "assistant_source_roots_list": "assistant_source_connector",
+        "assistant_source_root_map": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for identify_source_roots_plan_only against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "nas_file_search_explain",
+    "prompt": "Explain which read-only Personal Assistant tool searches indexed NAS files.",
+    "expected": {
+      "workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "execute"
+      ],
+      "tools_include": [
+        "assistant_source_file_search"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_file_search",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_file_search",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_file_metadata",
+          "tool_group": "source_connector",
+          "family": "assistant_source_connector",
+          "surface": "source_connector",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_file_search": "source_connector",
+        "assistant_source_file_metadata": "source_connector"
+      },
+      "per_tool_families": {
+        "assistant_source_file_search": "assistant_source_connector",
+        "assistant_source_file_metadata": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for nas_file_search_explain against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "read_only_repo_truth_audit",
+    "prompt": "Conduct a read-only repo-truth audit.\nDo not write, stage, promote, refresh, index, deploy, or mutate anything.",
+    "expected": {
+      "workflow": "read_only_surface_audit",
+      "read_authorized": true,
+      "prohibitions_include": [
+        "write",
+        "stage",
+        "promote",
+        "index",
+        "deploy"
+      ],
+      "prohibitions_exclude": [
+        "execute"
+      ],
+      "tools_include": [
+        "hb_mcp_status"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "read_only_surface_audit",
+      "family": "status_health",
+      "tools": [
+        "hb_mcp_status",
+        "pa_tool_surface_freshness_check",
+        "hb_assistant_catalog"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "deploy",
+        "index",
+        "promote",
+        "stage",
+        "write"
+      ],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "hb_mcp_status",
+        "tool_group": "status",
+        "family": "status_health",
+        "surface": "status",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "pa_tool_surface_freshness_check",
+          "tool_group": "prompt_routing",
+          "family": "prompt_routing",
+          "surface": "prompt_routing",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        },
+        {
+          "tool": "hb_assistant_catalog",
+          "tool_group": "client_bridge",
+          "family": "tool_catalog_help_query",
+          "surface": "client_bridge",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "hb_mcp_status": "status",
+        "pa_tool_surface_freshness_check": "prompt_routing",
+        "hb_assistant_catalog": "client_bridge"
+      },
+      "per_tool_families": {
+        "hb_mcp_status": "status_health",
+        "pa_tool_surface_freshness_check": "prompt_routing",
+        "hb_assistant_catalog": "tool_catalog_help_query"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for read_only_repo_truth_audit against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "search_work_files",
+    "prompt": "Search my work files.",
+    "expected": {
+      "workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "execute",
+        "write"
+      ],
+      "execution_blocked_reason_in": [
+        null,
+        "missing_arguments"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_file_search",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_file_search",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_file_metadata",
+          "tool_group": "source_connector",
+          "family": "assistant_source_connector",
+          "surface": "source_connector",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_file_search": "source_connector",
+        "assistant_source_file_metadata": "source_connector"
+      },
+      "per_tool_families": {
+        "assistant_source_file_search": "assistant_source_connector",
+        "assistant_source_file_metadata": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for search_work_files against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "do_not_promote",
+    "prompt": "Do not promote anything.",
+    "expected": {
+      "workflow_not": "apply_canonical_promotion",
+      "prohibitions_include": [
+        "promote"
+      ],
+      "promotion_authorized": false
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "context_preflight",
+      "family": "prompt_routing",
+      "tools": [],
+      "read_authorized": false,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "promote"
+      ],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": false,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": true,
+      "currently_executable": false,
+      "execution_blocked_reason": "not_authorized",
+      "next_step": null,
+      "additional_steps": [],
+      "per_tool_groups": {},
+      "per_tool_families": {},
+      "confidence": "low",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for do_not_promote against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "vault_meeting_notes",
+    "prompt": "Search the vault for meeting notes.",
+    "expected": {
+      "workflow": "vault_note_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "execute"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "vault_note_search",
+      "family": "assistant_navigation",
+      "tools": [
+        "assistant_search_sources",
+        "assistant_search_cards",
+        "assistant_get_vault_note"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_search_sources",
+        "tool_group": "nav",
+        "family": "assistant_navigation",
+        "surface": "nav",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_search_cards",
+          "tool_group": "nav",
+          "family": "assistant_navigation",
+          "surface": "nav",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        },
+        {
+          "tool": "assistant_get_vault_note",
+          "tool_group": "nav",
+          "family": "assistant_navigation",
+          "surface": "nav",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_search_sources": "nav",
+        "assistant_search_cards": "nav",
+        "assistant_get_vault_note": "nav"
+      },
+      "per_tool_families": {
+        "assistant_search_sources": "assistant_navigation",
+        "assistant_search_cards": "assistant_navigation",
+        "assistant_get_vault_note": "assistant_navigation"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for vault_meeting_notes against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "decision_retrieval",
+    "prompt": "What did we decide about X?",
+    "expected": {
+      "workflow": "canonical_decision_retrieval",
+      "read_authorized": true,
+      "tools_include": [
+        "assistant_list_decisions",
+        "assistant_get_decision"
+      ],
+      "per_tool_groups": {
+        "assistant_list_decisions": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_decisions": "assistant_decision_memory"
+      }
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "canonical_decision_retrieval",
+      "family": "assistant_decision_memory",
+      "tools": [
+        "assistant_list_decisions",
+        "assistant_get_decision"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_list_decisions",
+        "tool_group": "decision_memory",
+        "family": "assistant_decision_memory",
+        "surface": "decision_memory",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": [],
+        "topic_query": "x",
+        "topical_discovery_supported": false,
+        "topic_guidance": "List filters by type/status only; apply topic 'x' when selecting from the bounded result set."
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_get_decision",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "decision_id"
+          ]
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_list_decisions": "decision_memory",
+        "assistant_get_decision": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_decisions": "assistant_decision_memory",
+        "assistant_get_decision": "assistant_decision_memory"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for decision_retrieval against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "you_may_use_read_only",
+    "prompt": "You may use read-only tools. Search my work files.",
+    "expected": {
+      "workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "execute"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_file_search",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_file_search",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_file_metadata",
+          "tool_group": "source_connector",
+          "family": "assistant_source_connector",
+          "surface": "source_connector",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_file_search": "source_connector",
+        "assistant_source_file_metadata": "source_connector"
+      },
+      "per_tool_families": {
+        "assistant_source_file_search": "assistant_source_connector",
+        "assistant_source_file_metadata": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for you_may_use_read_only against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "plan_only_no_execute",
+    "prompt": "Plan only; do not execute.",
+    "expected": {
+      "read_authorized": false,
+      "prohibitions_include": [
+        "execute"
+      ],
+      "currently_executable": false
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "context_preflight",
+      "family": "prompt_routing",
+      "tools": [],
+      "read_authorized": false,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "execute"
+      ],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": false,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": true,
+      "currently_executable": false,
+      "execution_blocked_reason": "not_authorized",
+      "next_step": null,
+      "additional_steps": [],
+      "per_tool_groups": {},
+      "per_tool_families": {},
+      "confidence": "low",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for plan_only_no_execute against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "search_without_writing",
+    "prompt": "Search without writing anything.",
+    "expected": {
+      "workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_include": [
+        "write"
+      ],
+      "prohibitions_exclude": [
+        "execute"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_file_search",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "write"
+      ],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_file_search",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_file_metadata",
+          "tool_group": "source_connector",
+          "family": "assistant_source_connector",
+          "surface": "source_connector",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_file_search": "source_connector",
+        "assistant_source_file_metadata": "source_connector"
+      },
+      "per_tool_families": {
+        "assistant_source_file_search": "assistant_source_connector",
+        "assistant_source_file_metadata": "assistant_source_connector"
+      },
+      "confidence": "medium",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for search_without_writing against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "beyond_read_only_analysis",
+    "prompt": "Do not execute tools beyond read-only analysis.",
+    "expected": {
+      "read_authorized": true,
+      "prohibitions_include": [
+        "write",
+        "stage",
+        "promote",
+        "execute_non_read"
+      ],
+      "prohibitions_exclude": [
+        "execute"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "context_preflight",
+      "family": "prompt_routing",
+      "tools": [],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [
+        "execute_non_read",
+        "external_action",
+        "promote",
+        "stage",
+        "write"
+      ],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": true,
+      "currently_executable": false,
+      "execution_blocked_reason": "no_recommended_tool",
+      "next_step": null,
+      "additional_steps": [],
+      "per_tool_groups": {},
+      "per_tool_families": {},
+      "confidence": "low",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for beyond_read_only_analysis against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "find_file_without_opening",
+    "prompt": "Find the file without opening it.",
+    "expected": {
+      "workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_exclude": [
+        "write",
+        "promote"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_file_search",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_file_search",
+        "assistant_source_file_metadata"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_file_search",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_file_metadata",
+          "tool_group": "source_connector",
+          "family": "assistant_source_connector",
+          "surface": "source_connector",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_file_search": "source_connector",
+        "assistant_source_file_metadata": "source_connector"
+      },
+      "per_tool_families": {
+        "assistant_source_file_search": "assistant_source_connector",
+        "assistant_source_file_metadata": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for find_file_without_opening against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "not_a_promotion_receipt",
+    "prompt": "This is not a promotion receipt.",
+    "expected": {
+      "workflow": "context_preflight",
+      "tools_empty": true,
+      "promotion_authorized": false,
+      "workflow_not": "inspect_promotion_receipt"
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "context_preflight",
+      "family": "prompt_routing",
+      "tools": [],
+      "read_authorized": false,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": false,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": true,
+      "currently_executable": false,
+      "execution_blocked_reason": "not_authorized",
+      "next_step": null,
+      "additional_steps": [],
+      "per_tool_groups": {},
+      "per_tool_families": {},
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for not_a_promotion_receipt against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "preference_retrieval",
+    "prompt": "What preferences do I have for X?",
+    "expected": {
+      "workflow": "canonical_preference_retrieval",
+      "read_authorized": true,
+      "tools_include": [
+        "assistant_list_preferences",
+        "assistant_get_preference"
+      ],
+      "per_tool_groups": {
+        "assistant_list_preferences": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_preferences": "assistant_decision_memory"
+      }
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "canonical_preference_retrieval",
+      "family": "assistant_decision_memory",
+      "tools": [
+        "assistant_list_preferences",
+        "assistant_get_preference"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_list_preferences",
+        "tool_group": "decision_memory",
+        "family": "assistant_decision_memory",
+        "surface": "decision_memory",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": [],
+        "topic_query": "x",
+        "topical_discovery_supported": false,
+        "topic_guidance": "List filters by type/status only; apply topic 'x' when selecting from the bounded result set."
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_get_preference",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "preference_id"
+          ]
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_list_preferences": "decision_memory",
+        "assistant_get_preference": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_preferences": "assistant_decision_memory",
+        "assistant_get_preference": "assistant_decision_memory"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for preference_retrieval against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "open_loops",
+    "prompt": "What open loops remain?",
+    "expected": {
+      "workflow": "canonical_open_loop_retrieval",
+      "read_authorized": true,
+      "tools_include": [
+        "assistant_list_open_loops"
+      ],
+      "per_tool_groups": {
+        "assistant_list_open_loops": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_open_loops": "assistant_decision_memory"
+      }
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "canonical_open_loop_retrieval",
+      "family": "assistant_decision_memory",
+      "tools": [
+        "assistant_list_open_loops",
+        "assistant_get_open_loop"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_list_open_loops",
+        "tool_group": "decision_memory",
+        "family": "assistant_decision_memory",
+        "surface": "decision_memory",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_get_open_loop",
+          "tool_group": "decision_memory",
+          "family": "assistant_decision_memory",
+          "surface": "decision_memory",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "missing_arguments",
+          "missing_required_arguments": [
+            "open_loop_id"
+          ]
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_list_open_loops": "decision_memory",
+        "assistant_get_open_loop": "decision_memory"
+      },
+      "per_tool_families": {
+        "assistant_list_open_loops": "assistant_decision_memory",
+        "assistant_get_open_loop": "assistant_decision_memory"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for open_loops against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "stage_for_review",
+    "prompt": "Stage this for review.",
+    "expected": {
+      "workflow": "stage_artifact_proposals",
+      "operation_requested": "staged_write",
+      "staging_authorized": true,
+      "staging_authorized_or_write_class": true,
+      "promotion_authorized": false,
+      "currently_executable": false,
+      "execution_blocked_reason_in": [
+        "missing_arguments"
+      ]
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "stage_artifact_proposals",
+      "family": "artifact_workspace",
+      "tools": [
+        "pa_artifact_proposal_stage"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": true,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "staged_write",
+      "prompt_permission": {
+        "read": true,
+        "stage": true,
+        "write": true,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": true,
+        "write": true,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": false,
+      "execution_blocked_reason": "missing_arguments",
+      "next_step": {
+        "tool": "pa_artifact_proposal_stage",
+        "tool_group": "artifact_workspace",
+        "family": "artifact_workspace",
+        "surface": "artifact_workspace",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "missing_required_arguments": [
+          "session_id",
+          "candidate_artifacts"
+        ]
+      },
+      "additional_steps": [],
+      "per_tool_groups": {
+        "pa_artifact_proposal_stage": "artifact_workspace"
+      },
+      "per_tool_families": {
+        "pa_artifact_proposal_stage": "artifact_workspace"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for stage_for_review against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "promote_approved",
+    "prompt": "Promote the approved artifact.",
+    "expected": {
+      "workflow": "apply_canonical_promotion",
+      "promotion_authorized": false,
+      "currently_executable": false
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "apply_canonical_promotion",
+      "family": "canonical_promotion",
+      "tools": [
+        "pa_artifact_promotion_apply"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "canonical_promotion",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": true,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": true,
+        "promote": true,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": false,
+      "execution_blocked_reason": "missing_arguments",
+      "next_step": {
+        "tool": "pa_artifact_promotion_apply",
+        "tool_group": "artifact_workspace",
+        "family": "canonical_promotion",
+        "surface": "artifact_workspace",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "missing_required_arguments": [
+          "promotion_bundle_id",
+          "operator_approval_id"
+        ]
+      },
+      "additional_steps": [],
+      "per_tool_groups": {
+        "pa_artifact_promotion_apply": "artifact_workspace"
+      },
+      "per_tool_families": {
+        "pa_artifact_promotion_apply": "canonical_promotion"
+      },
+      "confidence": "medium",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for promote_approved against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "go_ahead_send",
+    "prompt": "Go ahead and send it.",
+    "expected": {
+      "external_action_authorized": false
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "context_preflight",
+      "family": "prompt_routing",
+      "tools": [],
+      "read_authorized": false,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": false,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": false,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": true,
+      "currently_executable": false,
+      "execution_blocked_reason": "not_authorized",
+      "next_step": null,
+      "additional_steps": [],
+      "per_tool_groups": {},
+      "per_tool_families": {},
+      "confidence": "low",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for go_ahead_send against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  },
+  {
+    "id": "source_root_groups",
+    "prompt": "list configured source roots",
+    "expected": {
+      "workflow": "source_root_map",
+      "read_authorized": true,
+      "per_tool_groups": {
+        "assistant_source_roots_list": "source_connector",
+        "assistant_source_root_map": "source_structure"
+      },
+      "require_route_schema_v2": true
+    },
+    "actual": {
+      "route_schema_version": 2,
+      "workflow": "source_root_map",
+      "family": "assistant_source_connector",
+      "tools": [
+        "assistant_source_roots_list",
+        "assistant_source_root_map"
+      ],
+      "read_authorized": true,
+      "advisory": true,
+      "staging_authorized": false,
+      "write_authorized": false,
+      "promotion_authorized": false,
+      "external_action_authorized": false,
+      "prohibitions": [],
+      "prompt_authorizes_execution": true,
+      "operation_requested": "read",
+      "prompt_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "server_policy_permission": {
+        "read": true,
+        "stage": false,
+        "write": false,
+        "promote": false,
+        "external_action": false
+      },
+      "approval_satisfied": false,
+      "currently_executable": true,
+      "execution_blocked_reason": null,
+      "next_step": {
+        "tool": "assistant_source_roots_list",
+        "tool_group": "source_connector",
+        "family": "assistant_source_connector",
+        "surface": "source_connector",
+        "arguments": {},
+        "call_mode": "direct",
+        "available": true,
+        "installed": true,
+        "profile_enabled": true,
+        "directly_exposed": true,
+        "gateway_allowlisted": true,
+        "server_policy_available": true,
+        "authorized": true,
+        "authorization_reason": "authorized",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "missing_required_arguments": []
+      },
+      "additional_steps": [
+        {
+          "tool": "assistant_source_root_map",
+          "tool_group": "source_structure",
+          "family": "assistant_source_connector",
+          "surface": "source_structure",
+          "arguments": {},
+          "call_mode": "direct",
+          "available": true,
+          "installed": true,
+          "profile_enabled": true,
+          "directly_exposed": true,
+          "gateway_allowlisted": true,
+          "server_policy_available": true,
+          "authorized": true,
+          "authorization_reason": "authorized",
+          "currently_executable": false,
+          "execution_blocked_reason": "awaiting_prior_step",
+          "missing_required_arguments": []
+        }
+      ],
+      "per_tool_groups": {
+        "assistant_source_roots_list": "source_connector",
+        "assistant_source_root_map": "source_structure"
+      },
+      "per_tool_families": {
+        "assistant_source_roots_list": "assistant_source_connector",
+        "assistant_source_root_map": "assistant_source_connector"
+      },
+      "confidence": "high",
+      "freshness_state": "unknown"
+    },
+    "mismatches": [],
+    "pass": true,
+    "rationale": "Compare actual route for source_root_groups against explicit expectations; pass is true only when mismatches is empty. Unknown expectation keys fail closed."
+  }
+]

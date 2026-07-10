@@ -1,0 +1,93 @@
+=== baseline modules=75 ===
+sha=05765b6512593d7383cfc6a2c1f6603ac3bbd215
+title=Merge pull request #292 from RMF112018/ops/source-index-resumable-apply-p2-20260709
+started_utc=2026-07-10T10:34:42.518230+00:00
+python=3.14.5
+command=pytest -q --tb=line <module> (timeout 120s per module)
+patterns=['test_prompt*.py', 'test_tool*.py', 'test_n8c*.py', 'test_nas*.py', 'test_source*.py', 'test_canonical*.py']
+
+PASS tests/test_n8c23_artifact_workspace.py
+PASS tests/test_n8c23_canonical_promotion.py
+PASS tests/test_n8c23_client_tool_manifest.py
+FAIL tests/test_n8c23_mcp_surface_safety.py nodes=['tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved']
+PASS tests/test_n8c23_obsidian_card_renderer.py
+FAIL tests/test_n8c23_org_neutral_scan.py nodes=['tests/test_n8c23_org_neutral_scan.py::test_client_tool_operating_manifest_is_org_neutral', 'tests/test_n8c23_org_neutral_scan.py::test_new_source_modules_have_no_org_tokens_in_string_literals']
+PASS tests/test_n8c23_vault_path_resolver.py
+PASS tests/test_n8c24_output_config.py
+PASS tests/test_n8c24_output_file_writers.py
+PASS tests/test_n8c24_output_manifest_receipts.py
+PASS tests/test_n8c24_output_mcp_tools.py
+PASS tests/test_n8c24_output_path_policy.py
+PASS tests/test_n8c24_output_safety_negative.py
+PASS tests/test_n8c24_output_workspace_repository.py
+PASS tests/test_n8c24_output_zip_validation.py
+PASS tests/test_n8c24_tool_manifest_integration.py
+PASS tests/test_n8c_client_exposure_bridge.py
+FAIL tests/test_n8c_final_validation.py nodes=['tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head']
+PASS tests/test_n8c_mcp_tool_inventory_final.py
+PASS tests/test_nas_default_off_gating.py
+PASS tests/test_nas_mcp_action_stages.py
+PASS tests/test_nas_mcp_ai_outputs.py
+PASS tests/test_nas_mcp_answer_drafts.py
+PASS tests/test_nas_mcp_artifact_author.py
+PASS tests/test_nas_mcp_assistant_nav.py
+PASS tests/test_nas_mcp_client_readiness_10x.py
+PASS tests/test_nas_mcp_context_packs.py
+PASS tests/test_nas_mcp_decision_memory.py
+PASS tests/test_nas_mcp_feedback.py
+PASS tests/test_nas_mcp_files_rw.py
+PASS tests/test_nas_mcp_intelligence.py
+PASS tests/test_nas_mcp_memory.py
+PASS tests/test_nas_mcp_oauth.py
+PASS tests/test_nas_mcp_obsidian_adapter_redaction.py
+PASS tests/test_nas_mcp_origin_auth.py
+PASS tests/test_nas_mcp_pa_readonly_db.py
+PASS tests/test_nas_mcp_quality.py
+PASS tests/test_nas_mcp_readonly.py
+PASS tests/test_nas_mcp_remote_profile.py
+PASS tests/test_nas_mcp_research_packets.py
+PASS tests/test_nas_mcp_review.py
+PASS tests/test_nas_mcp_safe_mode_limits_freshness.py
+PASS tests/test_nas_mcp_source_connector.py
+FAIL tests/test_nas_mcp_tool_annotations.py nodes=['tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive']
+PASS tests/test_nas_mcp_tool_arg_and_config_fixes_n8b.py
+PASS tests/test_nas_mcp_workflows.py
+PASS tests/test_nas_mcp_ws2_client_usability.py
+PASS tests/test_nas_runtime_scaffold.py
+PASS tests/test_prompt_preflight_authorization.py
+PASS tests/test_prompt_preflight_fallbacks.py
+PASS tests/test_prompt_preflight_family_routing.py
+PASS tests/test_prompt_preflight_memory_opportunities.py
+PASS tests/test_prompt_preflight_retrieval_budget.py
+PASS tests/test_prompt_preflight_route_schema.py
+PASS tests/test_prompt_preflight_source_of_truth.py
+PASS tests/test_prompt_preflight_workflow_routing.py
+FAIL tests/test_source_connector_eval.py nodes=['tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions']
+PASS tests/test_source_connector_service.py
+PASS tests/test_source_identity_v99_migration.py
+PASS tests/test_source_index_client_performance_hardening.py
+PASS tests/test_source_index_repository.py
+PASS tests/test_source_index_resumable_apply.py
+PASS tests/test_source_index_streaming_walk.py
+PASS tests/test_source_index_watcher_automated_refresh.py
+PASS tests/test_source_record_map.py
+PASS tests/test_source_registry_projection.py
+FAIL tests/test_source_structure_cli.py nodes=['tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots']
+PASS tests/test_source_structure_mcp_tools.py
+PASS tests/test_source_structure_parser_classifier.py
+PASS tests/test_source_structure_repository_service.py
+PASS tests/test_source_structure_schedule.py
+PASS tests/test_source_structure_schema.py
+PASS tests/test_sources_refresh.py
+PASS tests/test_tool_manifest_freshness_guard.py
+PASS tests/test_tool_surface_maintenance_contract.py
+SUMMARY baseline pass=69 fail=6 timeout=0 total=75 duration_s=960.1 failed_nodes=7
+ended_utc=2026-07-10T10:50:42.622587+00:00
+FAILED_NODES:
+tests/test_n8c23_mcp_surface_safety.py::test_n8c22_invariants_preserved
+tests/test_n8c23_org_neutral_scan.py::test_client_tool_operating_manifest_is_org_neutral
+tests/test_n8c23_org_neutral_scan.py::test_new_source_modules_have_no_org_tokens_in_string_literals
+tests/test_n8c_final_validation.py::test_fresh_db_migrates_to_head
+tests/test_nas_mcp_tool_annotations.py::test_all_known_write_tools_are_marked_destructive
+tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots

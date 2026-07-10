@@ -353,20 +353,57 @@ GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
 )
 
 
-def runtime_commit() -> str:
-    """Best-effort runtime build identity for status (never raises).
+def runtime_identity() -> Any:
+    """Structured runtime identity (commit vs package-only vs unknown). Never raises."""
+    import re  # noqa: PLC0415
 
-    Prefers an explicit build stamp injected at deploy time (the MCP process runs in a container
-    without the git repo, so env is the authoritative source); falls back to the package version.
-    """
-    for var in ("HB_RUNTIME_COMMIT", "HB_BUILD_SHA"):
-        val = os.environ.get(var)
-        if val:
-            return val
+    from hb_assistant.obsidian_mcp.tool_metadata_types import (  # noqa: PLC0415
+        RuntimeIdentity,
+        RuntimeIdentityKind,
+    )
+
+    package_version: str | None = None
     try:
         from hb_assistant import __version__  # noqa: PLC0415
 
-        return f"v{__version__}"
+        package_version = str(__version__)
+    except Exception:
+        package_version = None
+
+    sha_re = re.compile(r"^[0-9a-f]{7,40}$", re.I)
+    for var in ("HB_RUNTIME_COMMIT", "HB_BUILD_SHA"):
+        val = (os.environ.get(var) or "").strip()
+        if val and sha_re.match(val):
+            return RuntimeIdentity(
+                runtime_commit=val.lower(),
+                package_version=package_version,
+                runtime_identity_kind=RuntimeIdentityKind.EXACT_COMMIT,
+            )
+        if val and not sha_re.match(val):
+            # Non-SHA stamp is not an exact commit.
+            break
+    if package_version:
+        return RuntimeIdentity(
+            runtime_commit=None,
+            package_version=package_version,
+            runtime_identity_kind=RuntimeIdentityKind.PACKAGE_ONLY_FALLBACK,
+        )
+    return RuntimeIdentity(
+        runtime_commit=None,
+        package_version=None,
+        runtime_identity_kind=RuntimeIdentityKind.UNKNOWN,
+    )
+
+
+def runtime_commit() -> str:
+    """Backward-compatible string identity for status/receipts (never raises).
+
+    Prefers an explicit build stamp injected at deploy time (the MCP process runs in a container
+    without the git repo, so env is the authoritative source); falls back to the package version.
+    Does **not** claim the runtime is current when only a package version is available.
+    """
+    try:
+        return runtime_identity().as_legacy_string()
     except Exception:
         return "unknown"
 
@@ -603,6 +640,8 @@ class NasMcpBroker:
         return "read"
 
     def _deny(self, base: dict[str, Any], reason: str, started: float) -> dict[str, Any]:
+        from .failure_envelope import map_deny_reason, plugin_failure  # noqa: PLC0415
+
         duration_ms = int((time.perf_counter() - started) * 1000)
         event = {
             **base,
@@ -612,7 +651,19 @@ class NasMcpBroker:
             "write_allowed": False,
         }
         self._audit.write(event)
-        return {"ok": False, "tool": base["tool_name"], "error": reason, "request_id": base["request_id"]}
+        stage, code, retryable = map_deny_reason(reason)
+        return plugin_failure(
+            tool=base["tool_name"],
+            request_id=base["request_id"],
+            failure_stage=stage,
+            error_code=code,
+            safe_message=reason,
+            retryable=retryable,
+            reached_gateway=True,
+            reached_broker=True,
+            reached_handler=False,
+            runtime_commit=runtime_commit(),
+        )
 
     def _invoke(self, tool_name: str, arguments: dict[str, Any], config: NasMcpConfig | None = None) -> dict[str, Any]:
         cfg = config or self._config

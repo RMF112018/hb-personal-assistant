@@ -454,11 +454,11 @@ def test_health_query_uses_root_index_no_full_scan(tmp_path):
 
 
 # ----- migration idempotency + existing rows readable ------------------------------------------
-def test_v118_migration_idempotent_and_additive(tmp_path):
+def test_v119_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 118
+    assert v1 == v2 == 119
     import sqlite3
 
     conn = sqlite3.connect(db)

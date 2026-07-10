@@ -1,4 +1,4 @@
-"""V118 — NAS Source-Index bootstrap RUN records (durable progress + lifecycle).
+"""V119 — NAS Source-Index bootstrap RUN records (durable progress + lifecycle).
 
 One additive table, ``source_index_bootstrap_runs``, giving initial/rebuild/reconcile/poll scans the
 same first-class, durable run trail that reconciliation already has (``source_index_reconciliation_runs``,
@@ -28,7 +28,7 @@ request handler.
 
 from __future__ import annotations
 
-V118_TABLES: tuple[str, ...] = ("source_index_bootstrap_runs",)
+V119_TABLES: tuple[str, ...] = ("source_index_bootstrap_runs",)
 
 BOOTSTRAP_RUN_STATUS_VALUES: tuple[str, ...] = (
     "running",
@@ -43,7 +43,7 @@ BOOTSTRAP_RUN_STATUS_VALUES: tuple[str, ...] = (
 BOOTSTRAP_RUN_MODE_VALUES: tuple[str, ...] = ("bootstrap", "rebuild", "reconcile", "poll")
 
 
-V118_SOURCE_INDEX_BOOTSTRAP_RUNS_STATEMENTS: list[str] = [
+V119_SOURCE_INDEX_BOOTSTRAP_RUNS_STATEMENTS: list[str] = [
     f"""
     CREATE TABLE IF NOT EXISTS source_index_bootstrap_runs (
       run_id TEXT PRIMARY KEY,
