@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 119
+LATEST_SCHEMA_VERSION = 120
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7095,6 +7095,14 @@ class SQLiteMigrator:
 
         return V119_SOURCE_INDEX_BOOTSTRAP_RUNS_STATEMENTS
 
+    @staticmethod
+    def _v120_statements() -> list[str]:
+        from hb_assistant.store.pa_client_tool_manifest_v120 import (
+            V120_MANIFEST_ENTRY_CLASSIFICATION_STATEMENTS,
+        )
+
+        return V120_MANIFEST_ENTRY_CLASSIFICATION_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9083,6 +9091,16 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (119, 'v119_source_index_bootstrap_runs', ?)",
+                    (now,),
+                )
+
+            # v120 manifest entry classification: gateway_proxy / write_proxy / broker_gated_proxy.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 120")
+            if cur.fetchone() is None:
+                for stmt in self._v120_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (120, 'v120_manifest_entry_classification', ?)",
                     (now,),
                 )
 

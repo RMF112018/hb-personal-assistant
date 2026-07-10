@@ -113,6 +113,58 @@ PROMPT_ROUTING_TOOL_SPECS: dict[str, ToolSpec] = {
     ),
 }
 
+# N8C-22 client bridge helpers — catalog/help are read-only; tool_query is a write-capable gateway proxy.
+CLIENT_BRIDGE_TOOL_SPECS: dict[str, ToolSpec] = {
+    "hb_assistant_catalog": ToolSpec(
+        name="hb_assistant_catalog",
+        family="tool_catalog_help_query",
+        group="client_bridge",
+        purpose="List tools exposed to connected clients with group and classification metadata.",
+        required_args=(),
+        optional_args=(),
+        read_write_class="read_only",
+        safety_class="bounded_read",
+        tool_class="manifest_lookup",
+        exposure=ExposureDeclaration(direct_by_design=True, gateway_by_design=True),
+        use_when="Discover which tools exist before choosing a workflow.",
+        do_not_use_when="You already know the exact tool — use hb_assistant_tool_help or call it directly.",
+        examples=("What tools are available?", "List assistant tools"),
+    ),
+    "hb_assistant_tool_help": ToolSpec(
+        name="hb_assistant_tool_help",
+        family="tool_catalog_help_query",
+        group="client_bridge",
+        purpose="Return schema and guidance for one registered tool (read-only lookup).",
+        required_args=("tool_name",),
+        optional_args=(),
+        read_write_class="read_only",
+        safety_class="bounded_read",
+        tool_class="manifest_lookup",
+        exposure=ExposureDeclaration(direct_by_design=True, gateway_by_design=True),
+        use_when="You know the tool name and need required args and limits.",
+        do_not_use_when="Routing a user task — use pa_prompt_route first.",
+        examples=("How do I call assistant_get_decision?",),
+    ),
+    "hb_assistant_tool_query": ToolSpec(
+        name="hb_assistant_tool_query",
+        family="tool_catalog_help_query",
+        group="client_bridge",
+        purpose=(
+            "Gateway proxy to invoke one allowlisted tool by name; may route to staged or canonical "
+            "writes — broker gates every downstream call."
+        ),
+        required_args=("tool_name",),
+        optional_args=("arguments",),
+        read_write_class="write_proxy",
+        safety_class="broker_gated_proxy",
+        tool_class="gateway_proxy",
+        exposure=ExposureDeclaration(direct_by_design=True, gateway_by_design=True),
+        use_when="Invoke a known allowlisted tool when direct exposure is unavailable.",
+        do_not_use_when="A directly exposed read tool suffices — prefer direct invocation.",
+        examples=("Call assistant_list_decisions via gateway",),
+    ),
+}
+
 # Explicit group for tools whose group is not inferable from ASSISTANT_TOOL_GROUPS alone.
 # Option A: registration group is concrete; family may be broader (e.g. source_structure tools
 # remain family assistant_source_connector via family_for_tool).
@@ -191,6 +243,9 @@ def classify_tool(name: str, group: str | None = None) -> tuple[str, str, str]:
     if name in PROMPT_ROUTING_TOOL_SPECS:
         spec = PROMPT_ROUTING_TOOL_SPECS[name]
         return spec.tool_class, spec.safety_class, spec.read_write_class
+    if name in CLIENT_BRIDGE_TOOL_SPECS:
+        spec = CLIENT_BRIDGE_TOOL_SPECS[name]
+        return spec.tool_class, spec.safety_class, spec.read_write_class
     if name in _DENIED:
         return "blocked_or_deprecated", "blocked", "blocked"
     if name == "ai_outputs_card_upsert":
@@ -211,9 +266,7 @@ def classify_tool(name: str, group: str | None = None) -> tuple[str, str, str]:
         "pa_tool_manifest_review_plan", "pa_vault_path_resolve",
     ):
         return "advisory_routing", "advisory_only", "read_only"
-    if name.startswith("pa_tool_manifest") or name in (
-        "hb_assistant_catalog", "hb_assistant_tool_help", "hb_assistant_tool_query",
-    ):
+    if name.startswith("pa_tool_manifest"):
         return "manifest_lookup", "bounded_read", "read_only"
     if name in (
         "hb_mcp_status", "hb_data_freshness", "hb_queue_status", "hb_recent_failures",
@@ -231,6 +284,8 @@ def resolve_tool_spec(name: str, group: str | None = None) -> ToolSpec:
     """Total function: always returns a ToolSpec for ``name``."""
     if name in PROMPT_ROUTING_TOOL_SPECS:
         return PROMPT_ROUTING_TOOL_SPECS[name]
+    if name in CLIENT_BRIDGE_TOOL_SPECS:
+        return CLIENT_BRIDGE_TOOL_SPECS[name]
     from .tool_entry_manifest import TOOL_ENTRY_OVERRIDES  # noqa: PLC0415
     from .tool_family_manifest import family_for_tool, family_record  # noqa: PLC0415
 

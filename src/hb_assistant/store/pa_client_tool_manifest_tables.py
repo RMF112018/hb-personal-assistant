@@ -40,6 +40,7 @@ TOOL_CLASS_VALUES: tuple[str, ...] = (
     "canonical_promotion",
     "system_receipt",
     "manifest_lookup",
+    "gateway_proxy",
     "legacy_low_level",
     "blocked_or_deprecated",
 )
@@ -47,6 +48,7 @@ TOOL_CLASS_VALUES: tuple[str, ...] = (
 # Read/write classification (Part 11.3).
 READ_WRITE_CLASS_VALUES: tuple[str, ...] = (
     "read_only",
+    "write_proxy",
     "staged_write",
     "canonical_write",
     "system_write",
@@ -58,6 +60,7 @@ SAFETY_CLASS_VALUES: tuple[str, ...] = (
     "safe_read",
     "bounded_read",
     "advisory_only",
+    "broker_gated_proxy",
     "staged_write_requires_review",
     "canonical_promotion_requires_explicit_approval",
     "system_manifest_write",

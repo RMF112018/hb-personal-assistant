@@ -57,6 +57,11 @@ TOOL_ENTRY_OVERRIDES: dict[str, dict[str, Any]] = {
         "do_not_use_when": "A semantic source-connector tool is available.", "deprecated": True,
         "replaced_by": ["assistant_source_file_search"],
     },
+    "hb_assistant_tool_query": {
+        "use_when": "Invoke one allowlisted tool by name when direct exposure is unavailable.",
+        "do_not_use_when": "A directly exposed read tool suffices, or you need routing advice first.",
+        "examples": ["Call assistant_list_decisions through the gateway"],
+    },
     # Source-Structure Layered Index (default-off group). These return bounded, root-relative MAPS of
     # the precomputed index; they never read file contents. For actual file discovery/reads, follow up
     # with assistant_source_file_search / assistant_source_file_read (named in use_when/do_not_use_when).
