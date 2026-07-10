@@ -67,13 +67,13 @@ Notable live behaviors (expected):
 ## F. Manifest and freshness
 
 ```text
-active_manifest_revision=unchanged (manual refresh deferred)
-published_workflows_in_code=15
+active_manifest_revision=unchanged at deploy time (manual refresh deferred)
+published_workflows_in_code=14
 auto_stage_occurred=false
 auto_promote_occurred=false
 ```
 
-**Next operational step:** manual manifest refresh per `08-operator-manifest-refresh.md`.
+**Follow-up:** manual manifest refresh per `08-operator-manifest-refresh.md` — completed in `15-manifest-refresh-closeout.md`.
 
 ## G. Rollback
 

@@ -5,7 +5,8 @@ set -eu
 
 DOCKER=/usr/local/bin/docker
 CONTAINER=hb-personal-assistant-mcp
-EXPECT_PUBLISHED=15
+# R6 publishes 14 client workflows (7 → 14); must match live WORKFLOW_RECIPES count.
+EXPECT_PUBLISHED=14
 
 say() { printf '\n=== %s ===\n' "$1"; }
 die() { printf '\nFATAL: %s\n' "$1" >&2; exit 1; }
@@ -47,9 +48,10 @@ print('manifest_status', r.get('manifest_status'), 'persisted', r.get('persisted
 print('manifest_schema_version', r.get('manifest_schema_version'));
 print('workflow_count', r.get('workflow_count'), 'published_recipes', len(WORKFLOW_RECIPES));
 print('staleness', fr.get('staleness_state'), 'stale', fr.get('tool_manifest_stale'), 'review_required', fr.get('tool_manifest_review_required'));
+wc=r.get('workflow_count'); pr=len(WORKFLOW_RECIPES)
 assert r.get('persisted') is True, r
 assert r.get('manifest_schema_version') == 1, r
-assert len(WORKFLOW_RECIPES) >= $EXPECT_PUBLISHED, len(WORKFLOW_RECIPES)
+assert wc == pr == $EXPECT_PUBLISHED, (wc, pr)
 assert fr.get('tool_manifest_stale') is False, fr
 print('manifest refresh verified')"
 

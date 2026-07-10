@@ -70,6 +70,17 @@ def test_manifest_get_labels_unpersisted_as_ephemeral_not_active(tmp_path: Path)
     assert fr["tool_manifest_stale"] and fr.get("reason") == "no_active_manifest"
 
 
+def test_get_active_hydrates_tool_family_from_manifest_payload(tmp_path: Path) -> None:
+    repo = ClientToolManifestRepository(make_env(tmp_path)["db"])
+    m = build_manifest(_index(), runtime_commit="vT", now="2026-07-08T00:00:00+00:00")
+    repo.save_manifest(m)
+    active = repo.get_active()
+    assert active is not None
+    by_name = {e["tool_name"]: e for e in active["entries"]}
+    assert by_name["assistant_search_sources"]["tool_family"] == "assistant_navigation"
+    assert by_name["pa_session_capture_stage"]["tool_family"] == "artifact_workspace"
+
+
 def test_staged_refresh_mints_approval_and_is_not_silent(tmp_path: Path) -> None:
     repo = ClientToolManifestRepository(make_env(tmp_path)["db"])
     m = build_manifest(_index(), runtime_commit="vT", now="2026-07-08T00:00:00+00:00", manifest_version=2)

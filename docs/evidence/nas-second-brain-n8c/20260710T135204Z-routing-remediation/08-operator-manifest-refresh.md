@@ -1,6 +1,6 @@
 # Operator manifest refresh — post routing-remediation deploy
 
-The routing remediation expands **published client workflows from 7 to 15**. The persisted vault manifest remains stale until manually refreshed.
+The routing remediation expands **published client workflows from 7 to 14**. The persisted vault manifest remains stale until manually refreshed.
 
 **Policy:** stage → review → promote. No auto-promote on deploy.
 
@@ -22,7 +22,7 @@ pa_tool_manifest_freshness_check
 pa_tool_manifest_review_plan
 ```
 
-Expect `review_required=true` when persisted manifest is schema 0 or missing 15-workflow projection.
+Expect `review_required=true` when persisted manifest is schema 0 or missing the 14-workflow projection.
 
 ## Step 2 — Stage refresh proposal
 
@@ -41,7 +41,7 @@ pa_tool_manifest_review_plan
 Operator reviews staged diff in vault path under `99 System/Manifests` (bounded write). Confirm:
 
 - `client_projection_schema_version = 1`
-- `published_workflow_count = 15`
+- `published_workflow_count = 14`
 - Workflow recipes include new categories: `vault_read`, `preference`, `open_loop`, `staging`, `promotion`, `surface_audit`, `manifest_review_plan`
 
 ## Step 4 — Promote (server-minted approval required)

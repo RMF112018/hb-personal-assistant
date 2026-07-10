@@ -8,6 +8,7 @@ server-minted operator approval + receipt to materialize). Silent rewrite is pro
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from hb_assistant.store.connection import (
@@ -170,6 +171,7 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
     ``manifest_schema_version`` describes the payload contract (1 = expanded semantics).
     """
     from .canonical_json import sha256_fingerprint  # noqa: PLC0415
+    from .tool_family_manifest import family_for_tool  # noqa: PLC0415
     from .tool_metadata_types import MANIFEST_SCHEMA_VERSION  # noqa: PLC0415
     from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
 
@@ -181,7 +183,7 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
         entries.append({
             "tool_name": name,
             "tool_group": group,
-            "tool_family": info.get("tool_family") or info.get("family"),
+            "tool_family": info.get("tool_family") or info.get("family") or family_for_tool(name, group),
             "tool_class": tool_class,
             "safety_class": safety_class,
             "read_write_class": rw,
@@ -325,6 +327,50 @@ def render_manifest_md(manifest: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _hydrate_manifest_entries(hdr: dict[str, Any], rows: list[tuple[Any, ...]]) -> list[dict[str, Any]]:
+    """Build freshness-comparable entry dicts from semantic payload or legacy DB rows."""
+    from .tool_family_manifest import family_for_tool  # noqa: PLC0415
+
+    payload_raw = hdr.get("manifest_payload_json")
+    if payload_raw:
+        try:
+            payload = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+            entries = payload.get("entries") or []
+            if entries:
+                return [
+                    {
+                        "tool_name": e["tool_name"],
+                        "tool_group": e.get("tool_group"),
+                        "tool_family": e.get("tool_family") or family_for_tool(
+                            e["tool_name"], e.get("tool_group")
+                        ),
+                        "tool_class": e.get("tool_class"),
+                        "safety_class": e["safety_class"],
+                        "read_write_class": e["read_write_class"],
+                    }
+                    for e in entries
+                ]
+        except (TypeError, ValueError, KeyError):
+            pass
+
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if len(row) >= 5:
+            name, group, tool_class, safety_class, read_write_class = row[:5]
+        else:
+            name, tool_class, safety_class, read_write_class = row[:4]
+            group = None
+        out.append({
+            "tool_name": name,
+            "tool_group": group,
+            "tool_family": family_for_tool(name, group),
+            "tool_class": tool_class,
+            "safety_class": safety_class,
+            "read_write_class": read_write_class,
+        })
+    return out
+
+
 class ClientToolManifestRepository:
     def __init__(self, db_path: str | None = None) -> None:
         # Internet-facing profile: the authoritative DB is a read-only snapshot, so route this
@@ -437,10 +483,12 @@ class ClientToolManifestRepository:
             if not row:
                 return None
             hdr = dict(zip(cols, row, strict=True))
-            hdr["entries"] = [dict(zip(("tool_name", "tool_class", "safety_class", "read_write_class"), r,
-                                       strict=True)) for r in c.execute(
-                "SELECT tool_name, tool_class, safety_class, read_write_class FROM pa_tool_manifest_entries "
-                "WHERE manifest_id=? ORDER BY tool_name", (hdr["manifest_id"],)).fetchall()]
+            entry_rows = c.execute(
+                "SELECT tool_name, tool_group, tool_class, safety_class, read_write_class "
+                "FROM pa_tool_manifest_entries WHERE manifest_id=? ORDER BY tool_name",
+                (hdr["manifest_id"],),
+            ).fetchall()
+            hdr["entries"] = _hydrate_manifest_entries(hdr, entry_rows)
             return hdr
 
     def freshness_check(self, current_tool_names: set[str], *, conn: Any = None) -> dict[str, Any]:

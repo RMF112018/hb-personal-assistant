@@ -100,15 +100,18 @@ TOOL_ENTRY_OVERRIDES: dict[str, dict[str, Any]] = {
 
 def build_tool_entry(name: str, group: str | None = None) -> dict[str, Any]:
     """Build one per-tool routing entry (total — always returns a record)."""
+    from .canonical_tool_specs import classify_tool  # noqa: PLC0415
+
     family_id = family_for_tool(name, group)
     fam = family_record(family_id) or {}
+    _tool_class, safety_class, read_write_class = classify_tool(name, group)
     seed = TOOL_ENTRY_OVERRIDES.get(name, {})
     return {
         "tool_name": name,
         "tool_group": group,
         "tool_family": family_id,
-        "read_write_class": fam.get("read_write_class", "read_only"),
-        "safety_class": fam.get("safety_class", "safe_read"),
+        "read_write_class": read_write_class,
+        "safety_class": safety_class,
         "use_when": seed.get("use_when", ""),
         "do_not_use_when": seed.get("do_not_use_when", ""),
         "deprecated": bool(seed.get("deprecated", False)),

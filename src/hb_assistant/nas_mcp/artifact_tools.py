@@ -88,6 +88,18 @@ def _build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
     return build_tool_index(config)
 
 
+def _runtime_manifest_build_kwargs() -> dict[str, Any]:
+    """Exposure/runtime context stamped into promoted manifests for independent freshness checks."""
+    from .broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
+    from .live_tool_surface import gate_state_snapshot, surface_profile_label  # noqa: PLC0415
+
+    return {
+        "surface_profile": surface_profile_label(),
+        "gate_state_snapshot": gate_state_snapshot(),
+        "gateway_allowlist": sorted(GATEWAY_ALLOWLIST),
+    }
+
+
 def _require(args: dict[str, Any], key: str) -> Any:
     val = args.get(key)
     if val in (None, ""):
@@ -319,8 +331,13 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
     if tool_name == "pa_tool_manifest_refresh_stage":
         active = mrepo.get_active()
         version = (active["manifest_version"] + 1) if active else 1
-        new_manifest = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit,
-                                      now=_now(), manifest_version=version)
+        new_manifest = build_manifest(
+            _build_tool_index(config),
+            runtime_commit=runtime_commit,
+            now=_now(),
+            manifest_version=version,
+            **_runtime_manifest_build_kwargs(),
+        )
         fr = mrepo.freshness_check(current_tool_names(config))
         return mrepo.stage_refresh(new_manifest, fr)
     if tool_name == "pa_tool_manifest_refresh_promote":
@@ -342,8 +359,13 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
         raise ArtifactWorkspaceError("operator_approval_mismatch")
     # Rebuild the current manifest and confirm the surface still matches the staged checksum (no drift).
     version = int(proposal["proposed_manifest_version"])
-    manifest = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now(),
-                              manifest_version=version)
+    manifest = build_manifest(
+        _build_tool_index(config),
+        runtime_commit=runtime_commit,
+        now=_now(),
+        manifest_version=version,
+        **_runtime_manifest_build_kwargs(),
+    )
     if manifest["checksum"] != proposal["checksum"]:
         raise ArtifactWorkspaceError("manifest_revalidation_required")
     from ..obsidian_mcp.artifact_vault_writer import write_manifest_pair  # noqa: PLC0415
@@ -416,6 +438,7 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
         runtime_commit=runtime_commit,
         now=_now(),
         manifest_version=version,
+        **_runtime_manifest_build_kwargs(),
     )
     # Prefer independent semantic checksums when both sides have them; else legacy checksum.
     active_fp = None

@@ -67,3 +67,48 @@ def test_stale_surface_blocks_write_route_not_read() -> None:
     assert write_plan["freshness"]["write_blocked_by_staleness"] is True
     read_plan = route_prompt("find the source file for the contract", freshness=stale)
     assert read_plan["freshness"]["write_blocked_by_staleness"] is False
+
+
+def test_persisted_manifest_agrees_with_live_surface_freshness(tmp_path) -> None:
+    from hb_assistant.nas_mcp.artifact_tools import _build_tool_index, _runtime_manifest_build_kwargs
+    from hb_assistant.nas_mcp.prompt_routing_tools import live_freshness
+    from hb_assistant.obsidian_mcp.client_tool_manifest import ClientToolManifestRepository, build_manifest
+    from tests.n8c23_helpers import make_env
+
+    from hb_assistant.nas_mcp.broker import runtime_commit
+
+    env = make_env(tmp_path)
+    repo = ClientToolManifestRepository(env["db"])
+    m = build_manifest(
+        _build_tool_index(env["config"]),
+        runtime_commit=runtime_commit(),
+        now="2026-07-10T00:00:00+00:00",
+        **_runtime_manifest_build_kwargs(),
+    )
+    repo.save_manifest(m)
+    fr = live_freshness(env["config"])
+    assert fr["stale"] is False, fr.get("warnings")
+
+
+def test_manifest_entries_match_freshness_baseline() -> None:
+    """Promoted manifest entries must agree with build_tool_entry classification fields."""
+    from hb_assistant.obsidian_mcp.canonical_tool_specs import tool_spec_public_entry
+    from hb_assistant.nas_mcp.live_tool_surface import build_live_tool_surface
+    from hb_assistant.nas_mcp.config import NasMcpConfig
+
+    surface = build_live_tool_surface(NasMcpConfig.from_env())
+    groups = {name: st.group for name, st in surface.items()}
+    stored = {
+        name: {
+            "tool_name": entry["tool_name"],
+            "tool_family": entry["tool_family"],
+            "read_write_class": entry["read_write_class"],
+            "safety_class": entry["safety_class"],
+        }
+        for name, st in surface.items()
+        for entry in [tool_spec_public_entry(name, st.group)]
+    }
+    rep = check_tool_surface(groups, stored_entries=stored, check_workflow_coverage=False)
+    assert rep["class_changed_tools"] == [], rep["class_changed_tools"]
+    assert rep["family_changed_tools"] == [], rep["family_changed_tools"]
+    assert rep["stale"] is False, rep["warnings"]

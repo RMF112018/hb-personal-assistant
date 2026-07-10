@@ -15,7 +15,7 @@ Remediate independent audit `FAIL_REMEDIATION_REQUIRED` findings for prompt rout
 | R3 | Executability evaluator + route schema v2 fields | code complete |
 | R4 | Workflow alignment + 40-case audit harness | code complete |
 | R5 | Failure envelope normalization | code complete |
-| R6 | Client manifest publication (7 → 15 workflows) | code complete |
+| R6 | Client manifest publication (7 → 14 workflows) | code complete |
 
 ## Identity
 
@@ -24,7 +24,7 @@ currently_deployed_runtime_sha=14dfc3a0e007475543e19f1d8efd999b23f3e28b
 local_git_head=dc523eaf34a1f959db2cdb1a45a15ac3327b0941
 deploy_target_sha=TBD — commit remediation stack first, then rebuild image from that SHA
 schema_head=119 (no new migration in this stack — code-only deploy)
-published_client_workflows=15 (was 7 on deployed image)
+published_client_workflows=14 (was 7 on deployed image)
 ```
 
 **Blocker before build:** remediation changes are **uncommitted** in the local worktree. Operator must land a single commit (or PR merge) containing R1–R6, then set `DEPLOY_SHA` in `06-deploy-script.sh` to the landed SHA.
