@@ -19,7 +19,8 @@ From a clean checkout at the deploy SHA:
 ```sh
 cd /path/to/hb-personal-assistant
 git checkout <DEPLOY_SHA>
-docker build -f deploy/nas/Dockerfile -t hb-personal-assistant:nas .
+# NAS is linux/amd64 — build with explicit platform from Apple Silicon Macs.
+docker build --platform linux/amd64 -f deploy/nas/Dockerfile -t hb-personal-assistant:nas .
 docker image inspect hb-personal-assistant:nas --format '{{.Id}}'
 ```
 
