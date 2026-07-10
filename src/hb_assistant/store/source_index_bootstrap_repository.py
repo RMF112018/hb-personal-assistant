@@ -190,3 +190,204 @@ class SourceIndexBootstrapRepository:
             "structure_refresh_recommended": rows.get(f"{_STATE_DRIFT_PREFIX}{root_key}:refresh")
             == "1",
         }
+
+    # ----- bootstrap RUN records (V118): durable progress / heartbeat / lifecycle ----------------
+    _RUN_COUNTER_COLUMNS: frozenset[str] = frozenset(
+        {
+            "files_walked",
+            "metadata_upserted",
+            "files_unchanged",
+            "content_attempted",
+            "content_succeeded",
+            "content_failed",
+            "errors_count",
+        }
+    )
+
+    def start_bootstrap_run(
+        self,
+        run_id: str,
+        root_key: str,
+        mode: str = "bootstrap",
+        *,
+        stale_seconds: float = 120.0,
+        conn: sqlite3.Connection | None = None,
+    ) -> str | None:
+        """Atomically claim the single active-run slot for ``root_key``.
+
+        Returns ``run_id`` on success, or ``None`` if another LIVE run already holds the root (the
+        partial-unique index rejects the insert). Before claiming, a prior ``running`` row whose
+        heartbeat is older than ``stale_seconds`` (SIGKILL/OOM) is reaped to ``abandoned``, and the most
+        recent ``partial`` run is linked (``resumed_from_run_id`` / ``superseded_by_run_id``) WITHOUT
+        overwriting its terminal status, so run history is preserved.
+        """
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "UPDATE source_index_bootstrap_runs SET status='abandoned', finished_at=? "
+                "WHERE root_key=? AND status='running' AND "
+                "(julianday(?) - julianday(COALESCE(heartbeat_at, started_at))) * 86400 > ?",
+                (now, root_key, now, float(stale_seconds)),
+            )
+            prior = c.execute(
+                "SELECT run_id FROM source_index_bootstrap_runs WHERE root_key=? AND status='partial' "
+                "AND superseded_by_run_id IS NULL ORDER BY created_at DESC, rowid DESC LIMIT 1",
+                (root_key,),
+            ).fetchone()
+            resumed_from = prior[0] if prior else None
+            try:
+                c.execute(
+                    "INSERT INTO source_index_bootstrap_runs "
+                    "(run_id, root_key, mode, status, started_at, heartbeat_at, resumed_from_run_id) "
+                    "VALUES (?,?,?,'running',?,?,?)",
+                    (run_id, root_key, mode, now, now, resumed_from),
+                )
+            except sqlite3.IntegrityError:
+                # A live (non-stale) run already holds this root. Caller treats this as retryable.
+                return None
+            if resumed_from is not None:
+                c.execute(
+                    "UPDATE source_index_bootstrap_runs SET superseded_by_run_id=? WHERE run_id=?",
+                    (run_id, resumed_from),
+                )
+        return run_id
+
+    def heartbeat_bootstrap_run(
+        self,
+        run_id: str,
+        *,
+        phase: str | None = None,
+        current_rel_prefix: str | None = None,
+        stop_requested: bool | None = None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Advance heartbeat + progress counters for an active run (no-op once terminal).
+
+        Only whitelisted counter columns are accepted. Callers MUST wrap this in best-effort handling —
+        a telemetry write must never abort the scan (observability is failure-isolated)."""
+        unknown = set(counters) - self._RUN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown run counter columns: {sorted(unknown)}")
+        sets = ["heartbeat_at=?"]
+        vals: list[Any] = [_now()]
+        if phase is not None:
+            sets.append("phase=?")
+            vals.append(phase)
+        if current_rel_prefix is not None:
+            sets.append("current_rel_prefix=?")
+            vals.append(current_rel_prefix)
+        if stop_requested is not None:
+            sets.append("stop_requested=?")
+            vals.append(1 if stop_requested else 0)
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                f"UPDATE source_index_bootstrap_runs SET {', '.join(sets)} "
+                "WHERE run_id=? AND status='running'",
+                (*vals, run_id),
+            )
+
+    def finish_bootstrap_run(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        bounded_reason: str | None = None,
+        last_error_code: str | None = None,
+        completed_metadata_walk: bool = False,
+        reconciliation_completed: bool = False,
+        current_rel_prefix: str | None = None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Close a run to a terminal ``status`` with final counters (unconditional by run_id)."""
+        unknown = set(counters) - self._RUN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown run counter columns: {sorted(unknown)}")
+        sets = [
+            "status=?",
+            "finished_at=?",
+            "heartbeat_at=?",
+            "bounded_reason=?",
+            "last_error_code=?",
+            "completed_metadata_walk=?",
+            "reconciliation_completed=?",
+        ]
+        now = _now()
+        vals: list[Any] = [
+            status, now, now, bounded_reason, last_error_code,
+            1 if completed_metadata_walk else 0, 1 if reconciliation_completed else 0,
+        ]
+        if current_rel_prefix is not None:
+            sets.append("current_rel_prefix=?")
+            vals.append(current_rel_prefix)
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                f"UPDATE source_index_bootstrap_runs SET {', '.join(sets)} WHERE run_id=?",
+                (*vals, run_id),
+            )
+
+    def interrupt_bootstrap_run(
+        self, run_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> None:
+        """Backstop: mark a still-``running`` run ``interrupted`` (no-op if already terminal)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "UPDATE source_index_bootstrap_runs SET status='interrupted', finished_at=? "
+                "WHERE run_id=? AND status='running'",
+                (_now(), run_id),
+            )
+
+    def reap_stale_bootstrap_runs(
+        self, root_key: str | None = None, *, stale_seconds: float = 120.0,
+        conn: sqlite3.Connection | None = None,
+    ) -> int:
+        """Mark stale ``running`` rows (heartbeat older than ``stale_seconds``) ``abandoned``. Returns count."""
+        now = _now()
+        clause = "" if root_key is None else "root_key=? AND "
+        params: tuple[Any, ...] = (
+            (now, now, float(stale_seconds)) if root_key is None
+            else (now, root_key, now, float(stale_seconds))
+        )
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            cur = c.execute(
+                "UPDATE source_index_bootstrap_runs SET status='abandoned', finished_at=? "
+                f"WHERE {clause}status='running' AND "
+                "(julianday(?) - julianday(COALESCE(heartbeat_at, started_at))) * 86400 > ?",
+                params,
+            )
+            return cur.rowcount or 0
+
+    def get_bootstrap_run(
+        self, run_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, Any] | None:
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            row = c.execute(
+                "SELECT * FROM source_index_bootstrap_runs WHERE run_id=?", (run_id,)
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_bootstrap_runs(
+        self, root_key: str | None = None, *, limit: int = 50,
+        conn: sqlite3.Connection | None = None,
+    ) -> list[dict[str, Any]]:
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            if root_key is None:
+                rows = c.execute(
+                    "SELECT * FROM source_index_bootstrap_runs ORDER BY created_at DESC, rowid DESC "
+                    "LIMIT ?", (int(limit),)
+                ).fetchall()
+            else:
+                rows = c.execute(
+                    "SELECT * FROM source_index_bootstrap_runs WHERE root_key=? "
+                    "ORDER BY created_at DESC, rowid DESC LIMIT ?", (root_key, int(limit))
+                ).fetchall()
+        return [dict(r) for r in rows]

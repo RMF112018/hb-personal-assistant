@@ -180,6 +180,19 @@ class ObsidianMcpConfig(BaseModel):
         default_factory=lambda: list(DEFAULT_NORMAL_PRIORITY_PATH_SIGNALS)
     )
     source_card_auto_metadata_only_enabled: bool = False
+    # Large-root bootstrap safety (PR 1). Synchronous parser/eml extraction is UNSAFE/INTERIM until the
+    # killable subprocess watchdog lands (PR 4): while this is off (the default — a missing field on an
+    # existing config deserializes to False and is persisted False), pdf/docx/xlsx/eml files are indexed
+    # metadata-only during a scan, so a hung/pathological parser cannot stall or OOM the bootstrap.
+    source_index_enable_synchronous_parser_extraction: bool = False
+    # Bounded defaults applied at the scan chokepoint for EVERY caller when a bound is not supplied. A
+    # value of None reaches scan_source_root only via an explicit operator --unbounded.
+    source_index_bootstrap_max_files_per_pass: int = 25000
+    source_index_bootstrap_max_seconds: float = 600.0
+    # Durable-run heartbeat cadence and the age past which a still-"running" row is treated as stale
+    # (SIGKILL/OOM) and reaped to "abandoned".
+    source_index_bootstrap_heartbeat_seconds: float = 10.0
+    source_index_bootstrap_stale_run_seconds: float = 120.0
     schema_version: int = 7
 
     model_config = {"extra": "forbid"}

@@ -22,6 +22,7 @@ from . import pathsafe
 from .config import ExternalSourceRoot, ObsidianMcpConfig
 from .source_index_repository import SourceIndexRepository
 from .source_skip_codes import (
+    BOUNDED_RESUME,
     DEFERRED_PATH,
     EMAIL_ARCHIVE_SELF_INDEX_GUARD,
     EXCLUDED_PATH,
@@ -34,6 +35,10 @@ _logger = logging.getLogger("hb_assistant.obsidian_mcp.source_index")
 
 _TEXT_EXTS = {"md", "markdown", "txt"}
 _PARSER_EXTS = {"pdf", "docx", "xlsx"}
+# Synchronous native/ZIP/MIME parsers with NO killable timeout (PR 1). A hung or pathological file of
+# these types can stall/OOM the whole scan, so they are indexed metadata-only unless the hardened
+# ``source_index_enable_synchronous_parser_extraction`` opt-in is set (permanent fix = PR 4 watchdog).
+_SYNC_PARSER_EXTS = _PARSER_EXTS | {"eml"}
 _TEMP_SUFFIXES = (".tmp", ".swp", ".swo", ".part", ".crdownload")
 _TEMP_NAMES = {".ds_store"}
 
@@ -200,15 +205,54 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def _extract(path: Path, ext: str, max_chars: int) -> dict[str, Any]:
-    """Deterministic, best-effort extraction. Never raises on bad input."""
+def _read_text_head(path: Path, max_chars: int) -> str:
+    """Bounded streaming read: at most ``max_chars`` characters, never the whole file into memory.
+
+    A pathological huge text/log file must not be fully read just to index a bounded excerpt.
+    """
+    with path.open("r", encoding="utf-8", errors="replace") as fh:
+        return fh.read(max_chars)
+
+
+def extraction_disposition(ext: str, size: int, config: ObsidianMcpConfig) -> str:
+    """Resolve how a file is indexed BEFORE any hashing/parsing (PR 1 safety gate).
+
+    Returns ``content`` | ``metadata_only`` | ``unsupported`` | ``too_large``. The size gate and this
+    disposition run BEFORE the full-file SHA-256 and any parser, so metadata-only / oversize / unsupported
+    files are never hashed or parsed. Synchronous parser/eml formats are metadata-only unless the hardened
+    ``source_index_enable_synchronous_parser_extraction`` opt-in is set.
+    """
+    max_mb = int(getattr(config, "max_file_mb", 100))
+    if size > max_mb * 1024 * 1024:
+        return "too_large"
+    if ext in _TEXT_EXTS:
+        return "content"
+    if ext in _SYNC_PARSER_EXTS:
+        enabled = bool(getattr(config, "source_index_enable_synchronous_parser_extraction", False))
+        return "content" if enabled else "metadata_only"
+    metadata_only = getattr(config, "source_index_metadata_only_file_types", None) or ()
+    if ext in set(metadata_only):
+        return "metadata_only"
+    return "unsupported"
+
+
+def _extract(path: Path, ext: str, max_chars: int, *, enable_parsers: bool = False) -> dict[str, Any]:
+    """Deterministic, best-effort extraction. Never raises on bad input.
+
+    Text is read with a bounded streaming read (never the whole file). Synchronous native/ZIP/MIME
+    parsers (pdf/docx/xlsx/eml) run ONLY when ``enable_parsers`` is set — the caller gates by
+    ``extraction_disposition`` so this is normally unreachable for those types unless the hardened
+    opt-in is on; the guard here is defense in depth against an unbounded parser hang/OOM.
+    """
     if ext in _TEXT_EXTS:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")[:max_chars]
+            text = _read_text_head(path, max_chars)
             return {"text_excerpt": text, "char_count": len(text), "extraction_status": "ok"}
         except OSError as exc:  # unreadable
             return {"text_excerpt": "", "char_count": 0, "extraction_status": "failed",
                     "failure_code": type(exc).__name__}
+    if not enable_parsers:
+        return {"text_excerpt": None, "char_count": 0, "extraction_status": "metadata_only"}
     if ext == "eml":
         # First-class email (Phase 10E): deterministic MIME body as the indexed excerpt. The full
         # headers/attachments live in the archive note; only the body text is indexed here.
@@ -249,21 +293,55 @@ def _chunks(text: str, max_chunks: int, max_chunk_chars: int) -> list[str]:
     return out
 
 
-def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
-                      config: ObsidianMcpConfig, *, conn: Any = None) -> str | None:
-    """Index one external file (idempotent caller decides skip). Returns source_id or None."""
+_VALID_EXTRACTION_STATUS = {"pending", "ok", "unsupported", "failed", "skipped_too_large"}
+
+
+def _norm_extraction_status(status: str | None) -> str:
+    """Map an extractor's status onto the DB CHECK vocabulary (EXTRACTION_STATUS_VALUES).
+
+    ``metadata_only`` (content deferred) -> ``pending``; ``partial`` (bounded eml body) -> ``ok``. Keeps
+    a new value from ever violating the ``source_intelligence_metadata.extraction_status`` CHECK.
+    """
+    if status in _VALID_EXTRACTION_STATUS:
+        return status  # type: ignore[return-value]
+    if status == "metadata_only":
+        return "pending"
+    return "ok"
+
+
+@dataclass
+class IndexOutcome:
+    """Structured result of indexing one file — lets the scan aggregate accurate counters without a
+    per-file DB reread. ``source_id`` is None only when the file could not be registered at all."""
+    source_id: str | None
+    disposition: str  # content | metadata_only | unsupported | too_large
+    changed: bool
+    hashed: bool
+    extraction_attempted: bool
+    extraction_status: str
+
+
+def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
+                       config: ObsidianMcpConfig, *, conn: Any = None) -> IndexOutcome:
+    """Index one external file (idempotent caller decides skip). Returns a structured IndexOutcome.
+
+    Gate order (PR 1): stat -> size/disposition -> ONLY content-eligible files are SHA-256 hashed and
+    parsed. Metadata-only/unsupported/too-large files register identity + metadata with no hash and no
+    parser, so a hung/pathological parser or a giant file cannot stall/OOM the scan.
+    """
     root_path = Path(root.path)
     try:
         rel_path = str(abs_path.relative_to(root_path))
     except ValueError:
-        return None
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
     ext = abs_path.suffix.lower().lstrip(".")
     try:
         stat = abs_path.stat()
     except OSError:
-        return None
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
     size = stat.st_size
     max_excerpt = int(getattr(config, "source_index_max_excerpt_chars", 8000))
+    disposition = extraction_disposition(ext, size, config)
 
     record: dict[str, Any] = {
         "source_kind": "external_file", "source_root_key": root.source_root_key,
@@ -277,12 +355,18 @@ def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInde
             "dst_kind": "project", "dst_ref": number, "relation": "belongs_to_project", "confidence": conf,
         }]
 
-    record["content_sha256"] = _sha256_file(abs_path)
-    if size > int(getattr(config, "max_file_mb", 100)) * 1024 * 1024:
-        record["extraction_status"] = "skipped_too_large"
-    else:
-        ex = _extract(abs_path, ext, max_excerpt)
-        record["extraction_status"] = ex.get("extraction_status", "ok")
+    hashed = False
+    extraction_attempted = False
+    if disposition == "content":
+        # Content-eligible ONLY: now (and only now) do the expensive full-file hash + extraction.
+        record["content_sha256"] = _sha256_file(abs_path)
+        hashed = True
+        extraction_attempted = True
+        enable_parsers = bool(
+            getattr(config, "source_index_enable_synchronous_parser_extraction", False)
+        )
+        ex = _extract(abs_path, ext, max_excerpt, enable_parsers=enable_parsers)
+        record["extraction_status"] = _norm_extraction_status(ex.get("extraction_status", "ok"))
         record["extraction_failure_code"] = ex.get("failure_code")
         record["page_count"] = ex.get("page_count")
         record["paragraph_count"] = ex.get("paragraph_count")
@@ -291,7 +375,7 @@ def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInde
         if excerpt:
             if root.sensitive:
                 # Sensitive root: encrypt the excerpt to the Text Vault; keep only a marker in-DB,
-                # and DO NOT index sensitive text into FTS.
+                # and DO NOT index sensitive text into FTS (extracted but not content-searchable).
                 from hb_assistant.security.text_vault import encrypt_text
                 record["text_vault_ref"] = encrypt_text(excerpt)
                 record["text_excerpt"] = None
@@ -306,7 +390,30 @@ def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInde
                     int(getattr(config, "source_index_max_chunks", 40)),
                     int(getattr(config, "source_index_max_chunk_chars", 1500)),
                 )
-    return repo.upsert_source_file(record, conn=conn)
+    else:
+        # metadata_only | unsupported | too_large: identity + metadata ONLY. No content_sha256, no
+        # parse. content-clearing on a content->metadata transition is handled in upsert_source_file
+        # (absent text_excerpt/text_vault_ref => stale text/chunks/FTS are cleared).
+        record["content_sha256"] = None
+        record["extraction_status"] = {
+            "metadata_only": "pending",
+            "unsupported": "unsupported",
+            "too_large": "skipped_too_large",
+        }[disposition]
+
+    source_id = repo.upsert_source_file(record, conn=conn)
+    return IndexOutcome(
+        source_id=source_id, disposition=disposition, changed=True, hashed=hashed,
+        extraction_attempted=extraction_attempted,
+        extraction_status=str(record.get("extraction_status", "ok")),
+    )
+
+
+def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
+                      config: ObsidianMcpConfig, *, conn: Any = None) -> str | None:
+    """Compatibility wrapper preserving the historical ``source_id | None`` return for existing callers
+    (drain_queue, tests, external use). New code wanting counters uses :func:`_index_source_file`."""
+    return _index_source_file(abs_path, root, repo, config, conn=conn).source_id
 
 
 _VAULT_ROOT_KEY = "__vault_notes__"
@@ -410,6 +517,17 @@ class ScanReport:
     # source_ids of files newly indexed/changed this scan (NOT skipped/unchanged) — drives
     # rebuild auto-generation. Unchanged files are absent, so cards aren't needlessly regenerated.
     indexed_source_ids: list[str] = field(default_factory=list)
+    # Per-disposition counters (aggregated from IndexOutcome, no per-file DB reread). ``metadata_upserted``
+    # counts every changed file written this pass; ``files_unchanged`` == fast-skipped.
+    files_walked: int = 0
+    metadata_upserted: int = 0
+    files_unchanged: int = 0
+    content_attempted: int = 0
+    content_succeeded: int = 0
+    content_failed: int = 0
+    metadata_only: int = 0
+    unsupported: int = 0
+    too_large: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -417,6 +535,10 @@ class ScanReport:
             "skipped": self.skipped, "deleted": self.deleted, "errors": self.errors,
             "truncated": self.truncated, "bounded_out": self.bounded_out,
             "completed": self.completed,
+            "metadata_upserted": self.metadata_upserted, "files_unchanged": self.files_unchanged,
+            "content_attempted": self.content_attempted, "content_succeeded": self.content_succeeded,
+            "content_failed": self.content_failed, "metadata_only": self.metadata_only,
+            "unsupported": self.unsupported, "too_large": self.too_large,
         }
 
 
@@ -427,6 +549,7 @@ def scan_source_root(
     *,
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
+    progress: Any = None,
 ) -> ScanReport:
     """Bounded, idempotent, RESUMABLE walk of one root. NEVER called from a request handler.
 
@@ -454,6 +577,8 @@ def scan_source_root(
     prior = repo.active_index_state(root.source_root_key)  # rel_path -> (mtime_ns, size_bytes)
     seen: set[str] = set()
     started = time.monotonic()
+    heartbeat_s = float(getattr(config, "source_index_bootstrap_heartbeat_seconds", 10.0))
+    last_progress = started
     # One shared connection for the whole pass: avoids a per-file open/close on a 400k-file root.
     with open_connection(repo.db_path) as conn:
         for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
@@ -461,6 +586,7 @@ def scan_source_root(
                 report.truncated = True
                 break
             report.scanned += 1
+            report.files_walked += 1
             seen.add(rel_path)
             try:
                 stat = abs_path.stat()
@@ -468,18 +594,43 @@ def scan_source_root(
                 # mtime+size fast-skip: unchanged file -> no re-hash, no write (the resume hot path).
                 if prev is not None and prev == (stat.st_mtime_ns, stat.st_size):
                     report.skipped += 1
+                    report.files_unchanged += 1
                     continue
-                source_id = index_source_file(abs_path, root, repo, config, conn=conn)
-                if source_id is not None:
+                outcome = _index_source_file(abs_path, root, repo, config, conn=conn)
+                if outcome.source_id is not None:
                     report.indexed += 1
-                    report.indexed_source_ids.append(source_id)
+                    report.metadata_upserted += 1
+                    report.indexed_source_ids.append(outcome.source_id)
+                    # Aggregate per-disposition counters straight from the outcome (no DB reread).
+                    if outcome.disposition == "content":
+                        report.content_attempted += 1
+                        if outcome.extraction_status == "ok":
+                            report.content_succeeded += 1
+                        elif outcome.extraction_status == "failed":
+                            report.content_failed += 1
+                    elif outcome.disposition == "metadata_only":
+                        report.metadata_only += 1
+                    elif outcome.disposition == "unsupported":
+                        report.unsupported += 1
+                    elif outcome.disposition == "too_large":
+                        report.too_large += 1
                     if prev is not None:
-                        repo.mark_generated_notes_stale(source_id, conn=conn)
+                        repo.mark_generated_notes_stale(outcome.source_id, conn=conn)
             except Exception as exc:  # never let one bad file abort the scan
                 report.errors += 1
                 report.error_codes.append(type(exc).__name__)
                 _logger.warning("source_index.scan_file_error", extra={"obsidian_mcp": {
                     "root": root.source_root_key, "error_code": type(exc).__name__}})
+            # Throttled progress emission (failure-isolated: a telemetry/heartbeat error never aborts the
+            # scan). Reports counters + a REDACTED current-directory token — never an absolute host path.
+            if progress is not None:
+                now_m = time.monotonic()
+                if now_m - last_progress >= heartbeat_s:
+                    last_progress = now_m
+                    # Observability must never change indexing results — a progress/heartbeat error is
+                    # swallowed here (constraint 8).
+                    with suppress(Exception):
+                        progress(report, rel_path, now_m - started)
             # Per-pass budget: stop cleanly and leave the rest for a resume (NO delete-reconcile).
             if max_files_per_pass is not None and report.indexed >= int(max_files_per_pass):
                 report.bounded_out = True
@@ -599,48 +750,71 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
     re-enqueues the remainder as ``reindex_requested`` events, so work resumes on the next drain
     pass instead of blocking on one giant burst.
     """
+    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+
+    from .source_scan_runner import run_scan
+
     roots = {r.source_root_key: r for r in config.external_sources}
     summary_cap = int(getattr(config, "source_summary_auto_max_per_drain", 5))
     card_cap = int(getattr(config, "source_card_auto_max_per_drain", 200))
+    bstate = SourceIndexBootstrapRepository(repo.db_path)
     summaries_done = 0
     cards_done = 0
     processed = 0
     for event in repo.claim_queued(batch):
         try:
             if event["event_type"] == "rebuild":
+                rebuild_status, rebuild_code = "done", None
                 if event["source_root_key"] == _VAULT_ROOT_KEY:
                     scan_vault_notes(repo, config)
                 else:
                     root = roots.get(event["source_root_key"])
                     if root and root.enabled:
-                        report = scan_source_root(root, repo, config)
-                        # Indexing succeeded; auto-generate per changed source AFTER the scan.
-                        # _auto_generate never raises, so a card/summary failure is a skip — it
-                        # must not flip this rebuild event to error.
-                        # PM-value ordering (A1.11): card only auto_card-eligible sources, HIGH before
-                        # NORMAL (deterministic by priority_score then rel_path). Non-eligible sources
-                        # are already indexed — no card, no re-enqueue. Ordering is in-memory over this
-                        # scan's source list only (NOT a persistent DB queue-priority model).
-                        eligible = _order_eligible_sources(repo, config, report.indexed_source_ids)
-                        budget = max(0, card_cap - cards_done)
-                        for sid, disp in eligible[:budget]:
-                            c, s = _auto_generate(
-                                repo, config, sid, root,
-                                summaries_remaining=summary_cap - summaries_done,
-                                disposition=disp,
+                        # Rebuild runs through the common bounded/observed wrapper. A live-run conflict is
+                        # retryable (re-enqueue, do not discard); a bounded pass indexes what it can then
+                        # re-enqueues a COALESCED rebuild so the remainder resumes next drain.
+                        run = run_scan(root, repo, config, bstate, mode="rebuild")
+                        if run.conflict:
+                            repo.enqueue_event(
+                                event_type="rebuild", source_root_key=root.source_root_key
                             )
-                            cards_done += c
-                            summaries_done += s
-                        for sid, _disp in eligible[budget:]:
-                            # Resume the remainder on a later drain (bounded, no giant burst).
-                            with suppress(Exception):
-                                detail = repo.get_source_detail(sid)
-                                if detail and detail.get("rel_path"):
-                                    repo.enqueue_event(
-                                        event_type="reindex_requested", rel_path=detail["rel_path"],
-                                        source_root_key=root.source_root_key,
-                                    )
-                repo.complete_event(event["event_id"], "done")
+                            rebuild_status, rebuild_code = "skipped", BOUNDED_RESUME
+                        else:
+                            report = run.report
+                            # Auto-generate per changed source AFTER the scan (partial OR complete).
+                            # _auto_generate never raises, so a card/summary failure is a skip — it must
+                            # not flip this rebuild event to error. PM-value ordering (A1.11): card only
+                            # auto_card-eligible sources, HIGH before NORMAL (priority_score then rel_path).
+                            src_ids = report.indexed_source_ids if report is not None else []
+                            eligible = _order_eligible_sources(repo, config, src_ids)
+                            budget = max(0, card_cap - cards_done)
+                            for sid, disp in eligible[:budget]:
+                                c, s = _auto_generate(
+                                    repo, config, sid, root,
+                                    summaries_remaining=summary_cap - summaries_done,
+                                    disposition=disp,
+                                )
+                                cards_done += c
+                                summaries_done += s
+                            for sid, _disp in eligible[budget:]:
+                                # Resume the remainder on a later drain (bounded, no giant burst).
+                                with suppress(Exception):
+                                    detail = repo.get_source_detail(sid)
+                                    if detail and detail.get("rel_path"):
+                                        repo.enqueue_event(
+                                            event_type="reindex_requested", rel_path=detail["rel_path"],
+                                            source_root_key=root.source_root_key,
+                                        )
+                            if run.status == "partial":
+                                # Bounded-out: work remains. Coalesced re-enqueue (dedup keeps at most one
+                                # queued rebuild per root) + a clean bounded-resume receipt — NEVER 'done'.
+                                repo.enqueue_event(
+                                    event_type="rebuild", source_root_key=root.source_root_key
+                                )
+                                rebuild_status, rebuild_code = "skipped", BOUNDED_RESUME
+                            elif run.status == "failed":
+                                rebuild_status, rebuild_code = "error", run.error_code
+                repo.complete_event(event["event_id"], rebuild_status, error_code=rebuild_code)
             elif event["event_type"] == "deleted":
                 if event["rel_path"]:
                     repo.mark_deleted("external_file", event["rel_path"],

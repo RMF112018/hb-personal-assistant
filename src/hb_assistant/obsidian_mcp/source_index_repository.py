@@ -177,6 +177,42 @@ class SourceIndexRepository:
             ).fetchall()
         return {row[0]: (row[1], row[2]) for row in rows}
 
+    def content_status_counts(
+        self, source_root_key: str, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, int]:
+        """Index-scoped per-root extraction breakdown for health (no full-table scan).
+
+        Filters by ``source_root_key`` via ``idx_si_sources_root`` and PK-joins metadata/text, so the
+        cost is bounded by the root's own active-file count — not the whole table. ``content_searchable``
+        requires NONEMPTY searchable text (an FTS/text row alone is not enough), so sensitive content
+        (extracted-to-vault, ``text_excerpt`` NULL) counts as ``content_extracted`` but NOT searchable.
+        """
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT m.extraction_status, "
+                " SUM(CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 "
+                "          THEN 1 ELSE 0 END) AS searchable, "
+                " COUNT(*) AS n "
+                "FROM source_intelligence_sources s "
+                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
+                "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
+                "GROUP BY m.extraction_status",
+                (source_root_key,),
+            ).fetchall()
+        by_status = {str(r[0]): int(r[2]) for r in rows}
+        searchable = sum(int(r[1] or 0) for r in rows)
+        total = sum(by_status.values())
+        return {
+            "metadata_indexed": total,
+            "content_extracted": by_status.get("ok", 0),
+            "content_searchable": searchable,
+            "metadata_only": by_status.get("pending", 0),
+            "failed": by_status.get("failed", 0),
+            "unsupported": by_status.get("unsupported", 0),
+            "too_large": by_status.get("skipped_too_large", 0),
+        }
+
     def list_root_file_sources(self, source_root_key: str, *,
                                conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         """Active external_file sources under a root: (source_id, rel_path, project_number).
@@ -261,19 +297,24 @@ class SourceIndexRepository:
                  now, now),
             )
 
-            # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed).
-            fts_rowid = old_fts_rowid
+            # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed). Index a
+            # content-searchable row ONLY when there is NONEMPTY extracted text — never for a
+            # metadata-only / unsupported / too-large / sensitive / cleared write. Always drop any prior
+            # row first, so a content->metadata-only transition removes stale searchable state instead of
+            # leaving a blank row that would overstate content coverage.
+            fts_rowid = None
             fts_table = "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
             if self._fts_available(c):
                 if old_fts_rowid is not None:
                     c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (old_fts_rowid,))
-                excerpt = record.get("text_excerpt") or ""
-                aux = record.get("fts_aux") or record.get("project_key") or ""
-                cur = c.execute(
-                    f"INSERT INTO {fts_table}(text_excerpt, rel_path, aux) VALUES (?,?,?)",
-                    (excerpt, rel_path, aux),
-                )
-                fts_rowid = cur.lastrowid
+                excerpt = record.get("text_excerpt")
+                if excerpt:
+                    aux = record.get("fts_aux") or record.get("project_key") or ""
+                    cur = c.execute(
+                        f"INSERT INTO {fts_table}(text_excerpt, rel_path, aux) VALUES (?,?,?)",
+                        (excerpt, rel_path, aux),
+                    )
+                    fts_rowid = cur.lastrowid
 
             c.execute(
                 "INSERT INTO source_intelligence_metadata "
@@ -292,7 +333,11 @@ class SourceIndexRepository:
                  record.get("extraction_failure_code"), fts_rowid, now),
             )
 
-            # _text (bounded excerpt; never raw body). Skipped for non-file kinds by callers.
+            # _text (bounded excerpt; never raw body). Skipped for non-file kinds by callers. A content
+            # write inserts/updates the row; a metadata-only/unsupported/too-large/cleared write (no
+            # excerpt and no vault ref) DELETES any stale prior text row so a content->metadata-only
+            # transition invalidates the old excerpt + full-text hash + vault ref (chunks are replaced
+            # below). Unchanged files are fast-skipped upstream and never reach this path.
             if record.get("text_excerpt") is not None or record.get("text_vault_ref") is not None:
                 c.execute(
                     "INSERT INTO source_intelligence_text "
@@ -307,6 +352,8 @@ class SourceIndexRepository:
                      1 if record.get("excerpt_truncated") else 0, record.get("full_text_sha256"),
                      record.get("text_vault_ref"), now),
                 )
+            else:
+                c.execute("DELETE FROM source_intelligence_text WHERE source_id=?", (source_id,))
 
             # chunks (replace set)
             c.execute("DELETE FROM source_intelligence_chunks WHERE source_id=?", (source_id,))
@@ -599,6 +646,19 @@ class SourceIndexRepository:
                     "SELECT event_id FROM source_intelligence_events "
                     "WHERE status='queued' AND rel_path=? AND event_type=?",
                     (rel_path, event_type),
+                ).fetchone()
+                if existing is not None:
+                    return str(existing[0])
+            elif event_type == "rebuild" and source_root_key is not None:
+                # Root-level rebuild events carry no rel_path, so the path-keyed coalesce above never
+                # fires for them. Without this, a bounded rebuild pass that re-enqueues its remainder
+                # every drain would grow the queue without bound. Coalesce on (event_type, root) so at
+                # most one queued rebuild per root exists at a time.
+                existing = c.execute(
+                    "SELECT event_id FROM source_intelligence_events "
+                    "WHERE status='queued' AND event_type='rebuild' AND source_root_key=? "
+                    "AND rel_path IS NULL",
+                    (source_root_key,),
                 ).fetchone()
                 if existing is not None:
                     return str(existing[0])

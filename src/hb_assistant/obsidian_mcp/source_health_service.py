@@ -89,7 +89,6 @@ def source_index_health(
 
     # Skip code rollup from file index
     skipped_by_code = dict(file_status.get("skipped_by_code") or {})
-    unsupported_skip = int(skipped_by_code.get("unsupported_file_type") or 0)
 
     per_root: list[dict[str, Any]] = []
     for root in roots_env.get("roots") or []:
@@ -131,6 +130,31 @@ def source_index_health(
             summary_bits.append("index layers present; safe for bounded client answers" if safe
                                 else "partial/blocked — prefer health-aware routing")
 
+        # Real, index-scoped extraction breakdown for THIS root (never derived from fts_available, which
+        # is an all-or-nothing table-existence proxy). content_searchable requires nonempty text.
+        try:
+            counts = repo.content_status_counts(key, conn=conn)
+        except Exception:  # noqa: BLE001 — health must never fail on a count query
+            counts = {"metadata_indexed": 0, "content_extracted": 0, "content_searchable": 0,
+                      "metadata_only": 0, "failed": 0, "unsupported": 0, "too_large": 0}
+        file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
+        if counts["metadata_indexed"] == 0 or (
+            counts["content_extracted"] == 0 and counts["content_searchable"] == 0
+        ):
+            content_completeness_state = "none"
+        elif counts["metadata_only"] > 0 or counts["failed"] > 0 or file_index_status == "partial":
+            content_completeness_state = "partial"
+        else:
+            content_completeness_state = "complete"
+        # A metadata-populated root is safe for path/filename lookup even when content is only partial.
+        safe_for_path_lookup = counts["metadata_indexed"] > 0 or folder_count > 0
+        if content_completeness_state == "complete" and state in ("fresh", "degraded"):
+            safe_for_content_answering = "complete"
+        elif counts["content_searchable"] > 0 and state in ("fresh", "degraded"):
+            safe_for_content_answering = "partial"
+        else:
+            safe_for_content_answering = "none"
+
         per_root.append({
             "root_key": key,
             "display_label": (sroot or {}).get("display_name") or key,
@@ -144,14 +168,19 @@ def source_index_health(
             "indexing_watermark": last_indexed,
             "total_folders_indexed": folder_count,
             "total_files_indexed": file_count or struct_files,
-            "content_indexed_file_count": file_count if file_status.get("fts_available") else 0,
-            "metadata_only_file_count": max(0, (file_count or struct_files) - (
-                file_count if file_status.get("fts_available") else 0
-            )),
+            # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
+            "content_indexed_file_count": counts["content_searchable"],
+            "metadata_only_file_count": counts["metadata_only"],
+            "metadata_indexed_file_count": counts["metadata_indexed"],
+            "content_extracted_file_count": counts["content_extracted"],
+            "content_searchable_file_count": counts["content_searchable"],
+            "failed_file_count": counts["failed"],
+            "too_large_file_count": counts["too_large"],
+            "content_completeness_state": content_completeness_state,
+            "safe_for_path_lookup": safe_for_path_lookup,
+            "safe_for_content_answering": safe_for_content_answering,
             "live_readable_file_count": None,  # not cheap; clients use metadata.read_status
-            "unsupported_file_count": unsupported_skip if key == (roots_env.get("roots") or [{}])[0].get(
-                "source_root_key"
-            ) else 0,
+            "unsupported_file_count": counts["unsupported"],
             "skipped_file_count": sum(int(v) for v in skipped_by_code.values()) if len(
                 roots_env.get("roots") or []
             ) == 1 else None,
@@ -235,7 +264,13 @@ def source_index_health(
     last_full = bstate.last_reconciliation(scan_type="full") or {}
     recommended = None
     if any_unbootstrapped:
-        recommended = "run `hb-assistant source-watch bootstrap --all-roots` (index not fully bootstrapped)"
+        # Bounded, per-root guidance — NEVER an unbounded all-roots content walk (that is exactly the
+        # operation that stalled/OOM'd a very large root). Each root resumes across bounded passes.
+        recommended = (
+            "bootstrap incomplete roots one at a time with bounded passes: "
+            "`hb-assistant source-watch bootstrap --root-key <root>` (safe defaults apply; re-run to "
+            "resume until bounded_out=false)"
+        )
     elif any_drift:
         recommended = (
             "directory architecture changed — run `hb-assistant source-watch bootstrap "

@@ -36,6 +36,10 @@ OUTSIDE_ROOT = "outside_root"
 TOO_LARGE = "too_large"
 EXTRACTION_UNSUPPORTED = "extraction_unsupported"
 EXTRACTION_FAILED = "extraction_failed"
+# A bounded rebuild pass stopped early (max_files_per_pass/max_seconds) with work remaining. The event
+# is completed as a clean ``skipped`` receipt (NOT an error) and a coalesced replacement ``rebuild`` event
+# is enqueued so the remainder resumes on the next drain — the queue status vocabulary is unchanged.
+BOUNDED_RESUME = "bounded_resume"
 
 # The full canonical vocabulary (the fallback included). Used to validate/recognize codes.
 SKIP_CODES: frozenset[str] = frozenset({
@@ -52,6 +56,7 @@ SKIP_CODES: frozenset[str] = frozenset({
     TOO_LARGE,
     EXTRACTION_UNSUPPORTED,
     EXTRACTION_FAILED,
+    BOUNDED_RESUME,
     UNSPECIFIED_SKIP,
 })
 

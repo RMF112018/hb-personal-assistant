@@ -117,6 +117,9 @@ def test_excerpt_and_chunk_caps(env) -> None:
 
 def test_corrupt_pdf_does_not_raise(env) -> None:
     repo, config, root, root_dir, db = env
+    # By default pdf is metadata-only (the interim safe policy), so a corrupt pdf is never parsed. Enable
+    # the hardened opt-in here to exercise the actual parser robustness path: it must still not raise.
+    config = config.model_copy(update={"source_index_enable_synchronous_parser_extraction": True})
     f = root_dir / "broken.pdf"
     f.write_bytes(b"not really a pdf")
     sid = index_source_file(f, root, repo, config)  # must not raise
@@ -125,6 +128,21 @@ def test_corrupt_pdf_does_not_raise(env) -> None:
         "SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?", (sid,)
     ).fetchone()[0]
     assert status in {"ok", "failed", "unsupported"}
+
+
+def test_corrupt_pdf_metadata_only_by_default(env) -> None:
+    # Default policy: a corrupt pdf is registered metadata-only (pending), NOT hashed or parsed — the
+    # safety win that prevents a hung/pathological parser from stalling the scan.
+    repo, config, root, root_dir, db = env
+    f = root_dir / "broken2.pdf"
+    f.write_bytes(b"not really a pdf")
+    sid = index_source_file(f, root, repo, config)
+    con = sqlite3.connect(db)
+    status, sha = con.execute(
+        "SELECT extraction_status, content_sha256 FROM source_intelligence_metadata WHERE source_id=?",
+        (sid,),
+    ).fetchone()
+    assert status == "pending" and sha is None
 
 
 def test_sensitive_root_uses_text_vault(env, monkeypatch: pytest.MonkeyPatch) -> None:
