@@ -73,7 +73,7 @@ auto_stage_occurred=false
 auto_promote_occurred=false
 ```
 
-**Follow-up:** manual manifest refresh per `08-operator-manifest-refresh.md` — completed in `15-manifest-refresh-closeout.md`.
+**Follow-up:** manifest refresh + freshness-fix deploy — final closeout in `18-freshness-fix-deploy-closeout.md`.
 
 ## G. Rollback
 

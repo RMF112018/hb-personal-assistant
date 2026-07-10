@@ -104,4 +104,4 @@ Name-level manifest is fresh; write-route gate still blocked. See `16-surface-st
 | `pa_tool_surface_freshness_check` | FAIL (classification parity bug) |
 | `document_session` routing | FAIL (`surface_stale`) — fixed pending deploy |
 
-`MANIFEST_PROMOTED` — operator manifest refresh complete. `WRITE_ROUTES_UNBLOCKED` pending code deploy + manifest re-promote per `16-surface-stale-root-cause.md`.
+`MANIFEST_PROMOTED` on R1/R2; `WRITE_ROUTES_UNBLOCKED` after freshness-fix deploy (`f565b19b`) + manifest R3 — see `18-freshness-fix-deploy-closeout.md`.
