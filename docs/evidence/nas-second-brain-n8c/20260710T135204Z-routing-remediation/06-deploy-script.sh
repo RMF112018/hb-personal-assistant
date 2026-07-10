@@ -15,9 +15,8 @@ set -eu
 
 DOCKER=/usr/local/bin/docker
 IMAGE=hb-personal-assistant:nas
-# >>> OPERATOR: replace with landed remediation SHA after commit <<<
-DEPLOY_SHA=REPLACE_WITH_LANDED_SHA
-TARBALL=/tmp/hb-nas-${DEPLOY_SHA%%????????????????????????????????}.tar.gz
+DEPLOY_SHA=f53cba1c7b4bcba0c5d7bb82aa63694c3041f0e3
+TARBALL=/tmp/hb-nas-f53cba1c.tar.gz
 UIDGID=1028:100
 
 BASE=/volume2/personal-assistant
@@ -33,7 +32,9 @@ EXPECT_HEAD=119
 say() { printf '\n=== %s ===\n' "$1"; }
 die() { printf '\nFATAL: %s\n' "$1" >&2; exit 1; }
 
-[ "$DEPLOY_SHA" != "REPLACE_WITH_LANDED_SHA" ] || die "set DEPLOY_SHA to the landed remediation commit"
+case "$DEPLOY_SHA" in
+  ""|REPLACE_WITH_LANDED_SHA|UNSET) die "set DEPLOY_SHA to the landed remediation commit" ;;
+esac
 
 img_py() {
   "$DOCKER" run --rm -i --network none --user "$UIDGID" \
@@ -130,40 +131,22 @@ sleep 60
 
 say "6. Runtime identity"
 set +e
-"$DOCKER" exec "$CONTAINER" python3 - <<PY
-from hb_assistant.nas_mcp.broker import runtime_identity, runtime_commit
-ri = runtime_identity(); rc = runtime_commit()
-print("runtime_identity=", ri)
-print("runtime_commit=", rc)
-assert rc == "$DEPLOY_SHA", f"commit mismatch: {rc}"
-PY
+"$DOCKER" exec "$CONTAINER" python3 -c \
+  'from hb_assistant.nas_mcp.broker import runtime_identity, runtime_commit; ri=runtime_identity(); rc=runtime_commit(); print("runtime_identity=", ri); print("runtime_commit=", rc)'
+"$DOCKER" exec "$CONTAINER" python3 -c \
+  "from hb_assistant.nas_mcp.broker import runtime_commit; rc=runtime_commit(); assert rc == '$DEPLOY_SHA', f'commit mismatch: {rc}'; print('runtime commit ok:', rc)"
 RC_ID=$?
 set -e
 [ "$RC_ID" = "0" ] || die "runtime identity check failed"
 
 say "7. Routing smoke (in-container)"
-set +e
-"$DOCKER" exec "$CONTAINER" python3 - <<'PY'
-from hb_assistant.nas_mcp.broker import NasMcpBroker
-from hb_assistant.nas_mcp.config import NasMcpConfig
-b = NasMcpBroker(NasMcpConfig.from_env())
-checks = [
-    ("Search my work files.", "source_file_search", True),
-    ("Search the vault for meeting notes.", "vault_note_search", True),
-    ("Do not promote anything.", "apply_canonical_promotion", False),
-]
-for prompt, bad_wf, expect_exec in checks:
-    r = b.dispatch("pa_prompt_route", {"prompt": prompt})["result"]
-    wf = r.get("recommended_workflow")
-    a = r.get("authorization") or {}
-    ok = (wf != bad_wf) if not expect_exec else (wf in ("source_file_search", "vault_note_search"))
-    if expect_exec:
-        ok = ok and a.get("currently_executable") is True
-    print(("PASS" if ok else "FAIL"), prompt, "->", wf, a.get("currently_executable"))
-    assert ok, (prompt, wf, a)
-print("routing smoke ok")
-PY
-set -e
+"$DOCKER" exec "$CONTAINER" python3 -c \
+  'from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); checks=[("Search my work files.","source_file_search",True),("Search the vault for meeting notes.","vault_note_search",True),("Do not promote anything.","apply_canonical_promotion",False)];
+for prompt,bad_wf,expect_exec in checks:
+ r=b.dispatch("pa_prompt_route",{"prompt":prompt})["result"]; wf=r.get("recommended_workflow"); a=r.get("authorization") or {}; ok=(wf!=bad_wf) if not expect_exec else (wf in ("source_file_search","vault_note_search"));
+ if expect_exec: ok=ok and a.get("currently_executable") is True
+ print(("PASS" if ok else "FAIL"), prompt, "->", wf, a.get("currently_executable")); assert ok,(prompt,wf,a)
+print("routing smoke ok")'
 
 say "8. Origin-auth (unauth POST /mcp -> 401)"
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8765/mcp || echo "000")

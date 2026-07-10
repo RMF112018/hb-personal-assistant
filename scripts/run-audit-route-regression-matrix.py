@@ -89,10 +89,21 @@ def main() -> int:
         action="store_true",
         help="Route through NasMcpBroker on a fresh temp DB (closer to live MCP)",
     )
+    parser.add_argument(
+        "--from-env",
+        action="store_true",
+        help="Route through NasMcpBroker(NasMcpConfig.from_env()) — use inside live MCP container",
+    )
     args = parser.parse_args()
 
     cases = json.loads(Path(args.matrix).read_text(encoding="utf-8"))
-    if args.broker:
+    if args.from_env:
+        from hb_assistant.nas_mcp.broker import NasMcpBroker
+        from hb_assistant.nas_mcp.config import NasMcpConfig
+
+        route_fn = _broker_route(NasMcpBroker(NasMcpConfig.from_env()))
+        mode = "live_container_env"
+    elif args.broker:
         import tempfile
 
         from hb_assistant.nas_mcp.broker import NasMcpBroker
