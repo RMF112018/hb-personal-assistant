@@ -67,6 +67,41 @@ def test_read_only_repo_truth_audit_authorizes_reads_not_execute_ban() -> None:
     assert auth["write_authorized"] is False
 
 
+def test_stage_for_review_is_staged_write() -> None:
+    plan = route_prompt("Stage this for review.")
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] == "stage_artifact_proposals"
+    assert auth["operation_requested"] == "staged_write"
+    assert auth["staging_authorized"] is True
+    assert auth["promotion_authorized"] is False
+    assert auth["currently_executable"] is False
+    assert auth["execution_blocked_reason"] == "approval_required"
+
+
+def test_beyond_read_only_uses_execute_non_read() -> None:
+    plan = route_prompt("Do not execute tools beyond read-only analysis.")
+    auth = plan["authorization"]
+    assert auth["read_tool_calls_authorized"] is True
+    assert "execute" not in auth["prohibitions"]
+    assert "execute_non_read" in auth["prohibitions"]
+    assert auth["prompt_authorizes_execution"] is True  # reads only
+
+
+def test_not_a_promotion_receipt_clarifies() -> None:
+    plan = route_prompt("This is not a promotion receipt.")
+    assert plan["recommended_workflow"] == "context_preflight"
+    assert plan["recommended_tools"] == []
+    assert plan["recommended_workflow"] != "inspect_promotion_receipt"
+
+
+def test_decision_tool_family_and_group() -> None:
+    plan = route_prompt("What did we decide about X?")
+    assert plan["next_step"]["tool"] == "assistant_get_decision"
+    assert plan["next_step"]["tool_group"] == "decision_memory"
+    assert plan["next_step"]["family"] == "assistant_decision_memory"
+    assert plan["authorization"]["currently_executable"] is True
+
+
 def test_ordinary_search_authorizes_reads() -> None:
     plan = route_prompt("Search my work files.")
     assert plan["recommended_workflow"] == "source_file_search"

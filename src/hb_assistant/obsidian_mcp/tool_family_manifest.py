@@ -202,6 +202,17 @@ _OUTPUT_READS = frozenset({"pa_output_list", "pa_output_metadata", "pa_output_re
                            "pa_output_receipt_get", "pa_output_manifest_get", "pa_output_archive_plan",
                            "pa_output_zip_inspect"})
 _OUTPUT_WRITES = frozenset({"pa_output_stage", "pa_output_commit", "pa_output_archive_commit"})
+# Explicit tool→family (must not fall through to assistant_navigation).
+_DECISION_MEMORY = frozenset({
+    "assistant_get_decision", "assistant_list_decisions", "assistant_get_preference",
+    "assistant_list_preferences", "assistant_list_open_loops", "assistant_get_open_loop",
+})
+_NAV_EXPLICIT = frozenset({
+    "assistant_search_sources", "assistant_search_cards", "assistant_get_vault_note",
+    "assistant_get_source", "assistant_get_card_for_source", "assistant_get_source_for_card",
+    "assistant_get_card_state", "assistant_list_stale_cards", "assistant_list_duplicate_cards",
+    "assistant_list_ambiguous_card_links", "assistant_recent_changes", "assistant_get_related_sources",
+})
 
 
 def family_for_tool(name: str, group: str | None = None) -> str:
@@ -226,10 +237,19 @@ def family_for_tool(name: str, group: str | None = None) -> str:
     if name.startswith(("pa_session_", "pa_artifact_")) or name == "pa_vault_path_resolve":
         # staging/review/plan/validate/list/get all belong to the artifact workspace family
         return "artifact_workspace"
+    if name in _DECISION_MEMORY:
+        return "assistant_decision_memory"
+    if name in _NAV_EXPLICIT:
+        return "assistant_navigation"
     if name in _LEGACY:
         return "legacy_low_level"
     if group and group in _GROUP_FAMILY:
         return _GROUP_FAMILY[group]
+    # Prefer explicit group mapping over bare assistant_ fallback.
+    if name.startswith("assistant_") and group is None:
+        # Unknown assistant tool without group — still classify, but parity tests should prefer
+        # explicit membership lists above.
+        return "assistant_navigation"
     if name.startswith("assistant_"):
         return "assistant_navigation"
     return "legacy_low_level"

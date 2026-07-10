@@ -60,6 +60,7 @@ _CAPABILITY_POLICIES: dict[str, frozenset[str]] = {
     "stage": frozenset({"staged_write"}),
     "archive": frozenset({"archive"}),
     "execute": frozenset({"staged_write", "canonical_promotion", "archive"}),
+    "execute_non_read": frozenset({"staged_write", "canonical_promotion", "archive"}),
     "index": frozenset(),  # handled via must_not / constraints
     "deploy": frozenset(),
     "external_action": frozenset(),
@@ -118,11 +119,18 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
     prohibitions: set[str] = set()
 
     # Explicit execute bans (not implied by "read-only").
+    # Vocabulary:
+    # - ``execute`` — no tool calls (plan-only / identify-only)
+    # - ``execute_non_read`` — ban write/stage/promote/external/etc., allow bounded reads
+    beyond_read_only = bool(re.search(r"\bbeyond read[- ]only\b", prompt_l))
     if re.search(r"\bplan only\b", prompt_l):
         prohibitions.add("execute")
     if re.search(r"\bdo not execute\b", prompt_l) or re.search(r"\bdon't execute\b", prompt_l):
-        # "beyond read-only analysis" still bans non-read execution classes below.
-        prohibitions.add("execute")
+        if beyond_read_only:
+            prohibitions.add("execute_non_read")
+            prohibitions.update({"write", "stage", "promote", "external_action"})
+        else:
+            prohibitions.add("execute")
 
     # Read-only posture: ban mutation classes when listed.
     # Never add ``execute`` here — bounded read execution is the requested operation.
@@ -196,22 +204,30 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
             if not is_neg:
                 continue
             span = " ".join(tokens[i:i + _PROHIBITION_WINDOW])
-            # "beyond read-only" exception: ban non-read classes, keep read execution allowed.
+            # "beyond read-only" exception: ban non-read classes only (never generic ``execute``).
             if "beyond read-only" in span or "beyond read only" in span:
-                prohibitions.update({"write", "stage", "promote", "external_action", "execute"})
-                # execute means "beyond read" here; authorization layer still allows reads.
+                prohibitions.add("execute_non_read")
+                prohibitions.update({"write", "stage", "promote", "external_action"})
                 continue
             for cap, cap_tokens in _CAPABILITY_TRIGGER_TOKENS.items():
                 if any(ct in span for ct in cap_tokens):
                     if cap == "promote" and "receipt" in span and "not a" in span:
                         continue
+                    if cap == "execute" and beyond_read_only:
+                        prohibitions.add("execute_non_read")
+                        continue
                     prohibitions.add(cap)
 
-    # Posture cleanup: read-only work must not carry a naked execute ban unless explicitly said.
-    if _is_read_only_posture(prompt_l) and not re.search(r"\b(do not|don't|never) execute\b", prompt_l) \
-            and not re.search(r"\bplan only\b", prompt_l) \
-            and not re.search(r"\bbeyond read[- ]only\b", prompt_l):
+    # Posture cleanup: read-only work must not carry a naked execute ban unless plan-only/identify.
+    if beyond_read_only or (
+        _is_read_only_posture(prompt_l)
+        and not re.search(r"\bplan only\b", prompt_l)
+        and not re.search(r"\b(identify which tool|which tool should be used)\b", prompt_l)
+    ):
         prohibitions.discard("execute")
+        if beyond_read_only:
+            prohibitions.add("execute_non_read")
+            prohibitions.update({"write", "stage", "promote", "external_action"})
 
     return prohibitions
 
@@ -331,6 +347,7 @@ def _authorization(
     *,
     prompt_l: str,
     prohibitions: set[str],
+    has_exact_id: bool = False,
 ) -> dict[str, Any]:
     """Multi-dimensional authorization; retains deprecated prompt_authorizes_execution."""
     action_class = wf["operator_authorization_policy"]
@@ -347,17 +364,18 @@ def _authorization(
     else:
         allow_read = True  # supporting reads for stage/create/promote planning
 
+    non_read_banned = "execute_non_read" in prohibitions or "execute" in prohibitions
     staging_ok = (
         action_class == "staged_write"
         and "stage" not in prohibitions
         and "write" not in prohibitions
-        and "execute" not in prohibitions
+        and not non_read_banned
         and not plan_only
     )
     write_ok = (
         action_class in ("staged_write",)
         and "write" not in prohibitions
-        and "execute" not in prohibitions
+        and not non_read_banned
         and not plan_only
         and confident
     )
@@ -377,10 +395,44 @@ def _authorization(
 
     additional_approval = bool(is_write) or bool(wf["additional_approval_points"])
     requires_go = bool(is_write)
+    approval_points = list(wf["additional_approval_points"])
+    # Write/stage/promote always need a server-minted approval that preflight cannot satisfy.
+    approval_satisfied = (not additional_approval) and (not requires_go)
 
-    # Deprecated compatibility field: true when bounded read tool calls are authorized.
-    # Under read-only posture, execute may still be listed for non-read classes from
-    # "beyond read-only" — do not use this field as the sole client signal.
+    # Request-level executability (preflight does not execute; it reports whether a follow-on
+    # call is permitted *given known preconditions*).
+    required_inputs = list(wf.get("required_inputs") or [])
+    args_ok = not required_inputs  # without concrete args/context, treat as incomplete
+    if has_exact_id and required_inputs:
+        # Exact id may satisfy a single id-like input.
+        args_ok = True
+    surface_ok = True  # refined by caller when tools filtered
+    prompt_perm_ok = (allow_read and not is_write) or staging_ok or write_ok
+    server_perm_ok = (not is_write) or action_class in _WRITE_CLASSES
+    currently_executable = bool(
+        prompt_perm_ok and server_perm_ok and approval_satisfied and args_ok and surface_ok and not plan_only
+    )
+    if plan_only:
+        blocked_reason: str | None = "plan_only"
+        currently_executable = False
+    elif is_write and not approval_satisfied:
+        blocked_reason = "approval_required"
+        currently_executable = False
+    elif not args_ok:
+        blocked_reason = "missing_arguments"
+        currently_executable = False
+    elif not allow_read and not staging_ok and not write_ok:
+        blocked_reason = "not_authorized"
+        currently_executable = False
+    else:
+        blocked_reason = None if currently_executable else "preconditions_incomplete"
+
+    # For authorized pure reads with no required inputs, currently_executable is True.
+    if not is_write and allow_read and not plan_only and approval_satisfied and args_ok:
+        currently_executable = True
+        blocked_reason = None
+
+    # Deprecated: true when bounded *read* tool calls are authorized (not a sole client signal).
     prompt_authorizes_execution = bool(allow_read and not plan_only and not is_write)
 
     return {
@@ -402,9 +454,10 @@ def _authorization(
             "promote": action_class == "canonical_promotion",
             "external_action": False,
         },
-        "approval_satisfied": False,  # preflight never sees server-minted approvals
-        "currently_executable": False,  # preflight never authorizes execution
-        "read_tool_calls_authorized": allow_read and not is_write,
+        "approval_satisfied": approval_satisfied,
+        "currently_executable": currently_executable,
+        "execution_blocked_reason": blocked_reason,
+        "read_tool_calls_authorized": allow_read,  # includes supporting reads for write workflows
         "advisory_planning_authorized": True,
         "staging_authorized": staging_ok,
         "external_action_authorized": external_ok,
@@ -412,7 +465,7 @@ def _authorization(
         "promotion_authorized": promotion_ok,
         "additional_approval_required": additional_approval,
         "requires_explicit_operator_go": requires_go,
-        "approval_points": list(wf["additional_approval_points"]),
+        "approval_points": approval_points,
         "prohibitions": sorted(prohibitions),
         # Deprecated — retained for current contract cycle; derive only; not sole client signal.
         "prompt_authorizes_execution": prompt_authorizes_execution,
@@ -458,7 +511,7 @@ def _enrich_tool_steps(
     tools: list[str],
     *,
     available_tools: frozenset[str] | set[str] | None,
-    authorized_read: bool,
+    authorization: dict[str, Any],
     primary_family: str,
     tool_groups: dict[str, str | None] | None = None,
 ) -> list[dict[str, Any]]:
@@ -469,6 +522,12 @@ def _enrich_tool_steps(
         group = _tool_group(t, tool_groups)
         available = True if available_tools is None else t in available_tools
         fam = family_for_tool(t, group) or primary_family
+        # Per-tool authorized follows request-level permission for that class.
+        step_auth = bool(authorization.get("read_tool_calls_authorized"))
+        if t.startswith("pa_artifact") or "stage" in t or "session_capture" in t:
+            step_auth = bool(authorization.get("staging_authorized") or authorization.get("read_tool_calls_authorized"))
+        if "promotion" in t or t == "ai_outputs_card_upsert":
+            step_auth = bool(authorization.get("promotion_authorized"))
         steps.append({
             "tool": t,
             "tool_group": group,
@@ -482,8 +541,21 @@ def _enrich_tool_steps(
             "directly_exposed": available,
             "gateway_allowlisted": True,
             "server_policy_available": available,
-            "authorized": authorized_read,
-            "authorization_reason": "read_authorized" if authorized_read else "plan_only_or_unapproved",
+            "authorized": step_auth and available,
+            "authorization_reason": (
+                "authorized" if step_auth and available
+                else (authorization.get("execution_blocked_reason") or "not_authorized")
+            ),
+            "currently_executable": bool(
+                step_auth and available and authorization.get("currently_executable")
+            ) if not authorization.get("additional_approval_required") else False,
+            "execution_blocked_reason": (
+                None if (step_auth and available and authorization.get("currently_executable")
+                         and not authorization.get("additional_approval_required"))
+                else (authorization.get("execution_blocked_reason")
+                      or ("approval_required" if authorization.get("additional_approval_required")
+                          else "not_authorized"))
+            ),
         })
     return steps
 
@@ -538,6 +610,10 @@ def route_prompt(
             rationale="Refuse arbitrary host path writes; use generated-output workspace only.",
         )
 
+    # Negated noun assertions ("this is not a promotion receipt") are not retrieval intents.
+    if _is_negated_noun_assertion(prompt_l):
+        return _negated_assertion_route(prompt, prompt_l, freshness, prohibitions)
+
     # Ambiguous bare "notes" without vault/source/project cue → clarify once.
     if _is_ambiguous_notes(prompt_l):
         return _ambiguous_notes_route(prompt, prompt_l, freshness, prohibitions)
@@ -578,14 +654,24 @@ def route_prompt(
 
     action_class = best_wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
-    authorization = _authorization(best_wf, confident, prompt_l=prompt_l, prohibitions=prohibitions)
+    authorization = _authorization(
+        best_wf, confident, prompt_l=prompt_l, prohibitions=prohibitions, has_exact_id=has_exact_id,
+    )
+    # Surface availability affects request-level executability when tools are missing.
+    if available_tools is not None and recommended_tools and any(
+        t not in available_tools for t in recommended_tools
+    ):
+        authorization = dict(authorization)
+        authorization["currently_executable"] = False
+        authorization["execution_blocked_reason"] = (
+            authorization.get("execution_blocked_reason") or "surface_unavailable"
+        )
     fam = family_record(primary_family) or {}
-    auth_read = bool(authorization["read_tool_calls_authorized"])
 
     tool_steps = _enrich_tool_steps(
         recommended_tools,
         available_tools=available_tools,
-        authorized_read=auth_read,
+        authorization=authorization,
         primary_family=primary_family,
         tool_groups=tool_groups,
     )
@@ -664,6 +750,48 @@ def route_prompt(
     return plan
 
 
+def _is_negated_noun_assertion(prompt_l: str) -> bool:
+    """True for sentences that deny a noun label rather than request work.
+
+    Example: "this is not a promotion receipt" — not a request to inspect receipts.
+    """
+    if re.search(r"\b(this is not a|that is not a|it's not a|it is not a|not a)\b", prompt_l):
+        # Assertion about identity/classification, not an imperative request verb.
+        if not re.search(
+            r"\b(find|search|get|list|show|open|retrieve|inspect|read|stage|promote|create|write)\b",
+            prompt_l,
+        ):
+            return True
+        # Even with a verb, "this is not a X" is typically classification.
+        if re.search(r"\bthis is not a\b", prompt_l) or re.search(r"\bthat is not a\b", prompt_l):
+            return True
+    return False
+
+
+def _negated_assertion_route(
+    prompt: str, prompt_l: str, freshness: dict[str, Any] | None, prohibitions: set[str],
+) -> dict[str, Any]:
+    base = _unknown_route(prompt, prompt_l, freshness, prohibitions)
+    base["intent"] = {"primary_class": "negated_assertion", "classes": ["negated_assertion", "clarification"]}
+    base["routing_rationale"] = (
+        "Negated noun assertion detected (e.g. 'this is not a …'); not a tool/retrieval request."
+    )
+    base["clarifying_question"] = (
+        "Understood as a classification statement, not a tool request. "
+        "What would you like to do instead (retrieve, stage, review, or something else)?"
+    )
+    base["recommended_workflow"] = "context_preflight"
+    base["recommended_tools"] = []
+    base["next_step"] = None
+    base["additional_steps"] = []
+    base["route_confidence"] = "high"
+    base["route"] = {
+        "intent": "negated_assertion", "source_of_truth": "unclassified",
+        "family": "prompt_routing", "workflow": "context_preflight", "confidence": "high",
+    }
+    return base
+
+
 def _is_ambiguous_notes(prompt_l: str) -> bool:
     """Bare 'notes' without vault/source/project cue → one clarification."""
     if "notes" not in prompt_l:
@@ -691,6 +819,10 @@ def _ambiguous_notes_route(
 
 
 def _base_auth_read_only(prohibitions: set[str], *, allow_read: bool = False) -> dict[str, Any]:
+    # Clarify routes recommend no tools — not currently executable even if reads are permitted.
+    blocked = None if allow_read else "not_authorized"
+    if allow_read:
+        blocked = "no_recommended_tool"  # clarification / empty tool sequence
     return {
         "action_class": "read",
         "write_risk": "none",
@@ -702,8 +834,9 @@ def _base_auth_read_only(prohibitions: set[str], *, allow_read: bool = False) ->
         "server_policy_permission": {
             "read": True, "stage": False, "write": False, "promote": False, "external_action": False,
         },
-        "approval_satisfied": False,
+        "approval_satisfied": True,
         "currently_executable": False,
+        "execution_blocked_reason": blocked if not allow_read else "no_recommended_tool",
         "read_tool_calls_authorized": allow_read,
         "advisory_planning_authorized": True,
         "staging_authorized": False,

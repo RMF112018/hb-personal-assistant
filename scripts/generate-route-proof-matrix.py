@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate expected-vs-actual route proof matrix (JSON + Markdown).
 
-``pass`` is computed only from explicit expectations — never assigned independently.
+``pass`` is computed only from explicit expectations. Unknown expectation keys fail closed.
 """
 
 from __future__ import annotations
@@ -15,8 +15,20 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from hb_assistant.obsidian_mcp.prompt_preflight import route_prompt  # noqa: E402
 
+# Supported expectation keys only — anything else is a matrix generator bug.
+_SUPPORTED_KEYS = frozenset({
+    "workflow", "workflow_not", "workflow_in",
+    "read_authorized", "staging_authorized", "staging_authorized_or_write_class",
+    "write_authorized", "promotion_authorized", "external_action_authorized",
+    "prohibitions_include", "prohibitions_exclude",
+    "tools_include", "tools_empty",
+    "per_tool_groups", "per_tool_families",
+    "require_route_schema_v2",
+    "currently_executable", "execution_blocked_reason_in",
+    "operation_requested",
+    "confidence_in",
+})
 
-# Explicit expectations: pass is derived only from these.
 CASES: list[dict] = [
     {
         "id": "project_notes",
@@ -24,9 +36,9 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "vault_note_search",
             "read_authorized": True,
-            "prohibitions_include": [],
             "prohibitions_exclude": ["execute"],
             "tools_include": ["assistant_search_sources"],
+            "require_route_schema_v2": True,
         },
     },
     {
@@ -39,12 +51,12 @@ CASES: list[dict] = [
             "workflow": "source_root_map",
             "read_authorized": False,
             "prohibitions_include": ["execute"],
-            "prohibitions_exclude": [],
             "tools_include": ["assistant_source_roots_list", "assistant_source_root_map"],
             "per_tool_groups": {
                 "assistant_source_roots_list": "source_connector",
                 "assistant_source_root_map": "source_structure",
             },
+            "currently_executable": False,
         },
     },
     {
@@ -53,7 +65,6 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "source_file_search",
             "read_authorized": True,
-            "prohibitions_include": [],
             "prohibitions_exclude": ["execute"],
             "tools_include": ["assistant_source_file_search"],
         },
@@ -78,8 +89,8 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "source_file_search",
             "read_authorized": True,
-            "prohibitions_include": [],
             "prohibitions_exclude": ["execute", "write"],
+            "execution_blocked_reason_in": [None, "missing_arguments"],
         },
     },
     {
@@ -87,7 +98,6 @@ CASES: list[dict] = [
         "prompt": "Do not promote anything.",
         "expected": {
             "workflow_not": "apply_canonical_promotion",
-            "read_authorized": False,  # no retrieval match → clarify; or True if matched read
             "prohibitions_include": ["promote"],
             "promotion_authorized": False,
         },
@@ -107,6 +117,8 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_decision_retrieval",
             "read_authorized": True,
+            "per_tool_groups": {"assistant_get_decision": "decision_memory"},
+            "per_tool_families": {"assistant_get_decision": "assistant_decision_memory"},
         },
     },
     {
@@ -124,6 +136,7 @@ CASES: list[dict] = [
         "expected": {
             "read_authorized": False,
             "prohibitions_include": ["execute"],
+            "currently_executable": False,
         },
     },
     {
@@ -141,8 +154,8 @@ CASES: list[dict] = [
         "prompt": "Do not execute tools beyond read-only analysis.",
         "expected": {
             "read_authorized": True,
-            "prohibitions_include": ["write", "stage", "promote"],
-            # execute may be present as non-read ban marker under beyond-read-only
+            "prohibitions_include": ["write", "stage", "promote", "execute_non_read"],
+            "prohibitions_exclude": ["execute"],
         },
     },
     {
@@ -158,8 +171,10 @@ CASES: list[dict] = [
         "id": "not_a_promotion_receipt",
         "prompt": "This is not a promotion receipt.",
         "expected": {
-            "workflow_not": "apply_canonical_promotion",
+            "workflow": "context_preflight",
+            "tools_empty": True,
             "promotion_authorized": False,
+            "workflow_not": "inspect_promotion_receipt",
         },
     },
     {
@@ -168,6 +183,8 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_preference_retrieval",
             "read_authorized": True,
+            "per_tool_groups": {"assistant_get_preference": "decision_memory"},
+            "per_tool_families": {"assistant_get_preference": "assistant_decision_memory"},
         },
     },
     {
@@ -176,22 +193,30 @@ CASES: list[dict] = [
         "expected": {
             "workflow": "canonical_open_loop_retrieval",
             "read_authorized": True,
+            "per_tool_groups": {"assistant_list_open_loops": "decision_memory"},
+            "per_tool_families": {"assistant_list_open_loops": "assistant_decision_memory"},
         },
     },
     {
         "id": "stage_for_review",
         "prompt": "Stage this for review.",
         "expected": {
+            "workflow": "stage_artifact_proposals",
+            "operation_requested": "staged_write",
+            "staging_authorized": True,
             "staging_authorized_or_write_class": True,
             "promotion_authorized": False,
+            "currently_executable": False,  # approval required
+            "execution_blocked_reason_in": ["approval_required", "missing_arguments"],
         },
     },
     {
         "id": "promote_approved",
         "prompt": "Promote the approved artifact.",
         "expected": {
-            "promotion_authorized": False,  # still needs validation + server approval
             "workflow": "apply_canonical_promotion",
+            "promotion_authorized": False,
+            "currently_executable": False,
         },
     },
     {
@@ -241,9 +266,11 @@ def _actual(plan: dict) -> dict:
         "server_policy_permission": auth.get("server_policy_permission"),
         "approval_satisfied": auth.get("approval_satisfied"),
         "currently_executable": auth.get("currently_executable"),
+        "execution_blocked_reason": auth.get("execution_blocked_reason"),
         "next_step": plan.get("next_step"),
         "additional_steps": plan.get("additional_steps"),
         "per_tool_groups": {s.get("tool"): s.get("tool_group") for s in steps if s.get("tool")},
+        "per_tool_families": {s.get("tool"): s.get("family") for s in steps if s.get("tool")},
         "confidence": plan.get("route_confidence"),
         "freshness_state": (plan.get("freshness") or {}).get("staleness_state"),
     }
@@ -251,20 +278,62 @@ def _actual(plan: dict) -> dict:
 
 def _evaluate(expected: dict, actual: dict) -> list[str]:
     mismatches: list[str] = []
+    unknown = sorted(set(expected) - _SUPPORTED_KEYS)
+    if unknown:
+        mismatches.append(f"unsupported_expectation_keys:{unknown}")
+        return mismatches  # fail closed
+
     if "workflow" in expected and actual.get("workflow") != expected["workflow"]:
         mismatches.append(f"workflow: expected {expected['workflow']!r} got {actual.get('workflow')!r}")
     if "workflow_not" in expected and actual.get("workflow") == expected["workflow_not"]:
         mismatches.append(f"workflow_not: got forbidden {expected['workflow_not']!r}")
+    if "workflow_in" in expected and actual.get("workflow") not in expected["workflow_in"]:
+        mismatches.append(f"workflow_in: got {actual.get('workflow')!r} not in {expected['workflow_in']!r}")
+    if "operation_requested" in expected and actual.get("operation_requested") != expected["operation_requested"]:
+        mismatches.append(
+            f"operation_requested: expected {expected['operation_requested']!r} "
+            f"got {actual.get('operation_requested')!r}"
+        )
     if "read_authorized" in expected and actual.get("read_authorized") is not expected["read_authorized"]:
-        # Soft: do_not_promote alone may clarify with read False
-        if expected.get("id") != "do_not_promote":
+        mismatches.append(
+            f"read_authorized: expected {expected['read_authorized']!r} got {actual.get('read_authorized')!r}"
+        )
+    if "staging_authorized" in expected and actual.get("staging_authorized") is not expected["staging_authorized"]:
+        mismatches.append(
+            f"staging_authorized: expected {expected['staging_authorized']!r} "
+            f"got {actual.get('staging_authorized')!r}"
+        )
+    if expected.get("staging_authorized_or_write_class") is True:
+        ok = (
+            actual.get("staging_authorized") is True
+            or actual.get("operation_requested") == "staged_write"
+            or any("stage" in str(t) for t in (actual.get("tools") or []))
+        )
+        if not ok:
             mismatches.append(
-                f"read_authorized: expected {expected['read_authorized']!r} got {actual.get('read_authorized')!r}"
+                "staging_authorized_or_write_class: expected staging_authorized "
+                f"or staged_write (got op={actual.get('operation_requested')!r} "
+                f"stage={actual.get('staging_authorized')!r} tools={actual.get('tools')!r})"
             )
+    if "write_authorized" in expected and actual.get("write_authorized") is not expected["write_authorized"]:
+        mismatches.append(
+            f"write_authorized: expected {expected['write_authorized']!r} got {actual.get('write_authorized')!r}"
+        )
     if expected.get("promotion_authorized") is False and actual.get("promotion_authorized") is not False:
         mismatches.append("promotion_authorized: expected False")
     if expected.get("external_action_authorized") is False and actual.get("external_action_authorized") is not False:
         mismatches.append("external_action_authorized: expected False")
+    if "currently_executable" in expected and actual.get("currently_executable") is not expected["currently_executable"]:
+        mismatches.append(
+            f"currently_executable: expected {expected['currently_executable']!r} "
+            f"got {actual.get('currently_executable')!r} "
+            f"(blocked={actual.get('execution_blocked_reason')!r})"
+        )
+    if "execution_blocked_reason_in" in expected:
+        allowed = expected["execution_blocked_reason_in"]
+        got = actual.get("execution_blocked_reason")
+        if got not in allowed:
+            mismatches.append(f"execution_blocked_reason: got {got!r} not in {allowed!r}")
     for cap in expected.get("prohibitions_include") or []:
         if cap not in (actual.get("prohibitions") or []):
             mismatches.append(f"prohibitions_include missing: {cap}")
@@ -274,22 +343,20 @@ def _evaluate(expected: dict, actual: dict) -> list[str]:
     for tool in expected.get("tools_include") or []:
         if tool not in (actual.get("tools") or []):
             mismatches.append(f"tools_include missing: {tool}")
+    if expected.get("tools_empty") is True and (actual.get("tools") or []):
+        mismatches.append(f"tools_empty: expected [] got {actual.get('tools')!r}")
     for tool, group in (expected.get("per_tool_groups") or {}).items():
         got = (actual.get("per_tool_groups") or {}).get(tool)
         if got != group:
             mismatches.append(f"per_tool_groups[{tool}]: expected {group!r} got {got!r}")
+    for tool, fam in (expected.get("per_tool_families") or {}).items():
+        got = (actual.get("per_tool_families") or {}).get(tool)
+        if got != fam:
+            mismatches.append(f"per_tool_families[{tool}]: expected {fam!r} got {got!r}")
     if expected.get("require_route_schema_v2") and actual.get("route_schema_version") != 2:
         mismatches.append(f"route_schema_version: expected 2 got {actual.get('route_schema_version')!r}")
-    if expected.get("staging_authorized_or_write_class"):
-        # Accept either staging authorized or staged_write action class
-        if not (actual.get("staging_authorized") or actual.get("operation_requested") in (
-            "staged_write", "read",
-        )):
-            # staging prompts often land on stage workflow with staging_authorized True
-            if not actual.get("staging_authorized") and actual.get("operation_requested") != "staged_write":
-                # still ok if recommended tools include stage tools
-                if not any("stage" in t for t in (actual.get("tools") or [])):
-                    mismatches.append("expected staging workflow or staging_authorized")
+    if "confidence_in" in expected and actual.get("confidence") not in expected["confidence_in"]:
+        mismatches.append(f"confidence: got {actual.get('confidence')!r}")
     return mismatches
 
 
@@ -300,13 +367,6 @@ def main() -> int:
         actual = _actual(plan)
         expected = dict(case["expected"])
         mismatches = _evaluate(expected, actual)
-        # Special soft rule for do_not_promote read_authorized
-        if case["id"] == "do_not_promote":
-            mismatches = [m for m in mismatches if not m.startswith("read_authorized")]
-            if actual.get("promotion_authorized"):
-                mismatches.append("promotion_authorized should be false")
-            if actual.get("workflow") == "apply_canonical_promotion":
-                mismatches.append("must not select apply_canonical_promotion")
         rows.append({
             "id": case["id"],
             "prompt": case["prompt"],
@@ -316,7 +376,7 @@ def main() -> int:
             "pass": len(mismatches) == 0,
             "rationale": (
                 f"Compare actual route for {case['id']} against explicit expectations; "
-                "pass is true only when mismatches is empty."
+                "pass is true only when mismatches is empty. Unknown expectation keys fail closed."
             ),
         })
 
@@ -327,16 +387,17 @@ def main() -> int:
     md = [
         "# Route proof matrix (expected vs actual)",
         "",
-        "Generated by `scripts/generate-route-proof-matrix.py`. "
-        "`pass` is derived only from explicit expectations.",
+        "Generated by `scripts/generate-route-proof-matrix.py`.",
+        "`pass` is derived only from explicit expectations; unknown keys fail closed.",
         "",
-        "| id | pass | mismatches | workflow | read | prohibitions |",
-        "|---|---|---|---|---|---|",
+        "| id | pass | mismatches | workflow | read | stage | currently_executable | prohibitions |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for r in rows:
         md.append(
             f"| {r['id']} | {r['pass']} | {len(r['mismatches'])} | "
             f"{r['actual'].get('workflow')} | {r['actual'].get('read_authorized')} | "
+            f"{r['actual'].get('staging_authorized')} | {r['actual'].get('currently_executable')} | "
             f"{r['actual'].get('prohibitions')} |"
         )
     failed = [r for r in rows if not r["pass"]]
@@ -352,6 +413,8 @@ def main() -> int:
 
     print(f"wrote {out_dir}")
     print(f"pass={sum(1 for r in rows if r['pass'])} fail={len(failed)} total={len(rows)}")
+    for r in failed:
+        print("FAIL", r["id"], r["mismatches"])
     return 1 if failed else 0
 
 

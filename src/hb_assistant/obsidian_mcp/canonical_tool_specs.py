@@ -144,6 +144,17 @@ KNOWN_TOOL_GROUPS: dict[str, str] = {
     "assistant_search_sources": "nav",
     "assistant_search_cards": "nav",
     "assistant_get_vault_note": "nav",
+    "assistant_get_decision": "decision_memory",
+    "assistant_list_decisions": "decision_memory",
+    "assistant_get_preference": "decision_memory",
+    "assistant_list_preferences": "decision_memory",
+    "assistant_list_open_loops": "decision_memory",
+    "assistant_get_open_loop": "decision_memory",
+    "pa_artifact_proposal_stage": "artifact_workspace",
+    "pa_session_capture_stage": "artifact_workspace",
+    "pa_artifact_proposal_list": "artifact_workspace",
+    "pa_artifact_proposal_review": "artifact_workspace",
+    "pa_artifact_promotion_apply": "artifact_workspace",
 }
 
 # Capabilities exercised by operator_authorization_policy values.
