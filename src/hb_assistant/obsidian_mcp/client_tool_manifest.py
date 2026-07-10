@@ -102,71 +102,142 @@ NEGATIVE_INSTRUCTIONS: list[str] = [
     "do not use receipt tools as primary semantic retrieval unless auditing promotion history",
 ]
 
-_DENIED = {"raw_sql", "sql", "shell", "exec", "read_file_absolute", "hb_output_delete"}
-_LEGACY_LOW_LEVEL = {"hb_db_select", "hb_root_list", "hb_root_stat", "hb_root_search", "hb_root_read_file",
-                     "hb_root_read_excerpt", "search_vault"}
-
-
 def classify_tool(name: str, group: str | None) -> tuple[str, str, str]:
-    """Return (tool_class, safety_class, read_write_class)."""
-    if name in _DENIED:
-        return "blocked_or_deprecated", "blocked", "blocked"
-    if name == "ai_outputs_card_upsert":
-        return "canonical_promotion", "canonical_promotion_requires_explicit_approval", "canonical_write"
-    if name in ("pa_artifact_promotion_apply", "pa_tool_manifest_refresh_promote"):
-        return "canonical_promotion", "canonical_promotion_requires_explicit_approval", "canonical_write"
-    if name in ("pa_session_capture_stage", "pa_artifact_proposal_stage", "pa_artifact_proposal_revise",
-                "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage"):
-        return "staged_write", "staged_write_requires_review", "staged_write"
-    # N8C-24 client generated-output workspace: 3 controlled writes + 7 bounded reads.
-    if name in ("pa_output_stage", "pa_output_commit", "pa_output_archive_commit"):
-        return "staged_write", "staged_write_requires_review", "staged_write"
-    if name.startswith("pa_output_"):
-        return "read_only_retrieval", "bounded_read", "read_only"
-    if name in ("pa_artifact_proposal_plan_promotion", "pa_artifact_promotion_validate",
-                "pa_tool_manifest_review_plan", "pa_vault_path_resolve"):
-        return "advisory_routing", "advisory_only", "read_only"
-    if name.startswith("pa_tool_manifest") or name in ("hb_assistant_catalog", "hb_assistant_tool_help",
-                                                        "hb_assistant_tool_query"):
-        return "manifest_lookup", "bounded_read", "read_only"
-    if name in ("hb_mcp_status", "hb_data_freshness", "hb_queue_status", "hb_recent_failures",
-                "hb_last_successful_runs", "hb_capability_mode"):
-        return "read_only_status", "safe_read", "read_only"
-    if name in _LEGACY_LOW_LEVEL or name.startswith("hb_output_"):
-        return "legacy_low_level", "bounded_read", "read_only"
-    if group == "review" or "review" in name:
-        return "read_only_review", "bounded_read", "read_only"
-    return "read_only_retrieval", "bounded_read", "read_only"
+    """Return (tool_class, safety_class, read_write_class). Compatibility view of canonical classification."""
+    from .canonical_tool_specs import classify_tool as _canonical_classify  # noqa: PLC0415
+
+    return _canonical_classify(name, group)
 
 
 def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str, now: str,
-                   manifest_version: int = 1) -> dict[str, Any]:
-    """Build the manifest object from a live tool index {name: {group, required_args, optional_args, limits}}."""
+                   manifest_version: int = 1,
+                   surface_profile: str | None = None,
+                   gate_state_snapshot: dict[str, Any] | None = None,
+                   gateway_allowlist: list[str] | None = None,
+                   package_version: str | None = None,
+                   runtime_identity_kind: str | None = None) -> dict[str, Any]:
+    """Build the manifest object from a live tool index.
+
+    ``manifest_version`` is the **revision counter** (not schema version).
+    ``manifest_schema_version`` describes the payload contract (1 = expanded semantics).
+    """
+    from .canonical_json import sha256_fingerprint  # noqa: PLC0415
+    from .tool_metadata_types import MANIFEST_SCHEMA_VERSION  # noqa: PLC0415
+    from .workflow_recipe_manifest import WORKFLOWS  # noqa: PLC0415
+
     entries = []
     for name in sorted(tool_index):
         info = tool_index[name] or {}
-        tool_class, safety_class, rw = classify_tool(name, info.get("group"))
+        group = info.get("group") or info.get("tool_group")
+        tool_class, safety_class, rw = classify_tool(name, group)
         entries.append({
-            "tool_name": name, "tool_group": info.get("group"), "tool_class": tool_class,
-            "safety_class": safety_class, "read_write_class": rw, "purpose": info.get("purpose", ""),
-            "preferred_for": info.get("preferred_for", []), "avoid_when": info.get("avoid_when", []),
-            "required_args": info.get("required_args", []), "optional_args": info.get("optional_args", []),
-            "limits": info.get("limits", {}), "workflow_roles": info.get("workflow_roles", []),
-            "replacement_tools": [REPLACEMENT_MAP[name]] if name in REPLACEMENT_MAP else [],
-            "common_failure_modes": info.get("common_failure_modes", []), "examples": info.get("examples", []),
+            "tool_name": name,
+            "tool_group": group,
+            "tool_family": info.get("tool_family") or info.get("family"),
+            "tool_class": tool_class,
+            "safety_class": safety_class,
+            "read_write_class": rw,
+            "purpose": info.get("purpose", ""),
+            "preferred_for": info.get("preferred_for", []),
+            "avoid_when": info.get("avoid_when", []),
+            "required_args": info.get("required_args", []),
+            "optional_args": info.get("optional_args", []),
+            "limits": info.get("limits", {}),
+            "workflow_roles": info.get("workflow_roles", []),
+            "replacement_tools": (
+                info.get("replacement_tools")
+                or ([REPLACEMENT_MAP[name]] if name in REPLACEMENT_MAP else [])
+            ),
+            "common_failure_modes": info.get("common_failure_modes", []),
+            "examples": info.get("examples", []),
+            "directly_exposed": info.get("directly_exposed"),
+            "gateway_allowlisted": info.get("gateway_allowlisted"),
+            "profile_enabled": info.get("profile_enabled"),
         })
-    checksum = _manifest_checksum(entries)
+
+    # Workflow semantic payload (order of tool_sequence preserved).
+    workflow_payload = [
+        {
+            "workflow_id": w["workflow_id"],
+            "family_id": w["family_id"],
+            "tool_sequence": list(w["tool_sequence"]),
+            "trigger_phrases": sorted(w["trigger_phrases"]),
+            "operator_authorization_policy": w["operator_authorization_policy"],
+            "additional_approval_points": list(w.get("additional_approval_points") or []),
+        }
+        for w in WORKFLOWS
+    ]
+    semantic_payload = {
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "entries": [
+            {
+                "tool_name": e["tool_name"],
+                "tool_group": e["tool_group"],
+                "tool_family": e.get("tool_family"),
+                "tool_class": e["tool_class"],
+                "safety_class": e["safety_class"],
+                "read_write_class": e["read_write_class"],
+                "purpose": e["purpose"],
+                "required_args": sorted(e["required_args"]) if isinstance(e["required_args"], list) else e["required_args"],
+                "optional_args": sorted(e["optional_args"]) if isinstance(e["optional_args"], list) else e["optional_args"],
+                "limits": e["limits"],
+                "replacement_tools": sorted(e["replacement_tools"]) if isinstance(e["replacement_tools"], list) else e["replacement_tools"],
+            }
+            for e in entries
+        ],
+        "workflows": workflow_payload,
+        "replacement_map": dict(sorted(REPLACEMENT_MAP.items())),
+    }
+    exposure_payload = {
+        "surface_profile": surface_profile or "unknown",
+        "gate_state_snapshot": gate_state_snapshot or {},
+        "tools": [
+            {
+                "tool_name": e["tool_name"],
+                "directly_exposed": e.get("directly_exposed"),
+                "gateway_allowlisted": e.get("gateway_allowlisted"),
+                "profile_enabled": e.get("profile_enabled"),
+            }
+            for e in entries
+        ],
+    }
+    gateway_payload = {"gateway_allowlist": sorted(gateway_allowlist or [])}
+
+    semantic_checksum = sha256_fingerprint(semantic_payload)
+    exposure_checksum = sha256_fingerprint(exposure_payload)
+    gateway_checksum = sha256_fingerprint(gateway_payload)
+    # Legacy checksum field retained for older readers (narrow class triad) — still stable.
+    legacy_checksum = _manifest_checksum(entries)
+
     return {
-        "manifest_version": manifest_version, "manifest_status": "active", "generated_at": now,
-        "generated_from_runtime_commit": runtime_commit, "tool_count": len(entries),
-        "workflow_count": len(WORKFLOW_RECIPES), "mapping_count": len(REPLACEMENT_MAP),
-        "staleness_state": "fresh", "review_cadence": REVIEW_CADENCE, "checksum": checksum,
-        "entries": entries, "workflow_recipes": WORKFLOW_RECIPES, "replacement_map": REPLACEMENT_MAP,
+        "manifest_version": manifest_version,
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "manifest_status": "active",
+        "generated_at": now,
+        "generated_from_runtime_commit": runtime_commit,
+        "generated_from_package_version": package_version,
+        "runtime_identity_kind": runtime_identity_kind or "unknown",
+        "tool_count": len(entries),
+        "workflow_count": len(WORKFLOW_RECIPES),
+        "mapping_count": len(REPLACEMENT_MAP),
+        "staleness_state": "fresh",
+        "review_cadence": REVIEW_CADENCE,
+        "checksum": legacy_checksum,
+        "semantic_surface_checksum": semantic_checksum,
+        "exposure_checksum": exposure_checksum,
+        "gateway_checksum": gateway_checksum,
+        "manifest_payload": semantic_payload,
+        "surface_profile": surface_profile or "unknown",
+        "gate_state_snapshot": gate_state_snapshot or {},
+        "entries": entries,
+        "workflow_recipes": WORKFLOW_RECIPES,
+        "replacement_map": REPLACEMENT_MAP,
         "negative_instructions": NEGATIVE_INSTRUCTIONS,
     }
 
 
 def _manifest_checksum(entries: list[dict[str, Any]]) -> str:
+    """Legacy narrow checksum (class triad) for backward-compatible comparison of pre-schema rows."""
     key = [(e["tool_name"], e["tool_class"], e["read_write_class"], e["safety_class"]) for e in entries]
     return _sha("manifest-v1", _cjson(key), _cjson([r["workflow_name"] for r in WORKFLOW_RECIPES]))
 
@@ -238,14 +309,35 @@ class ClientToolManifestRepository:
         self._guard_writable()
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_status='superseded' WHERE manifest_status='active'")
-            _insert(c, "pa_client_tool_manifests", {
+            row = {
                 "manifest_id": manifest_id, "manifest_version": manifest["manifest_version"],
                 "manifest_status": "active", "generated_at": now,
                 "generated_from_runtime_commit": manifest["generated_from_runtime_commit"],
                 "tool_count": manifest["tool_count"], "workflow_count": manifest["workflow_count"],
                 "mapping_count": manifest["mapping_count"], "staleness_state": manifest["staleness_state"],
                 "review_cadence": manifest["review_cadence"], "checksum": manifest["checksum"],
-                "created_at": now, "updated_at": now})
+                "created_at": now, "updated_at": now,
+            }
+            # V118 columns (best-effort; present after schema 118).
+            if "manifest_schema_version" in manifest:
+                row["manifest_schema_version"] = manifest.get("manifest_schema_version", 0)
+            if "manifest_payload" in manifest:
+                row["manifest_payload_json"] = _cjson(manifest["manifest_payload"])
+            if "semantic_surface_checksum" in manifest:
+                row["semantic_surface_checksum"] = manifest["semantic_surface_checksum"]
+            if "exposure_checksum" in manifest:
+                row["exposure_checksum"] = manifest["exposure_checksum"]
+            if "gateway_checksum" in manifest:
+                row["gateway_checksum"] = manifest["gateway_checksum"]
+            if "surface_profile" in manifest:
+                row["surface_profile"] = manifest.get("surface_profile")
+            if "gate_state_snapshot" in manifest:
+                row["gate_state_snapshot_json"] = _cjson(manifest.get("gate_state_snapshot") or {})
+            if "generated_from_package_version" in manifest:
+                row["generated_from_package_version"] = manifest.get("generated_from_package_version")
+            if "runtime_identity_kind" in manifest:
+                row["runtime_identity_kind"] = manifest.get("runtime_identity_kind")
+            _insert(c, "pa_client_tool_manifests", row)
             for e in manifest["entries"]:
                 _insert(c, "pa_tool_manifest_entries", {
                     "manifest_entry_id": _sha(manifest_id, e["tool_name"]), "manifest_id": manifest_id,
@@ -269,13 +361,31 @@ class ClientToolManifestRepository:
         return manifest_id
 
     def get_active(self, *, conn: Any = None) -> dict[str, Any] | None:
-        cols = ("manifest_id", "manifest_version", "manifest_status", "generated_at",
-                "generated_from_runtime_commit", "tool_count", "workflow_count", "mapping_count",
-                "staleness_state", "freshness_checked_at", "next_review_due_at", "review_cadence", "checksum",
-                "manifest_vault_path", "manifest_json_path")
+        base_cols = (
+            "manifest_id", "manifest_version", "manifest_status", "generated_at",
+            "generated_from_runtime_commit", "tool_count", "workflow_count", "mapping_count",
+            "staleness_state", "freshness_checked_at", "next_review_due_at", "review_cadence", "checksum",
+            "manifest_vault_path", "manifest_json_path",
+        )
+        v118_cols = (
+            "manifest_schema_version", "manifest_payload_json", "semantic_surface_checksum",
+            "exposure_checksum", "gateway_checksum", "surface_profile", "gate_state_snapshot_json",
+            "generated_from_package_version", "runtime_identity_kind",
+        )
         with borrow_connection(conn, self._path(), readonly=self._readonly) as c:
-            row = c.execute(f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
-                            f"ORDER BY generated_at DESC LIMIT 1").fetchone()
+            # Prefer V118 select; fall back if columns missing (pre-migrate open DBs).
+            cols = base_cols + v118_cols
+            try:
+                row = c.execute(
+                    f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                    f"ORDER BY generated_at DESC LIMIT 1"
+                ).fetchone()
+            except Exception:  # noqa: BLE001
+                cols = base_cols
+                row = c.execute(
+                    f"SELECT {', '.join(cols)} FROM pa_client_tool_manifests WHERE manifest_status='active' "
+                    f"ORDER BY generated_at DESC LIMIT 1"
+                ).fetchone()
             if not row:
                 return None
             hdr = dict(zip(cols, row, strict=True))
@@ -338,3 +448,15 @@ class ClientToolManifestRepository:
         with open_connection(self._path()) as c, transaction(c):
             c.execute("UPDATE pa_client_tool_manifests SET manifest_vault_path=?, manifest_json_path=?, "
                       "freshness_checked_at=? WHERE manifest_id=?", (md_path, json_path, _now(), manifest_id))
+
+    def mark_active_stale(self, *, reason: str = "drift") -> None:
+        """Mark the active manifest stale / review_required without rewriting payload."""
+        self._guard_writable()
+        with open_connection(self._path()) as c, transaction(c):
+            c.execute(
+                "UPDATE pa_client_tool_manifests SET staleness_state=?, updated_at=? "
+                "WHERE manifest_status='active'",
+                ("requires_operator_review", _now()),
+            )
+            # reason retained for audit callers; column may not exist on legacy schemas.
+            _ = reason

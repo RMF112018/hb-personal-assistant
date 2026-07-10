@@ -1215,7 +1215,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
     # capability: the gateway only routes to the canonical 78 via the same audited broker.dispatch path.
     @mcp.tool()
     def hb_assistant_catalog(group: str | None = None) -> dict[str, Any]:
-        """Catalog of the read-only N8C assistant tool suite for connected clients. Lists the 13 groups
+        """Catalog of the read-only N8C assistant tool suite for connected clients. Lists the assistant groups
         and their canonical tools with purpose, required/optional args, result limits, and safety class,
         so a client can pick a tool then call it directly or via ``hb_assistant_tool_query``. Optionally
         filter to one ``group`` (nav, context_packs, memory, decision_memory, review, intelligence,

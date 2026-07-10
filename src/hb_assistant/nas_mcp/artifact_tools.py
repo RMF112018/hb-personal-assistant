@@ -71,42 +71,21 @@ ALL_PA_TOOLS: tuple[str, ...] = PA_ARTIFACT_TOOLS + PA_MANIFEST_TOOLS
 
 
 def current_tool_names(config: Any) -> set[str]:
-    """The current registered client tool surface (for manifest build + freshness). Lazy imports avoid a cycle."""
-    from .broker import ALL_ASSISTANT_TOOLS  # noqa: PLC0415
-    from .client_output_tools import PA_OUTPUT_READ_TOOLS, PA_OUTPUT_WRITE_TOOLS  # noqa: PLC0415
-    from .profile import ai_outputs_write_enabled, client_output_write_enabled  # noqa: PLC0415
-    from .tool_registration import CLIENT_BRIDGE_HELPER_TOOLS  # noqa: PLC0415
+    """The current registered client tool surface (for manifest build + freshness).
 
-    names: set[str] = set(ALL_ASSISTANT_TOOLS) | set(CLIENT_BRIDGE_HELPER_TOOLS) | set(ALL_PA_TOOLS)
-    names |= {"hb_mcp_status", "hb_data_freshness", "hb_queue_status", "hb_recent_failures",
-              "hb_last_successful_runs", "hb_capability_mode", "hb_db_select", "hb_root_list", "hb_root_stat",
-              "hb_root_search", "hb_root_read_file", "hb_root_read_excerpt", "hb_output_list", "hb_output_stat",
-              "hb_output_read"}
-    # N8C-24 client output workspace: reads always present; the 3 writes only when the gate is enabled.
-    names |= set(PA_OUTPUT_READ_TOOLS)
-    if client_output_write_enabled():
-        names |= set(PA_OUTPUT_WRITE_TOOLS)
-    if ai_outputs_write_enabled():
-        names.add("ai_outputs_card_upsert")
-    return names
+    Includes prompt-routing tools when the preflight gate is enabled. Delegates to the live
+    tool surface join so help/manifest/freshness share one universe.
+    """
+    from .live_tool_surface import tool_name_set  # noqa: PLC0415
+
+    return tool_name_set(config)
 
 
 def _build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
-    from .broker import ASSISTANT_TOOL_GROUPS  # noqa: PLC0415
-    from .tool_registration import derive_tool_arg_meta, live_tool_schema_index  # noqa: PLC0415
+    """Build manifest/help index from the live surface (includes routing tools + classifications)."""
+    from .live_tool_surface import build_tool_index  # noqa: PLC0415
 
-    tool_to_group = {t: g for g, tools in ASSISTANT_TOOL_GROUPS.items() for t in tools}
-    # Enrich each entry with the same purpose/args/limits the catalog derives from the live tool
-    # schemas (captured at registration) so the persisted manifest and pa_tool_manifest_tool_help
-    # carry real metadata instead of empty lists. Best-effort: the schema index is {} before
-    # registration and does not affect the manifest checksum.
-    schema_index = live_tool_schema_index()
-    index: dict[str, dict[str, Any]] = {}
-    for name in current_tool_names(config):
-        entry: dict[str, Any] = {"group": tool_to_group.get(name)}
-        entry.update(derive_tool_arg_meta(name, schema_index))
-        index[name] = entry
-    return index
+    return build_tool_index(config)
 
 
 def _require(args: dict[str, Any], key: str) -> Any:
@@ -386,14 +365,20 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
 
 
 def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown") -> dict[str, Any]:
-    """Idempotently ensure an active persisted client-tool manifest exists (NAS read-only profile only).
+    """Ensure an internal baseline or detect drift — never silent vault auto-promote on drift.
 
-    Server-side self-materialization of the deterministic tool catalog: builds the manifest from the live
-    surface and, iff none is active or the checksum drifted, runs the SAME stage → promote path an operator
-    would — with a server-minted approval id from ``stage_refresh`` (never client-invented). No-op when a
-    matching active manifest already exists, so a no-change restart does nothing. Gated to the read-only NAS
-    profile so it never writes on a dev/ingest host; safe to call at startup.
+    Policy:
+    * No active manifest: persist an **internal baseline snapshot** (DB only) for freshness
+      comparison; vault materialization stays pending operator review unless
+      ``HB_MCP_MANIFEST_FIRST_INSTALL_AUTOPROMOTE=1`` is explicitly enabled.
+    * Active + matching checksum: no-op.
+    * Active + drift: mark stale / review_required; do **not** stage by default; never auto-promote.
+      Optional auto-stage only when ``HB_MCP_MANIFEST_AUTO_STAGE_ON_DRIFT=1`` (idempotent; never promote).
+
+    A server-minted approval id is not operator consent. Gated to NAS read-only profile.
     """
+    import os  # noqa: PLC0415
+
     from hb_assistant.store.connection import db_readonly  # noqa: PLC0415
 
     from .profile import client_tool_manifest_enabled  # noqa: PLC0415
@@ -403,19 +388,73 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
     mrepo = ClientToolManifestRepository(str(config.db_path))
     active = mrepo.get_active()
     version = (active["manifest_version"] + 1) if active else 1
-    built = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now(),
-                           manifest_version=version)
-    if active and active.get("checksum") == built["checksum"]:
-        return {"bootstrapped": False, "reason": "already_active", "checksum": built["checksum"]}
-    fr = mrepo.freshness_check(current_tool_names(config))
-    staged = mrepo.stage_refresh(built, fr)  # server-minted operator_approval_id
-    promoted = _promote_manifest_refresh(
-        config, mrepo,
-        {"refresh_proposal_id": staged["refresh_proposal_id"],
-         "operator_approval_id": staged["operator_approval_id"]},
-        runtime_commit=runtime_commit)
-    return {"bootstrapped": True, "manifest_id": promoted.get("manifest_id"),
-            "checksum": promoted.get("checksum")}
+    built = build_manifest(
+        _build_tool_index(config),
+        runtime_commit=runtime_commit,
+        now=_now(),
+        manifest_version=version,
+    )
+    # Prefer independent semantic checksums when both sides have them; else legacy checksum.
+    active_fp = None
+    live_fp = built.get("checksum")
+    if active:
+        if active.get("semantic_surface_checksum") and built.get("semantic_surface_checksum"):
+            active_fp = active["semantic_surface_checksum"]
+            live_fp = built["semantic_surface_checksum"]
+        else:
+            active_fp = active.get("checksum")
+            live_fp = built.get("checksum")
+
+    if active and active_fp and active_fp == live_fp:
+        return {"bootstrapped": False, "reason": "already_active", "checksum": live_fp}
+
+    first_install_autopromote = os.environ.get("HB_MCP_MANIFEST_FIRST_INSTALL_AUTOPROMOTE", "").strip() == "1"
+    auto_stage = os.environ.get("HB_MCP_MANIFEST_AUTO_STAGE_ON_DRIFT", "").strip() == "1"
+
+    if not active:
+        # Internal baseline: persist active DB snapshot for freshness; vault write only if flag.
+        if first_install_autopromote:
+            fr = mrepo.freshness_check(current_tool_names(config))
+            staged = mrepo.stage_refresh(built, fr)
+            promoted = _promote_manifest_refresh(
+                config, mrepo,
+                {"refresh_proposal_id": staged["refresh_proposal_id"],
+                 "operator_approval_id": staged["operator_approval_id"]},
+                runtime_commit=runtime_commit)
+            return {
+                "bootstrapped": True,
+                "reason": "first_install_autopromote",
+                "manifest_id": promoted.get("manifest_id"),
+                "checksum": promoted.get("checksum"),
+                "vault_materialization": "promoted",
+            }
+        manifest_id = mrepo.save_manifest(built)
+        return {
+            "bootstrapped": True,
+            "reason": "internal_baseline_pending_review",
+            "manifest_id": manifest_id,
+            "vault_materialization": "pending_operator_review",
+            "checksum": live_fp,
+        }
+
+    # Existing active with drift — never auto-promote.
+    mrepo.mark_active_stale(reason="semantic_or_exposure_drift")
+    out: dict[str, Any] = {
+        "bootstrapped": False,
+        "reason": "drift_review_required",
+        "stale": True,
+        "review_required": True,
+        "active_checksum": active_fp,
+        "live_checksum": live_fp,
+        "vault_materialization": "unchanged",
+    }
+    if auto_stage:
+        fr = mrepo.freshness_check(current_tool_names(config))
+        staged = mrepo.stage_refresh(built, fr)
+        out["auto_staged"] = True
+        out["refresh_proposal_id"] = staged.get("refresh_proposal_id")
+        out["promoted"] = False
+    return out
 
 
 def _now() -> str:

@@ -1,0 +1,203 @@
+[
+  {
+    "prompt": "Find my project notes.",
+    "intent": "retrieval",
+    "workflow": "vault_note_search",
+    "family": "assistant_navigation",
+    "tool_group": null,
+    "recommended_tools": [
+      "assistant_search_sources",
+      "assistant_search_cards",
+      "assistant_get_vault_note"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": true,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": true
+    },
+    "prohibitions": [],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Read-only: identify which tool should be used to list configured source roots.\nDo not execute any action.",
+    "intent": "discovery",
+    "workflow": "source_root_map",
+    "family": "assistant_source_connector",
+    "tool_group": "source_connector",
+    "recommended_tools": [
+      "assistant_source_roots_list",
+      "assistant_source_root_map"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": false,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": false
+    },
+    "prohibitions": [
+      "execute",
+      "promote",
+      "stage",
+      "write"
+    ],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Explain which read-only Personal Assistant tool searches indexed NAS files.",
+    "intent": "retrieval",
+    "workflow": "source_file_search",
+    "family": "assistant_source_connector",
+    "tool_group": null,
+    "recommended_tools": [
+      "assistant_source_file_search",
+      "assistant_source_file_metadata"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": true,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": true
+    },
+    "prohibitions": [],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Conduct a read-only repo-truth audit.\nDo not write, stage, promote, refresh, index, deploy, or mutate anything.",
+    "intent": "unknown",
+    "workflow": "context_preflight",
+    "family": "prompt_routing",
+    "tool_group": null,
+    "recommended_tools": [],
+    "availability": true,
+    "authorization": {
+      "read": false,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": false
+    },
+    "prohibitions": [
+      "deploy",
+      "execute",
+      "index",
+      "promote",
+      "stage",
+      "write"
+    ],
+    "confidence": "low",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Search my work files.",
+    "intent": "retrieval",
+    "workflow": "source_file_search",
+    "family": "assistant_source_connector",
+    "tool_group": null,
+    "recommended_tools": [
+      "assistant_source_file_search",
+      "assistant_source_file_metadata"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": true,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": true
+    },
+    "prohibitions": [],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Do not promote anything.",
+    "intent": "unknown",
+    "workflow": "context_preflight",
+    "family": "prompt_routing",
+    "tool_group": null,
+    "recommended_tools": [],
+    "availability": true,
+    "authorization": {
+      "read": false,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": false
+    },
+    "prohibitions": [
+      "promote"
+    ],
+    "confidence": "low",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "Search the vault for meeting notes.",
+    "intent": "retrieval",
+    "workflow": "vault_note_search",
+    "family": "assistant_navigation",
+    "tool_group": null,
+    "recommended_tools": [
+      "assistant_search_sources",
+      "assistant_search_cards",
+      "assistant_get_vault_note"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": true,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": true
+    },
+    "prohibitions": [],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  },
+  {
+    "prompt": "What did we decide about X?",
+    "intent": "retrieval",
+    "workflow": "canonical_decision_retrieval",
+    "family": "assistant_decision_memory",
+    "tool_group": null,
+    "recommended_tools": [
+      "assistant_get_decision"
+    ],
+    "availability": true,
+    "authorization": {
+      "read": true,
+      "advisory": true,
+      "stage": false,
+      "write": false,
+      "promote": false,
+      "prompt_authorizes_execution": true
+    },
+    "prohibitions": [],
+    "confidence": "high",
+    "freshness_state": "unknown",
+    "pass": true
+  }
+]
