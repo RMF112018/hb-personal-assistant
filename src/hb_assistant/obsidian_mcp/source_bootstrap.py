@@ -111,25 +111,38 @@ def _bootstrap_file_layer(
     root: Any,
     repo: SourceIndexRepository,
     config: ObsidianMcpConfig,
+    bstate: Any,
     *,
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
+    unbounded: bool = False,
+    emit: Any = None,
 ) -> dict[str, Any]:
-    """Apply one bounded, resumable pass over a root.
+    """Apply one bounded, resumable, OBSERVED pass over a root via the common run_scan wrapper.
 
-    ``success`` means the pass fully COMPLETED (walk exhausted + delete-reconcile ran) — only then is the
-    file layer bootstrapped. ``found`` (root existed) distinguishes a genuine failure from a ``bounded_out``
-    partial pass, which is progress that needs a resume, not an error.
+    Bounds are resolved inside run_scan from config defaults (never unbounded by omission — only an
+    explicit ``unbounded`` removes them). ``success`` means the pass fully COMPLETED (walk exhausted +
+    delete-reconcile ran) — only then is the file layer bootstrapped. ``bounded_out`` (a per-pass budget
+    stopped early) is PARTIAL progress that needs a resume, not a failure. ``conflict`` means another live
+    run holds the root (surfaced as an error for the interactive bootstrap path).
     """
-    from .source_indexer import scan_source_root
+    from .source_scan_runner import run_scan
 
-    report = scan_source_root(
-        root, repo, config, max_files_per_pass=max_files_per_pass, max_seconds=max_seconds
+    run = run_scan(
+        root, repo, config, bstate, mode="bootstrap",
+        max_files_per_pass=max_files_per_pass, max_seconds=max_seconds,
+        unbounded=unbounded, emit=emit,
     )
-    result = report.as_dict()
-    result["error_codes"] = list(report.error_codes)
-    result["found"] = "root_not_found" not in report.error_codes
-    result["success"] = bool(report.completed)
+    result: dict[str, Any] = run.report.as_dict() if run.report is not None else {
+        "root_key": root.source_root_key
+    }
+    result["error_codes"] = list(run.report.error_codes) if run.report is not None else []
+    result["run_id"] = run.run_id
+    result["run_status"] = run.status
+    result["conflict"] = run.conflict
+    result["found"] = run.report is not None and "root_not_found" not in run.report.error_codes
+    result["success"] = run.status == "completed"
+    result["bounded_out"] = run.status == "partial"
     return result
 
 
@@ -246,6 +259,8 @@ def bootstrap(
     explicit_map: dict[str, str] | None = None,
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
+    unbounded: bool = False,
+    emit: Any = None,
 ) -> dict[str, Any]:
     """Bootstrap one/all roots across both layers; record durable readiness. Idempotent + fail-closed.
 
@@ -293,13 +308,17 @@ def bootstrap(
                 entry["file_index"] = _file_plan_counts(root_obj, obsidian_config)
             else:
                 res = _bootstrap_file_layer(
-                    root_obj, repo, obsidian_config,
+                    root_obj, repo, obsidian_config, bstate,
                     max_files_per_pass=max_files_per_pass, max_seconds=max_seconds,
+                    unbounded=unbounded, emit=emit,
                 )
                 entry["file_index"] = res
                 file_ok = bool(res["success"])  # bootstrapped only on a completed pass
-                # A bounded partial pass is progress, not a failure — only a missing root fails.
-                any_fail = any_fail or not bool(res.get("found", True))
+                # A bounded partial pass is progress, not a failure — a missing root OR a live-run
+                # conflict fails (the interactive bootstrap surfaces the conflict as an error).
+                any_fail = any_fail or (
+                    not bool(res.get("found", True)) and not bool(res.get("bounded_out"))
+                )
 
         # --- structure layer ---
         structure_ok: bool | None = None
@@ -321,10 +340,23 @@ def bootstrap(
             fields: dict[str, Any] = {}
             prior = bstate.get_bootstrap_state(fkey) or {}
             if do_file:
+                # First-class ``partial``: a bounded-out pass is resumable progress, distinct from a
+                # genuine ``failed`` (missing root / systemic error) and from a live-run ``conflict``.
+                # Only a completed pass sets file_index_bootstrapped=1, so watcher run-state (which keys
+                # off that flag, NOT this string) correctly stays not_bootstrapped until the layer is
+                # complete.
+                if file_ok:
+                    file_status = "bootstrapped"
+                elif res.get("conflict"):
+                    file_status = "conflict"
+                elif res.get("bounded_out"):
+                    file_status = "partial"
+                else:
+                    file_status = "failed"
                 fields.update(
                     file_index_bootstrapped=1 if file_ok else 0,
                     file_index_last_bootstrap_at=_now(),
-                    file_index_status="bootstrapped" if file_ok else "failed",
+                    file_index_status=file_status,
                 )
                 if file_ok:
                     fields["file_index_last_success_at"] = _now()
@@ -380,7 +412,7 @@ def reconcile_root(
 
         app_config = load_app_config()
 
-    from .source_indexer import effective_max_files, scan_source_root, walk_source_tree
+    from .source_indexer import effective_max_files, walk_source_tree
 
     repo = SourceIndexRepository(db_path)
     bstate = SourceIndexBootstrapRepository(db_path)
@@ -391,6 +423,7 @@ def reconcile_root(
     bstate.start_reconciliation_run(run_id, file_key, scan_type)
     files_seen = folders_seen = changes = enqueued = errors = 0
     last_error: str | None = None
+    reconcile_status = "completed"
     try:
         if root_obj is None:
             raise ValueError("unconfigured_root")
@@ -399,9 +432,30 @@ def reconcile_root(
             raise ValueError("root_not_found")
 
         if scan_type == "full":
-            report = scan_source_root(root_obj, repo, obsidian_config)
-            files_seen = report.scanned
-            changes = report.indexed + report.deleted
+            # Full reconcile now runs through the common bounded/observed wrapper. Its V118 run row is the
+            # authoritative lifecycle record (it can hold ``partial``); the legacy receipt CHECK has no
+            # 'partial', so a bounded pass is recorded fail-closed ('failed' + resume note) rather than a
+            # coverage-overstating 'completed'.
+            from .source_scan_runner import run_scan
+
+            run = run_scan(root_obj, repo, obsidian_config, bstate, mode="reconcile")
+            if run.conflict:
+                # A live run already holds this root: reconcile is RETRYABLE (deferred to the next
+                # cycle), never discarded and never a hard failure.
+                bstate.finish_reconciliation_run(
+                    run_id, status="failed", last_error="deferred_active_run_conflict"
+                )
+                return {"ok": True, "run_id": run_id, "root_key": file_key, "scan_type": scan_type,
+                        "deferred": True, "reason": "active_run_conflict"}
+            report = run.report
+            files_seen = report.scanned if report is not None else 0
+            changes = (report.indexed + report.deleted) if report is not None else 0
+            if run.status == "partial":
+                reconcile_status = "failed"
+                last_error = "bounded_out_partial_resume_pending"
+            elif run.status == "failed":
+                reconcile_status = "failed"
+                last_error = run.error_code
         else:  # lightweight: stat-compare + enqueue, don't index inline
             max_files = effective_max_files(root_obj, obsidian_config)
             seen_rel: set[str] = set()
@@ -468,18 +522,20 @@ def reconcile_root(
             bstate.set_structure_drift(file_key, detected=drift, refresh_recommended=drift)
         bstate.finish_reconciliation_run(
             run_id,
-            status="completed",
+            status=reconcile_status,
             files_seen=files_seen,
             folders_seen=folders_seen,
             changes_detected=changes,
             events_enqueued=enqueued,
             errors_count=errors,
+            last_error=last_error,
         )
         return {
-            "ok": True,
+            "ok": reconcile_status == "completed",
             "run_id": run_id,
             "root_key": file_key,
             "scan_type": scan_type,
+            "bounded_out": reconcile_status != "completed" and last_error == "bounded_out_partial_resume_pending",
             "files_seen": files_seen,
             "folders_seen": folders_seen,
             "changes_detected": changes,

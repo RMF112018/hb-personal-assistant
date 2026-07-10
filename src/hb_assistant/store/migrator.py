@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 118
+LATEST_SCHEMA_VERSION = 119
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7084,6 +7084,17 @@ class SQLiteMigrator:
 
         return V118_CLIENT_TOOL_MANIFEST_STATEMENTS
 
+    @staticmethod
+    def _v119_statements() -> list[str]:
+        # NAS Source-Index bootstrap RUN records: one additive table giving initial/rebuild/reconcile/poll
+        # scans a durable, heartbeated run trail with a partial-unique "one active run per root" index.
+        # Additive, ships EMPTY; rows written only by the scan orchestration wrapper.
+        from hb_assistant.store.source_index_bootstrap_runs_tables import (
+            V119_SOURCE_INDEX_BOOTSTRAP_RUNS_STATEMENTS,
+        )
+
+        return V119_SOURCE_INDEX_BOOTSTRAP_RUNS_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9060,6 +9071,18 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (118, 'v118_tool_manifest_semantic_payload', ?)",
+                    (now,),
+                )
+
+            # v119 source_index_bootstrap_runs: durable per-run progress/heartbeat/lifecycle records for
+            # initial/rebuild/reconcile/poll scans (the initial bootstrap previously had none). Additive,
+            # ships EMPTY; a partial-unique index enforces one active run per root.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 119")
+            if cur.fetchone() is None:
+                for stmt in self._v119_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (119, 'v119_source_index_bootstrap_runs', ?)",
                     (now,),
                 )
 

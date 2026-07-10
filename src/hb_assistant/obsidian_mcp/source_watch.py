@@ -27,7 +27,6 @@ from .source_indexer import (
     drain_queue,
     is_email_archive_path,
     is_source_notes_path,
-    scan_source_root,
     scan_vault_notes,
     should_ignore,
 )
@@ -262,8 +261,17 @@ class SourceWatcher:
             self._stop.wait(poll_interval if self._mode == "polling" else 2.0)
 
     def _poll_once(self) -> None:
+        from hb_assistant.store.source_index_bootstrap_repository import (
+            SourceIndexBootstrapRepository,
+        )
+
+        from .source_scan_runner import run_scan
+
+        bstate = SourceIndexBootstrapRepository(self._repo.db_path)
         for root in _enabled_roots(self._config):
-            scan_source_root(root, self._repo, self._config)
+            # Periodic catch-up scan: bounded via run_scan, and a live-run conflict simply means another
+            # run owns this root — skip it this cycle and retry next poll (never an error, never lost).
+            run_scan(root, self._repo, self._config, bstate, mode="poll")
             self._last_event_at = _now()
         scan_vault_notes(self._repo, self._config)
 

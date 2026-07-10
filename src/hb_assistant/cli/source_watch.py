@@ -18,8 +18,14 @@ import typer
 app = typer.Typer(help="Bootstrap, reconcile, and gate the NAS source-index watcher (out-of-band).")
 
 
-def _emit(payload: dict[str, Any], *, json_out: bool, exit_code: int = 0) -> None:
-    typer.echo(json.dumps(payload, indent=2, default=str) if json_out else str(payload))
+def _emit(payload: dict[str, Any], *, json_out: bool, exit_code: int = 0, jsonl: bool = False) -> None:
+    # In --jsonl mode the FINAL record is one-line JSON on stdout (so a consumer can read a clean stream
+    # of one-line records); otherwise the final object is pretty-printed JSON (or repr with --no-json).
+    if jsonl:
+        text = json.dumps(payload, default=str)
+    else:
+        text = json.dumps(payload, indent=2, default=str) if json_out else str(payload)
+    typer.echo(text)
     raise typer.Exit(exit_code)
 
 
@@ -74,29 +80,54 @@ def bootstrap_cmd(
         None, "--structure-root-map-json", help='JSON {"file_root_key": "structure_root_key"} map.'),
     max_files_per_pass: Optional[int] = typer.Option(
         None, "--max-files-per-pass",
-        help="Bound the file-layer pass to N newly-indexed files; re-run to resume a large root."),
+        help="Bound the file-layer pass to N NEWLY-INDEXED files (not files walked); re-run to resume a "
+             "large root. Omit to use the conservative safe default."),
     max_seconds: Optional[float] = typer.Option(
-        None, "--max-seconds", help="Bound the file-layer pass to N seconds; re-run to resume."),
+        None, "--max-seconds", help="Bound the file-layer pass to N seconds; re-run to resume. Omit for "
+                                    "the safe default."),
+    unbounded: bool = typer.Option(
+        False, "--unbounded",
+        help="UNSAFE: remove BOTH per-pass bounds (no file/time cap). Only for controlled diagnostics on "
+             "a small root — never the initial bootstrap of a very large root."),
+    jsonl: bool = typer.Option(
+        False, "--jsonl",
+        help="Stream one-line JSONL progress records on stdout (final record included). Without it, "
+             "progress goes to stderr and only the final summary is written to stdout."),
     db: Optional[str] = typer.Option(None, "--db"),
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Build file/content + structure indexes for one/all roots; record durable readiness. Idempotent.
 
-    For a very large root, bound each pass with --max-files-per-pass / --max-seconds and re-run until
-    the root reports completed (bounded_out=false); unchanged files are mtime+size fast-skipped on resume.
+    Bounded by default: omitting --max-files-per-pass / --max-seconds applies conservative safe defaults
+    (never an unbounded content walk by omission). For a very large root, re-run until it reports
+    completed (bounded_out=false); unchanged files are mtime+size fast-skipped on resume.
     """
     from hb_assistant.obsidian_mcp import source_bootstrap as sb
 
     if not all_roots and not root_key:
         _emit({"ok": False, "error": "specify --root-key or --all-roots"},
-              json_out=json_out, exit_code=2)
+              json_out=json_out, exit_code=2, jsonl=jsonl)
     if file_index_only and structure_only:
         _emit({"ok": False, "error": "--file-index-only and --structure-only are mutually exclusive"},
-              json_out=json_out, exit_code=2)
+              json_out=json_out, exit_code=2, jsonl=jsonl)
+    if unbounded and (max_files_per_pass is not None or max_seconds is not None):
+        _emit({"ok": False,
+               "error": "--unbounded cannot be combined with --max-files-per-pass or --max-seconds"},
+              json_out=json_out, exit_code=2, jsonl=jsonl)
+    for _name, _val in (("--max-files-per-pass", max_files_per_pass), ("--max-seconds", max_seconds)):
+        if _val is not None and _val <= 0:
+            _emit({"ok": False, "error": f"{_name} must be a positive value"},
+                  json_out=json_out, exit_code=2, jsonl=jsonl)
     try:
         explicit_map = _parse_map_json(structure_root_map_json)
     except (ValueError, json.JSONDecodeError) as exc:
-        _emit({"ok": False, "error": str(exc)}, json_out=json_out, exit_code=2)
+        _emit({"ok": False, "error": str(exc)}, json_out=json_out, exit_code=2, jsonl=jsonl)
+
+    def _emit_progress(payload: dict[str, Any]) -> None:
+        # Progress is ALWAYS one-line JSON; --jsonl puts it on stdout, otherwise on stderr so the final
+        # stdout object stays a single clean JSON document.
+        typer.echo(json.dumps(payload, default=str), err=not jsonl)
+
     result = sb.bootstrap(
         db_path=_db_path(db),
         obsidian_config=_obsidian_config(),
@@ -110,8 +141,10 @@ def bootstrap_cmd(
         explicit_map=explicit_map,
         max_files_per_pass=max_files_per_pass,
         max_seconds=max_seconds,
+        unbounded=unbounded,
+        emit=None if dry_run else _emit_progress,
     )
-    _emit(result, json_out=json_out, exit_code=0 if result.get("ok") else 1)
+    _emit(result, json_out=json_out, exit_code=0 if result.get("ok") else 1, jsonl=jsonl)
 
 
 @app.command("run")
