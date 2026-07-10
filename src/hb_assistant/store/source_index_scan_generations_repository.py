@@ -403,15 +403,19 @@ class SourceIndexScanGenerationsRepository:
         run_id: str,
         *,
         cursor_json: str | None = None,
+        last_error_code: str | None = None,
         conn: sqlite3.Connection | None = None,
         **counters: int,
     ) -> None:
-        """A per-pass bound stopped the walk: status→``partial``, lease released, cursor preserved."""
+        """A per-pass bound (or a suspend on an unresolved file / unreadable directory) stopped the walk:
+        status→``partial``, lease released, cursor preserved. ``last_error_code`` records the suspend
+        reason (e.g. ``directory_read_error`` / ``metadata_walk_error``) without failing the generation."""
         self._terminate(
             generation_id,
             run_id,
             status="partial",
             cursor_json=cursor_json,
+            last_error_code=last_error_code,
             conn=conn,
             counters=counters,
         )

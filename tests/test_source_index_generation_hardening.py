@@ -430,3 +430,224 @@ def test_search_result_fields_path_only_then_content(tmp_path):
     assert body, body
     assert "content" in body[0]["match_basis"]
     assert body[0]["indexed_text_available"] is True
+
+
+# ===== F-01 (2nd round): an INDETERMINATE directory read suspends the scan, never mass-deletes ======
+def test_scandir_read_error_classification():
+    """_scandir_sorted distinguishes a confirmed-gone directory (ENOENT/ENOTDIR → empty) from an
+    indeterminate read error (permission/IO → DirectoryReadError, fail closed)."""
+    import tempfile as _tf
+
+    tmp = Path(_tf.mkdtemp(prefix="scandir_"))
+    missing = tmp / "nope"
+    cfg = _cfg(tmp)
+    # Confirmed-gone directory → treated as empty (no raise).
+    assert si._scandir_sorted(missing, tmp, cfg, 20000) == []
+    # A file path used as a directory (ENOTDIR) → empty, not an error.
+    afile = tmp / "f.txt"
+    afile.write_text("x")
+    assert si._scandir_sorted(afile, tmp, cfg, 20000) == []
+
+
+def test_directory_read_error_suspends_without_deletion(tmp_path, monkeypatch):
+    """A permission/transient-IO failure enumerating a subtree during the walk suspends the generation
+    (partial, directory_read_error) with NO reconciliation — an unreadable subtree can never be published
+    as a complete scan that then deletes its indexed files (F-01)."""
+    root_dir = tmp_path / "root"
+    (root_dir / "sub").mkdir(parents=True)
+    (root_dir / "top.txt").write_text("x")
+    (root_dir / "sub" / "deep.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    (root_dir / "sub" / "deep.txt").unlink()  # would be a stale candidate if the walk "completed"
+
+    orig = si._scandir_sorted
+
+    def _fake_scandir(abs_dir, root_path, config, fanout):
+        if abs_dir.name == "sub":
+            raise si.DirectoryReadError("sub")
+        return orig(abs_dir, root_path, config, fanout)
+
+    monkeypatch.setattr(si, "_scandir_sorted", _fake_scandir)
+    rep = si.scan_source_root(r, repo, _cfg(root_dir))
+    assert rep.generation_status == "partial"
+    assert rep.error_code == "directory_read_error"
+    d = (
+        sqlite3.connect(db)
+        .execute("SELECT deleted FROM source_intelligence_sources WHERE rel_path='sub/deep.txt'")
+        .fetchone()[0]
+    )
+    assert d == 0, "an unreadable subtree must not drive a deletion"
+
+
+def test_empty_root_guard_blocks_mass_delete(tmp_path):
+    """A root that suddenly reads as empty while the index still holds MORE THAN the threshold of active
+    rows (lost mount / empty mountpoint) fails closed instead of mass-deleting; a small emptying still
+    reconciles (F-01 blast-radius sentinel)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_empty_root_delete_threshold=2)
+    _run_to_completion(r, repo, cfg)
+    for i in range(3):
+        (root_dir / f"f{i}.txt").unlink()  # root now reads empty; 3 active rows > threshold 2
+    rep = si.scan_source_root(r, repo, cfg)
+    assert rep.generation_status == "failed"
+    assert rep.error_code == "empty_root_guard"
+    n_active = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT COUNT(*) FROM source_intelligence_sources "
+            "WHERE source_root_key='work' AND deleted=0"
+        )
+        .fetchone()[0]
+    )
+    assert n_active == 3, "the empty-root guard must not delete any row"
+
+
+# ===== F-03 (2nd round): a per-file error holds the cursor and is retried, never skipped =============
+def test_per_file_error_holds_cursor_then_retries(tmp_path, monkeypatch):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(4):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    orig = si._index_source_metadata
+    state = {"failed": False}
+
+    def _flaky(abs_path, *a, **k):
+        if abs_path.name == "f2.txt" and not state["failed"]:
+            state["failed"] = True
+            raise RuntimeError("transient upsert error")
+        return orig(abs_path, *a, **k)
+
+    monkeypatch.setattr(si, "_index_source_metadata", _flaky)
+    rep = si.scan_source_root(r, repo, _cfg(root_dir))
+    # The pass suspended (partial) at the unresolved file — NOT completed with a hole.
+    assert rep.generation_status == "partial"
+    assert rep.error_code == "metadata_walk_error"
+    # f2 was NOT indexed (cursor held before it); it is not silently skipped.
+    conn = sqlite3.connect(db)
+    f2_rows = conn.execute(
+        "SELECT COUNT(*) FROM source_intelligence_sources WHERE rel_path='f2.txt' AND deleted=0"
+    ).fetchone()[0]
+    conn.close()
+    assert f2_rows == 0
+
+    # The next pass (error cleared) resumes from the held cursor and indexes f2 → completes with all 4.
+    monkeypatch.undo()
+    rep2 = _run_to_completion(r, repo, _cfg(root_dir))
+    assert rep2.generation_status == "completed"
+    n = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT COUNT(*) FROM source_intelligence_sources "
+            "WHERE source_root_key='work' AND deleted=0"
+        )
+        .fetchone()[0]
+    )
+    assert n == 4
+    assert any("f2.txt" in h["path"] for h in repo.search_sources("f2"))
+
+
+# ===== F-11: a genuine V119→V120 upgrade repairs legacy rows on the first generation ================
+def test_v119_to_v120_first_generation_repairs_legacy_rows(tmp_path):
+    """Representative legacy rows (NULL disposition; a metadata-only file with NO path-FTS row; a content
+    file with extracted text) — exactly what the V120 ADD COLUMN yields for pre-existing V119 rows — are
+    repaired on the first V120 generation: the metadata-only file becomes path-searchable and the content
+    file keeps its extracted content."""
+    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
+
+    root_dir = tmp_path / "root"
+    (root_dir / "a").mkdir(parents=True)
+    pdf = root_dir / "a" / "Legacy.pdf"
+    pdf.write_bytes(b"%PDF-1.4 x")
+    txt = root_dir / "a" / "Report.txt"
+    txt.write_text("the concrete pour schedule")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    si.index_source_file(txt, r, repo, _cfg(root_dir))  # give the txt real extracted content
+
+    # Degrade both rows to legacy V119 shape: NULL disposition everywhere, and DROP the pdf's path-FTS row
+    # (PR-1 metadata-only rows had none). The txt keeps its content + FTS row.
+    pdf_sid = source_id_for("external_file", source_root_key="work", rel_path="a/Legacy.pdf")
+    conn = sqlite3.connect(db)
+    conn.execute("UPDATE source_intelligence_metadata SET extraction_disposition=NULL")
+    conn.execute(
+        "DELETE FROM source_intelligence_fts WHERE rowid=("
+        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?)",
+        (pdf_sid,),
+    )
+    conn.execute(
+        "UPDATE source_intelligence_metadata SET fts_rowid=NULL WHERE source_id=?", (pdf_sid,)
+    )
+    conn.commit()
+    conn.close()
+    assert repo.search_sources("Legacy") == []  # pdf not path-searchable pre-upgrade
+
+    # First V120 generation after the "upgrade": repairs the pdf's path FTS, preserves the txt's content.
+    _run_to_completion(r, repo, _cfg(root_dir))
+    assert any("Legacy.pdf" in h["path"] for h in repo.search_sources("Legacy"))
+    assert any(
+        "Report.txt" in h["path"] for h in repo.search_sources("concrete")
+    )  # content preserved
+    conn = sqlite3.connect(db)
+    disp = conn.execute(
+        "SELECT extraction_disposition FROM source_intelligence_metadata WHERE source_id=?",
+        (pdf_sid,),
+    ).fetchone()[0]
+    conn.close()
+    assert disp == "metadata_only"  # disposition backfilled during the repair
+
+
+# ===== F-06: a file inserted behind the cursor is never LOST — the next generation catches it ========
+def test_file_inserted_behind_cursor_no_loss_next_generation_catches(tmp_path):
+    """A file created BEHIND the traversal cursor between bounded passes may be missed by the in-flight
+    generation (a documented point-in-time-snapshot property), but it is NEVER permanently lost and NEVER
+    causes a false deletion: the next generation (fresh from root) indexes it. This bounds F-06 to eventual
+    consistency — full mutation-safe cursoring is a follow-up."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for n in ("m1.txt", "m2.txt", "m3.txt"):
+        (root_dir / n).write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_scan_observed_files_per_pass=1)
+
+    rep1 = si.scan_source_root(r, repo, cfg)  # observes m1, cursor parks after m1
+    assert rep1.generation_status == "partial"
+    (root_dir / "a0.txt").write_text("x")  # sorts BEFORE the cursor → may be missed this generation
+
+    _run_to_completion(r, repo, cfg)  # finish the in-flight generation
+    # No false deletion: the m-files (which exist) are never deleted.
+    n_deleted = (
+        sqlite3.connect(db)
+        .execute("SELECT COUNT(*) FROM source_intelligence_sources WHERE deleted=1")
+        .fetchone()[0]
+    )
+    assert n_deleted == 0
+
+    # The NEXT generation walks fresh from root and indexes the behind-cursor file (eventual catch-up).
+    _run_to_completion(r, repo, cfg)
+    assert any("a0.txt" in h["path"] for h in repo.search_sources("a0"))
+    n_active = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT COUNT(*) FROM source_intelligence_sources "
+            "WHERE source_root_key='work' AND deleted=0"
+        )
+        .fetchone()[0]
+    )
+    assert n_active == 4  # a0 + m1 + m2 + m3, none lost

@@ -206,10 +206,17 @@ class ObsidianMcpConfig(BaseModel):
     # (directory_fanout_limit) rather than requiring an unbounded in-memory sort — and FAILS the
     # generation (no reconciliation) rather than looping as a partial.
     source_index_directory_fanout_limit: int = 20000
+    # Empty-root / lost-mount blast-radius guard (V120 F-01): if a generation observes ZERO files yet the
+    # index still holds MORE THAN this many active rows for the root, the root most likely vanished (share
+    # unmounted / empty mountpoint) — reconciliation would mass-delete valid records, so it fails closed
+    # (empty_root_guard) and an operator must confirm. A genuine emptying at or below this count still
+    # reconciles normally (bounded, low blast radius). Permission/I/O read errors are handled separately
+    # (directory_read_error → suspend), independent of this count.
+    source_index_empty_root_delete_threshold: int = 50
     # Bumped whenever the walker/cursor traversal order or frame format changes; folded into the
     # generation policy_fingerprint so an incompatible cursor abandons + restarts.
     source_index_traversal_version: int = 1
-    schema_version: int = 8
+    schema_version: int = 9
 
     model_config = {"extra": "forbid"}
 

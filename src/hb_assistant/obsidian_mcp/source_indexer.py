@@ -149,6 +149,23 @@ class DirectoryFanoutError(Exception):
         super().__init__(f"directory_fanout_limit:depth={len([s for s in rel_dir.split('/') if s])}")
 
 
+class DirectoryReadError(Exception):
+    """A directory could not be enumerated for an INDETERMINATE reason (permission / transient I/O /
+    stale NAS handle / mount interruption) — NOT a confirmed removal (V120 §7, F-01).
+
+    A confirmed-gone directory (``ENOENT``/``ENOTDIR``) is treated as empty (its files reconcile as
+    deleted only when the whole walk completes and each file's own restat confirms absence). An
+    indeterminate error MUST fail closed: the walk cannot claim that subtree is empty, so the generation
+    is SUSPENDED (partial, resumable) with no reconciliation — an unreadable subtree can never be
+    published as a complete scan that then mass-deletes its indexed files. Carries only the redaction-safe
+    rel_dir depth, never an absolute host path.
+    """
+
+    def __init__(self, rel_dir: str) -> None:
+        self.rel_dir = rel_dir
+        super().__init__(f"directory_read_error:depth={len([s for s in rel_dir.split('/') if s])}")
+
+
 # V120 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
 # resuming a cursor. NFC alone can map two distinct filesystem names to one key, so the tie-breaker is the
 # original name — two distinct entries never compare equal. Locked by test.
@@ -179,8 +196,19 @@ def _scandir_sorted(
                     except ValueError:
                         rel_dir = ""
                     raise DirectoryFanoutError(rel_dir, len(raw))
-    except OSError:
+    except (FileNotFoundError, NotADirectoryError):
+        # Confirmed gone (ENOENT/ENOTDIR): the directory legitimately no longer exists. Treat as empty —
+        # its indexed files are deleted only if the FULL walk completes and each file's own restat
+        # confirms absence (never from this empty listing alone).
         return []
+    except OSError as exc:
+        # INDETERMINATE (permission / transient I/O / stale handle / mount interruption): we must NOT
+        # claim this subtree is empty. Fail closed so the generation is suspended, not falsely completed.
+        try:
+            rel_dir = str(abs_dir.relative_to(root_path))
+        except ValueError:
+            rel_dir = ""
+        raise DirectoryReadError(rel_dir) from exc
     out: list[tuple[tuple[str, str], str, Path, str, bool, bool]] = []
     for entry in raw:
         abs_path = Path(entry.path)
@@ -1028,13 +1056,20 @@ def scan_source_root(
     if not walk_complete:
         batch: list[tuple[Path, str, dict[str, Any]]] = []
         last_cursor = cursor
+        # Set when an unresolved per-file stat/upsert error is hit: the pass stops at that file (the cursor
+        # is NOT advanced past it) and the generation is suspended (partial) rather than completed with a
+        # hole (F-03) — the file is retried next pass.
+        pass_error = False
 
         def _flush() -> None:
             """Commit ONE batch ATOMICALLY: all metadata upserts + unchanged last-seen stamps + counters +
             the cursor checkpoint in a SINGLE transaction. A crash rolls the whole batch back (re-processed
-            next pass, never skipped); the cursor never advances past uncommitted metadata. If the cursor
-            advance affects 0 rows this run LOST the lease → raise _LeaseLost and abort."""
-            nonlocal files_observed, metadata_upserted, files_unchanged, errors_count, last_cursor
+            next pass, never skipped). The cursor advances ONLY through a contiguous run of successfully
+            persisted/fast-skipped observations — the first unresolved file stops the batch (``pass_error``)
+            so completion can never skip it. If the cursor advance affects 0 rows this run LOST the lease →
+            raise _LeaseLost and abort."""
+            nonlocal files_observed, metadata_upserted, files_unchanged, errors_count
+            nonlocal last_cursor, pass_error
             if not batch:
                 return
             rels = [rel for _a, rel, _c in batch]
@@ -1042,13 +1077,17 @@ def scan_source_root(
                 state = repo.load_metadata_state_batch(root.source_root_key, rels, conn=c)
                 unchanged: list[str] = []
                 for abs_p, rel, cur in batch:
-                    last_cursor = cur
                     try:
                         st = abs_p.stat()
                     except OSError:
+                        # Unresolved stat error (disappeared mid-walk / transient I/O): STOP. Do NOT
+                        # advance the cursor past it — it is retried next pass, and the generation cannot
+                        # be marked complete while it is unresolved.
                         errors_count += 1
                         report.errors += 1
-                        continue
+                        report.error_codes.append("stat_error")
+                        pass_error = True
+                        break
                     ext = abs_p.suffix.lower().lstrip(".")
                     recomputed = extraction_disposition(ext, st.st_size, config)
                     prev = state.get(rel)
@@ -1066,6 +1105,7 @@ def scan_source_root(
                         files_unchanged += 1
                         report.files_unchanged += 1
                         report.skipped += 1
+                        last_cursor = cur  # a fast-skip is a resolved observation
                         continue
                     # preserve = physically unchanged (stat+disposition match) but needs a metadata/FTS
                     # REPAIR → keep valid extracted content; else a genuine change/transition clears content.
@@ -1075,11 +1115,12 @@ def scan_source_root(
                             abs_p, root, repo, config, generation_id=gid,
                             preserve_content=preserve, conn=c, in_transaction=True,
                         )
-                    except Exception as exc:  # a bad file never aborts the scan; the row is preserved
+                    except Exception as exc:  # an unresolved upsert error: STOP (cursor held) → retried
                         errors_count += 1
                         report.errors += 1
                         report.error_codes.append(type(exc).__name__)
-                        continue
+                        pass_error = True
+                        break
                     if outcome.source_id is not None:
                         metadata_upserted += 1
                         report.metadata_upserted += 1
@@ -1089,6 +1130,7 @@ def scan_source_root(
                         # Only a MATERIAL change re-stales generated notes; a preserve repair must not.
                         if prev is not None and not preserve:
                             repo._mark_generated_notes_stale(c, outcome.source_id)
+                    last_cursor = cur  # advance ONLY after a fully successful observation
                 repo.stamp_last_seen(
                     root.source_root_key, unchanged, gid, conn=c, in_transaction=True
                 )
@@ -1117,20 +1159,26 @@ def scan_source_root(
                     if now_m - last_progress >= heartbeat_s:
                         last_progress = now_m
                         _emit_progress(rel_path)
+                if pass_error:
+                    break  # an unresolved file stopped this batch → suspend below (F-03)
                 # Per-pass OBSERVED bound (this pass's walk, counting fast-skips too) → partial.
                 if observed_limit is not None and pass_observed >= observed_limit:
                     _flush()
-                    report.bounded_out = True
-                    report.bounded_reason = "observed_files_per_pass"
+                    if not pass_error:
+                        report.bounded_out = True
+                        report.bounded_reason = "observed_files_per_pass"
                     break
                 if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
                     _flush()
-                    report.bounded_out = True
-                    report.bounded_reason = "max_seconds"
+                    if not pass_error:
+                        report.bounded_out = True
+                        report.bounded_reason = "max_seconds"
                     break
                 # Per-generation hard ceiling (cumulative) → no forward progress: FAIL (no reconciliation).
                 if gen_ceiling is not None and files_observed >= int(gen_ceiling):
                     _flush()
+                    if pass_error:
+                        break
                     report.error_code = "generation_ceiling"
                     genrepo.fail_generation(
                         gid, run_id, last_error_code="generation_ceiling",
@@ -1153,6 +1201,26 @@ def scan_source_root(
             report.generation_status = "failed"
             _finish_v119("failed")
             return report
+        except DirectoryReadError:
+            # A directory could not be enumerated for an INDETERMINATE reason (permission / transient I/O /
+            # stale NAS handle / mount interruption). We must not claim that subtree is empty, so commit the
+            # progress made so far and SUSPEND the generation (partial, resumable, NO reconciliation) — an
+            # unreadable subtree can never be published as a complete scan that then mass-deletes files (F-01).
+            with suppress(Exception):
+                _flush()
+            genrepo.mark_partial(
+                gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                last_error_code="directory_read_error",
+                files_observed=files_observed, metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged, errors_count=errors_count,
+            )
+            report.error_code = "directory_read_error"
+            report.error_codes.append("directory_read_error")
+            report.bounded_out = True
+            report.bounded_reason = "directory_read_error"
+            report.generation_status = "partial"
+            _finish_v119("partial")
+            return report
         except _LeaseLost:
             # A stale-lease takeover claimed this generation mid-batch. Do NOT touch the generation (its
             # new owner is authoritative); just close this pass as a retryable conflict.
@@ -1161,6 +1229,22 @@ def scan_source_root(
             report.error_code = "lease_lost"
             report.error_codes.append("lease_lost")
             _finish_v119("interrupted")
+            return report
+
+        if pass_error:
+            # An unresolved per-file stat/upsert error held the cursor: SUSPEND (partial) so the file is
+            # retried; the generation is never marked complete with an unresolved observation (F-03).
+            genrepo.mark_partial(
+                gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                last_error_code="metadata_walk_error",
+                files_observed=files_observed, metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged, errors_count=errors_count,
+            )
+            report.error_code = report.error_code or "metadata_walk_error"
+            report.bounded_out = True
+            report.generation_status = "partial"
+            _emit_progress("")
+            _finish_v119("partial")
             return report
 
         if report.bounded_out:
@@ -1179,6 +1263,25 @@ def scan_source_root(
             gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
             files_unchanged=files_unchanged, errors_count=errors_count,
         )
+
+    # Empty-root / lost-mount blast-radius sentinel (F-01): if this generation observed ZERO files yet the
+    # index still holds MORE THAN the configured threshold of active rows, the root most likely vanished
+    # (share unmounted / empty mountpoint that reads as an accessible-but-empty directory) — reconciling
+    # would MASS-delete valid records. Fail closed (no reconciliation) and require operator confirmation. A
+    # genuine emptying at/under the threshold still reconciles (bounded, low blast radius). Permission/I/O
+    # read errors are handled independently upstream (directory_read_error → suspend).
+    empty_guard = int(getattr(config, "source_index_empty_root_delete_threshold", 50))
+    if files_observed == 0 and repo.count_source_files(root.source_root_key) > empty_guard:
+        genrepo.fail_generation(
+            gid, run_id, last_error_code="empty_root_guard",
+            files_observed=files_observed, metadata_upserted=metadata_upserted,
+            files_unchanged=files_unchanged, errors_count=errors_count,
+        )
+        report.error_code = "empty_root_guard"
+        report.error_codes.append("empty_root_guard")
+        report.generation_status = "failed"
+        _finish_v119("failed")
+        return report
 
     # ---- Phase 2: generation-based deletion reconciliation (source_id keyset, 3-outcome probe) ----
     # Each batch: probe every candidate (present survivor / confirmed-absent / indeterminate), then apply the
