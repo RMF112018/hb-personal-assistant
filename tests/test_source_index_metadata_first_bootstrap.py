@@ -88,6 +88,10 @@ def _scan(root_dir: Path, cfg, db):
 
 
 def test_metadata_only_files_never_hashed_or_parsed(tmp_path, monkeypatch):
+    # PR 2 acceptance #2: a ROOT SCAN reads NO content for ANY file — no SHA-256, no parser — even for a
+    # content-eligible .txt. Both the hasher and every parser are patched to RAISE; the scan must still
+    # complete. Content-eligible files record disposition 'content' + status 'pending' (extraction
+    # deferred to the targeted path / PR 3 queue); the rest are metadata_only/unsupported.
     root_dir = tmp_path / "root"
     root_dir.mkdir()
     (root_dir / "a.txt").write_text("real content")
@@ -96,7 +100,6 @@ def test_metadata_only_files_never_hashed_or_parsed(tmp_path, monkeypatch):
     (root_dir / "d.eml").write_bytes(b"not a real mime")
     db = _db(tmp_path)
 
-    # If the safe policy is correct, NONE of these run for the metadata-only files.
     monkeypatch.setattr(
         si, "_sha256_file", lambda p: (_ for _ in ()).throw(AssertionError(f"hashed {p}"))
     )
@@ -107,37 +110,33 @@ def test_metadata_only_files_never_hashed_or_parsed(tmp_path, monkeypatch):
         "parse",
         lambda self, *a, **k: (_ for _ in ()).throw(AssertionError("xlsx parsed")),
     )
-
-    # _sha256_file is patched to raise, so text extraction (which DOES hash) would trip it — patch it
-    # back only for the content path by allowing hashing but asserting parsers not hit. Simpler: assert
-    # the xlsx/pdf/eml rows are metadata-only, and the txt row is content.
-    monkeypatch.setattr(
-        si, "_sha256_file", lambda p: "deadbeef"
-    )  # allow content hashing, cheap stub
-    report, repo = _scan(root_dir, _cfg(root_dir), db)
+    report, repo = _scan(root_dir, _cfg(root_dir), db)  # must NOT raise
 
     import sqlite3
 
     conn = sqlite3.connect(db)
     rows = {
-        r[0]: (r[1], r[2])
+        r[0]: (r[1], r[2], r[3])
         for r in conn.execute(
-            "SELECT s.rel_path, m.extraction_status, m.content_sha256 "
+            "SELECT s.rel_path, m.extraction_status, m.content_sha256, m.extraction_disposition "
             "FROM source_intelligence_sources s JOIN source_intelligence_metadata m USING(source_id)"
         ).fetchall()
     }
+    txt = conn.execute("SELECT COUNT(*) FROM source_intelligence_text").fetchone()[0]
     conn.close()
-    assert rows["b.xlsx"] == ("pending", None)  # metadata-only: not parsed, not hashed
-    assert rows["c.pdf"] == ("pending", None)
-    assert rows["d.eml"] == ("pending", None)
-    assert rows["a.txt"][0] == "ok"  # content extracted
-    assert report.metadata_only == 3 and report.content_succeeded == 1
+    assert rows["a.txt"] == ("pending", None, "content")  # eligible, NOT extracted during a root scan
+    assert rows["b.xlsx"] == ("pending", None, "metadata_only")
+    assert rows["c.pdf"] == ("pending", None, "metadata_only")
+    assert rows["d.eml"] == ("pending", None, "metadata_only")
+    assert txt == 0  # no body read/stored by a root scan
+    assert report.metadata_only == 3
 
 
-def test_flag_on_parses_xlsx(tmp_path):
+def test_flag_on_root_scan_metadata_only_but_targeted_extracts(tmp_path):
+    # PR 2 acceptance #2: the parser opt-in flag cannot make a ROOT SCAN parse — only the TARGETED
+    # single-file path extracts content.
     root_dir = tmp_path / "root"
     root_dir.mkdir()
-    # Build a real minimal xlsx via openpyxl so the parser succeeds.
     openpyxl = pytest.importorskip("openpyxl")
     wb = openpyxl.Workbook()
     wb.active["A1"] = "hello-sheet-value"
@@ -145,15 +144,23 @@ def test_flag_on_parses_xlsx(tmp_path):
     db = _db(tmp_path)
     cfg = _cfg(root_dir, source_index_enable_synchronous_parser_extraction=True)
     report, repo = _scan(root_dir, cfg, db)
-    assert report.content_succeeded == 1
     import sqlite3
 
     conn = sqlite3.connect(db)
-    status = conn.execute("SELECT extraction_status FROM source_intelligence_metadata").fetchone()[
-        0
-    ]
+    status = conn.execute("SELECT extraction_status FROM source_intelligence_metadata").fetchone()[0]
     conn.close()
-    assert status == "ok"
+    assert status == "pending"  # root scan stayed metadata-only despite the flag
+    assert report.content_succeeded == 0
+
+    # Targeted single-file indexing DOES parse (flag on) and makes the sheet value body-searchable.
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    sid = si.index_source_file(root_dir / "s.xlsx", r, repo, cfg)
+    assert sid is not None
+    conn = sqlite3.connect(db)
+    status2 = conn.execute("SELECT extraction_status FROM source_intelligence_metadata").fetchone()[0]
+    conn.close()
+    assert status2 == "ok"
+    assert any("s.xlsx" in h["path"] for h in repo.search_sources("hello-sheet-value"))
 
 
 # ----- content-state invalidation on transition -----------------------------------------------
@@ -165,7 +172,8 @@ def test_content_to_metadata_only_clears_text_and_fts(tmp_path):
     db = _db(tmp_path)
     r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
     repo = SourceIndexRepository(db)
-    si.scan_source_root(r, repo, _cfg(root_dir))
+    # Establish CONTENT via the targeted path (a root scan is metadata-only and would not extract text).
+    si.index_source_file(f, r, repo, _cfg(root_dir))
 
     import sqlite3
 
@@ -174,8 +182,8 @@ def test_content_to_metadata_only_clears_text_and_fts(tmp_path):
     assert conn.execute("SELECT COUNT(*) FROM source_intelligence_text").fetchone()[0] == 1
     conn.close()
 
-    # Rename to a metadata-only extension by rewriting the same rel_path as .xlsx: instead, change the
-    # file so its disposition becomes metadata_only — replace with an oversize gate via max_file_mb=0.
+    # Now a metadata-first scan with the file gated to too_large re-indexes it metadata-only, which must
+    # clear the stale content (text + chunks) while retaining a searchable PATH FTS row.
     cfg2 = _cfg(root_dir, max_file_mb=0)  # now doc.txt is too_large -> metadata-only write
     f.write_text(
         "searchable body CHANGED"
@@ -183,15 +191,23 @@ def test_content_to_metadata_only_clears_text_and_fts(tmp_path):
     si.scan_source_root(r, repo, cfg2)
 
     conn = sqlite3.connect(db)
+    # PR 2 path-FTS invariant: a metadata-only/too-large file KEEPS a path-searchable FTS row (so it is
+    # still findable by filename/project), but its CONTENT (text excerpt + chunks) is invalidated and the
+    # FTS row now carries an EMPTY text_excerpt (never overstates content coverage).
     fts = conn.execute("SELECT COUNT(*) FROM source_intelligence_fts").fetchone()[0]
+    fts_excerpt = conn.execute("SELECT text_excerpt FROM source_intelligence_fts").fetchone()[0]
+    fts_relpath = conn.execute("SELECT rel_path FROM source_intelligence_fts").fetchone()[0]
     txt = conn.execute("SELECT COUNT(*) FROM source_intelligence_text").fetchone()[0]
     chunks = conn.execute("SELECT COUNT(*) FROM source_intelligence_chunks").fetchone()[0]
     status = conn.execute("SELECT extraction_status FROM source_intelligence_metadata").fetchone()[
         0
     ]
+    disp = conn.execute("SELECT extraction_disposition FROM source_intelligence_metadata").fetchone()[0]
     conn.close()
     assert status == "skipped_too_large"
-    assert fts == 0 and txt == 0 and chunks == 0  # stale searchable state invalidated
+    assert disp == "too_large"
+    assert txt == 0 and chunks == 0  # stale CONTENT invalidated
+    assert fts == 1 and (fts_excerpt or "") == "" and fts_relpath == "doc.txt"  # path row retained
 
 
 # ----- bounded defaults + run lifecycle via run_scan ------------------------------------------
@@ -226,34 +242,52 @@ def test_unbounded_removes_cap(tmp_path):
 
 
 def test_run_lifecycle_completed_and_partial_rows(tmp_path):
+    # PR 2: resume is GENERATION-based. A bounded first pass leaves a partial generation + a partial V119
+    # pass; the next pass resumes the SAME generation to completion. Both V119 passes link to it.
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
+
     root_dir = _big_root(tmp_path, 4)
     db = _db(tmp_path)
     repo = SourceIndexRepository(db)
     bstate = SourceIndexBootstrapRepository(db)
     r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
-    runner.run_scan(r, repo, _cfg(root_dir, source_index_bootstrap_max_files_per_pass=2), bstate)
-    runner.run_scan(r, repo, _cfg(root_dir), bstate)  # completes
+    r1 = runner.run_scan(
+        r, repo, _cfg(root_dir, source_index_bootstrap_max_files_per_pass=2), bstate
+    )
+    r2 = runner.run_scan(r, repo, _cfg(root_dir), bstate)  # completes
+    assert r1.status == "partial" and r2.status == "completed"
+
+    gens = SourceIndexScanGenerationsRepository(db).list_generations("work")
+    assert len(gens) == 1  # one generation spanned both passes
+    gid = gens[0]["generation_id"]
+    assert gens[0]["status"] == "completed"
+
     runs = bstate.list_bootstrap_runs("work")
-    statuses = [x["status"] for x in runs]
+    statuses = {x["status"] for x in runs}
     assert "completed" in statuses and "partial" in statuses
-    latest = runs[0]
-    assert latest["status"] == "completed" and latest["resumed_from_run_id"] is not None
-    partial = [x for x in runs if x["status"] == "partial"][0]
-    assert partial["superseded_by_run_id"] is not None  # history preserved, not overwritten
+    assert all(x["generation_id"] == gid for x in runs)  # every V119 pass links to the generation
 
 
 def test_concurrent_run_conflict_is_retryable(tmp_path):
+    # A live generation lease (fresh heartbeat) makes a concurrent scan a retryable conflict, not fatal.
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
+
     root_dir = _big_root(tmp_path, 3)
     db = _db(tmp_path)
     repo = SourceIndexRepository(db)
     bstate = SourceIndexBootstrapRepository(db)
+    genrepo = SourceIndexScanGenerationsRepository(db)
     import uuid
 
-    live = uuid.uuid4().hex
-    assert bstate.start_bootstrap_run(live, "work", "bootstrap") == live  # hold the slot
-    assert (
-        bstate.start_bootstrap_run(uuid.uuid4().hex, "work", "bootstrap") is None
-    )  # atomic reject
+    # Hold a live generation for the root (fresh owner_heartbeat_at).
+    held = genrepo.begin_generation_pass(
+        "work", uuid.uuid4().hex, policy_fingerprint="fp", root_path_hash="rph"
+    )
+    assert held is not None
     r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
     res = runner.run_scan(r, repo, _cfg(root_dir), bstate, mode="poll")
     assert res.conflict and res.status == "conflict"
@@ -419,18 +453,24 @@ def test_health_counts_and_completeness(tmp_path):
     counts = repo.content_status_counts("work")
     assert counts == {
         "metadata_indexed": 3,
-        "content_extracted": 1,
-        "content_searchable": 1,
+        "metadata_searchable": 3,  # PR 2: every active source has a path FTS row
+        "content_extracted": 0,  # metadata-first root scan extracts NO content
+        "content_searchable": 0,
+        "content_eligible": 1,  # a.txt is content-eligible...
+        "content_pending": 1,  # ...but pending extraction (targeted path / PR 3 queue)
+        "intentional_metadata_only": 1,  # b.xlsx
         "metadata_only": 1,
         "failed": 0,
-        "unsupported": 1,
+        "unsupported": 1,  # c.png
         "too_large": 0,
     }
     health = source_index_health(repo, cfg)
     r0 = next(r for r in health["roots"] if r["root_key"] == "work")
-    assert r0["content_completeness_state"] == "partial"
+    # Metadata baseline is complete; content has not been extracted yet.
+    assert r0["metadata_completeness_state"] == "complete"
+    assert r0["content_completeness_state"] == "none"
     assert r0["safe_for_path_lookup"] is True
-    assert r0["safe_for_content_answering"] in ("partial", "none")
+    assert r0["safe_for_content_answering"] == "none"
     assert "--all-roots" not in (health["recommended_operator_action"] or "")
 
 
@@ -449,7 +489,9 @@ def test_health_query_uses_root_index_no_full_scan(tmp_path):
     ).fetchall()
     conn.close()
     txt = " | ".join(str(r[-1]) for r in plan)
-    assert "idx_si_sources_root" in txt
+    # A root-scoped index is used (idx_si_sources_root, or after V120 the wider reconciliation index
+    # idx_si_sources_last_seen_gen, which is also source_root_key-prefixed) — never a full-table scan.
+    assert "idx_si_sources_root" in txt or "idx_si_sources_last_seen_gen" in txt
     assert "SCAN source_intelligence_sources" not in txt  # no full-table scan on health
 
 
@@ -458,7 +500,7 @@ def test_v119_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 119
+    assert v1 == v2 == 120
     import sqlite3
 
     conn = sqlite3.connect(db)

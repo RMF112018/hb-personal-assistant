@@ -108,10 +108,22 @@ def source_index_health(
             last_indexed_at=last_indexed,
             is_active=bool(root.get("enabled", True)),
         )
+        # Real, index-scoped extraction breakdown for THIS root (never derived from fts_available, which
+        # is an all-or-nothing table-existence proxy). content_searchable requires nonempty text;
+        # metadata_searchable = has a path/project FTS row (V120 path-FTS invariant).
+        try:
+            counts = repo.content_status_counts(key, conn=conn)
+        except Exception:  # noqa: BLE001 — health must never fail on a count query
+            counts = {"metadata_indexed": 0, "metadata_searchable": 0, "content_extracted": 0,
+                      "content_searchable": 0, "content_eligible": 0, "content_pending": 0,
+                      "intentional_metadata_only": 0, "metadata_only": 0, "failed": 0,
+                      "unsupported": 0, "too_large": 0}
         layers = {
             "folder_layer_populated": folder_count > 0,
             "metadata_layer_populated": file_count > 0,
-            "content_layer_populated": bool(file_status.get("fts_available")),
+            # Real per-root content coverage, NOT the fts_available table-existence proxy.
+            "content_layer_populated": counts.get("content_searchable", 0) > 0,
+            "metadata_search_layer_populated": counts.get("metadata_searchable", 0) > 0,
         }
         safe = (
             state in ("fresh", "degraded")
@@ -130,24 +142,30 @@ def source_index_health(
             summary_bits.append("index layers present; safe for bounded client answers" if safe
                                 else "partial/blocked — prefer health-aware routing")
 
-        # Real, index-scoped extraction breakdown for THIS root (never derived from fts_available, which
-        # is an all-or-nothing table-existence proxy). content_searchable requires nonempty text.
-        try:
-            counts = repo.content_status_counts(key, conn=conn)
-        except Exception:  # noqa: BLE001 — health must never fail on a count query
-            counts = {"metadata_indexed": 0, "content_extracted": 0, "content_searchable": 0,
-                      "metadata_only": 0, "failed": 0, "unsupported": 0, "too_large": 0}
         file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
+        # Metadata completeness is now REPORTED SEPARATELY from content completeness (V120): a metadata-first
+        # root can be fully metadata-indexed (searchable by path) with zero content extracted.
+        if counts["metadata_indexed"] == 0:
+            metadata_completeness_state = "none"
+        elif file_index_status == "partial":
+            metadata_completeness_state = "partial"
+        else:
+            metadata_completeness_state = "complete"
         if counts["metadata_indexed"] == 0 or (
             counts["content_extracted"] == 0 and counts["content_searchable"] == 0
         ):
             content_completeness_state = "none"
-        elif counts["metadata_only"] > 0 or counts["failed"] > 0 or file_index_status == "partial":
+        elif (
+            counts.get("content_pending", 0) > 0
+            or counts["failed"] > 0
+            or file_index_status == "partial"
+        ):
             content_completeness_state = "partial"
         else:
             content_completeness_state = "complete"
-        # A metadata-populated root is safe for path/filename lookup even when content is only partial.
-        safe_for_path_lookup = counts["metadata_indexed"] > 0 or folder_count > 0
+        # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
+        # map — not merely a bare row count (V120).
+        safe_for_path_lookup = counts.get("metadata_searchable", 0) > 0 or folder_count > 0
         if content_completeness_state == "complete" and state in ("fresh", "degraded"):
             safe_for_content_answering = "complete"
         elif counts["content_searchable"] > 0 and state in ("fresh", "degraded"):
@@ -172,10 +190,15 @@ def source_index_health(
             "content_indexed_file_count": counts["content_searchable"],
             "metadata_only_file_count": counts["metadata_only"],
             "metadata_indexed_file_count": counts["metadata_indexed"],
+            "metadata_searchable_file_count": counts.get("metadata_searchable", 0),
+            "content_eligible_file_count": counts.get("content_eligible", 0),
+            "content_pending_file_count": counts.get("content_pending", 0),
+            "intentional_metadata_only_file_count": counts.get("intentional_metadata_only", 0),
             "content_extracted_file_count": counts["content_extracted"],
             "content_searchable_file_count": counts["content_searchable"],
             "failed_file_count": counts["failed"],
             "too_large_file_count": counts["too_large"],
+            "metadata_completeness_state": metadata_completeness_state,
             "content_completeness_state": content_completeness_state,
             "safe_for_path_lookup": safe_for_path_lookup,
             "safe_for_content_answering": safe_for_content_answering,

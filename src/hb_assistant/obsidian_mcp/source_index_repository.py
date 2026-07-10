@@ -130,7 +130,7 @@ class SourceIndexRepository:
         change-detection sha/mtime and fts_rowid belong to the right root. Omitting it keeps the
         legacy root-blind match (safe only for single-root/single-vault callers)."""
         sql = (
-            "SELECT s.source_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted "
+            "SELECT s.source_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted, m.size_bytes "
             "FROM source_intelligence_sources s "
             "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
             "WHERE s.source_kind=? AND s.rel_path=?"
@@ -144,7 +144,7 @@ class SourceIndexRepository:
         if row is None:
             return None
         return {"source_id": row[0], "content_sha256": row[1], "mtime_ns": row[2],
-                "fts_rowid": row[3], "deleted": bool(row[4])}
+                "fts_rowid": row[3], "deleted": bool(row[4]), "size_bytes": row[5]}
 
     def active_rel_paths(self, source_root_key: str, *, conn: sqlite3.Connection | None = None) -> set[str]:
         with borrow_connection(conn, self.db_path) as c:
@@ -189,28 +189,50 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT m.extraction_status, "
+                # Disposition is the explicit V120 column when present, else mapped from the legacy
+                # extraction_status (NO row-wide backfill — mapped at read time). metadata_searchable =
+                # has a path/project FTS row; content_searchable = has NONEMPTY indexed text.
+                "SELECT COALESCE(m.extraction_disposition, CASE m.extraction_status "
+                "   WHEN 'ok' THEN 'content' WHEN 'failed' THEN 'content' "
+                "   WHEN 'unsupported' THEN 'unsupported' WHEN 'skipped_too_large' THEN 'too_large' "
+                "   ELSE 'metadata_only' END) AS disp, "
+                " m.extraction_status AS st, "
                 " SUM(CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 "
                 "          THEN 1 ELSE 0 END) AS searchable, "
+                " SUM(CASE WHEN m.fts_rowid IS NOT NULL THEN 1 ELSE 0 END) AS has_fts, "
                 " COUNT(*) AS n "
                 "FROM source_intelligence_sources s "
                 "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
                 "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
                 "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
-                "GROUP BY m.extraction_status",
+                "GROUP BY disp, st",
                 (source_root_key,),
             ).fetchall()
-        by_status = {str(r[0]): int(r[2]) for r in rows}
-        searchable = sum(int(r[1] or 0) for r in rows)
-        total = sum(by_status.values())
+
+        # Positional access (disp=0, st=1, searchable=2, has_fts=3, n=4) — independent of row_factory.
+        def _sum(pred: Any) -> int:
+            return sum(int(r[4]) for r in rows if pred(r))
+
+        total = sum(int(r[4]) for r in rows)
+        searchable = sum(int(r[2] or 0) for r in rows)
+        metadata_searchable = sum(int(r[3] or 0) for r in rows)
+        content_extracted = _sum(lambda r: r[1] == "ok")
+        content_eligible = _sum(lambda r: r[0] == "content")
+        content_pending = _sum(lambda r: r[0] == "content" and r[1] == "pending")
+        intentional_metadata_only = _sum(lambda r: r[0] == "metadata_only")
         return {
             "metadata_indexed": total,
-            "content_extracted": by_status.get("ok", 0),
+            "metadata_searchable": metadata_searchable,
+            "content_extracted": content_extracted,
             "content_searchable": searchable,
-            "metadata_only": by_status.get("pending", 0),
-            "failed": by_status.get("failed", 0),
-            "unsupported": by_status.get("unsupported", 0),
-            "too_large": by_status.get("skipped_too_large", 0),
+            "content_eligible": content_eligible,
+            "content_pending": content_pending,
+            "intentional_metadata_only": intentional_metadata_only,
+            # Back-compat key (was extraction_status='pending'); now the explicit metadata-only count.
+            "metadata_only": intentional_metadata_only,
+            "failed": _sum(lambda r: r["st"] == "failed"),
+            "unsupported": _sum(lambda r: r["disp"] == "unsupported"),
+            "too_large": _sum(lambda r: r["disp"] == "too_large"),
         }
 
     def list_root_file_sources(self, source_root_key: str, *,
@@ -284,53 +306,81 @@ class SourceIndexRepository:
             ).fetchone()
             old_fts_rowid = existing[0] if existing else None
 
+            # Generation stamp (V120): a metadata observation stamps last_seen_generation/last_seen_at so
+            # generation-based reconciliation can tell "seen this generation" from "gone". This write path
+            # only runs for CHANGED files (unchanged are fast-skipped + stamped via stamp_last_seen, which
+            # never moves updated_at); here updated_at legitimately moves because the file changed.
+            gen = record.get("last_seen_generation")
+            last_seen_at = now if gen is not None else None
             c.execute(
                 "INSERT INTO source_intelligence_sources "
                 "(source_id, source_kind, source_root_key, rel_path, abs_path_hash, "
-                " project_key, project_number, active, deleted, created_at, updated_at) "
-                "VALUES (?,?,?,?,?,?,?,1,0,?,?) "
+                " project_key, project_number, active, deleted, created_at, updated_at, "
+                " last_seen_generation, last_seen_at) "
+                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?) "
                 "ON CONFLICT(source_id) DO UPDATE SET "
                 " source_root_key=excluded.source_root_key, project_key=excluded.project_key, "
-                " project_number=excluded.project_number, active=1, deleted=0, updated_at=excluded.updated_at",
+                " project_number=excluded.project_number, active=1, deleted=0, updated_at=excluded.updated_at, "
+                " last_seen_generation=COALESCE(excluded.last_seen_generation, source_intelligence_sources.last_seen_generation), "
+                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at)",
                 (source_id, source_kind, record.get("source_root_key"), rel_path,
                  record.get("abs_path_hash"), record.get("project_key"), record.get("project_number"),
-                 now, now),
+                 now, now, gen, last_seen_at),
             )
 
-            # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed). Index a
-            # content-searchable row ONLY when there is NONEMPTY extracted text — never for a
-            # metadata-only / unsupported / too-large / sensitive / cleared write. Always drop any prior
-            # row first, so a content->metadata-only transition removes stale searchable state instead of
-            # leaving a blank row that would overstate content coverage.
+            # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed). Always drop any
+            # prior row first, then maintain ONE row per source. PATH FTS INVARIANT (V120): every active
+            # external source keeps a searchable row — metadata-only files carry an EMPTY text_excerpt plus
+            # rel_path + project aux (searchable by filename/folder/project number), and content files
+            # additionally carry the bounded excerpt. Because content_searchable is measured from NONEMPTY
+            # source_intelligence_text (below), a path-only FTS row never overstates content coverage.
+            # Obsidian notes keep the legacy "row only when excerpt present" shape (a note always has text).
             fts_rowid = None
             fts_table = "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
             if self._fts_available(c):
                 if old_fts_rowid is not None:
                     c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (old_fts_rowid,))
                 excerpt = record.get("text_excerpt")
-                if excerpt:
-                    aux = record.get("fts_aux") or record.get("project_key") or ""
+                aux = record.get("fts_aux") or record.get("project_key") or ""
+                if source_kind == "external_file":
+                    cur = c.execute(
+                        f"INSERT INTO {fts_table}(text_excerpt, rel_path, aux) VALUES (?,?,?)",
+                        (excerpt or "", rel_path, aux),
+                    )
+                    fts_rowid = cur.lastrowid
+                elif excerpt:
                     cur = c.execute(
                         f"INSERT INTO {fts_table}(text_excerpt, rel_path, aux) VALUES (?,?,?)",
                         (excerpt, rel_path, aux),
                     )
                     fts_rowid = cur.lastrowid
 
+            # content_indexed_at stamps a SUCCESSFUL content extraction; COALESCE preserves a prior
+            # stamp on a later metadata-only touch (path FTS invariant leaves content history intact).
+            _disp = record.get("extraction_disposition")
+            _status = record.get("extraction_status", "ok")
+            content_indexed_at = (
+                now if (_disp == "content" and _status == "ok") else record.get("content_indexed_at")
+            )
             c.execute(
                 "INSERT INTO source_intelligence_metadata "
                 "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count, "
-                " paragraph_count, sheet_count, extraction_status, extraction_failure_code, fts_rowid, indexed_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+                " paragraph_count, sheet_count, extraction_status, extraction_failure_code, fts_rowid, "
+                " indexed_at, extraction_disposition, content_indexed_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(source_id) DO UPDATE SET "
                 " file_ext=excluded.file_ext, size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, "
                 " content_sha256=excluded.content_sha256, page_count=excluded.page_count, "
                 " paragraph_count=excluded.paragraph_count, sheet_count=excluded.sheet_count, "
                 " extraction_status=excluded.extraction_status, extraction_failure_code=excluded.extraction_failure_code, "
-                " fts_rowid=excluded.fts_rowid, indexed_at=excluded.indexed_at",
+                " fts_rowid=excluded.fts_rowid, indexed_at=excluded.indexed_at, "
+                " extraction_disposition=excluded.extraction_disposition, "
+                " content_indexed_at=COALESCE(excluded.content_indexed_at, source_intelligence_metadata.content_indexed_at)",
                 (source_id, record.get("file_ext"), record.get("size_bytes"), record.get("mtime_ns"),
                  record.get("content_sha256"), record.get("page_count"), record.get("paragraph_count"),
                  record.get("sheet_count"), record.get("extraction_status", "ok"),
-                 record.get("extraction_failure_code"), fts_rowid, now),
+                 record.get("extraction_failure_code"), fts_rowid, now,
+                 record.get("extraction_disposition"), content_indexed_at),
             )
 
             # _text (bounded excerpt; never raw body). Skipped for non-file kinds by callers. A content
@@ -430,6 +480,105 @@ class SourceIndexRepository:
 
     def mark_generated_notes_stale(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
+            self._mark_generated_notes_stale(c, source_id)
+
+    # ----- V120 generation-aware batch reads/writes ------------------------------------------
+    def load_metadata_state_batch(
+        self, source_root_key: str, rel_paths: list[str], *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, tuple[int | None, int | None]]:
+        """Change-detection state (``rel_path -> (mtime_ns, size_bytes)``) for a BOUNDED batch of paths.
+
+        The metadata-first replacement for a full-root ``active_index_state`` preload — one query per
+        batch keeps memory O(batch), never O(root). Deleted rows excluded; V99 root-scoped identity.
+        """
+        if not rel_paths:
+            return {}
+        placeholders = ",".join("?" for _ in rel_paths)
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(
+                "SELECT s.rel_path, m.mtime_ns, m.size_bytes "
+                "FROM source_intelligence_sources s "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
+                f"AND s.rel_path IN ({placeholders})",
+                (source_root_key, *rel_paths),
+            ).fetchall()
+        return {row[0]: (row[1], row[2]) for row in rows}
+
+    def stamp_last_seen(
+        self, source_root_key: str, rel_paths: list[str], generation_id: str, *,
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
+        """Stamp last_seen_generation/last_seen_at for a batch of UNCHANGED (fast-skipped) files.
+
+        Sets ONLY the last-seen columns — never ``updated_at`` — so a pure "still present" observation
+        cannot masquerade as a material change (which would wrongly mark generated notes stale or defeat
+        the reconciliation ``updated_at`` guard)."""
+        if not rel_paths:
+            return
+        now = _now()
+        placeholders = ",".join("?" for _ in rel_paths)
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "UPDATE source_intelligence_sources SET last_seen_generation=?, last_seen_at=? "
+                "WHERE source_kind='external_file' AND source_root_key=? AND deleted=0 "
+                f"AND rel_path IN ({placeholders})",
+                (generation_id, now, source_root_key, *rel_paths),
+            )
+
+    def stale_candidates_batch(
+        self,
+        source_root_key: str,
+        generation_id: str,
+        generation_started_at: str,
+        *,
+        after_source_id: str | None = None,
+        limit: int = 500,
+        conn: sqlite3.Connection | None = None,
+    ) -> list[tuple[str, str]]:
+        """One source_id-keyset page of deletion candidates for a COMPLETE generation.
+
+        A candidate is an active external file NOT stamped with this generation whose ``updated_at`` is at
+        or before the generation start (the guard that protects a legitimate targeted write made after the
+        generation began). ``last_seen_generation IS NULL`` is included so legacy/never-stamped rows are
+        considered. ``julianday`` comparison — never lexical. Keyset by ``source_id`` (never OFFSET) so a
+        ``reconcile_pending`` generation resumes without rewalking. Returns ``[(source_id, rel_path), ...]``.
+        """
+        sql = (
+            "SELECT source_id, rel_path FROM source_intelligence_sources "
+            "WHERE source_kind='external_file' AND source_root_key=? AND deleted=0 "
+            "AND (last_seen_generation IS NULL OR last_seen_generation != ?) "
+            "AND julianday(updated_at) <= julianday(?) "
+        )
+        params: list[Any] = [source_root_key, generation_id, generation_started_at]
+        if after_source_id is not None:
+            sql += "AND source_id > ? "
+            params.append(after_source_id)
+        sql += "ORDER BY source_id LIMIT ?"
+        params.append(int(limit))
+        with borrow_connection(conn, self.db_path) as c:
+            rows = c.execute(sql, tuple(params)).fetchall()
+        return [(r[0], r[1]) for r in rows]
+
+    def mark_deleted_by_source_id(
+        self, source_id: str, *, source_kind: str = "external_file",
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
+        """Delete-reconcile a single confirmed-absent source: drop its FTS row (path + content), mark it
+        deleted/inactive, and mark generated notes stale. One transaction."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            row = c.execute(
+                "SELECT m.fts_rowid FROM source_intelligence_metadata m WHERE m.source_id=?",
+                (source_id,),
+            ).fetchone()
+            fts_rowid = row[0] if row else None
+            if fts_rowid is not None and self._fts_available(c):
+                fts_table = "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
+                c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
+            c.execute(
+                "UPDATE source_intelligence_sources SET deleted=1, active=0, updated_at=? WHERE source_id=?",
+                (_now(), source_id),
+            )
             self._mark_generated_notes_stale(c, source_id)
 
     # ----- source detail + generated-note tracking (source cards) ----------------------------
@@ -826,7 +975,10 @@ class SourceIndexRepository:
             if not match_query:
                 return []
             sql = (
-                "SELECT f.rel_path, f.aux, bm25(source_intelligence_fts) AS rank, "
+                # Weighted BM25 (text_excerpt:1, rel_path:5, aux/project:8) so filename/project matches
+                # rank above deep body-frequency matches — critical now that metadata-only files are
+                # searchable by path alone. Weights are locked by ranking tests.
+                "SELECT f.rel_path, f.aux, bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
                 " snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip, s.source_id "
                 "FROM source_intelligence_fts f "
                 "JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
@@ -897,7 +1049,8 @@ class SourceIndexRepository:
             sql = (
                 "SELECT src_root, rel, sid, ext, rank, snip FROM ("
                 " SELECT COALESCE(s.source_root_key,'') AS src_root, COALESCE(s.rel_path,'') AS rel, "
-                "  s.source_id AS sid, m.file_ext AS ext, bm25(source_intelligence_fts) AS rank, "
+                "  s.source_id AS sid, m.file_ext AS ext, "
+                "  bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
                 "  snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip "
                 " FROM source_intelligence_fts f "
                 " JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "

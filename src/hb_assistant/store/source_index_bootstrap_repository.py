@@ -20,6 +20,33 @@ from hb_assistant.store.connection import borrow_connection, transaction
 
 _STATE_DRIFT_PREFIX = "structure_drift:"
 
+
+def insert_pass_row(
+    c: sqlite3.Connection,
+    *,
+    run_id: str,
+    root_key: str,
+    mode: str,
+    generation_id: str,
+    now: str,
+) -> None:
+    """Connection-aware V119 pass-row insert (V120).
+
+    Inserts one ``source_index_bootstrap_runs`` row linked to a longer-lived scan generation, on a
+    caller-supplied connection WITHOUT opening its own transaction — so it can participate in the
+    ``SourceIndexScanGenerationsRepository.begin_generation_pass`` ``BEGIN IMMEDIATE`` transaction as a
+    single atomic pass-start. This is the ONLY generation-linked start path; there is deliberately no
+    second public ``start_bootstrap_run`` for generation passes (generation lifecycle ownership lives
+    solely in ``SourceIndexScanGenerationsRepository``). The partial-unique "one active run per root"
+    index still applies, so a stale/abandoned prior run must already be cleared by the caller.
+    """
+    c.execute(
+        "INSERT INTO source_index_bootstrap_runs "
+        "(run_id, root_key, mode, status, started_at, heartbeat_at, generation_id) "
+        "VALUES (?,?,?,'running',?,?,?)",
+        (run_id, root_key, mode, now, now, generation_id),
+    )
+
 # Columns a caller may set via upsert_bootstrap_state (root_key + created/updated are managed here).
 _BOOTSTRAP_COLUMNS: frozenset[str] = frozenset(
     {

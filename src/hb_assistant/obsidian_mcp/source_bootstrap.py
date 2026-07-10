@@ -460,6 +460,7 @@ def reconcile_root(
             max_files = effective_max_files(root_obj, obsidian_config)
             seen_rel: set[str] = set()
             live_dirs: set[str] = set()
+            walk_complete = True  # False if we truncate at max_files (an INCOMPLETE walk)
             # Streaming walk (dirs + files): skip predicates + dir-subtree pruning happen inside
             # walk_source_tree, so a huge low-value root does not front-load a full sorted tree.
             for kind, abs_path, rel_path in walk_source_tree(
@@ -471,6 +472,7 @@ def reconcile_root(
                 files_seen += 1
                 if files_seen > max_files:
                     files_seen = max_files
+                    walk_complete = False
                     break
                 seen_rel.add(rel_path)
                 existing = repo.lookup_by_path(
@@ -480,13 +482,14 @@ def reconcile_root(
                     st = abs_path.stat()
                 except OSError:
                     continue
-                # Fast gate: mtime mismatch (or missing/deleted row) => enqueue a targeted refresh.
-                # Mirrors the indexer's own cheap skip test; content-sha confirmation happens when the
-                # drainer re-indexes, so lightweight reconcile stays a bounded stat-only walk.
+                # Fast gate: mtime OR size mismatch (or missing/deleted row) => enqueue a targeted
+                # refresh. Comparing size as well as mtime catches same-mtime content edits. Content-sha
+                # confirmation happens when the drainer re-indexes, so this stays a bounded stat-only walk.
                 changed = (
                     existing is None
                     or existing.get("deleted")
                     or existing.get("mtime_ns") != st.st_mtime_ns
+                    or existing.get("size_bytes") != st.st_size
                 )
                 if changed:
                     repo.enqueue_event(
@@ -494,13 +497,15 @@ def reconcile_root(
                     )
                     changes += 1
                     enqueued += 1
-            # deletions: active indexed files no longer on disk
-            for gone in repo.active_rel_paths(file_key) - seen_rel:
-                repo.enqueue_event(
-                    event_type="deleted", rel_path=gone, source_root_key=file_key
-                )
-                changes += 1
-                enqueued += 1
+            # deletions: active indexed files no longer on disk. ONLY enqueue after a COMPLETE walk — on a
+            # truncated (bounded) walk, an unseen path is "not reached", NOT gone (false-deletion guard).
+            if walk_complete:
+                for gone in repo.active_rel_paths(file_key) - seen_rel:
+                    repo.enqueue_event(
+                        event_type="deleted", rel_path=gone, source_root_key=file_key
+                    )
+                    changes += 1
+                    enqueued += 1
             folders_seen = len(live_dirs)
 
         # --- structure drift signal (flag only; dirty-bridge deferred) ---

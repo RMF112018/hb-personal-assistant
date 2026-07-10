@@ -7,9 +7,11 @@ matching, and explicit writes via SourceIndexRepository. Never copies files into
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import threading
+import unicodedata
 from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -133,6 +135,158 @@ def walk_source_tree(
         # push in reverse so the sorted children pop in ascending order (stable DFS)
         for d in reversed(subdirs):
             stack.append(d)
+
+
+class DirectoryFanoutError(Exception):
+    """A directory exceeded the configured fanout cap — fail closed rather than unbounded-sort (V120).
+
+    Carries the redaction-safe rel_dir depth (never an absolute host path) for the ``last_error_code``.
+    """
+
+    def __init__(self, rel_dir: str, count_over: int) -> None:
+        self.rel_dir = rel_dir
+        self.count_over = count_over
+        super().__init__(f"directory_fanout_limit:depth={len([s for s in rel_dir.split('/') if s])}")
+
+
+# V120 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
+# resuming a cursor. NFC alone can map two distinct filesystem names to one key, so the tie-breaker is the
+# original name — two distinct entries never compare equal. Locked by test.
+def entry_sort_key(name: str) -> tuple[str, str]:
+    return (unicodedata.normalize("NFC", name), name)
+
+
+def _scandir_sorted(
+    abs_dir: Path, root_path: Path, config: ObsidianMcpConfig, fanout_limit: int
+) -> list[tuple[tuple[str, str], str, Path, str, bool, bool]]:
+    """Bounded, pruned, deterministically-sorted listing of one directory.
+
+    Reads at most ``fanout_limit + 1`` entries; if the directory has more, raises
+    :class:`DirectoryFanoutError` (fail closed — never load+sort an unbounded listing). Otherwise returns
+    entries sorted by :func:`entry_sort_key`, each as
+    ``(sort_key, name, abs_path, rel_path, is_dir, is_symlink)`` with excluded/hidden/ignored entries
+    pruned (same policy as :func:`walk_source_tree`). Symlinked dirs are marked so the walker never
+    descends them; a symlinked file is included only if it resolves inside the root.
+    """
+    raw: list[os.DirEntry[str]] = []
+    try:
+        with os.scandir(abs_dir) as it:
+            for entry in it:
+                raw.append(entry)
+                if len(raw) > fanout_limit:
+                    try:
+                        rel_dir = str(abs_dir.relative_to(root_path))
+                    except ValueError:
+                        rel_dir = ""
+                    raise DirectoryFanoutError(rel_dir, len(raw))
+    except OSError:
+        return []
+    out: list[tuple[tuple[str, str], str, Path, str, bool, bool]] = []
+    for entry in raw:
+        abs_path = Path(entry.path)
+        try:
+            rel_path = str(abs_path.relative_to(root_path))
+        except ValueError:
+            continue
+        try:
+            is_symlink = entry.is_symlink()
+            is_dir = entry.is_dir(follow_symlinks=False)
+            is_file = entry.is_file(follow_symlinks=False)
+        except OSError:
+            continue
+        if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
+            continue
+        if is_symlink:
+            with suppress(OSError):
+                if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
+                    out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, False, True))
+            continue
+        if is_dir:
+            out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, True, False))
+        elif is_file:
+            out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, False, False))
+    out.sort(key=lambda e: e[0])
+    return out
+
+
+@dataclass
+class _WalkFrame:
+    rel_dir: str
+    abs_dir: Path
+    entries: list[tuple[tuple[str, str], str, Path, str, bool, bool]]
+    idx: int
+    current: str | None = None  # name of the entry currently in progress at this level (for the cursor)
+
+
+def _resume_frame(
+    rel_dir: str, root_path: Path, config: ObsidianMcpConfig, fanout_limit: int, after_name: str | None
+) -> _WalkFrame:
+    abs_dir = root_path if rel_dir in ("", ".") else root_path / rel_dir
+    entries = _scandir_sorted(abs_dir, root_path, config, fanout_limit)
+    idx = 0
+    if after_name is not None:
+        after_key = entry_sort_key(after_name)
+        while idx < len(entries) and entries[idx][0] <= after_key:
+            idx += 1
+    return _WalkFrame(rel_dir=rel_dir, abs_dir=abs_dir, entries=entries, idx=idx)
+
+
+def walk_generation(
+    root_path: Path,
+    config: ObsidianMcpConfig,
+    *,
+    cursor: dict[str, Any] | None,
+    fanout_limit: int,
+) -> Iterator[tuple[Path, str, dict[str, Any]]]:
+    """Deterministic, RESUMABLE, depth-first file walk yielding ``(abs_path, rel_path, cursor_after)``.
+
+    Unlike :func:`walk_source_tree`, this resumes past a durable ``cursor`` WITHOUT re-listing the
+    already-completed sibling directories: the cursor is a versioned frame stack
+    ``{"version": tv, "frames": [{"d": rel_dir, "after": name}, ...]}`` where each frame's ``after`` names
+    the entry that was in progress at that level (an intermediate frame's ``after`` is the subdir we
+    descended into; the deepest frame's ``after`` is the last committed file). On resume each frame is
+    re-listed, entries with ``entry_sort_key <= after`` are skipped, and the deeper frames re-enter the
+    in-progress subtree — so DFS pre-order is preserved exactly.
+
+    ``cursor_after`` yielded with each file is the resume cursor to persist AFTER committing that file.
+    Raises :class:`DirectoryFanoutError` if any directory exceeds ``fanout_limit`` (fail closed).
+    """
+    frames = (cursor or {}).get("frames") or []
+    stack: list[_WalkFrame] = []
+    if frames:
+        # Rebuild the in-progress path. Intermediate frames' `current` = the descended child (so the
+        # cursor we emit re-includes them); the deepest frame resumes at entries > its `after`.
+        for i, fr in enumerate(frames):
+            rel_dir = str(fr.get("d") or "")
+            after = fr.get("after")
+            wf = _resume_frame(rel_dir, root_path, config, fanout_limit, after)
+            if i < len(frames) - 1:
+                # Intermediate frame: `after` IS the in-progress child we descended into. Re-record it
+                # so a cursor emitted before this frame advances still includes this level.
+                wf.current = after
+            stack.append(wf)
+    else:
+        stack.append(_resume_frame("", root_path, config, fanout_limit, None))
+
+    def _cursor_after() -> dict[str, Any]:
+        return {
+            "version": int(getattr(config, "source_index_traversal_version", 1)),
+            "frames": [{"d": f.rel_dir, "after": f.current} for f in stack if f.current is not None],
+        }
+
+    while stack:
+        frame = stack[-1]
+        if frame.idx >= len(frame.entries):
+            stack.pop()
+            continue
+        _key, name, abs_path, rel_path, is_dir, _is_symlink = frame.entries[frame.idx]
+        frame.idx += 1
+        frame.current = name
+        if is_dir:
+            child = _resume_frame(rel_path, root_path, config, fanout_limit, None)
+            stack.append(child)
+            continue
+        yield (abs_path, rel_path, _cursor_after())
 
 
 def is_deferred_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
@@ -347,6 +501,8 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
         "source_kind": "external_file", "source_root_key": root.source_root_key,
         "rel_path": rel_path, "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
         "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
+        # Explicit V120 disposition column (resolves the pending vs metadata-only ambiguity).
+        "extraction_disposition": disposition,
     }
     key, number, conf = match_path_to_project(rel_path)
     record["project_key"], record["project_number"] = key, number
@@ -411,9 +567,65 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
 
 def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
                       config: ObsidianMcpConfig, *, conn: Any = None) -> str | None:
-    """Compatibility wrapper preserving the historical ``source_id | None`` return for existing callers
-    (drain_queue, tests, external use). New code wanting counters uses :func:`_index_source_file`."""
+    """TARGETED single-file indexing (metadata + eligible content extraction) — the compatibility entry
+    point for watcher events, rebuild drains, tests, and external callers. Unlike a ROOT SCAN (which is
+    metadata-only, :func:`_index_source_metadata`), this path DOES hash + extract content for a
+    content-eligible file, since a single targeted file cannot stall a whole-root bootstrap. Preserves the
+    historical ``source_id | None`` return."""
     return _index_source_file(abs_path, root, repo, config, conn=conn).source_id
+
+
+def _index_source_metadata(
+    abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
+    config: ObsidianMcpConfig, *, generation_id: str | None, conn: Any = None,
+) -> IndexOutcome:
+    """Index ONE external file's METADATA ONLY (V120 metadata-first root scan).
+
+    Stat -> disposition -> identity + metadata + path/project FTS, stamping ``last_seen_generation``.
+    NEVER computes a SHA-256, parses, reads a body, or builds chunks — regardless of the parser opt-in
+    flag — so a root scan cannot stall/OOM on a pathological file, and no content is read during discovery.
+    Content extraction is deferred to the targeted :func:`index_source_file` path (and PR 3's queue). A
+    content-eligible file therefore records ``extraction_disposition='content'`` with
+    ``extraction_status='pending'`` (eligible, not yet extracted); a metadata-only file records
+    ``metadata_only``/``pending``. Because the record carries no excerpt, ``upsert_source_file`` clears any
+    stale content on a content->metadata transition while retaining a searchable path FTS row.
+    """
+    root_path = Path(root.path)
+    try:
+        rel_path = str(abs_path.relative_to(root_path))
+    except ValueError:
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
+    ext = abs_path.suffix.lower().lstrip(".")
+    try:
+        stat = abs_path.stat()
+    except OSError:
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
+    size = stat.st_size
+    disposition = extraction_disposition(ext, size, config)
+    record: dict[str, Any] = {
+        "source_kind": "external_file", "source_root_key": root.source_root_key,
+        "rel_path": rel_path, "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
+        "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
+        "content_sha256": None, "extraction_disposition": disposition,
+        "last_seen_generation": generation_id,
+    }
+    key, number, conf = match_path_to_project(rel_path)
+    record["project_key"], record["project_number"] = key, number
+    if number:
+        record["relationships"] = [{
+            "dst_kind": "project", "dst_ref": number, "relation": "belongs_to_project", "confidence": conf,
+        }]
+    record["extraction_status"] = {
+        "content": "pending",  # eligible, not yet extracted (targeted path / PR 3 queue does that)
+        "metadata_only": "pending",
+        "unsupported": "unsupported",
+        "too_large": "skipped_too_large",
+    }[disposition]
+    source_id = repo.upsert_source_file(record, conn=conn)
+    return IndexOutcome(
+        source_id=source_id, disposition=disposition, changed=True, hashed=False,
+        extraction_attempted=False, extraction_status=str(record["extraction_status"]),
+    )
 
 
 _VAULT_ROOT_KEY = "__vault_notes__"
@@ -528,6 +740,14 @@ class ScanReport:
     metadata_only: int = 0
     unsupported: int = 0
     too_large: int = 0
+    # V120 generation linkage (metadata-first scan). ``conflict`` = a live pass already owns the root
+    # (retryable). ``generation_status`` mirrors the terminal generation state for the caller.
+    run_id: str | None = None
+    generation_id: str | None = None
+    generation_status: str | None = None
+    conflict: bool = False
+    bounded_reason: str | None = None
+    error_code: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -542,6 +762,47 @@ class ScanReport:
         }
 
 
+# Bumped when the walker/cursor traversal order or frame format changes (folded into the fingerprint).
+_WALKER_VERSION = "gen-walk-v1"
+
+
+def _policy_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig, root_path_hash: str) -> str:
+    """Hash of EVERY metadata/search-affecting policy + code version (V120 §6).
+
+    Any change (walker/cursor version, exclusion policy, disposition inputs, project matching, FTS
+    weighting/tokenizer, traversal version, or the root's path) changes the fingerprint, so a resumed
+    generation with an incompatible cursor is abandoned + restarted and previously fast-skippable files
+    are reclassified. Never includes an absolute path (only ``root_path_hash``)."""
+    payload = {
+        "walker": _WALKER_VERSION,
+        "traversal_version": int(getattr(config, "source_index_traversal_version", 1)),
+        "excluded": sorted(getattr(config, "source_index_excluded_path_parts", []) or []),
+        "deferred": sorted(getattr(config, "source_index_deferred_path_parts", []) or []),
+        "text_exts": sorted(_TEXT_EXTS),
+        "parser_exts": sorted(_SYNC_PARSER_EXTS),
+        "metadata_only": sorted(getattr(config, "source_index_metadata_only_file_types", []) or []),
+        "unsupported": sorted(getattr(config, "source_index_unsupported_file_types", []) or []),
+        "max_file_mb": int(getattr(config, "max_file_mb", 100)),
+        "parser_optin": bool(getattr(config, "source_index_enable_synchronous_parser_extraction", False)),
+        "project_matcher": "hb-num-v1",
+        "fts": "bm25:1,8,12|unicode61",
+        "root_key": root.source_root_key,
+        "root_path_hash": root_path_hash,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:32]
+
+
+def _tally_disposition(report: "ScanReport", disposition: str) -> None:
+    if disposition == "content":
+        report.content_attempted += 0  # metadata-first: no content attempted during a root scan
+    elif disposition == "metadata_only":
+        report.metadata_only += 1
+    elif disposition == "unsupported":
+        report.unsupported += 1
+    elif disposition == "too_large":
+        report.too_large += 1
+
+
 def scan_source_root(
     root: ExternalSourceRoot,
     repo: SourceIndexRepository,
@@ -550,103 +811,284 @@ def scan_source_root(
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
     progress: Any = None,
+    genrepo: Any = None,  # SourceIndexScanGenerationsRepository
+    bstate: Any = None,  # SourceIndexBootstrapRepository
+    run_id: str | None = None,
+    mode: str = "bootstrap",
 ) -> ScanReport:
-    """Bounded, idempotent, RESUMABLE walk of one root. NEVER called from a request handler.
+    """METADATA-FIRST, generation-driven, resumable walk of one root. NEVER called from a request handler.
 
-    Change detection is mtime+size fast-skip against a preloaded index-state map (one query), so an
-    unchanged file costs a stat + dict lookup — no per-file DB read and no re-hash. Re-running after an
-    interruption therefore skips already-indexed files cheaply and continues; that is what makes a very
-    large root (hundreds of thousands of files) indexable across multiple bounded passes.
-
-    ``max_files_per_pass`` / ``max_seconds`` bound a single invocation. When a pass stops early on
-    either budget (``bounded_out``), delete-reconciliation is SKIPPED — the walk is incomplete, so an
-    unseen file is not-yet-visited, not gone. Delete-reconciliation runs ONLY on a fully-completed pass.
+    A root scan reads only METADATA — it never hashes, parses, reads a body, or chunks a file (content
+    extraction is the targeted :func:`index_source_file` path / PR 3's queue). Discovery runs under a
+    durable *scan generation* (V120): each bounded pass resumes past a persisted traversal cursor, commits
+    metadata then checkpoints the cursor (a crash re-processes the batch, never skips it), and — only after
+    the FULL metadata walk completes — reconciles deletions by generation (source_id keyset, restat before
+    delete, never from a partial/failed generation). A per-generation ceiling or a high-fanout directory
+    FAILS the generation (no reconciliation), never reopening as partial.
     """
     import time
+    import uuid as _uuid
 
     from hb_assistant.store.connection import open_connection
+    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
 
     report = ScanReport(root_key=root.source_root_key)
     root_path = Path(root.path)
     if not root_path.is_dir():
         report.error_codes.append("root_not_found")
         report.errors += 1
+        report.generation_status = "failed"
+        report.error_code = "root_not_found"
         return report
 
-    max_files = effective_max_files(root, config)
-    prior = repo.active_index_state(root.source_root_key)  # rel_path -> (mtime_ns, size_bytes)
-    seen: set[str] = set()
-    started = time.monotonic()
-    heartbeat_s = float(getattr(config, "source_index_bootstrap_heartbeat_seconds", 10.0))
-    last_progress = started
-    # One shared connection for the whole pass: avoids a per-file open/close on a 400k-file root.
-    with open_connection(repo.db_path) as conn:
-        for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
-            if report.scanned >= max_files:
-                report.truncated = True
-                break
-            report.scanned += 1
-            report.files_walked += 1
-            seen.add(rel_path)
-            try:
-                stat = abs_path.stat()
-                prev = prior.get(rel_path)
-                # mtime+size fast-skip: unchanged file -> no re-hash, no write (the resume hot path).
-                if prev is not None and prev == (stat.st_mtime_ns, stat.st_size):
-                    report.skipped += 1
-                    report.files_unchanged += 1
-                    continue
-                outcome = _index_source_file(abs_path, root, repo, config, conn=conn)
-                if outcome.source_id is not None:
-                    report.indexed += 1
-                    report.metadata_upserted += 1
-                    report.indexed_source_ids.append(outcome.source_id)
-                    # Aggregate per-disposition counters straight from the outcome (no DB reread).
-                    if outcome.disposition == "content":
-                        report.content_attempted += 1
-                        if outcome.extraction_status == "ok":
-                            report.content_succeeded += 1
-                        elif outcome.extraction_status == "failed":
-                            report.content_failed += 1
-                    elif outcome.disposition == "metadata_only":
-                        report.metadata_only += 1
-                    elif outcome.disposition == "unsupported":
-                        report.unsupported += 1
-                    elif outcome.disposition == "too_large":
-                        report.too_large += 1
-                    if prev is not None:
-                        repo.mark_generated_notes_stale(outcome.source_id, conn=conn)
-            except Exception as exc:  # never let one bad file abort the scan
-                report.errors += 1
-                report.error_codes.append(type(exc).__name__)
-                _logger.warning("source_index.scan_file_error", extra={"obsidian_mcp": {
-                    "root": root.source_root_key, "error_code": type(exc).__name__}})
-            # Throttled progress emission (failure-isolated: a telemetry/heartbeat error never aborts the
-            # scan). Reports counters + a REDACTED current-directory token — never an absolute host path.
-            if progress is not None:
-                now_m = time.monotonic()
-                if now_m - last_progress >= heartbeat_s:
-                    last_progress = now_m
-                    # Observability must never change indexing results — a progress/heartbeat error is
-                    # swallowed here (constraint 8).
-                    with suppress(Exception):
-                        progress(report, rel_path, now_m - started)
-            # Per-pass budget: stop cleanly and leave the rest for a resume (NO delete-reconcile).
-            if max_files_per_pass is not None and report.indexed >= int(max_files_per_pass):
-                report.bounded_out = True
-                break
-            if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
-                report.bounded_out = True
-                break
+    if genrepo is None:
+        genrepo = SourceIndexScanGenerationsRepository(repo.db_path)
+    if bstate is None:
+        bstate = SourceIndexBootstrapRepository(repo.db_path)
+    if run_id is None:
+        run_id = _uuid.uuid4().hex
+    report.run_id = run_id
 
-        report.completed = not report.bounded_out and not report.truncated
-        if report.completed:
-            # Delete-reconcile ONLY on a complete pass (full `seen`); reuse the preloaded state keys.
-            for gone in set(prior) - seen:
-                repo.mark_deleted(
-                    "external_file", gone, source_root_key=root.source_root_key, conn=conn
+    root_path_hash = hashlib.sha256(str(root_path).encode("utf-8")).hexdigest()[:32]
+    fingerprint = _policy_fingerprint(root, config, root_path_hash)
+    tv = int(getattr(config, "source_index_traversal_version", 1))
+    stale = float(getattr(config, "source_index_bootstrap_stale_run_seconds", 120.0))
+
+    gen = genrepo.begin_generation_pass(
+        root.source_root_key, run_id, policy_fingerprint=fingerprint, root_path_hash=root_path_hash,
+        traversal_version=tv, mode=mode, stale_lease_seconds=stale,
+    )
+    if gen is None:
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "active_run_conflict"
+        return report
+    gid = gen["generation_id"]
+    report.generation_id = gid
+    gen_started = gen["started_at"]
+
+    # Bounds: observed-file limit (counts EVERY walked entry, changed or fast-skipped), batch commit size,
+    # optional per-generation hard ceiling, high-fanout cap.
+    observed_limit = (
+        int(getattr(config, "source_index_scan_observed_files_per_pass", None) or 0)
+        or (int(max_files_per_pass) if max_files_per_pass is not None else None)
+    )
+    batch_size = max(1, int(getattr(config, "source_index_metadata_batch_size", 500)))
+    gen_ceiling = getattr(config, "source_index_generation_max_files", None)
+    fanout = int(getattr(config, "source_index_directory_fanout_limit", 20000))
+    heartbeat_s = float(getattr(config, "source_index_bootstrap_heartbeat_seconds", 10.0))
+
+    # Running totals across ALL passes of this generation (resumed generation carries prior totals).
+    files_observed = int(gen.get("files_observed") or 0)
+    metadata_upserted = int(gen.get("metadata_upserted") or 0)
+    files_unchanged = int(gen.get("files_unchanged") or 0)
+    errors_count = int(gen.get("errors_count") or 0)
+    deleted_count = int(gen.get("deleted_count") or 0)
+    # Per-PASS observed counter (resets each pass): the observed/ceiling bounds apply to THIS pass's walk,
+    # not the generation's cumulative total, so a resumed pass keeps making forward progress.
+    pass_observed = 0
+
+    started = time.monotonic()
+    last_progress = started
+
+    def _emit_progress(rel_hint: str) -> None:
+        if progress is None:
+            return
+        with suppress(Exception):
+            progress(report, rel_hint, time.monotonic() - started)
+
+    def _finish_v119(status: str) -> None:
+        with suppress(Exception):
+            bstate.finish_bootstrap_run(
+                run_id, status=status, bounded_reason=report.bounded_reason,
+                last_error_code=report.error_code,
+                completed_metadata_walk=report.generation_status in ("reconcile_pending", "completed"),
+                reconciliation_completed=report.generation_status == "completed",
+                files_walked=report.files_walked, metadata_upserted=report.metadata_upserted,
+                files_unchanged=report.files_unchanged, errors_count=report.errors,
+            )
+
+    walk_complete = gen.get("metadata_walk_completed_at") is not None
+    cursor = json.loads(gen["cursor_json"]) if gen.get("cursor_json") else None
+
+    with open_connection(repo.db_path):
+        # ---- Phase 1: metadata walk (skipped if the generation already completed its walk) ----
+        if not walk_complete:
+            batch: list[tuple[Path, str, dict[str, Any]]] = []
+            last_cursor = cursor
+
+            def _flush() -> None:
+                nonlocal files_observed, metadata_upserted, files_unchanged, errors_count, last_cursor
+                if not batch:
+                    return
+                rels = [rel for _a, rel, _c in batch]
+                state = repo.load_metadata_state_batch(root.source_root_key, rels)
+                unchanged: list[str] = []
+                for abs_p, rel, cur in batch:
+                    last_cursor = cur
+                    try:
+                        st = abs_p.stat()
+                    except OSError:
+                        errors_count += 1
+                        report.errors += 1
+                        continue
+                    prev = state.get(rel)
+                    if prev is not None and prev == (st.st_mtime_ns, st.st_size):
+                        unchanged.append(rel)
+                        files_unchanged += 1
+                        report.files_unchanged += 1
+                        report.skipped += 1
+                        continue
+                    try:
+                        outcome = _index_source_metadata(
+                            abs_p, root, repo, config, generation_id=gid
+                        )
+                    except Exception as exc:  # a bad file never aborts the scan; the row is preserved
+                        errors_count += 1
+                        report.errors += 1
+                        report.error_codes.append(type(exc).__name__)
+                        continue
+                    if outcome.source_id is not None:
+                        metadata_upserted += 1
+                        report.metadata_upserted += 1
+                        report.indexed += 1
+                        report.indexed_source_ids.append(outcome.source_id)
+                        _tally_disposition(report, outcome.disposition)
+                        if prev is not None:
+                            repo.mark_generated_notes_stale(outcome.source_id)
+                # Metadata is now committed (per-file upserts self-commit). Stamp unchanged, THEN
+                # checkpoint the cursor — so the cursor never advances past uncommitted metadata.
+                repo.stamp_last_seen(root.source_root_key, unchanged, gid)
+                genrepo.advance_cursor(
+                    gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    files_observed=files_observed, metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged, errors_count=errors_count,
                 )
-                report.deleted += 1
+                batch.clear()
+
+            try:
+                for abs_path, rel_path, cur in walk_generation(
+                    root_path, config, cursor=cursor, fanout_limit=fanout
+                ):
+                    files_observed += 1
+                    pass_observed += 1
+                    report.files_walked += 1
+                    report.scanned += 1
+                    batch.append((abs_path, rel_path, cur))
+                    if len(batch) >= batch_size:
+                        _flush()
+                        now_m = time.monotonic()
+                        if now_m - last_progress >= heartbeat_s:
+                            last_progress = now_m
+                            _emit_progress(rel_path)
+                    # Per-pass OBSERVED bound (this pass's walk, counting fast-skips too) → partial.
+                    if observed_limit is not None and pass_observed >= observed_limit:
+                        _flush()
+                        report.bounded_out = True
+                        report.bounded_reason = "observed_files_per_pass"
+                        break
+                    if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
+                        _flush()
+                        report.bounded_out = True
+                        report.bounded_reason = "max_seconds"
+                        break
+                    # Per-generation hard ceiling (cumulative) → no forward progress: FAIL (no reconciliation).
+                    if gen_ceiling is not None and files_observed >= int(gen_ceiling):
+                        _flush()
+                        report.error_code = "generation_ceiling"
+                        genrepo.fail_generation(
+                            gid, run_id, last_error_code="generation_ceiling",
+                            files_observed=files_observed, metadata_upserted=metadata_upserted,
+                            files_unchanged=files_unchanged, errors_count=errors_count,
+                        )
+                        report.generation_status = "failed"
+                        _finish_v119("failed")
+                        return report
+                else:
+                    _flush()  # loop exhausted normally
+            except DirectoryFanoutError:
+                _flush()
+                report.error_code = "directory_fanout_limit"
+                report.error_codes.append("directory_fanout_limit")
+                genrepo.fail_generation(
+                    gid, run_id, last_error_code="directory_fanout_limit",
+                    files_observed=files_observed, metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged, errors_count=errors_count,
+                )
+                report.generation_status = "failed"
+                _finish_v119("failed")
+                return report
+
+            if report.bounded_out:
+                genrepo.mark_partial(
+                    gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    files_observed=files_observed, metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged, errors_count=errors_count,
+                )
+                report.generation_status = "partial"
+                _emit_progress("")
+                _finish_v119("partial")
+                return report
+
+            # Full metadata walk complete.
+            genrepo.mark_metadata_walk_complete(
+                gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged, errors_count=errors_count,
+            )
+
+        # ---- Phase 2: generation-based deletion reconciliation (source_id keyset) ----
+        rc = json.loads(gen["reconcile_cursor_json"]) if gen.get("reconcile_cursor_json") else {}
+        after_sid = rc.get("after")
+        while True:
+            cands = repo.stale_candidates_batch(
+                root.source_root_key, gid, gen_started, after_source_id=after_sid, limit=batch_size
+            )
+            if not cands:
+                break
+            for sid, rel in cands:
+                after_sid = sid
+                abs_c = root_path / rel
+                try:
+                    exists = abs_c.is_file() and not pathsafe.symlink_escapes(abs_c, root_path)
+                except OSError:
+                    exists = False
+                if exists:
+                    # Restat survivor: resolve inline with a FULL metadata upsert + generation stamp (a
+                    # bare last-seen stamp would falsely certify coverage). On failure, leave the
+                    # generation reconcile_pending — never declare complete with an unresolved survivor.
+                    try:
+                        _index_source_metadata(abs_c, root, repo, config, generation_id=gid)
+                    except Exception as exc:
+                        report.errors += 1
+                        report.error_codes.append(type(exc).__name__)
+                        report.error_code = "survivor_refresh_failed"
+                        genrepo.mark_reconcile_pending(
+                            gid, run_id, reconcile_cursor_json=json.dumps({"after": after_sid}),
+                            last_error_code="survivor_refresh_failed", deleted_count=deleted_count,
+                        )
+                        report.generation_status = "reconcile_pending"
+                        _finish_v119("partial")
+                        return report
+                else:
+                    repo.mark_deleted_by_source_id(sid)
+                    deleted_count += 1
+                    report.deleted += 1
+            genrepo.advance_reconcile_cursor(
+                gid, run_id, reconcile_cursor_json=json.dumps({"after": after_sid}),
+                deleted_count=deleted_count,
+            )
+
+    genrepo.finish_completed(
+        gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
+        files_unchanged=files_unchanged, errors_count=errors_count, deleted_count=deleted_count,
+    )
+    report.completed = True
+    report.generation_status = "completed"
+    _emit_progress("")
+    _finish_v119("completed")
     return report
 
 

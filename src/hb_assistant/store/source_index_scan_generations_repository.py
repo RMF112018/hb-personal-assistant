@@ -1,0 +1,547 @@
+"""Reader/writer for the V120 ``source_index_scan_generations`` table — the SOLE generation-lifecycle
+authority.
+
+A *scan generation* spans many bounded V119 passes over one root. This repository owns every piece of
+generation state: the ownership lease (``active_run_id`` + ``owner_heartbeat_at``), the traversal cursor
+(``cursor_json``), the reconciliation checkpoint (``reconcile_cursor_json``), the ``policy_fingerprint``,
+and every status transition. No generation lifecycle logic lives in ``SourceIndexRepository`` or the
+bootstrap repository; the only cross-repo coupling is the connection-aware ``insert_pass_row`` primitive
+(imported from ``source_index_bootstrap_repository``) which links each V119 pass to its generation inside
+this module's ``BEGIN IMMEDIATE`` pass-start transaction.
+
+Key invariants (approved plan):
+
+* **Stale-lease recovery preserves progress.** A stale owner (``active_run_id`` set + ``owner_heartbeat_at``
+  older than the lease) is *released* — the generation reverts to ``partial``/``reconcile_pending`` with its
+  committed cursor preserved, never ``abandoned``. An idle ``partial``/``reconcile_pending`` (``active_run_id``
+  NULL) is NEVER stale-reaped. ``abandoned`` is reserved for invalid cursor/fingerprint/root state.
+* **One active generation per root** is an atomic DB invariant (partial-unique index) enforced under
+  ``BEGIN IMMEDIATE`` so two processes cannot resume the same partial and a killed process cannot
+  permanently block the root.
+* **No false completeness.** ``completed`` requires the metadata walk AND deletion reconciliation to have
+  finished; a survivor that was only refreshed-but-unresolved leaves the generation ``reconcile_pending``.
+* **No infinite partial loops.** A no-forward-progress condition (high-fanout / generation ceiling) is
+  ``failed`` (bounded error code, no reconciliation), never a reopened ``partial``.
+
+No absolute host paths: ``root_key`` is opaque, ``root_path_hash`` is a hash.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterator
+
+from hb_assistant.store.connection import borrow_connection, transaction
+from hb_assistant.store.source_index_bootstrap_repository import insert_pass_row
+
+# Counter columns a caller may set (absolute running totals, not deltas).
+_GEN_COUNTER_COLUMNS: frozenset[str] = frozenset(
+    {"files_observed", "metadata_upserted", "files_unchanged", "errors_count", "deleted_count"}
+)
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@contextmanager
+def _immediate_transaction(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """Run an explicit ``BEGIN IMMEDIATE`` transaction on a borrowed connection.
+
+    Acquires the write lock up front so the atomic pass-start claim races correctly under WAL. Toggles
+    the connection to autocommit for explicit BEGIN/COMMIT control and restores the prior isolation
+    level on exit. The connection is never closed here (lifecycle belongs to the caller).
+    """
+    prev = conn.isolation_level
+    conn.isolation_level = None
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        yield conn
+        conn.execute("COMMIT")
+    except BaseException:
+        try:
+            conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.isolation_level = prev
+
+
+class SourceIndexScanGenerationsRepository:
+    """Durable per-root scan-generation lifecycle: leases, cursor, reconcile checkpoint, status."""
+
+    def __init__(self, db_path: str | Path | None = None) -> None:
+        self.db_path = Path(db_path) if db_path is not None else None
+
+    # ----- reads -----------------------------------------------------------------------------
+    def get_generation(
+        self, generation_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, Any] | None:
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            row = c.execute(
+                "SELECT * FROM source_index_scan_generations WHERE generation_id=?",
+                (generation_id,),
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    def get_active_generation(
+        self, root_key: str, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, Any] | None:
+        """Return the single active (running|partial|reconcile_pending) generation for a root, if any."""
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            row = c.execute(
+                "SELECT * FROM source_index_scan_generations WHERE root_key=? AND "
+                "status IN ('running','partial','reconcile_pending') "
+                "ORDER BY started_at DESC, rowid DESC LIMIT 1",
+                (root_key,),
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    def list_generations(
+        self,
+        root_key: str | None = None,
+        *,
+        limit: int = 50,
+        conn: sqlite3.Connection | None = None,
+    ) -> list[dict[str, Any]]:
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            if root_key is None:
+                rows = c.execute(
+                    "SELECT * FROM source_index_scan_generations "
+                    "ORDER BY started_at DESC, rowid DESC LIMIT ?",
+                    (int(limit),),
+                ).fetchall()
+            else:
+                rows = c.execute(
+                    "SELECT * FROM source_index_scan_generations WHERE root_key=? "
+                    "ORDER BY started_at DESC, rowid DESC LIMIT ?",
+                    (root_key, int(limit)),
+                ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ----- atomic pass-start -----------------------------------------------------------------
+    def begin_generation_pass(
+        self,
+        root_key: str,
+        run_id: str,
+        *,
+        policy_fingerprint: str,
+        root_path_hash: str,
+        traversal_version: int = 1,
+        mode: str = "bootstrap",
+        stale_lease_seconds: float = 120.0,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any] | None:
+        """Atomically claim/resume-or-create a generation for ``root_key`` and link a new V119 pass.
+
+        Returns a dict describing the claimed generation (``generation_id``, ``status='running'``,
+        ``resumed``, ``cursor_json``, ``reconcile_cursor_json``, ``metadata_walk_completed_at``), or
+        ``None`` if a LIVE pass (fresh lease) already owns the root — a retryable conflict, not fatal.
+
+        Runs under ``BEGIN IMMEDIATE`` so the claim is mutually exclusive across processes.
+        """
+        with borrow_connection(conn, self.db_path) as c, _immediate_transaction(c):
+            c.row_factory = sqlite3.Row
+            now = _now()
+            active = c.execute(
+                "SELECT * FROM source_index_scan_generations WHERE root_key=? AND "
+                "status IN ('running','partial','reconcile_pending') "
+                "ORDER BY started_at DESC, rowid DESC LIMIT 1",
+                (root_key,),
+            ).fetchone()
+
+            generation_id: str
+            resumed = False
+            if active is not None:
+                active = dict(active)
+                has_live_owner = bool(active["active_run_id"]) and not self._lease_stale(
+                    c, active["owner_heartbeat_at"], now, stale_lease_seconds
+                )
+                if has_live_owner:
+                    # A live pass owns this generation. Do not touch it; caller retries later.
+                    return None
+                if active["active_run_id"]:
+                    # Stale owner: RELEASE ownership, preserving cursor/progress (never abandon here).
+                    self._release_owner_row(c, active, now)
+                # Fingerprint / traversal / root validation.
+                if (
+                    active["policy_fingerprint"] != policy_fingerprint
+                    or int(active["traversal_version"]) != int(traversal_version)
+                    or active["root_path_hash"] != root_path_hash
+                ):
+                    # Invalid / incompatible generation → abandon (no reconciliation), then create fresh.
+                    c.execute(
+                        "UPDATE source_index_scan_generations SET status='abandoned', "
+                        "active_run_id=NULL, finished_at=?, updated_at=?, "
+                        "last_error_code='fingerprint_changed' WHERE generation_id=?",
+                        (now, now, active["generation_id"]),
+                    )
+                    active = None
+                else:
+                    generation_id = active["generation_id"]
+                    resumed = True
+                    c.execute(
+                        "UPDATE source_index_scan_generations SET status='running', "
+                        "active_run_id=?, owner_heartbeat_at=?, updated_at=? WHERE generation_id=?",
+                        (run_id, now, now, generation_id),
+                    )
+
+            if active is None:
+                generation_id = uuid.uuid4().hex
+                c.execute(
+                    "INSERT INTO source_index_scan_generations "
+                    "(generation_id, root_key, status, traversal_version, root_path_hash, "
+                    " policy_fingerprint, active_run_id, owner_heartbeat_at, started_at, updated_at) "
+                    "VALUES (?,?,'running',?,?,?,?,?,?,?)",
+                    (
+                        generation_id,
+                        root_key,
+                        int(traversal_version),
+                        root_path_hash,
+                        policy_fingerprint,
+                        run_id,
+                        now,
+                        now,
+                        now,
+                    ),
+                )
+
+            # Close any orphaned still-'running' V119 pass rows for this root so the partial-unique
+            # "one active run per root" slot is free, then insert the linked pass in the SAME txn.
+            c.execute(
+                "UPDATE source_index_bootstrap_runs SET status='interrupted', finished_at=? "
+                "WHERE root_key=? AND status='running'",
+                (now, root_key),
+            )
+            insert_pass_row(
+                c,
+                run_id=run_id,
+                root_key=root_key,
+                mode=mode,
+                generation_id=generation_id,
+                now=now,
+            )
+            gen = dict(
+                c.execute(
+                    "SELECT * FROM source_index_scan_generations WHERE generation_id=?",
+                    (generation_id,),
+                ).fetchone()
+            )
+        gen["resumed"] = resumed
+        gen["run_id"] = run_id
+        return gen
+
+    @staticmethod
+    def _lease_stale(
+        c: sqlite3.Connection, heartbeat_at: str | None, now: str, stale_seconds: float
+    ) -> bool:
+        if not heartbeat_at:
+            return True
+        row = c.execute(
+            "SELECT (julianday(?) - julianday(?)) * 86400 > ?",
+            (now, heartbeat_at, float(stale_seconds)),
+        ).fetchone()
+        return bool(row[0])
+
+    @staticmethod
+    def _release_owner_row(c: sqlite3.Connection, active: dict[str, Any], now: str) -> None:
+        """Release a stale owner: revert running→partial/reconcile_pending, preserve cursor, clear lease.
+
+        The old owning V119 pass (if still ``running``) is marked ``interrupted``.
+        """
+        status = active["status"]
+        if status == "running":
+            status = "reconcile_pending" if active["metadata_walk_completed_at"] else "partial"
+        c.execute(
+            "UPDATE source_index_scan_generations SET status=?, active_run_id=NULL, updated_at=? "
+            "WHERE generation_id=?",
+            (status, now, active["generation_id"]),
+        )
+        if active["active_run_id"]:
+            c.execute(
+                "UPDATE source_index_bootstrap_runs SET status='interrupted', finished_at=? "
+                "WHERE run_id=? AND status='running'",
+                (now, active["active_run_id"]),
+            )
+
+    # ----- cursor / reconcile checkpoints -----------------------------------------------------
+    def advance_cursor(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        cursor_json: str | None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Checkpoint the traversal cursor + absolute counters + heartbeat (its own commit).
+
+        Called AFTER the batch's metadata writes have committed, so the cursor never advances past
+        uncommitted metadata (a crash between them merely re-processes the batch — idempotent — never
+        skips it). Only applies while this ``run_id`` owns the generation (lease guard)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            self._apply_advance(c, generation_id, run_id, "cursor_json", cursor_json, counters)
+
+    def advance_reconcile_cursor(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        reconcile_cursor_json: str | None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Checkpoint the reconciliation keyset position + counters (its own commit)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            self._apply_advance(
+                c, generation_id, run_id, "reconcile_cursor_json", reconcile_cursor_json, counters
+            )
+
+    @staticmethod
+    def _apply_advance(
+        c: sqlite3.Connection,
+        generation_id: str,
+        run_id: str,
+        cursor_col: str,
+        cursor_val: str | None,
+        counters: dict[str, int],
+    ) -> None:
+        unknown = set(counters) - _GEN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
+        sets = [f"{cursor_col}=?", "owner_heartbeat_at=?", "updated_at=?"]
+        now = _now()
+        vals: list[Any] = [cursor_val, now, now]
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        c.execute(
+            f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
+            "WHERE generation_id=? AND active_run_id=? AND status='running'",
+            (*vals, generation_id, run_id),
+        )
+
+    # ----- standalone heartbeat (best-effort, own txn) ----------------------------------------
+    def heartbeat(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        unknown = set(counters) - _GEN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
+        sets = ["owner_heartbeat_at=?", "updated_at=?"]
+        now = _now()
+        vals: list[Any] = [now, now]
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
+                "WHERE generation_id=? AND active_run_id=? AND status='running'",
+                (*vals, generation_id, run_id),
+            )
+
+    # ----- terminal / phase transitions -------------------------------------------------------
+    def mark_metadata_walk_complete(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Metadata walk finished (status stays ``running``); reconciliation runs next."""
+        unknown = set(counters) - _GEN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
+        now = _now()
+        sets = ["metadata_walk_completed_at=?", "owner_heartbeat_at=?", "updated_at=?"]
+        vals: list[Any] = [now, now, now]
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
+                "WHERE generation_id=? AND active_run_id=? AND status='running'",
+                (*vals, generation_id, run_id),
+            )
+
+    def mark_partial(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        cursor_json: str | None = None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """A per-pass bound stopped the walk: status→``partial``, lease released, cursor preserved."""
+        self._terminate(
+            generation_id,
+            run_id,
+            status="partial",
+            cursor_json=cursor_json,
+            conn=conn,
+            counters=counters,
+        )
+
+    def mark_reconcile_pending(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        reconcile_cursor_json: str | None = None,
+        last_error_code: str | None = None,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Metadata walk done but reconciliation not finished: status→``reconcile_pending`` (resumable
+        without re-walking), lease released, reconcile checkpoint preserved."""
+        self._terminate(
+            generation_id,
+            run_id,
+            status="reconcile_pending",
+            reconcile_cursor_json=reconcile_cursor_json,
+            last_error_code=last_error_code,
+            conn=conn,
+            counters=counters,
+        )
+
+    def finish_completed(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """Metadata walk + reconciliation both finished: status→``completed``."""
+        self._terminate(
+            generation_id,
+            run_id,
+            status="completed",
+            set_reconciliation_completed=True,
+            set_finished=True,
+            conn=conn,
+            counters=counters,
+        )
+
+    def fail_generation(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        last_error_code: str,
+        conn: sqlite3.Connection | None = None,
+        **counters: int,
+    ) -> None:
+        """No-forward-progress / unrecoverable: status→``failed`` (NO reconciliation, requires a
+        config/fingerprint change or explicit restart — never silently reopened as ``partial``)."""
+        self._terminate(
+            generation_id,
+            run_id,
+            status="failed",
+            last_error_code=last_error_code,
+            set_finished=True,
+            conn=conn,
+            counters=counters,
+        )
+
+    def abandon_generation(
+        self,
+        generation_id: str,
+        *,
+        last_error_code: str = "abandoned",
+        conn: sqlite3.Connection | None = None,
+    ) -> None:
+        """Invalid/unvalidatable cursor/fingerprint/root: status→``abandoned`` (NO reconciliation)."""
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                "UPDATE source_index_scan_generations SET status='abandoned', active_run_id=NULL, "
+                "finished_at=?, updated_at=?, last_error_code=? WHERE generation_id=?",
+                (now, now, last_error_code, generation_id),
+            )
+
+    def release_owner(
+        self, generation_id: str, run_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> None:
+        """Interrupt backstop: if this run still owns a ``running`` generation, revert to
+        ``partial``/``reconcile_pending`` (preserving cursor) and clear the lease."""
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            row = c.execute(
+                "SELECT * FROM source_index_scan_generations WHERE generation_id=? "
+                "AND active_run_id=? AND status='running'",
+                (generation_id, run_id),
+            ).fetchone()
+            if row is None:
+                return
+            status = "reconcile_pending" if row["metadata_walk_completed_at"] else "partial"
+            with transaction(c):
+                c.execute(
+                    "UPDATE source_index_scan_generations SET status=?, active_run_id=NULL, "
+                    "updated_at=? WHERE generation_id=? AND active_run_id=?",
+                    (status, now, generation_id, run_id),
+                )
+
+    def _terminate(
+        self,
+        generation_id: str,
+        run_id: str,
+        *,
+        status: str,
+        cursor_json: str | None = None,
+        reconcile_cursor_json: str | None = None,
+        last_error_code: str | None = None,
+        set_reconciliation_completed: bool = False,
+        set_finished: bool = False,
+        conn: sqlite3.Connection | None = None,
+        counters: dict[str, int] | None = None,
+    ) -> None:
+        counters = counters or {}
+        unknown = set(counters) - _GEN_COUNTER_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
+        now = _now()
+        sets = ["status=?", "active_run_id=NULL", "updated_at=?"]
+        vals: list[Any] = [status, now]
+        if cursor_json is not None:
+            sets.append("cursor_json=?")
+            vals.append(cursor_json)
+        if reconcile_cursor_json is not None:
+            sets.append("reconcile_cursor_json=?")
+            vals.append(reconcile_cursor_json)
+        if last_error_code is not None:
+            sets.append("last_error_code=?")
+            vals.append(last_error_code)
+        if set_reconciliation_completed:
+            sets.append("reconciliation_completed_at=?")
+            vals.append(now)
+        if set_finished:
+            sets.append("finished_at=?")
+            vals.append(now)
+        for col, val in counters.items():
+            sets.append(f"{col}=?")
+            vals.append(int(val))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.execute(
+                f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
+                "WHERE generation_id=? AND active_run_id=?",
+                (*vals, generation_id, run_id),
+            )

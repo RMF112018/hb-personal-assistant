@@ -193,7 +193,23 @@ class ObsidianMcpConfig(BaseModel):
     # (SIGKILL/OOM) and reaped to "abandoned".
     source_index_bootstrap_heartbeat_seconds: float = 10.0
     source_index_bootstrap_stale_run_seconds: float = 120.0
-    schema_version: int = 7
+    # Metadata-first scan generations (PR 2 / V120). Three SEPARATE bounds: the metadata batch commit
+    # size (cursor + metadata advance atomically per batch), the per-pass OBSERVED-file limit (counts
+    # every walked entry, changed or fast-skipped — so an all-unchanged large root still bounds out),
+    # and an optional per-generation hard ceiling (a no-forward-progress backstop: hitting it FAILS the
+    # generation, it is not reopened as partial). When the observed limit is None it falls back to the
+    # PR 1 source_index_bootstrap_max_files_per_pass so a scan stays bounded by default.
+    source_index_metadata_batch_size: int = 500
+    source_index_scan_observed_files_per_pass: int | None = None
+    source_index_generation_max_files: int | None = None
+    # High-fanout guard: a directory with more than this many entries fails closed
+    # (directory_fanout_limit) rather than requiring an unbounded in-memory sort — and FAILS the
+    # generation (no reconciliation) rather than looping as a partial.
+    source_index_directory_fanout_limit: int = 20000
+    # Bumped whenever the walker/cursor traversal order or frame format changes; folded into the
+    # generation policy_fingerprint so an incompatible cursor abandons + restarts.
+    source_index_traversal_version: int = 1
+    schema_version: int = 8
 
     model_config = {"extra": "forbid"}
 

@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 121
+LATEST_SCHEMA_VERSION = 122
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7111,6 +7111,19 @@ class SQLiteMigrator:
 
         return V121_CLIENT_TOOL_MANIFEST_STATEMENTS
 
+    @staticmethod
+    def _v122_statements() -> list[str]:
+        # NAS Source-Index metadata-first scan generations: one additive table
+        # (source_index_scan_generations) with a partial-unique "one active generation per root" index,
+        # plus additive nullable columns on the V93 sources/metadata tables and the V119 runs table.
+        # Additive; ships EMPTY / column-additive; NO row-wide backfill (NULL is mapped from legacy
+        # extraction_status at read time and filled incrementally by bounded metadata generations).
+        from hb_assistant.store.source_index_scan_generations_tables import (
+            V122_SOURCE_INDEX_SCAN_GENERATIONS_STATEMENTS,
+        )
+
+        return V122_SOURCE_INDEX_SCAN_GENERATIONS_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9119,6 +9132,35 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (121, 'v121_manifest_gateway_allowlist', ?)",
+                    (now,),
+                )
+
+            # v122 source_index_scan_generations + generation-aware source/metadata columns: durable
+            # metadata-first scan generations spanning many V119 passes, with a persisted traversal
+            # cursor and generation-based deletion reconciliation. Additive nullable columns; NO row-wide
+            # backfill (legacy NULL disposition mapped from extraction_status at read time, filled
+            # incrementally by bounded metadata generations). Partial-unique one-active-generation-per-root.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 122")
+            if cur.fetchone() is None:
+                from hb_assistant.store.source_index_scan_generations_tables import (
+                    V122_ADD_COLUMNS,
+                    V122_POST_COLUMN_STATEMENTS,
+                )
+
+                for stmt in self._v122_statements():
+                    conn.execute(stmt)
+                # Parity-guarded ADD COLUMN: skip a column that already exists, so V122 is idempotent
+                # under an unconditional re-run (never a raw ALTER that raises "duplicate column").
+                for table, column, decl in V122_ADD_COLUMNS:
+                    existing = {
+                        r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+                    }
+                    if column not in existing:
+                        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+                for stmt in V122_POST_COLUMN_STATEMENTS:
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (122, 'v122_source_index_scan_generations', ?)",
                     (now,),
                 )
 
