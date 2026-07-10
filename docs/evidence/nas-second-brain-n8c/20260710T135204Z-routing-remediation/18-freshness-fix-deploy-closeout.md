@@ -57,8 +57,26 @@ client_projection_checksum=sha256:2c96d12d38e8efc6cc04e7cc4b8dd1b74f09e404131922
 2. Stage/promote stamps `surface_profile` + `gate_state_snapshot`
 3. `build_tool_entry()` uses `classify_tool()` for classification parity
 
-## F. Final disposition
+## F. Independent verify-only (2026-07-10)
 
-`MANIFEST_REFRESHED` + `WRITE_ROUTES_UNBLOCKED` — PR #293 routing remediation stack complete through operator manifest closeout.
+Operator ran `15-manifest-verify-only.sh`:
+
+```text
+manifest_status active persisted True
+manifest_schema_version 1
+workflow_count 14 published_recipes 14
+tool_manifest_stale False review_required False
+
+pa_tool_surface_freshness_check:
+  stale=false staleness_state=current
+  family_changed=0 class_changed=0 warnings=[]
+
+pa_prompt_route document_session:
+  executable=True blocked=None
+```
+
+## G. Final disposition
+
+`MANIFEST_REFRESHED` + `WRITE_ROUTES_UNBLOCKED` + `SURFACE_FRESHNESS_CURRENT` — PR #293 routing remediation stack complete through operator manifest closeout.
 
 **Residual:** None blocking `document_session` or surface-stale write gate.
