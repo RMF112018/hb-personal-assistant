@@ -577,7 +577,8 @@ def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInde
 
 def _index_source_metadata(
     abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
-    config: ObsidianMcpConfig, *, generation_id: str | None, conn: Any = None,
+    config: ObsidianMcpConfig, *, generation_id: str | None, preserve_content: bool = False,
+    conn: Any = None, in_transaction: bool = False,
 ) -> IndexOutcome:
     """Index ONE external file's METADATA ONLY (V120 metadata-first root scan).
 
@@ -587,8 +588,13 @@ def _index_source_metadata(
     Content extraction is deferred to the targeted :func:`index_source_file` path (and PR 3's queue). A
     content-eligible file therefore records ``extraction_disposition='content'`` with
     ``extraction_status='pending'`` (eligible, not yet extracted); a metadata-only file records
-    ``metadata_only``/``pending``. Because the record carries no excerpt, ``upsert_source_file`` clears any
-    stale content on a content->metadata transition while retaining a searchable path FTS row.
+    ``metadata_only``/``pending``.
+
+    ``preserve_content=True`` marks this a metadata/path-FTS REPAIR of a PHYSICALLY UNCHANGED file (a legacy
+    row missing a path-FTS row or disposition): the upsert then keeps any valid extracted text/chunks/digest
+    intact rather than clearing them. Otherwise (a genuine change or a disposition/sensitivity transition)
+    the record carries no excerpt, so the upsert INVALIDATES stale content while retaining a path FTS row.
+    ``in_transaction`` threads the write onto the caller's open txn for atomic batch commit.
     """
     root_path = Path(root.path)
     try:
@@ -607,7 +613,7 @@ def _index_source_metadata(
         "rel_path": rel_path, "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
         "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
         "content_sha256": None, "extraction_disposition": disposition,
-        "last_seen_generation": generation_id,
+        "last_seen_generation": generation_id, "preserve_content": preserve_content,
     }
     key, number, conf = match_path_to_project(rel_path)
     record["project_key"], record["project_number"] = key, number
@@ -621,9 +627,9 @@ def _index_source_metadata(
         "unsupported": "unsupported",
         "too_large": "skipped_too_large",
     }[disposition]
-    source_id = repo.upsert_source_file(record, conn=conn)
+    source_id = repo.upsert_source_file(record, conn=conn, in_transaction=in_transaction)
     return IndexOutcome(
-        source_id=source_id, disposition=disposition, changed=True, hashed=False,
+        source_id=source_id, disposition=disposition, changed=not preserve_content, hashed=False,
         extraction_attempted=False, extraction_status=str(record["extraction_status"]),
     )
 
@@ -786,6 +792,9 @@ def _policy_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig, roo
         "parser_optin": bool(getattr(config, "source_index_enable_synchronous_parser_extraction", False)),
         "project_matcher": "hb-num-v1",
         "fts": "bm25:1,8,12|unicode61",
+        # A sensitivity flip changes how content is handled (encrypt-to-vault vs plain, FTS eligibility),
+        # so it must invalidate the generation → a fresh generation reclassifies + re-secures every row.
+        "sensitive": bool(getattr(root, "sensitive", False)),
         "root_key": root.source_root_key,
         "root_path_hash": root_path_hash,
     }
@@ -801,6 +810,96 @@ def _tally_disposition(report: "ScanReport", disposition: str) -> None:
         report.unsupported += 1
     elif disposition == "too_large":
         report.too_large += 1
+
+
+def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: ObsidianMcpConfig) -> bool:
+    """Structurally + physically validate a persisted traversal cursor BEFORE resuming (V120 §5).
+
+    A resumed cursor is trusted only when: it is a dict; ``version`` matches the current traversal version;
+    every frame is ``{"d": <root-relative dir>, "after": <name|None>}``; each frame directory is contained
+    within the root (no absolute path, no ``..`` escape, resolves inside root), still exists as a directory,
+    is not a symlink escape; and frames are parent→child consistent. Any violation ⇒ the caller ABANDONS the
+    generation (no reconciliation) and restarts from the root — an invalid cursor must never silently walk a
+    partial/escaping tree or drive a false deletion.
+    """
+    if cursor is None:
+        return True
+    if not isinstance(cursor, dict):
+        return False
+    tv = int(getattr(config, "source_index_traversal_version", 1))
+    if "version" in cursor and int(cursor.get("version", tv)) != tv:
+        return False
+    frames = cursor.get("frames")
+    if frames is None:
+        return True  # a versioned cursor with no frames == start-from-root
+    if not isinstance(frames, list):
+        return False
+    root = Path(root_path)
+    try:
+        root_resolved = root.resolve()
+    except OSError:
+        return False
+    prev_dir: str | None = None
+    for fr in frames:
+        if not isinstance(fr, dict):
+            return False
+        d = fr.get("d")
+        after = fr.get("after")
+        if not isinstance(d, str) or (after is not None and not isinstance(after, str)):
+            return False
+        norm_d = d.replace("\\", "/").strip("/")
+        if d not in ("", "."):
+            segments = norm_d.split("/")
+            if d.startswith("/") or ".." in segments or "" in segments:
+                return False
+            abs_dir = root / norm_d
+            try:
+                resolved = abs_dir.resolve()
+            except OSError:
+                return False
+            if resolved != root_resolved and root_resolved not in resolved.parents:
+                return False
+            if not abs_dir.is_dir() or pathsafe.symlink_escapes(abs_dir, root):
+                return False
+        if prev_dir is not None:
+            norm_prev = prev_dir.replace("\\", "/").strip("/")
+            if norm_prev and not (norm_d == norm_prev or norm_d.startswith(norm_prev + "/")):
+                return False
+        prev_dir = d
+    return True
+
+
+def _probe_candidate(abs_c: Path, root_path: Path) -> str:
+    """Classify a stale reconcile candidate → ``present`` | ``absent`` | ``indeterminate`` (V120 §7).
+
+    Only a confirmed **regular, in-root** file is ``present`` (a survivor — never deleted, refreshed
+    instead). Only a confirmed **ENOENT** is ``absent`` (delete-eligible). A permission error, transient
+    I/O error, symlink escape, or a non-regular inode now occupying the path is ``indeterminate`` — the
+    candidate is NEVER deleted (that would be the exact false-deletion hazard PR 2 exists to prevent); the
+    generation stays ``reconcile_pending`` until the condition clears.
+    """
+    import stat as _sm
+
+    try:
+        st = os.stat(abs_c)  # follows symlinks; a missing/broken target raises ENOENT
+    except FileNotFoundError:
+        return "absent"
+    except OSError:
+        return "indeterminate"
+    try:
+        if not _sm.S_ISREG(st.st_mode):
+            return "indeterminate"
+        if pathsafe.symlink_escapes(abs_c, root_path):
+            return "indeterminate"
+    except OSError:
+        return "indeterminate"
+    return "present"
+
+
+class _LeaseLost(Exception):
+    """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
+    ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
+    aborts WITHOUT touching the generation (its new owner is authoritative)."""
 
 
 def scan_source_root(
@@ -829,7 +928,7 @@ def scan_source_root(
     import time
     import uuid as _uuid
 
-    from hb_assistant.store.connection import open_connection
+    from hb_assistant.store.connection import open_connection, transaction
     from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
     from hb_assistant.store.source_index_scan_generations_repository import (
         SourceIndexScanGenerationsRepository,
@@ -914,18 +1013,33 @@ def scan_source_root(
     walk_complete = gen.get("metadata_walk_completed_at") is not None
     cursor = json.loads(gen["cursor_json"]) if gen.get("cursor_json") else None
 
-    with open_connection(repo.db_path):
-        # ---- Phase 1: metadata walk (skipped if the generation already completed its walk) ----
-        if not walk_complete:
-            batch: list[tuple[Path, str, dict[str, Any]]] = []
-            last_cursor = cursor
+    # Validate a resumed cursor BEFORE walking (V120 §5): a malformed/escaping/renamed cursor ABANDONS the
+    # generation (no reconciliation) and the next pass restarts from root — never silently walk a broken or
+    # out-of-root tree (which could drive a false deletion at reconcile time).
+    if not walk_complete and not _validate_cursor(cursor, root_path, config):
+        genrepo.abandon_generation(gid, last_error_code="invalid_cursor")
+        report.error_code = "invalid_cursor"
+        report.error_codes.append("invalid_cursor")
+        report.generation_status = "abandoned"
+        _finish_v119("interrupted")
+        return report
 
-            def _flush() -> None:
-                nonlocal files_observed, metadata_upserted, files_unchanged, errors_count, last_cursor
-                if not batch:
-                    return
-                rels = [rel for _a, rel, _c in batch]
-                state = repo.load_metadata_state_batch(root.source_root_key, rels)
+    # ---- Phase 1: metadata walk (skipped if the generation already completed its walk) ----
+    if not walk_complete:
+        batch: list[tuple[Path, str, dict[str, Any]]] = []
+        last_cursor = cursor
+
+        def _flush() -> None:
+            """Commit ONE batch ATOMICALLY: all metadata upserts + unchanged last-seen stamps + counters +
+            the cursor checkpoint in a SINGLE transaction. A crash rolls the whole batch back (re-processed
+            next pass, never skipped); the cursor never advances past uncommitted metadata. If the cursor
+            advance affects 0 rows this run LOST the lease → raise _LeaseLost and abort."""
+            nonlocal files_observed, metadata_upserted, files_unchanged, errors_count, last_cursor
+            if not batch:
+                return
+            rels = [rel for _a, rel, _c in batch]
+            with open_connection(repo.db_path) as c, transaction(c):
+                state = repo.load_metadata_state_batch(root.source_root_key, rels, conn=c)
                 unchanged: list[str] = []
                 for abs_p, rel, cur in batch:
                     last_cursor = cur
@@ -935,16 +1049,31 @@ def scan_source_root(
                         errors_count += 1
                         report.errors += 1
                         continue
+                    ext = abs_p.suffix.lower().lstrip(".")
+                    recomputed = extraction_disposition(ext, st.st_size, config)
                     prev = state.get(rel)
-                    if prev is not None and prev == (st.st_mtime_ns, st.st_size):
+                    stat_match = (
+                        prev is not None
+                        and prev["mtime"] == st.st_mtime_ns
+                        and prev["size"] == st.st_size
+                    )
+                    disp_match = prev is not None and prev["disposition"] == recomputed
+                    # Fast-skip ONLY a fully-current row: stat matches AND policy disposition matches AND a
+                    # path-FTS row already exists. A legacy row missing a path-FTS row or with a stale
+                    # disposition is NOT fast-skipped — it is repaired (correction #6, finding 2).
+                    if stat_match and disp_match and prev["has_fts"]:
                         unchanged.append(rel)
                         files_unchanged += 1
                         report.files_unchanged += 1
                         report.skipped += 1
                         continue
+                    # preserve = physically unchanged (stat+disposition match) but needs a metadata/FTS
+                    # REPAIR → keep valid extracted content; else a genuine change/transition clears content.
+                    preserve = bool(stat_match and disp_match)
                     try:
                         outcome = _index_source_metadata(
-                            abs_p, root, repo, config, generation_id=gid
+                            abs_p, root, repo, config, generation_id=gid,
+                            preserve_content=preserve, conn=c, in_transaction=True,
                         )
                     except Exception as exc:  # a bad file never aborts the scan; the row is preserved
                         errors_count += 1
@@ -957,129 +1086,192 @@ def scan_source_root(
                         report.indexed += 1
                         report.indexed_source_ids.append(outcome.source_id)
                         _tally_disposition(report, outcome.disposition)
-                        if prev is not None:
-                            repo.mark_generated_notes_stale(outcome.source_id)
-                # Metadata is now committed (per-file upserts self-commit). Stamp unchanged, THEN
-                # checkpoint the cursor — so the cursor never advances past uncommitted metadata.
-                repo.stamp_last_seen(root.source_root_key, unchanged, gid)
-                genrepo.advance_cursor(
+                        # Only a MATERIAL change re-stales generated notes; a preserve repair must not.
+                        if prev is not None and not preserve:
+                            repo._mark_generated_notes_stale(c, outcome.source_id)
+                repo.stamp_last_seen(
+                    root.source_root_key, unchanged, gid, conn=c, in_transaction=True
+                )
+                affected = genrepo.advance_cursor(
                     gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    conn=c, in_transaction=True,
                     files_observed=files_observed, metadata_upserted=metadata_upserted,
                     files_unchanged=files_unchanged, errors_count=errors_count,
                 )
-                batch.clear()
+                if affected == 0:
+                    raise _LeaseLost()
+            batch.clear()
 
-            try:
-                for abs_path, rel_path, cur in walk_generation(
-                    root_path, config, cursor=cursor, fanout_limit=fanout
-                ):
-                    files_observed += 1
-                    pass_observed += 1
-                    report.files_walked += 1
-                    report.scanned += 1
-                    batch.append((abs_path, rel_path, cur))
-                    if len(batch) >= batch_size:
-                        _flush()
-                        now_m = time.monotonic()
-                        if now_m - last_progress >= heartbeat_s:
-                            last_progress = now_m
-                            _emit_progress(rel_path)
-                    # Per-pass OBSERVED bound (this pass's walk, counting fast-skips too) → partial.
-                    if observed_limit is not None and pass_observed >= observed_limit:
-                        _flush()
-                        report.bounded_out = True
-                        report.bounded_reason = "observed_files_per_pass"
-                        break
-                    if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
-                        _flush()
-                        report.bounded_out = True
-                        report.bounded_reason = "max_seconds"
-                        break
-                    # Per-generation hard ceiling (cumulative) → no forward progress: FAIL (no reconciliation).
-                    if gen_ceiling is not None and files_observed >= int(gen_ceiling):
-                        _flush()
-                        report.error_code = "generation_ceiling"
-                        genrepo.fail_generation(
-                            gid, run_id, last_error_code="generation_ceiling",
-                            files_observed=files_observed, metadata_upserted=metadata_upserted,
-                            files_unchanged=files_unchanged, errors_count=errors_count,
-                        )
-                        report.generation_status = "failed"
-                        _finish_v119("failed")
-                        return report
-                else:
-                    _flush()  # loop exhausted normally
-            except DirectoryFanoutError:
-                _flush()
-                report.error_code = "directory_fanout_limit"
-                report.error_codes.append("directory_fanout_limit")
-                genrepo.fail_generation(
-                    gid, run_id, last_error_code="directory_fanout_limit",
-                    files_observed=files_observed, metadata_upserted=metadata_upserted,
-                    files_unchanged=files_unchanged, errors_count=errors_count,
-                )
-                report.generation_status = "failed"
-                _finish_v119("failed")
-                return report
-
-            if report.bounded_out:
-                genrepo.mark_partial(
-                    gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
-                    files_observed=files_observed, metadata_upserted=metadata_upserted,
-                    files_unchanged=files_unchanged, errors_count=errors_count,
-                )
-                report.generation_status = "partial"
-                _emit_progress("")
-                _finish_v119("partial")
-                return report
-
-            # Full metadata walk complete.
-            genrepo.mark_metadata_walk_complete(
-                gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
+        try:
+            for abs_path, rel_path, cur in walk_generation(
+                root_path, config, cursor=cursor, fanout_limit=fanout
+            ):
+                files_observed += 1
+                pass_observed += 1
+                report.files_walked += 1
+                report.scanned += 1
+                batch.append((abs_path, rel_path, cur))
+                if len(batch) >= batch_size:
+                    _flush()
+                    now_m = time.monotonic()
+                    if now_m - last_progress >= heartbeat_s:
+                        last_progress = now_m
+                        _emit_progress(rel_path)
+                # Per-pass OBSERVED bound (this pass's walk, counting fast-skips too) → partial.
+                if observed_limit is not None and pass_observed >= observed_limit:
+                    _flush()
+                    report.bounded_out = True
+                    report.bounded_reason = "observed_files_per_pass"
+                    break
+                if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
+                    _flush()
+                    report.bounded_out = True
+                    report.bounded_reason = "max_seconds"
+                    break
+                # Per-generation hard ceiling (cumulative) → no forward progress: FAIL (no reconciliation).
+                if gen_ceiling is not None and files_observed >= int(gen_ceiling):
+                    _flush()
+                    report.error_code = "generation_ceiling"
+                    genrepo.fail_generation(
+                        gid, run_id, last_error_code="generation_ceiling",
+                        files_observed=files_observed, metadata_upserted=metadata_upserted,
+                        files_unchanged=files_unchanged, errors_count=errors_count,
+                    )
+                    report.generation_status = "failed"
+                    _finish_v119("failed")
+                    return report
+            else:
+                _flush()  # loop exhausted normally
+        except DirectoryFanoutError:
+            report.error_code = "directory_fanout_limit"
+            report.error_codes.append("directory_fanout_limit")
+            genrepo.fail_generation(
+                gid, run_id, last_error_code="directory_fanout_limit",
+                files_observed=files_observed, metadata_upserted=metadata_upserted,
                 files_unchanged=files_unchanged, errors_count=errors_count,
             )
+            report.generation_status = "failed"
+            _finish_v119("failed")
+            return report
+        except _LeaseLost:
+            # A stale-lease takeover claimed this generation mid-batch. Do NOT touch the generation (its
+            # new owner is authoritative); just close this pass as a retryable conflict.
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return report
 
-        # ---- Phase 2: generation-based deletion reconciliation (source_id keyset) ----
-        rc = json.loads(gen["reconcile_cursor_json"]) if gen.get("reconcile_cursor_json") else {}
-        after_sid = rc.get("after")
+        if report.bounded_out:
+            genrepo.mark_partial(
+                gid, run_id, cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                files_observed=files_observed, metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged, errors_count=errors_count,
+            )
+            report.generation_status = "partial"
+            _emit_progress("")
+            _finish_v119("partial")
+            return report
+
+        # Full metadata walk complete.
+        genrepo.mark_metadata_walk_complete(
+            gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
+            files_unchanged=files_unchanged, errors_count=errors_count,
+        )
+
+    # ---- Phase 2: generation-based deletion reconciliation (source_id keyset, 3-outcome probe) ----
+    # Each batch: probe every candidate (present survivor / confirmed-absent / indeterminate), then apply the
+    # resolvable PREFIX atomically (deletes + survivor refreshes + reconcile-cursor checkpoint in one txn).
+    # The FIRST indeterminate (permission/IO/symlink/non-regular) stops the batch and leaves the generation
+    # reconcile_pending — only a CONFIRMED absence is ever deleted, and completeness is never falsely certified.
+    rc = json.loads(gen["reconcile_cursor_json"]) if gen.get("reconcile_cursor_json") else {}
+    after_sid = rc.get("after")
+    committed_after_sid = after_sid
+    try:
         while True:
             cands = repo.stale_candidates_batch(
                 root.source_root_key, gid, gen_started, after_source_id=after_sid, limit=batch_size
             )
             if not cands:
                 break
+            resolved: list[tuple[str, str, str, bool]] = []  # (sid, rel, action, preserve)
+            blocked = False
             for sid, rel in cands:
-                after_sid = sid
                 abs_c = root_path / rel
+                verdict = _probe_candidate(abs_c, root_path)
+                if verdict == "indeterminate":
+                    blocked = True
+                    break
+                if verdict == "absent":
+                    resolved.append((sid, rel, "delete", False))
+                    continue
+                # present survivor: preserve valid content when the file is physically unchanged.
                 try:
-                    exists = abs_c.is_file() and not pathsafe.symlink_escapes(abs_c, root_path)
+                    st = abs_c.stat()
                 except OSError:
-                    exists = False
-                if exists:
-                    # Restat survivor: resolve inline with a FULL metadata upsert + generation stamp (a
-                    # bare last-seen stamp would falsely certify coverage). On failure, leave the
-                    # generation reconcile_pending — never declare complete with an unresolved survivor.
-                    try:
-                        _index_source_metadata(abs_c, root, repo, config, generation_id=gid)
-                    except Exception as exc:
-                        report.errors += 1
-                        report.error_codes.append(type(exc).__name__)
-                        report.error_code = "survivor_refresh_failed"
-                        genrepo.mark_reconcile_pending(
-                            gid, run_id, reconcile_cursor_json=json.dumps({"after": after_sid}),
-                            last_error_code="survivor_refresh_failed", deleted_count=deleted_count,
-                        )
-                        report.generation_status = "reconcile_pending"
-                        _finish_v119("partial")
-                        return report
-                else:
-                    repo.mark_deleted_by_source_id(sid)
-                    deleted_count += 1
-                    report.deleted += 1
-            genrepo.advance_reconcile_cursor(
-                gid, run_id, reconcile_cursor_json=json.dumps({"after": after_sid}),
-                deleted_count=deleted_count,
-            )
+                    blocked = True
+                    break
+                ext = abs_c.suffix.lower().lstrip(".")
+                recomputed = extraction_disposition(ext, st.st_size, config)
+                p = repo.load_metadata_state_batch(root.source_root_key, [rel]).get(rel)
+                stat_match = (
+                    p is not None and p["mtime"] == st.st_mtime_ns and p["size"] == st.st_size
+                )
+                disp_match = p is not None and p["disposition"] == recomputed
+                resolved.append((sid, rel, "refresh", bool(stat_match and disp_match)))
+            if resolved:
+                with open_connection(repo.db_path) as c, transaction(c):
+                    for sid, rel, action, preserve in resolved:
+                        if action == "delete":
+                            repo.mark_deleted_by_source_id(sid, conn=c, in_transaction=True)
+                            deleted_count += 1
+                            report.deleted += 1
+                        else:
+                            # A survivor refresh that FAILS raises out of this txn → caught below and the
+                            # generation is left reconcile_pending (never certified complete with an
+                            # unresolved survivor). A bare last-seen stamp is forbidden — a full upsert
+                            # (content preserved when unchanged) is the only thing that clears the candidate.
+                            _index_source_metadata(
+                                root_path / rel, root, repo, config, generation_id=gid,
+                                preserve_content=preserve, conn=c, in_transaction=True,
+                            )
+                    affected = genrepo.advance_reconcile_cursor(
+                        gid, run_id, reconcile_cursor_json=json.dumps({"after": resolved[-1][0]}),
+                        conn=c, in_transaction=True, deleted_count=deleted_count,
+                    )
+                    if affected == 0:
+                        raise _LeaseLost()
+                after_sid = resolved[-1][0]
+                committed_after_sid = after_sid
+            if blocked:
+                genrepo.mark_reconcile_pending(
+                    gid, run_id, reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+                    last_error_code="reconcile_indeterminate", deleted_count=deleted_count,
+                )
+                report.error_code = "reconcile_indeterminate"
+                report.error_codes.append("reconcile_indeterminate")
+                report.generation_status = "reconcile_pending"
+                _finish_v119("partial")
+                return report
+    except _LeaseLost:
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "lease_lost"
+        report.error_codes.append("lease_lost")
+        _finish_v119("interrupted")
+        return report
+    except Exception as exc:  # a survivor refresh failed → resolvable later; never a false completion
+        report.errors += 1
+        report.error_codes.append(type(exc).__name__)
+        report.error_code = "survivor_refresh_failed"
+        genrepo.mark_reconcile_pending(
+            gid, run_id, reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+            last_error_code="survivor_refresh_failed", deleted_count=deleted_count,
+        )
+        report.generation_status = "reconcile_pending"
+        _finish_v119("partial")
+        return report
 
     genrepo.finish_completed(
         gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,

@@ -9,6 +9,9 @@ import time
 from typing import Any
 
 from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+from hb_assistant.store.source_index_scan_generations_repository import (
+    SourceIndexScanGenerationsRepository,
+)
 
 from .config import ObsidianMcpConfig
 from .source_connector_service import list_source_roots, source_status
@@ -74,6 +77,16 @@ def source_index_health(
     # is read ONLY for its heartbeat timestamp (never cwd/db_path).
     bstate = SourceIndexBootstrapRepository(str(repo.db_path))
     bootstrap_by_root = {b["root_key"]: b for b in bstate.list_bootstrap_state()}
+    # V120 durable generation truth per root (latest by start): completeness/readiness must derive from a
+    # COMPLETED metadata walk (+ reconciliation), NOT the legacy all-or-nothing bootstrap-run status — a
+    # failed/abandoned/running generation must never read as "complete".
+    genrepo = SourceIndexScanGenerationsRepository(str(repo.db_path))
+    latest_generation_by_root: dict[str, dict[str, Any]] = {}
+    try:
+        for g in genrepo.list_generations(limit=200):
+            latest_generation_by_root.setdefault(g["root_key"], g)  # list is newest-first
+    except Exception:  # noqa: BLE001 — health must never fail on the generation read
+        latest_generation_by_root = {}
     try:
         queue = repo.queue_health()
     except Exception:
@@ -143,14 +156,27 @@ def source_index_health(
                                 else "partial/blocked — prefer health-aware routing")
 
         file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
-        # Metadata completeness is now REPORTED SEPARATELY from content completeness (V120): a metadata-first
-        # root can be fully metadata-indexed (searchable by path) with zero content extracted.
+        gen_row = latest_generation_by_root.get(key)
+        # Metadata completeness is REPORTED SEPARATELY from content completeness (V120): a metadata-first
+        # root can be fully metadata-indexed (searchable by path) with zero content extracted. Completeness
+        # derives from DURABLE GENERATION TRUTH when a V120 generation exists — the metadata WALK must have
+        # completed on a non-failed/non-abandoned generation; a failed/abandoned/running/partial generation
+        # is NOT complete. Roots with no V120 generation yet fall back to the legacy bootstrap status.
+        if gen_row is not None:
+            metadata_walk_done = (
+                gen_row.get("metadata_walk_completed_at") is not None
+                and gen_row.get("status") in ("completed", "reconcile_pending")
+            )
+            reconciliation_done = gen_row.get("status") == "completed"
+        else:
+            metadata_walk_done = file_index_status != "partial"
+            reconciliation_done = file_index_status != "partial"
         if counts["metadata_indexed"] == 0:
             metadata_completeness_state = "none"
-        elif file_index_status == "partial":
-            metadata_completeness_state = "partial"
-        else:
+        elif metadata_walk_done:
             metadata_completeness_state = "complete"
+        else:
+            metadata_completeness_state = "partial"
         if counts["metadata_indexed"] == 0 or (
             counts["content_extracted"] == 0 and counts["content_searchable"] == 0
         ):
@@ -158,7 +184,7 @@ def source_index_health(
         elif (
             counts.get("content_pending", 0) > 0
             or counts["failed"] > 0
-            or file_index_status == "partial"
+            or not reconciliation_done
         ):
             content_completeness_state = "partial"
         else:

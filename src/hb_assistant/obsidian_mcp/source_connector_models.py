@@ -235,6 +235,12 @@ def shape_source_file(row: dict[str, Any], *, snippet: str | None = None,
         "extension": (str(ext).lower().lstrip(".") if ext else None),
         "mime_type": mime_for_ext(ext),
     }
+    # V120 result shaping (additive): why the row matched + whether it carries extracted content, so a
+    # client distinguishes a path/filename/project match from a content match and never treats a path-only
+    # hit as "no content available by mistake". Present only when the search layer supplied them.
+    for key in ("match_basis", "indexed_text_available", "extraction_status", "extraction_disposition"):
+        if key in row:
+            shaped[key] = row.get(key)
     if include_snippet:
         shaped["snippet"] = bound_snippet(snippet)
     return shaped

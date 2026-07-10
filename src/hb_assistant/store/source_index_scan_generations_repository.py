@@ -280,15 +280,23 @@ class SourceIndexScanGenerationsRepository:
         *,
         cursor_json: str | None,
         conn: sqlite3.Connection | None = None,
+        in_transaction: bool = False,
         **counters: int,
-    ) -> None:
-        """Checkpoint the traversal cursor + absolute counters + heartbeat (its own commit).
+    ) -> int:
+        """Checkpoint the traversal cursor + absolute counters + heartbeat. Returns the affected rowcount.
 
-        Called AFTER the batch's metadata writes have committed, so the cursor never advances past
-        uncommitted metadata (a crash between them merely re-processes the batch — idempotent — never
-        skips it). Only applies while this ``run_id`` owns the generation (lease guard)."""
+        Called AFTER (or, with ``in_transaction=True``, WITHIN the same txn AS) the batch's metadata writes,
+        so the cursor never advances past uncommitted metadata (a crash merely re-processes the batch —
+        idempotent — never skips it). The lease guard (``active_run_id=run_id AND status='running'``) means
+        a rowcount of **0** signals this run LOST ownership (stale-lease takeover) — the caller must abort
+        the pass rather than keep writing under a lease it no longer holds. ``in_transaction=True`` (requires
+        ``conn``) runs on the caller's open txn so the checkpoint commits atomically with the batch."""
+        if in_transaction:
+            if conn is None:
+                raise ValueError("in_transaction=True requires an open conn")
+            return self._apply_advance(conn, generation_id, run_id, "cursor_json", cursor_json, counters)
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            self._apply_advance(c, generation_id, run_id, "cursor_json", cursor_json, counters)
+            return self._apply_advance(c, generation_id, run_id, "cursor_json", cursor_json, counters)
 
     def advance_reconcile_cursor(
         self,
@@ -297,11 +305,19 @@ class SourceIndexScanGenerationsRepository:
         *,
         reconcile_cursor_json: str | None,
         conn: sqlite3.Connection | None = None,
+        in_transaction: bool = False,
         **counters: int,
-    ) -> None:
-        """Checkpoint the reconciliation keyset position + counters (its own commit)."""
+    ) -> int:
+        """Checkpoint the reconciliation keyset position + counters. Returns the affected rowcount (0 =
+        lease lost; abort). ``in_transaction=True`` runs on the caller's open txn."""
+        if in_transaction:
+            if conn is None:
+                raise ValueError("in_transaction=True requires an open conn")
+            return self._apply_advance(
+                conn, generation_id, run_id, "reconcile_cursor_json", reconcile_cursor_json, counters
+            )
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            self._apply_advance(
+            return self._apply_advance(
                 c, generation_id, run_id, "reconcile_cursor_json", reconcile_cursor_json, counters
             )
 
@@ -313,7 +329,7 @@ class SourceIndexScanGenerationsRepository:
         cursor_col: str,
         cursor_val: str | None,
         counters: dict[str, int],
-    ) -> None:
+    ) -> int:
         unknown = set(counters) - _GEN_COUNTER_COLUMNS
         if unknown:
             raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
@@ -323,11 +339,12 @@ class SourceIndexScanGenerationsRepository:
         for col, val in counters.items():
             sets.append(f"{col}=?")
             vals.append(int(val))
-        c.execute(
+        cur = c.execute(
             f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
             "WHERE generation_id=? AND active_run_id=? AND status='running'",
             (*vals, generation_id, run_id),
         )
+        return cur.rowcount or 0
 
     # ----- standalone heartbeat (best-effort, own txn) ----------------------------------------
     def heartbeat(
