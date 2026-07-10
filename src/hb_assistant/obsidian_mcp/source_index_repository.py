@@ -472,13 +472,19 @@ class SourceIndexRepository:
                 )
                 fts_rowid = cur.lastrowid
 
-        # content_indexed_at stamps a SUCCESSFUL content extraction; COALESCE preserves a prior stamp on a
-        # later metadata-only touch (path FTS invariant leaves content history intact).
+        # content_indexed_at reflects whether CURRENT VALID extracted content exists (finding 3). In
+        # replace mode (a genuine change/transition) the write is AUTHORITATIVE: it is stamped ``now`` only
+        # when this write actually carries extracted content (content disposition, status ok, a real
+        # excerpt), and forced to NULL otherwise — so a content→metadata_only/unsupported/too_large/cleared
+        # transition can never leave a stale "content indexed at" timestamp behind (the UPSERT below assigns
+        # it directly, NOT via COALESCE, unlike the preserve path which never touches it).
         _disp = record.get("extraction_disposition")
         _status = record.get("extraction_status", "ok")
-        content_indexed_at = (
-            now if (_disp == "content" and _status == "ok") else record.get("content_indexed_at")
-        )
+        # Valid extracted content exists when this content write actually carries indexed text — either a
+        # plaintext excerpt or an encrypted-to-vault ref (sensitive roots). A metadata-only / cleared write
+        # carries neither, so the stamp is NULL and no stale timestamp survives the transition.
+        _has_content = bool(record.get("text_excerpt") or record.get("text_vault_ref"))
+        content_indexed_at = now if (_disp == "content" and _status == "ok" and _has_content) else None
         c.execute(
             "INSERT INTO source_intelligence_metadata "
             "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count, "
@@ -492,7 +498,8 @@ class SourceIndexRepository:
             " extraction_status=excluded.extraction_status, extraction_failure_code=excluded.extraction_failure_code, "
             " fts_rowid=excluded.fts_rowid, indexed_at=excluded.indexed_at, "
             " extraction_disposition=excluded.extraction_disposition, "
-            " content_indexed_at=COALESCE(excluded.content_indexed_at, source_intelligence_metadata.content_indexed_at)",
+            # Authoritative in replace mode: NULL clears a stale stamp when valid content no longer exists.
+            " content_indexed_at=excluded.content_indexed_at",
             (source_id, record.get("file_ext"), record.get("size_bytes"), record.get("mtime_ns"),
              record.get("content_sha256"), record.get("page_count"), record.get("paragraph_count"),
              record.get("sheet_count"), record.get("extraction_status", "ok"),
@@ -611,14 +618,16 @@ class SourceIndexRepository:
         self, source_root_key: str, rel_paths: list[str], *, conn: sqlite3.Connection | None = None
     ) -> dict[str, dict[str, Any]]:
         """Fast-skip state for a BOUNDED batch of paths:
-        ``rel_path -> {mtime, size, has_fts, disposition}``.
+        ``rel_path -> {mtime, size, has_fts, disposition, project_key, content_searchable}``.
 
         The metadata-first replacement for a full-root ``active_index_state`` preload — one query per
-        batch keeps memory O(batch), never O(root). ``has_fts`` (a path/project FTS row exists) and the
-        read-time-mapped ``disposition`` let the walker fast-skip a file ONLY when its stat matches AND it
-        is already fully represented for the current policy — a legacy row missing a path-FTS row or with a
-        stale disposition is NOT fast-skipped, so it gets repaired (correction #6). Deleted rows excluded;
-        V99 root-scoped identity.
+        batch keeps memory O(batch), never O(root). The walker fast-skips (or content-preserves) a file
+        ONLY when its stat matches AND it is still fully consistent with CURRENT policy. Consistency needs
+        more than stat: ``has_fts`` (a path/project FTS row exists), the read-time-mapped ``disposition``,
+        the stored ``project_key`` (so a project-matcher change that re-routes a file is NOT fast-skipped —
+        stale project fields/relationships get replaced), and ``content_searchable`` (nonempty indexed text)
+        so a plain→sensitive root flip cannot leave plaintext content fast-skipped on an unchanged file.
+        Deleted rows excluded; V99 root-scoped identity.
         """
         if not rel_paths:
             return {}
@@ -632,7 +641,13 @@ class SourceIndexRepository:
                 " COALESCE(m.extraction_disposition, CASE m.extraction_status "
                 "   WHEN 'ok' THEN 'content' WHEN 'failed' THEN 'content' "
                 "   WHEN 'unsupported' THEN 'unsupported' WHEN 'skipped_too_large' THEN 'too_large' "
-                "   ELSE 'metadata_only' END) AS disp "
+                "   ELSE 'metadata_only' END) AS disp, "
+                " s.project_key AS project_key, "
+                # content_searchable = NONEMPTY indexed text (matches content_status_counts); a bare
+                # path-FTS row does NOT count. Lets the walker detect plaintext that must be re-secured.
+                " CASE WHEN EXISTS (SELECT 1 FROM source_intelligence_text t "
+                "   WHERE t.source_id = s.source_id AND t.text_excerpt IS NOT NULL "
+                "   AND LENGTH(t.text_excerpt) > 0) THEN 1 ELSE 0 END AS content_searchable "
                 "FROM source_intelligence_sources s "
                 "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
                 "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
@@ -640,7 +655,10 @@ class SourceIndexRepository:
                 (source_root_key, *rel_paths),
             ).fetchall()
         return {
-            row[0]: {"mtime": row[1], "size": row[2], "has_fts": bool(row[3]), "disposition": row[4]}
+            row[0]: {
+                "mtime": row[1], "size": row[2], "has_fts": bool(row[3]), "disposition": row[4],
+                "project_key": row[5], "content_searchable": bool(row[6]),
+            }
             for row in rows
         }
 

@@ -651,3 +651,292 @@ def test_file_inserted_behind_cursor_no_loss_next_generation_catches(tmp_path):
         .fetchone()[0]
     )
     assert n_active == 4  # a0 + m1 + m2 + m3, none lost
+
+
+# ===== Round 3 =====================================================================================
+# The following cover the six round-3 review findings: sensitivity re-secure on a COMPLETED root,
+# project reclassification of an unchanged file, content_indexed_at clearing, strict cursor validation,
+# generation-truth health (reconcile_pending/legacy fallback), and lease-fenced terminal transitions.
+
+
+# ----- Round-3 finding 1: a completed-root sensitivity flip re-secures unchanged plaintext ----------
+def test_sensitivity_flip_on_completed_root_resecures_unchanged_content(tmp_path):
+    """A root that becomes sensitive AFTER a generation completed must re-secure its already-indexed
+    files: even though each file is physically unchanged (stat + disposition match), the fast-skip is
+    defeated by the owed sensitivity re-secure, so the next generation clears the plaintext content while
+    keeping path discoverability."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "payroll.txt"
+    f.write_text("employee salary ledger")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r_plain = ExternalSourceRoot(source_root_key="work", path=str(root_dir), sensitive=False)
+    _run_to_completion(r_plain, repo, _cfg(root_dir))
+    si.index_source_file(f, r_plain, repo, _cfg(root_dir))  # plaintext content indexed + searchable
+    assert any("payroll.txt" in h["path"] for h in repo.search_sources("salary"))
+    assert repo.content_status_counts("work")["content_searchable"] >= 1
+
+    # Flip the root to sensitive; the file is UNCHANGED. The next (fresh) generation re-secures it.
+    r_sensitive = ExternalSourceRoot(source_root_key="work", path=str(root_dir), sensitive=True)
+    _run_to_completion(r_sensitive, repo, _cfg(root_dir))
+    conn = sqlite3.connect(db)
+    n_text = conn.execute("SELECT COUNT(*) FROM source_intelligence_text").fetchone()[0]
+    conn.close()
+    assert n_text == 0, "plaintext content must be cleared when a completed root becomes sensitive"
+    assert repo.content_status_counts("work")["content_searchable"] == 0
+    assert not any("payroll.txt" in h["path"] for h in repo.search_sources("salary"))
+    # Path discoverability is preserved (path FTS invariant).
+    assert any("payroll.txt" in h["path"] for h in repo.search_sources("payroll"))
+
+
+# ----- Round-3 finding 2: a project-matcher change re-routes an unchanged file ----------------------
+def test_project_reclassification_replaces_stale_project_on_unchanged_file(tmp_path, monkeypatch):
+    """A project-matcher policy change re-routes a file to a different project even when its bytes are
+    unchanged. The stale project_key + belongs_to_project edge must be REPLACED (not fast-skipped, not
+    appended)."""
+    root_dir = tmp_path / "root"
+    (root_dir / "10-001-00 Tower").mkdir(parents=True)
+    f = root_dir / "10-001-00 Tower" / "plan.txt"
+    f.write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    conn = sqlite3.connect(db)
+    pk0 = conn.execute(
+        "SELECT project_key FROM source_intelligence_sources WHERE rel_path LIKE '%plan.txt'"
+    ).fetchone()[0]
+    conn.close()
+    assert pk0 == "10-001-00"
+
+    orig = si.match_path_to_project
+
+    def _rerouted(rel_path):
+        if "plan.txt" in rel_path:
+            return ("20-002-00", "20-002-00", "high")
+        return orig(rel_path)
+
+    monkeypatch.setattr(si, "match_path_to_project", _rerouted)
+    _run_to_completion(r, repo, _cfg(root_dir))
+    conn = sqlite3.connect(db)
+    pk1 = conn.execute(
+        "SELECT project_key FROM source_intelligence_sources WHERE rel_path LIKE '%plan.txt'"
+    ).fetchone()[0]
+    rels = [
+        row[0]
+        for row in conn.execute(
+            "SELECT dst_ref FROM source_intelligence_relationships WHERE relation='belongs_to_project'"
+        ).fetchall()
+    ]
+    conn.close()
+    assert pk1 == "20-002-00", "an unchanged file must be re-routed to the new project"
+    assert rels == ["20-002-00"], "the stale project edge must be replaced, not appended"
+
+
+# ----- Round-3 finding 3: content_indexed_at is NULLed when valid content no longer exists ----------
+def test_content_indexed_at_cleared_when_content_removed(tmp_path):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "notes.txt"
+    f.write_text("beam camber survey")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    si.index_source_file(f, r, repo, _cfg(root_dir))  # extraction stamps content_indexed_at
+
+    def _stamp():
+        conn = sqlite3.connect(db)
+        v = conn.execute("SELECT content_indexed_at FROM source_intelligence_metadata").fetchone()[0]
+        conn.close()
+        return v
+
+    assert _stamp() is not None
+    gid = SourceIndexScanGenerationsRepository(db).begin_generation_pass(
+        "work", "runc", policy_fingerprint="fp", root_path_hash="rph"
+    )["generation_id"]
+    # A preserve REPAIR keeps valid content → keeps the stamp.
+    si._index_source_metadata(f, r, repo, _cfg(root_dir), generation_id=gid, preserve_content=True)
+    assert _stamp() is not None, "a preserve repair must not clear content_indexed_at"
+    # A replace write with no content (metadata-first) clears content → the stamp must become NULL.
+    si._index_source_metadata(f, r, repo, _cfg(root_dir), generation_id=gid, preserve_content=False)
+    assert _stamp() is None, "content_indexed_at must be NULL once valid content no longer exists"
+
+
+# ----- Round-3 finding 4: strict, exception-safe cursor validation ---------------------------------
+def test_validate_cursor_strict_rules(tmp_path):
+    root = tmp_path / "root"
+    (root / "a").mkdir(parents=True)
+    (root / "b").mkdir()
+    (root / "a" / "f.txt").write_text("x")
+    cfg = _cfg(root)
+
+    def V(cur):
+        return si._validate_cursor(cur, root, cfg)
+
+    assert V({"frames": []}) is False  # version REQUIRED
+    assert V({"version": "abc", "frames": []}) is False  # non-integer version → no crash, reject
+    assert V({"version": 1, "frames": []}) is True  # valid empty
+    # Parent→child must be EXACT (child.d == parent.d / parent.after).
+    assert V({"version": 1, "frames": [{"d": "", "after": "a"}, {"d": "a", "after": "f.txt"}]}) is True
+    assert V({"version": 1, "frames": [{"d": "", "after": "a"}, {"d": "b", "after": None}]}) is False
+    # A deeper frame under a parent whose ``after`` is None is inconsistent.
+    assert V({"version": 1, "frames": [{"d": "", "after": None}, {"d": "a", "after": None}]}) is False
+    # An in-root symlink frame is rejected (its target may have changed since the cursor was persisted).
+    (root / "link").symlink_to(root / "a", target_is_directory=True)
+    assert V({"version": 1, "frames": [{"d": "link", "after": None}]}) is False
+
+
+def test_malformed_json_cursor_abandons_without_reconciliation(tmp_path):
+    """A cursor_json payload that is not decodable JSON is itself an invalid cursor: the pass ABANDONS
+    (no reconciliation, no crash) — it never falls through to a walk-from-root that then reconciles."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "keep.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+
+    gr = SourceIndexScanGenerationsRepository(db)
+    g = gr.begin_generation_pass("work", "runbad", policy_fingerprint="willreset", root_path_hash="rph")
+    gr.mark_partial(g["generation_id"], "runbad", cursor_json="not-json{{")
+    root_path_hash = si.hashlib.sha256(str(root_dir).encode()).hexdigest()[:32]
+    fp = si._policy_fingerprint(r, _cfg(root_dir), root_path_hash)
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "UPDATE source_index_scan_generations SET policy_fingerprint=?, root_path_hash=?, "
+        "traversal_version=1 WHERE generation_id=?",
+        (fp, root_path_hash, g["generation_id"]),
+    )
+    conn.commit()
+    conn.close()
+
+    rep = si.scan_source_root(r, repo, _cfg(root_dir))
+    assert rep.generation_status == "abandoned"
+    assert rep.error_code == "invalid_cursor"
+    d = (
+        sqlite3.connect(db)
+        .execute("SELECT deleted FROM source_intelligence_sources WHERE rel_path='keep.txt'")
+        .fetchone()[0]
+    )
+    assert d == 0
+
+
+# ----- Round-3 finding 5: health/readiness from generation truth, not legacy/partial state ----------
+def test_health_reconcile_pending_is_not_complete_and_watcher_not_ready(tmp_path, monkeypatch):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    (root_dir / "b.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+
+    (root_dir / "b.txt").unlink()
+    orig = si._probe_candidate
+    monkeypatch.setattr(
+        si, "_probe_candidate",
+        lambda abs_c, rp: "indeterminate" if abs_c.name == "b.txt" else orig(abs_c, rp),
+    )
+    rep = si.scan_source_root(r, repo, _cfg(root_dir))
+    assert rep.generation_status == "reconcile_pending"
+
+    h = source_index_health(repo, _cfg(root_dir))
+    work = next(x for x in h["roots"] if x["root_key"] == "work")
+    # reconcile_pending means unresolved candidates → NOT certifiably complete, watcher NOT ready.
+    assert work["metadata_completeness_state"] == "partial"
+    assert work["bootstrap"]["watcher_ready"] is False
+    assert work["run_state"] != "running"
+
+
+def test_health_legacy_fallback_requires_explicit_success(tmp_path):
+    """For a root with NO V120 generation, completeness falls back to the legacy bootstrap status — but
+    only the explicit success sentinel ('bootstrapped') certifies complete; 'conflict'/'partial'/'failed'
+    must NOT (the prior ``!= 'partial'`` wrongly certified conflict/failed)."""
+    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "doc.txt"
+    f.write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    si.index_source_file(f, r, repo, _cfg(root_dir))  # targeted → rows exist, NO generation
+    bstate = SourceIndexBootstrapRepository(db)
+
+    def _completeness(status: str) -> str:
+        bstate.upsert_bootstrap_state("work", file_index_status=status)
+        h = source_index_health(repo, _cfg(root_dir))
+        return next(x for x in h["roots"] if x["root_key"] == "work")["metadata_completeness_state"]
+
+    assert _completeness("conflict") == "partial"
+    assert _completeness("failed") == "partial"
+    assert _completeness("bootstrapped") == "complete"
+
+
+# ----- Round-3 finding 6: metadata-walk completion and finish are lease-fenced ----------------------
+def test_walk_complete_and_finish_are_lease_fenced(tmp_path):
+    """A run that no longer owns the generation cannot mark the walk complete or complete the generation
+    (rowcount 0), so it can never certify progress under a lost lease."""
+    db = _db(tmp_path)
+    gr = SourceIndexScanGenerationsRepository(db)
+    gid = gr.begin_generation_pass(
+        "work", "A", policy_fingerprint="fp", root_path_hash="rph"
+    )["generation_id"]
+    assert gr.mark_metadata_walk_complete(gid, "B") == 0  # non-owner cannot mark walk complete
+    assert gr.mark_metadata_walk_complete(gid, "A") == 1
+    # Takeover before completion: ownership moves to B (status stays running).
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "UPDATE source_index_scan_generations SET active_run_id='B' WHERE generation_id=?", (gid,)
+    )
+    conn.commit()
+    conn.close()
+    assert gr.finish_completed(gid, "A") == 0  # A lost the lease → cannot complete
+    assert gr.finish_completed(gid, "B") == 1  # rightful owner completes
+    status = (
+        sqlite3.connect(db)
+        .execute("SELECT status FROM source_index_scan_generations WHERE generation_id=?", (gid,))
+        .fetchone()[0]
+    )
+    assert status == "completed"
+
+
+def test_scan_reports_conflict_when_finish_loses_lease(tmp_path):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    class _LostAtFinish(SourceIndexScanGenerationsRepository):
+        def finish_completed(self, *a, **k):  # noqa: ANN002
+            return 0  # lease lost right before completion
+
+    rep = si.scan_source_root(r, repo, _cfg(root_dir), genrepo=_LostAtFinish(db))
+    assert rep.completed is False
+    assert rep.generation_status == "conflict"
+    assert rep.error_code == "lease_lost"
+
+
+def test_scan_reports_conflict_when_walk_complete_loses_lease(tmp_path):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    class _LostAtWalkComplete(SourceIndexScanGenerationsRepository):
+        def mark_metadata_walk_complete(self, *a, **k):  # noqa: ANN002
+            return 0  # lease lost right after the final batch
+
+    rep = si.scan_source_root(r, repo, _cfg(root_dir), genrepo=_LostAtWalkComplete(db))
+    assert rep.completed is False
+    assert rep.generation_status == "conflict"
+    assert rep.error_code == "lease_lost"

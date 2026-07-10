@@ -127,6 +127,25 @@ class SourceIndexScanGenerationsRepository:
                 ).fetchall()
         return [dict(r) for r in rows]
 
+    def latest_generations(
+        self, *, conn: sqlite3.Connection | None = None
+    ) -> dict[str, dict[str, Any]]:
+        """Return the NEWEST generation per root, keyed by ``root_key`` — one row per root, uncapped.
+
+        Health/readiness must derive from EACH root's own latest generation. A global ``list_generations``
+        cap could evict a root's latest row when other roots have many generations, so this uses a
+        per-root correlated ``MAX`` (started_at, rowid) instead of a bounded newest-first scan (finding 5)."""
+        with borrow_connection(conn, self.db_path) as c:
+            c.row_factory = sqlite3.Row
+            rows = c.execute(
+                "SELECT g.* FROM source_index_scan_generations g "
+                "WHERE g.rowid = ("
+                "  SELECT g2.rowid FROM source_index_scan_generations g2 "
+                "  WHERE g2.root_key = g.root_key "
+                "  ORDER BY g2.started_at DESC, g2.rowid DESC LIMIT 1)"
+            ).fetchall()
+        return {r["root_key"]: dict(r) for r in rows}
+
     # ----- atomic pass-start -----------------------------------------------------------------
     def begin_generation_pass(
         self,
@@ -379,8 +398,13 @@ class SourceIndexScanGenerationsRepository:
         *,
         conn: sqlite3.Connection | None = None,
         **counters: int,
-    ) -> None:
-        """Metadata walk finished (status stays ``running``); reconciliation runs next."""
+    ) -> int:
+        """Metadata walk finished (status stays ``running``); reconciliation runs next.
+
+        Lease-fenced: the ``active_run_id=run_id AND status='running'`` guard means a rowcount of **0**
+        signals this run LOST ownership before it could mark the walk complete (a stale-lease takeover). The
+        caller MUST treat 0 as a conflict and abort — otherwise it would proceed to reconcile/complete a
+        generation whose walk-completion write never landed (finding 6)."""
         unknown = set(counters) - _GEN_COUNTER_COLUMNS
         if unknown:
             raise ValueError(f"unknown generation counter columns: {sorted(unknown)}")
@@ -391,11 +415,12 @@ class SourceIndexScanGenerationsRepository:
             sets.append(f"{col}=?")
             vals.append(int(val))
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            c.execute(
+            cur = c.execute(
                 f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
                 "WHERE generation_id=? AND active_run_id=? AND status='running'",
                 (*vals, generation_id, run_id),
             )
+            return cur.rowcount or 0
 
     def mark_partial(
         self,
@@ -449,14 +474,19 @@ class SourceIndexScanGenerationsRepository:
         *,
         conn: sqlite3.Connection | None = None,
         **counters: int,
-    ) -> None:
-        """Metadata walk + reconciliation both finished: status→``completed``."""
-        self._terminate(
+    ) -> int:
+        """Metadata walk + reconciliation both finished: status→``completed``.
+
+        Lease-fenced (``require_running``): only a still-``running`` generation this run still owns can be
+        completed, and the affected rowcount is returned. A rowcount of **0** means the lease was lost after
+        the final batch — the caller MUST NOT report completion (finding 6)."""
+        return self._terminate(
             generation_id,
             run_id,
             status="completed",
             set_reconciliation_completed=True,
             set_finished=True,
+            require_running=True,
             conn=conn,
             counters=counters,
         )
@@ -532,9 +562,16 @@ class SourceIndexScanGenerationsRepository:
         last_error_code: str | None = None,
         set_reconciliation_completed: bool = False,
         set_finished: bool = False,
+        require_running: bool = False,
         conn: sqlite3.Connection | None = None,
         counters: dict[str, int] | None = None,
-    ) -> None:
+    ) -> int:
+        """Apply a terminal/phase transition; returns the affected rowcount.
+
+        ``require_running`` adds ``AND status='running'`` to the lease guard so a state that certifies
+        forward progress (completion) can only be written by the run that still owns a live generation — a
+        rowcount of 0 then signals a lost lease. The give-up transitions (partial / reconcile_pending /
+        failed) omit it: losing the lease there simply no-ops (the new owner is authoritative)."""
         counters = counters or {}
         unknown = set(counters) - _GEN_COUNTER_COLUMNS
         if unknown:
@@ -560,9 +597,12 @@ class SourceIndexScanGenerationsRepository:
         for col, val in counters.items():
             sets.append(f"{col}=?")
             vals.append(int(val))
+        where = "WHERE generation_id=? AND active_run_id=?"
+        if require_running:
+            where += " AND status='running'"
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            c.execute(
-                f"UPDATE source_index_scan_generations SET {', '.join(sets)} "
-                "WHERE generation_id=? AND active_run_id=?",
+            cur = c.execute(
+                f"UPDATE source_index_scan_generations SET {', '.join(sets)} {where}",
                 (*vals, generation_id, run_id),
             )
+            return cur.rowcount or 0

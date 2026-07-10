@@ -83,8 +83,9 @@ def source_index_health(
     genrepo = SourceIndexScanGenerationsRepository(str(repo.db_path))
     latest_generation_by_root: dict[str, dict[str, Any]] = {}
     try:
-        for g in genrepo.list_generations(limit=200):
-            latest_generation_by_root.setdefault(g["root_key"], g)  # list is newest-first
+        # Per-root newest generation (uncapped) — a global list cap could evict a root's latest row when
+        # other roots have accumulated many generations, silently reading stale/legacy completeness.
+        latest_generation_by_root = genrepo.latest_generations()
     except Exception:  # noqa: BLE001 — health must never fail on the generation read
         latest_generation_by_root = {}
     try:
@@ -163,14 +164,17 @@ def source_index_health(
         # completed on a non-failed/non-abandoned generation; a failed/abandoned/running/partial generation
         # is NOT complete. Roots with no V120 generation yet fall back to the legacy bootstrap status.
         if gen_row is not None:
-            metadata_walk_done = (
-                gen_row.get("metadata_walk_completed_at") is not None
-                and gen_row.get("status") in ("completed", "reconcile_pending")
-            )
+            # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
+            # sweep found indeterminate candidates (potential phantom rows still in the index), so its
+            # metadata set is NOT certifiably complete — it must read partial, not complete (finding 5).
             reconciliation_done = gen_row.get("status") == "completed"
+            metadata_walk_done = reconciliation_done
         else:
-            metadata_walk_done = file_index_status != "partial"
-            reconciliation_done = file_index_status != "partial"
+            # Legacy fallback (root with no V120 generation): accept ONLY the explicit success sentinel
+            # ("bootstrapped"). Any other value ("partial"/"conflict"/"failed"/None) is NOT complete
+            # (finding 5) — the prior ``!= "partial"`` wrongly certified conflict/failed/unknown as done.
+            metadata_walk_done = file_index_status == "bootstrapped"
+            reconciliation_done = file_index_status == "bootstrapped"
         if counts["metadata_indexed"] == 0:
             metadata_completeness_state = "none"
         elif metadata_walk_done:
@@ -189,6 +193,15 @@ def source_index_health(
             content_completeness_state = "partial"
         else:
             content_completeness_state = "complete"
+        # Watcher readiness (V120): for a root the new architecture tracks, readiness is a COMPLETED
+        # metadata+reconciliation generation AND structure truth (a folder map present) — NOT the persisted
+        # legacy readiness bit, which could read ready off a partial/legacy bootstrap (finding 5). Roots
+        # with no V120 generation yet fall back to the legacy bit.
+        legacy_watcher_ready = bool((bootstrap_by_root.get(key) or {}).get("watcher_ready"))
+        if gen_row is not None:
+            watcher_ready = bool(reconciliation_done and folder_count > 0)
+        else:
+            watcher_ready = legacy_watcher_ready
         # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
         # map — not merely a bare row count (V120).
         safe_for_path_lookup = counts.get("metadata_searchable", 0) > 0 or folder_count > 0
@@ -247,13 +260,10 @@ def source_index_health(
                     "file_index_bootstrapped")),
                 "structure_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
                     "structure_index_bootstrapped")),
-                "watcher_ready": bool((bootstrap_by_root.get(key) or {}).get("watcher_ready")),
+                # V120-derived when a generation exists (completed reconciliation + folder map), else legacy.
+                "watcher_ready": watcher_ready,
             },
-            "run_state": _run_state(
-                config,
-                bool((bootstrap_by_root.get(key) or {}).get("watcher_ready")),
-                backend_available,
-            ),
+            "run_state": _run_state(config, watcher_ready, backend_available),
             **bstate.get_structure_drift(key),
         })
 

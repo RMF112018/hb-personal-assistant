@@ -843,19 +843,30 @@ def _tally_disposition(report: "ScanReport", disposition: str) -> None:
 def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: ObsidianMcpConfig) -> bool:
     """Structurally + physically validate a persisted traversal cursor BEFORE resuming (V120 §5).
 
-    A resumed cursor is trusted only when: it is a dict; ``version`` matches the current traversal version;
-    every frame is ``{"d": <root-relative dir>, "after": <name|None>}``; each frame directory is contained
-    within the root (no absolute path, no ``..`` escape, resolves inside root), still exists as a directory,
-    is not a symlink escape; and frames are parent→child consistent. Any violation ⇒ the caller ABANDONS the
-    generation (no reconciliation) and restarts from the root — an invalid cursor must never silently walk a
-    partial/escaping tree or drive a false deletion.
+    A resumed cursor is trusted only when: it is a dict; ``version`` is PRESENT and equals the current
+    traversal version (a version-less or non-integer version is rejected — no lenient default); every frame
+    is ``{"d": <root-relative dir>, "after": <name|None>}``; each frame directory is contained within the
+    root (no absolute path, no ``..`` escape, resolves inside root), still exists as a real directory, and
+    is NOT a symlink at all (even one that stays in-root — a resumed symlink frame could have been retargeted
+    between passes); and each deeper frame's directory is EXACTLY ``parent.d / parent.after`` (the child we
+    descended into). Any violation ⇒ the caller ABANDONS the generation (no reconciliation) and restarts
+    from the root — an invalid cursor must never silently walk a partial/escaping tree or drive a false
+    deletion.
     """
     if cursor is None:
         return True
     if not isinstance(cursor, dict):
         return False
     tv = int(getattr(config, "source_index_traversal_version", 1))
-    if "version" in cursor and int(cursor.get("version", tv)) != tv:
+    # A stored cursor MUST declare its version explicitly and numerically — a missing or non-integer
+    # version is not a match (guards the int() conversion against arbitrary payloads).
+    if "version" not in cursor:
+        return False
+    try:
+        cursor_version = int(cursor["version"])
+    except (TypeError, ValueError):
+        return False
+    if cursor_version != tv:
         return False
     frames = cursor.get("frames")
     if frames is None:
@@ -867,7 +878,12 @@ def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: Obs
         root_resolved = root.resolve()
     except OSError:
         return False
-    prev_dir: str | None = None
+
+    def _norm(rel: str) -> str:
+        return rel.replace("\\", "/").strip("/")
+
+    prev_norm: str | None = None
+    prev_after: str | None = None
     for fr in frames:
         if not isinstance(fr, dict):
             return False
@@ -875,7 +891,7 @@ def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: Obs
         after = fr.get("after")
         if not isinstance(d, str) or (after is not None and not isinstance(after, str)):
             return False
-        norm_d = d.replace("\\", "/").strip("/")
+        norm_d = _norm(d)
         if d not in ("", "."):
             segments = norm_d.split("/")
             if d.startswith("/") or ".." in segments or "" in segments:
@@ -887,13 +903,20 @@ def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: Obs
                 return False
             if resolved != root_resolved and root_resolved not in resolved.parents:
                 return False
-            if not abs_dir.is_dir() or pathsafe.symlink_escapes(abs_dir, root):
+            # Reject ANY symlink frame (not merely an escaping one): its target may have changed since the
+            # cursor was persisted, so resuming into it is unsafe regardless of where it currently points.
+            if not abs_dir.is_dir() or abs_dir.is_symlink() or pathsafe.symlink_escapes(abs_dir, root):
                 return False
-        if prev_dir is not None:
-            norm_prev = prev_dir.replace("\\", "/").strip("/")
-            if norm_prev and not (norm_d == norm_prev or norm_d.startswith(norm_prev + "/")):
+        # Parent→child must be EXACT: a deeper frame is the subdirectory named by its parent frame's
+        # ``after`` (the entry the walker descended into), so ``child.d == parent.d / parent.after``.
+        if prev_norm is not None:
+            if prev_after is None:
                 return False
-        prev_dir = d
+            expected = _norm(f"{prev_norm}/{prev_after}" if prev_norm else prev_after)
+            if norm_d != expected:
+                return False
+        prev_norm = norm_d
+        prev_after = after
     return True
 
 
@@ -1039,12 +1062,28 @@ def scan_source_root(
             )
 
     walk_complete = gen.get("metadata_walk_completed_at") is not None
-    cursor = json.loads(gen["cursor_json"]) if gen.get("cursor_json") else None
+    # Decode the persisted cursor INSIDE the validation guard: a malformed/non-object JSON payload is
+    # itself an invalid cursor (finding 4), so a decode error must ABANDON — never crash the pass or fall
+    # through to a walk from root that then reconciles against a tree the cursor never described.
+    cursor_raw = gen.get("cursor_json")
+    cursor: dict[str, Any] | None = None
+    cursor_decode_ok = True
+    if cursor_raw:
+        try:
+            decoded = json.loads(cursor_raw)
+        except (ValueError, TypeError):
+            cursor_decode_ok = False
+        else:
+            # A well-formed but non-object payload (list/number/string) is not a valid cursor either.
+            if isinstance(decoded, dict):
+                cursor = decoded
+            else:
+                cursor_decode_ok = False
 
     # Validate a resumed cursor BEFORE walking (V120 §5): a malformed/escaping/renamed cursor ABANDONS the
     # generation (no reconciliation) and the next pass restarts from root — never silently walk a broken or
     # out-of-root tree (which could drive a false deletion at reconcile time).
-    if not walk_complete and not _validate_cursor(cursor, root_path, config):
+    if not walk_complete and (not cursor_decode_ok or not _validate_cursor(cursor, root_path, config)):
         genrepo.abandon_generation(gid, last_error_code="invalid_cursor")
         report.error_code = "invalid_cursor"
         report.error_codes.append("invalid_cursor")
@@ -1090,6 +1129,7 @@ def scan_source_root(
                         break
                     ext = abs_p.suffix.lower().lstrip(".")
                     recomputed = extraction_disposition(ext, st.st_size, config)
+                    cur_pk, _cur_num, _cur_conf = match_path_to_project(rel)
                     prev = state.get(rel)
                     stat_match = (
                         prev is not None
@@ -1097,19 +1137,31 @@ def scan_source_root(
                         and prev["size"] == st.st_size
                     )
                     disp_match = prev is not None and prev["disposition"] == recomputed
-                    # Fast-skip ONLY a fully-current row: stat matches AND policy disposition matches AND a
-                    # path-FTS row already exists. A legacy row missing a path-FTS row or with a stale
-                    # disposition is NOT fast-skipped — it is repaired (correction #6, finding 2).
-                    if stat_match and disp_match and prev["has_fts"]:
+                    # A project-matcher policy change re-routes a file even when its bytes are unchanged;
+                    # the stored project_key must then be replaced (fields, FTS aux, relationships), so a
+                    # project mismatch defeats both fast-skip and preserve (finding 2).
+                    proj_match = prev is not None and prev.get("project_key") == cur_pk
+                    # A plain→sensitive root flip must re-secure existing plaintext: if the root is now
+                    # sensitive and the row still has searchable content, it is NOT fast-skipped/preserved —
+                    # a full replace clears the plaintext text/FTS (finding 1).
+                    sens_ok = not (
+                        bool(getattr(root, "sensitive", False))
+                        and prev is not None
+                        and prev.get("content_searchable")
+                    )
+                    consistent = stat_match and disp_match and proj_match and sens_ok
+                    # Fast-skip ONLY a fully-current row: stat + disposition + project match, no sensitivity
+                    # re-secure owed, AND a path-FTS row already exists. Anything else is repaired.
+                    if consistent and prev["has_fts"]:
                         unchanged.append(rel)
                         files_unchanged += 1
                         report.files_unchanged += 1
                         report.skipped += 1
                         last_cursor = cur  # a fast-skip is a resolved observation
                         continue
-                    # preserve = physically unchanged (stat+disposition match) but needs a metadata/FTS
+                    # preserve = physically unchanged AND still policy-consistent but needs a metadata/FTS
                     # REPAIR → keep valid extracted content; else a genuine change/transition clears content.
-                    preserve = bool(stat_match and disp_match)
+                    preserve = bool(consistent)
                     try:
                         outcome = _index_source_metadata(
                             abs_p, root, repo, config, generation_id=gid,
@@ -1258,11 +1310,19 @@ def scan_source_root(
             _finish_v119("partial")
             return report
 
-        # Full metadata walk complete.
-        genrepo.mark_metadata_walk_complete(
+        # Full metadata walk complete. Lease-fenced: if this write affects 0 rows we lost ownership after
+        # the final batch (stale-lease takeover) — do NOT proceed to reconcile/complete under a lease we no
+        # longer hold (finding 6); close the pass as a retryable conflict and let the new owner finish.
+        if genrepo.mark_metadata_walk_complete(
             gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
             files_unchanged=files_unchanged, errors_count=errors_count,
-        )
+        ) == 0:
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return report
 
     # Empty-root / lost-mount blast-radius sentinel (F-01): if this generation observed ZERO files yet the
     # index still holds MORE THAN the configured threshold of active rows, the root most likely vanished
@@ -1317,12 +1377,22 @@ def scan_source_root(
                     break
                 ext = abs_c.suffix.lower().lstrip(".")
                 recomputed = extraction_disposition(ext, st.st_size, config)
+                cur_pk, _num, _conf = match_path_to_project(rel)
                 p = repo.load_metadata_state_batch(root.source_root_key, [rel]).get(rel)
                 stat_match = (
                     p is not None and p["mtime"] == st.st_mtime_ns and p["size"] == st.st_size
                 )
                 disp_match = p is not None and p["disposition"] == recomputed
-                resolved.append((sid, rel, "refresh", bool(stat_match and disp_match)))
+                proj_match = p is not None and p.get("project_key") == cur_pk
+                sens_ok = not (
+                    bool(getattr(root, "sensitive", False))
+                    and p is not None
+                    and p.get("content_searchable")
+                )
+                # A survivor is content-preserved only when it is still fully policy-consistent; a project
+                # re-route or an owed sensitivity re-secure forces a full replace (findings 1 & 2).
+                preserve = bool(stat_match and disp_match and proj_match and sens_ok)
+                resolved.append((sid, rel, "refresh", preserve))
             if resolved:
                 with open_connection(repo.db_path) as c, transaction(c):
                     for sid, rel, action, preserve in resolved:
@@ -1376,10 +1446,18 @@ def scan_source_root(
         _finish_v119("partial")
         return report
 
-    genrepo.finish_completed(
+    # Lease-fenced completion: 0 rows means the lease was lost after the final reconcile batch — the new
+    # owner is authoritative, so we must NOT report this pass as the completing one (finding 6).
+    if genrepo.finish_completed(
         gid, run_id, files_observed=files_observed, metadata_upserted=metadata_upserted,
         files_unchanged=files_unchanged, errors_count=errors_count, deleted_count=deleted_count,
-    )
+    ) == 0:
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "lease_lost"
+        report.error_codes.append("lease_lost")
+        _finish_v119("interrupted")
+        return report
     report.completed = True
     report.generation_status = "completed"
     _emit_progress("")
