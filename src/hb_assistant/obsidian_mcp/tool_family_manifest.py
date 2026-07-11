@@ -224,7 +224,8 @@ def family_for_tool(name: str, group: str | None = None) -> str:
     if name in _HELP:
         return "tool_catalog_help_query"
     if name.startswith("pa_prompt_") or name in ("pa_tool_family_get", "pa_workflow_recipe_get",
-                                                  "pa_tool_surface_freshness_check"):
+                                                  "pa_tool_surface_freshness_check",
+                                                  "pa_tool_surface_runtime_attestation"):
         return "prompt_routing"
     if name.startswith("pa_tool_manifest"):
         return "client_tool_manifest"

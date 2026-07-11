@@ -111,6 +111,23 @@ PROMPT_ROUTING_TOOL_SPECS: dict[str, ToolSpec] = {
             profile_gate="HB_MCP_PROMPT_PREFLIGHT",
         ),
     ),
+    "pa_tool_surface_runtime_attestation": ToolSpec(
+        name="pa_tool_surface_runtime_attestation",
+        family="prompt_routing",
+        group="prompt_routing",
+        purpose="Execution-aware attestation: schema load, discoverability, gateway alias, dry diagnostic per exposed tool.",
+        required_args=(),
+        optional_args=(),
+        read_write_class="read_only",
+        safety_class="advisory_only",
+        tool_class="advisory_routing",
+        exposure=ExposureDeclaration(
+            availability=AvailabilityKind.FEATURE_FLAGGED,
+            profile_gate="HB_MCP_PROMPT_PREFLIGHT",
+        ),
+        use_when="Post-deploy or operator review to prove advertised tools are callable.",
+        do_not_use_when="Static manifest drift only — use pa_tool_surface_freshness_check first.",
+    ),
 }
 
 # N8C-22 client bridge helpers — catalog/help are read-only; tool_query is a write-capable gateway proxy.

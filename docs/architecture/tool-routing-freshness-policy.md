@@ -11,6 +11,8 @@ defines what "fresh" means and what happens when it isn't.
 - **Per-tool class** — each tool's family, read-write class, and safety class.
 - **Workflow coverage** — every workflow `tool_sequence` entry resolves to a live tool (or the routing layer).
 - **Gateway scope** — the live `GATEWAY_ALLOWLIST` vs the scope routing assumes (`tool_surface_gateway_current`).
+- **Execution attestation** — per exposed tool: schema load, discoverability, gateway alias, dependencies,
+  and bounded dry diagnostic (`execution_attestation` category; stale when any exposed tool fails).
 
 ## Staleness states
 
@@ -29,10 +31,12 @@ defines what "fresh" means and what happens when it isn't.
 
 ## Where it surfaces
 
-- Tool: `pa_tool_surface_freshness_check` (read-only, gateway-reachable).
+- Tools: `pa_tool_surface_freshness_check` and `pa_tool_surface_runtime_attestation` (read-only,
+  gateway-reachable).
 - Status: `hb_mcp_status` → `tool_surface_manifest_current`, `tool_surface_missing_count`,
   `tool_surface_extra_count`, `tool_surface_schema_mismatch_count`, `tool_surface_gateway_current`,
-  `tool_surface_staleness_state`.
+  `tool_surface_staleness_state`, `tool_surface_attestation_ok`, `tool_surface_attestation_age_seconds`,
+  `client_writes_must_be_blocked`.
 
 ## Maintenance
 

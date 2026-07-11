@@ -35,6 +35,7 @@ tests.
 
 ## Freshness signal at runtime
 
-`pa_tool_surface_freshness_check` and the `tool_surface_*` fields on `hb_mcp_status` report drift.
+`pa_tool_surface_freshness_check`, `pa_tool_surface_runtime_attestation`, and the `tool_surface_*` fields
+on `hb_mcp_status` report static drift and execution attestation state.
 `staleness_state` ∈ `{current, stale, structural_only, unknown}`. **Reads warn; writes/promotion/archive fail
 closed on stale.** Never silence the signal by editing the guard — fix the manifest.

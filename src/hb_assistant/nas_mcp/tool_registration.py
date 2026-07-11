@@ -1327,7 +1327,8 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             "ai_output_tools": ["ai_outputs_card_upsert"],
             "prompt_routing_tools": [t for t in GATEWAY_ALLOWLIST if t.startswith("pa_prompt_")
                                      or t in ("pa_tool_family_get", "pa_workflow_recipe_get",
-                                              "pa_tool_surface_freshness_check")],
+                                              "pa_tool_surface_freshness_check",
+                                              "pa_tool_surface_runtime_attestation")],
             "gateway_allowlist_count": len(GATEWAY_ALLOWLIST),
             "exposure": assistant_client_exposure_status(),
             "safety": (
@@ -1793,6 +1794,12 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             """Check whether the live tool surface (tools, families, classes, gateway scope) still matches
             the routing manifest. Reads warn on drift; write/promotion/archive routes fail closed. Read-only."""
             return _assistant_result("pa_tool_surface_freshness_check", {})
+
+        @mcp.tool()
+        def pa_tool_surface_runtime_attestation() -> dict[str, Any]:
+            """Execution-aware attestation: per exposed tool, verify schema load, discoverability, gateway
+            alias resolution, dependencies, and a bounded dry diagnostic. Read-only."""
+            return _assistant_result("pa_tool_surface_runtime_attestation", {})
 
     # Stamp read-only / destructive annotations on every registered tool (after all conditional
     # registration so the full surface is covered). Purely additive metadata for connected-client
