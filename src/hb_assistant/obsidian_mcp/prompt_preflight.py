@@ -995,6 +995,68 @@ def _argument_extraction_view(
     }
 
 
+def _tool_surface_signals(
+    tool_name: str | None,
+    *,
+    available_tools: frozenset[str] | set[str] | None,
+    runtime_policy: dict[str, Any] | None,
+) -> dict[str, bool]:
+    """Resolve surface exposure signals for one tool (live index when present)."""
+    rp = dict(runtime_policy or {})
+    index = rp.get("tool_surface_index") or {}
+    if tool_name and tool_name in index:
+        entry = index[tool_name]
+        return {
+            "surface_available": bool(entry.get("server_policy_available", True)),
+            "profile_enabled": bool(entry.get("profile_enabled", True)),
+            "directly_exposed": bool(entry.get("directly_exposed", False)),
+            "gateway_allowlisted": bool(entry.get("gateway_allowlisted", False)),
+        }
+
+    surface_available = True
+    profile_enabled = True
+    directly_exposed = True
+    gateway_allowlisted = True
+    if rp.get("surface_available") is not None:
+        surface_available = bool(rp["surface_available"])
+    elif tool_name and available_tools is not None:
+        surface_available = tool_name in available_tools
+    if rp.get("profile_enabled") is not None:
+        profile_enabled = bool(rp["profile_enabled"])
+    elif tool_name and available_tools is not None:
+        profile_enabled = tool_name in available_tools
+    if rp.get("directly_exposed") is not None:
+        directly_exposed = bool(rp["directly_exposed"])
+    if rp.get("gateway_allowlisted") is not None:
+        gateway_allowlisted = bool(rp["gateway_allowlisted"])
+    elif tool_name:
+        try:
+            from hb_assistant.nas_mcp.broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
+
+            gateway_allowlisted = tool_name in GATEWAY_ALLOWLIST
+            if rp.get("directly_exposed") is None:
+                directly_exposed = not gateway_allowlisted
+        except Exception:  # noqa: BLE001
+            gateway_allowlisted = True
+            directly_exposed = True
+
+    return {
+        "surface_available": surface_available,
+        "profile_enabled": profile_enabled,
+        "directly_exposed": directly_exposed,
+        "gateway_allowlisted": gateway_allowlisted,
+    }
+
+
+def _resolve_recommended_call_mode(signals: dict[str, bool]) -> str | None:
+    """Prefer direct MCP exposure; fall back to gateway proxy when that is the only path."""
+    if signals.get("directly_exposed"):
+        return "direct"
+    if signals.get("gateway_allowlisted"):
+        return "gateway"
+    return None
+
+
 def _runtime_policy_permission(
     next_tool: str | None,
     *,
@@ -1010,34 +1072,21 @@ def _runtime_policy_permission(
     if token_scope_allowed is None:
         token_scope_allowed = True
 
-    surface_available = True
-    profile_enabled = True
-    gateway_allowlisted = True
-    if rp.get("surface_available") is not None:
-        surface_available = bool(rp["surface_available"])
-    elif next_tool and available_tools is not None:
-        surface_available = next_tool in available_tools
-    if rp.get("profile_enabled") is not None:
-        profile_enabled = bool(rp["profile_enabled"])
-    elif next_tool and available_tools is not None:
-        profile_enabled = next_tool in available_tools
-    if next_tool:
-        if rp.get("gateway_allowlisted") is not None:
-            gateway_allowlisted = bool(rp["gateway_allowlisted"])
-        else:
-            try:
-                from hb_assistant.nas_mcp.broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
-
-                gateway_allowlisted = next_tool in GATEWAY_ALLOWLIST
-            except Exception:  # noqa: BLE001
-                gateway_allowlisted = True
+    signals = _tool_surface_signals(
+        next_tool,
+        available_tools=available_tools,
+        runtime_policy=runtime_policy,
+    )
+    call_mode = rp.get("recommended_call_mode") or _resolve_recommended_call_mode(signals)
 
     return {
         "safe_mode": safe_mode,
         "token_scope_allowed": bool(token_scope_allowed),
-        "profile_enabled": profile_enabled,
-        "gateway_allowlisted": gateway_allowlisted,
-        "surface_available": surface_available,
+        "profile_enabled": signals["profile_enabled"],
+        "gateway_allowlisted": signals["gateway_allowlisted"],
+        "directly_exposed": signals["directly_exposed"],
+        "surface_available": signals["surface_available"],
+        "recommended_call_mode": call_mode,
     }
 
 
@@ -1081,10 +1130,18 @@ def _evaluate_executability(
 
     if not runtime_policy.get("surface_available", True):
         return False, "surface_unavailable", False
-    if not runtime_policy.get("gateway_allowlisted", True):
-        return False, "gateway_denied", False
     if not runtime_policy.get("profile_enabled", True):
         return False, "profile_disabled", False
+
+    call_mode = runtime_policy.get("recommended_call_mode")
+    if call_mode == "direct":
+        if not runtime_policy.get("directly_exposed", True):
+            return False, "not_directly_exposed", False
+    elif call_mode == "gateway":
+        if not runtime_policy.get("gateway_allowlisted", True):
+            return False, "gateway_denied", False
+    elif next_tool is not None:
+        return False, "surface_unavailable", False
     if not runtime_policy.get("token_scope_allowed", True):
         return False, "token_scope_denied", False
 
@@ -1259,6 +1316,7 @@ def _authorization(
             next_tool, next_arguments, source=None,
         ),
         "runtime_policy_permission": runtime_perm,
+        "recommended_call_mode": runtime_perm.get("recommended_call_mode"),
         "capability_gates": capability_gates,
         "write_blocked_by_staleness": bool(freshness_stale and is_write),
         "prompt_authorizes_execution": prompt_authorizes_execution,
@@ -1310,13 +1368,20 @@ def _enrich_tool_steps(
     next_tool: str | None = None,
     next_arguments: dict[str, Any] | None = None,
     topic_query: str | None = None,
+    runtime_policy: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     from .tool_family_manifest import family_for_tool  # noqa: PLC0415
 
     steps: list[dict[str, Any]] = []
     for i, t in enumerate(tools):
         group = _tool_group(t, tool_groups)
-        available = True if available_tools is None else t in available_tools
+        signals = _tool_surface_signals(
+            t,
+            available_tools=available_tools,
+            runtime_policy=runtime_policy,
+        )
+        available = signals["surface_available"]
+        call_mode = _resolve_recommended_call_mode(signals)
         fam = family_for_tool(t, group) or primary_family
         args: dict[str, Any] = {}
         if t == next_tool and next_arguments:
@@ -1350,12 +1415,12 @@ def _enrich_tool_steps(
             "family": fam,
             "surface": group,
             "arguments": args,
-            "call_mode": "direct" if available else "gateway",
+            "call_mode": call_mode,
             "available": available,
             "installed": available,
-            "profile_enabled": available,
-            "directly_exposed": available,
-            "gateway_allowlisted": True,
+            "profile_enabled": signals["profile_enabled"],
+            "directly_exposed": signals["directly_exposed"],
+            "gateway_allowlisted": signals["gateway_allowlisted"],
             "server_policy_available": available,
             "authorized": step_auth and available,
             "authorization_reason": (
@@ -1521,6 +1586,7 @@ def _route_workflow_plan(
         next_tool=next_tool,
         next_arguments=next_args,
         topic_query=topic,
+        runtime_policy=merged_runtime_policy,
     )
 
     next_step = next(
@@ -1576,6 +1642,7 @@ def _route_workflow_plan(
         "warnings": list(constraints),
         "next_step": next_step,
         "additional_steps": additional_steps,
+        "recommended_call_mode": authorization.get("recommended_call_mode"),
         "route": {
             "intent": (best_wf["intent_classes"][0] if best_wf["intent_classes"] else "unknown"),
             "source_of_truth": best_wf.get("source_of_truth") or _SOURCE_OF_TRUTH.get(primary_family, "unclassified"),

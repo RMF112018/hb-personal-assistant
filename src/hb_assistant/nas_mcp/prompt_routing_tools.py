@@ -120,11 +120,27 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
         )
 
 
+def _tool_surface_index(config: NasMcpConfig) -> dict[str, dict[str, Any]]:
+    """Live per-tool exposure snapshot for route executability (direct vs gateway)."""
+    from .live_tool_surface import build_live_tool_surface  # noqa: PLC0415
+
+    return {
+        name: {
+            "profile_enabled": st.profile_enabled,
+            "directly_exposed": st.directly_exposed,
+            "gateway_allowlisted": st.gateway_allowlisted,
+            "server_policy_available": st.server_policy_available,
+        }
+        for name, st in build_live_tool_surface(config).items()
+    }
+
+
 def dispatch_prompt_routing_tool(config: NasMcpConfig, tool_name: str, arguments: dict[str, Any], *,
                                  runtime_commit: str = "unknown") -> dict[str, Any]:
     a = arguments or {}
     available = frozenset(current_tool_groups(config))
     groups = current_tool_groups(config)
+    surface_index = _tool_surface_index(config)
 
     if tool_name in ("pa_prompt_route", "pa_prompt_route_explain"):
         prompt = str(_require(a, "prompt"))
@@ -136,6 +152,7 @@ def dispatch_prompt_routing_tool(config: NasMcpConfig, tool_name: str, arguments
             has_exact_id=bool(a.get("has_exact_id", False)),
             freshness=fresh,
             tool_groups=groups,
+            runtime_policy={"tool_surface_index": surface_index},
         )
     if tool_name == "pa_tool_family_get":
         fid = a.get("family_id")

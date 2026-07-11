@@ -13,8 +13,10 @@ def test_authorization_schema_includes_runtime_policy_and_capability_gates() -> 
     auth = _auth("Search my work files.")
     assert "runtime_policy_permission" in auth
     assert set(auth["runtime_policy_permission"]) >= {
-        "safe_mode", "token_scope_allowed", "profile_enabled", "gateway_allowlisted", "surface_available",
+        "safe_mode", "token_scope_allowed", "profile_enabled", "gateway_allowlisted",
+        "surface_available", "directly_exposed", "recommended_call_mode",
     }
+    assert "recommended_call_mode" in auth
     assert "capability_gates" in auth
     assert set(auth["capability_gates"]) >= {"index", "deploy", "archive", "external_action"}
     assert auth["capability_gates"]["index"]["allowed"] is True
@@ -86,3 +88,58 @@ def test_token_scope_denied_blocks_execution() -> None:
     )
     assert auth["currently_executable"] is False
     assert auth["execution_blocked_reason"] == "token_scope_denied"
+
+
+def test_direct_status_tool_executable_without_gateway_allowlist() -> None:
+    """Audit row 1 / F-009: hb_mcp_status is direct MCP — not gateway_denied."""
+    plan = route_prompt(
+        "Conduct a read-only repo-truth audit.\n"
+        "Do not write, stage, promote, refresh, index, deploy, or mutate anything."
+    )
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] == "read_only_surface_audit"
+    assert plan["next_step"]["tool"] == "hb_mcp_status"
+    assert plan["recommended_call_mode"] == "direct"
+    assert auth["recommended_call_mode"] == "direct"
+    assert auth["runtime_policy_permission"]["directly_exposed"] is True
+    assert auth["runtime_policy_permission"]["gateway_allowlisted"] is False
+    assert auth["currently_executable"] is True
+    assert auth["execution_blocked_reason"] is None
+
+
+def test_status_check_hb_mcp_status_uses_direct_call_mode() -> None:
+    plan = route_prompt("Is the server up?")
+    assert plan["recommended_workflow"] == "status_check"
+    assert plan["next_step"]["tool"] == "hb_mcp_status"
+    assert plan["recommended_call_mode"] == "direct"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_gateway_only_tool_still_blocked_when_not_allowlisted() -> None:
+    auth = _auth(
+        "Search my work files.",
+        runtime_policy={
+            "directly_exposed": False,
+            "gateway_allowlisted": False,
+            "profile_enabled": True,
+            "surface_available": True,
+            "recommended_call_mode": "gateway",
+        },
+    )
+    assert auth["currently_executable"] is False
+    assert auth["execution_blocked_reason"] == "gateway_denied"
+
+
+def test_direct_call_mode_skips_gateway_denied_even_when_not_allowlisted() -> None:
+    auth = _auth(
+        "Is the server up?",
+        runtime_policy={
+            "directly_exposed": True,
+            "gateway_allowlisted": False,
+            "profile_enabled": True,
+            "surface_available": True,
+            "recommended_call_mode": "direct",
+        },
+    )
+    assert auth["currently_executable"] is True
+    assert auth["execution_blocked_reason"] is None
