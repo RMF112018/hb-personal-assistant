@@ -5,7 +5,7 @@ set -eu
 
 DOCKER=/usr/local/bin/docker
 CONTAINER=hb-personal-assistant-mcp
-DEPLOY_SHA=01b9b00bb2e79a6523397073152b56fe14c01527
+DEPLOY_SHA=931f69f04c697c4082f65fbf90ab2b6ae6c81af9
 CORPUS=/app/tests/fixtures/prompt_routing_audit_corpus_v1.json
 REPORT=/tmp/live-corpus-v1-report.json
 REPORT_REQUIRED=/tmp/live-corpus-v1-required-report.json

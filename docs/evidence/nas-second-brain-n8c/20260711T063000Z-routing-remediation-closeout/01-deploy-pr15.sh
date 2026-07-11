@@ -1,12 +1,12 @@
 #!/bin/sh
-# NAS deploy — routing audit remediation closeout (PR-1..PR-15, code-only schema 119)
+# NAS deploy — routing audit remediation (PR-16..PR-20 wave, code-only schema 119)
 # RUN ON THE NAS: sudo sh /tmp/01-deploy-pr15.sh
 set -eu
 
 DOCKER=/usr/local/bin/docker
 IMAGE=hb-personal-assistant:nas
-DEPLOY_SHA=01b9b00bb2e79a6523397073152b56fe14c01527
-TARBALL=/tmp/hb-nas-01b9b00b.tar.gz
+DEPLOY_SHA=931f69f04c697c4082f65fbf90ab2b6ae6c81af9
+TARBALL=/tmp/hb-nas-931f69f0.tar.gz
 UIDGID=1028:100
 
 BASE=/volume2/personal-assistant

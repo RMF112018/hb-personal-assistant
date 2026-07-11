@@ -1,20 +1,20 @@
 # PR-15 operator runbook — deploy + manifest + live corpus
 
-**Land commit:** `01b9b00bb2e79a6523397073152b56fe14c01527` (PR-1..PR-14)  
-**Previous NAS runtime:** `f565b19b1525fbeef75077c53be2b3bb0520c274`  
+**Land commit:** `931f69f04c697c4082f65fbf90ab2b6ae6c81af9` (PR-16..PR-20)  
+**Previous NAS runtime:** `01b9b00bb2e79a6523397073152b56fe14c01527` (PR-15)  
 **Schema:** 119 (code-only deploy — no migration)
 
-Artifacts are **already staged on the NAS** under `/tmp/` (2026-07-11).
+Artifacts are **already staged on the NAS** under `/tmp/` (2026-07-11, PR-16..20 wave).
 
 | Artifact | Path | Size |
 |----------|------|------|
-| Image tarball | `/tmp/hb-nas-01b9b00b.tar.gz` | 193131985 bytes |
+| Image tarball | `/tmp/hb-nas-931f69f0.tar.gz` | 193164199 bytes |
 | Deploy | `/tmp/01-deploy-pr15.sh` | |
 | Manifest refresh | `/tmp/02-manifest-refresh-pr15.sh` | |
 | Verify-only | `/tmp/03-manifest-verify-pr15.sh` | |
 | Live 50-prompt corpus | `/tmp/04-live-50-prompt-corpus.sh` | |
 
-Local tarball SHA-256: `c93ee1caf2fa59328ea3448c7d76a41442fd71c89fc6ae49790e3eb6fda836de`
+Local tarball SHA-256: `566be8bcea3d3ffecbc0b15f729cd054d3990cc44b8dc2f58d34cf298d675ced`
 
 ## 1. Deploy (sudo on NAS)
 
@@ -22,7 +22,7 @@ Local tarball SHA-256: `c93ee1caf2fa59328ea3448c7d76a41442fd71c89fc6ae49790e3eb6
 ssh -t hb-nas 'sudo sh /tmp/01-deploy-pr15.sh' | tee ~/deploy-pr15.txt
 ```
 
-Pass criteria: step **6** runtime commit `01b9b00b…`; step **7** may print `stale True` (expected until manifest refresh — proceed).
+Pass criteria: step **6** runtime commit `931f69f0…`; step **7** may print `stale True` (expected until manifest refresh — proceed).
 
 ## 2. Manifest refresh (stage → promote)
 
@@ -52,7 +52,7 @@ ssh -t hb-nas 'sudo sh /tmp/04-live-50-prompt-corpus.sh' | tee ~/live-corpus-pr1
 
 Pass criteria:
 
-- **42 required** rows: `pass_count 42`, `fail_count 0`
+- **47 required** rows: `pass_count 47`, `fail_count 0`
 - HIGH spot checks: rows 1, 25, 36 executable with expected `next_step` tools
 - Full 50-row report may include `accepted_partial` informational failures
 
