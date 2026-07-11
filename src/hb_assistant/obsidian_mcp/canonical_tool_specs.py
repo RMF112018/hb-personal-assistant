@@ -328,11 +328,12 @@ def classify_tool(name: str, group: str | None = None) -> tuple[str, str, str]:
     ):
         return "staged_write", "staged_write_requires_review", "staged_write"
     if name in (
-        "pa_output_stage", "pa_output_commit", "pa_output_archive_commit",
+        "pa_output_stage", "pa_output_commit", "pa_output_archive_commit", "pa_output_cancel",
         # Client-facing N8C-24 write aliases: same handlers/gate as their pa_output_* twins, so they
         # must classify as staged_write too — not fall through to read_only and be advertised to
         # connected clients (manifest/catalog/help) as safe reads while the broker gate blocks them.
         "assistant_output_stage", "assistant_output_commit", "assistant_output_archive_commit",
+        "assistant_output_cancel",
     ):
         return "staged_write", "staged_write_requires_review", "staged_write"
     if name.startswith("pa_output_"):

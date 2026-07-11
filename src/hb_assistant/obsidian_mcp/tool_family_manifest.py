@@ -201,7 +201,8 @@ _GROUP_FAMILY = {
 _OUTPUT_READS = frozenset({"pa_output_list", "pa_output_metadata", "pa_output_read_excerpt",
                            "pa_output_receipt_get", "pa_output_manifest_get", "pa_output_archive_plan",
                            "pa_output_zip_inspect"})
-_OUTPUT_WRITES = frozenset({"pa_output_stage", "pa_output_commit", "pa_output_archive_commit"})
+_OUTPUT_WRITES = frozenset({"pa_output_stage", "pa_output_commit", "pa_output_archive_commit",
+                            "pa_output_cancel"})
 # Explicit tool→family (must not fall through to assistant_navigation).
 _DECISION_MEMORY = frozenset({
     "assistant_get_decision", "assistant_list_decisions", "assistant_get_preference",

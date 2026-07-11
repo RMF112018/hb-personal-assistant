@@ -1,6 +1,6 @@
 """N8C-24 MCP handler surface for the connected-client generated-output workspace.
 
-Ten ``pa_output_*`` tools: three controlled writes (stage/commit/archive_commit) behind the
+Eleven ``pa_output_*`` tools: four controlled writes (stage/commit/archive_commit/cancel) behind the
 ``client_output_write_enabled()`` gate + server-minted approval + idempotency, and seven bounded reads.
 None of the names contain a write-verb or finality substring; none joins ``ALL_ASSISTANT_TOOLS``. They are
 gateway-reachable (via ``GATEWAY_ALLOWLIST``) but every write still passes the full broker gate chain.
@@ -14,7 +14,9 @@ from .client_output_workspace import ClientOutputError, ClientOutputWorkspaceRep
 from .config import NasMcpConfig
 
 # Controlled writes (gated by client_output_write_enabled()); mirrors profile.CLIENT_OUTPUT_WRITE_TOOLS.
-PA_OUTPUT_WRITE_TOOLS: tuple[str, ...] = ("pa_output_stage", "pa_output_commit", "pa_output_archive_commit")
+PA_OUTPUT_WRITE_TOOLS: tuple[str, ...] = (
+    "pa_output_stage", "pa_output_commit", "pa_output_archive_commit", "pa_output_cancel",
+)
 # Bounded reads / advisory (never write the workspace).
 PA_OUTPUT_READ_TOOLS: tuple[str, ...] = (
     "pa_output_list", "pa_output_metadata", "pa_output_read_excerpt", "pa_output_receipt_get",
@@ -52,6 +54,10 @@ def dispatch_client_output_tool(config: NasMcpConfig, tool_name: str, arguments:
             idempotency_key=a.get("idempotency_key"), operator_id=a.get("operator_id"))
     if tool_name == "pa_output_archive_commit":
         return repo.commit_archive_output(
+            output_id=str(_require(a, "output_id")),
+            operator_approval_id=str(_require(a, "operator_approval_id")))
+    if tool_name == "pa_output_cancel":
+        return repo.cancel_output_file(
             output_id=str(_require(a, "output_id")),
             operator_approval_id=str(_require(a, "operator_approval_id")))
     if tool_name == "pa_output_archive_plan":

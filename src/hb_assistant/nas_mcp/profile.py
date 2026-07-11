@@ -33,8 +33,9 @@ LEGACY_VAULT_WRITE_TOOLS = frozenset(
 SCRATCH_OUTPUT_WRITE_TOOLS = frozenset({"hb_output_write_file", "hb_output_create_dir"})
 # N8C-24 connected-client generated-output write tools (gated by client_output_write_enabled()).
 CLIENT_OUTPUT_WRITE_TOOLS = frozenset({
-    "pa_output_stage", "pa_output_commit", "pa_output_archive_commit",
+    "pa_output_stage", "pa_output_commit", "pa_output_archive_commit", "pa_output_cancel",
     "assistant_output_stage", "assistant_output_commit", "assistant_output_archive_commit",
+    "assistant_output_cancel",
 })
 # The single sanctioned remote write (tier 3).
 AI_OUTPUTS_WRITE_TOOL = "ai_outputs_card_upsert"
