@@ -5,6 +5,7 @@ Read-only aggregation. Never returns absolute host paths. Bounded and determinis
 
 from __future__ import annotations
 
+import contextlib
 import time
 from typing import Any
 
@@ -39,8 +40,9 @@ def _run_state(config: ObsidianMcpConfig, ready: bool, backend: bool) -> str:
     return "running"
 
 
-def _freshness_state(*, last_indexed_at: str | None, is_active: bool = True,
-                     open_errors: int = 0) -> str:
+def _freshness_state(
+    *, last_indexed_at: str | None, is_active: bool = True, open_errors: int = 0
+) -> str:
     if not is_active:
         return "blocked"
     if not last_indexed_at:
@@ -88,6 +90,18 @@ def source_index_health(
         latest_generation_by_root = genrepo.latest_generations()
     except Exception:  # noqa: BLE001 — health must never fail on the generation read
         latest_generation_by_root = {}
+    # Configured roots by key + the current policy fingerprint per root, so completeness can be checked
+    # against CURRENT policy: a completed generation whose stored fingerprint no longer matches the
+    # configured root (a sensitivity / exclusion / root-path / matcher change) must NOT read as complete or
+    # watcher-ready until the corrective generation runs.
+    from .source_indexer import _root_fingerprint
+
+    configured_fp_by_root: dict[str, str] = {}
+    for _er in getattr(config, "external_sources", []) or []:
+        # Never fail health on a fingerprint computation — a root that can't be fingerprinted just
+        # falls back to the no-current-policy case (policy_current defaults True) downstream.
+        with contextlib.suppress(Exception):
+            configured_fp_by_root[_er.source_root_key] = _root_fingerprint(_er, config)
     try:
         queue = repo.queue_health()
     except Exception:
@@ -128,10 +142,19 @@ def source_index_health(
         try:
             counts = repo.content_status_counts(key, conn=conn)
         except Exception:  # noqa: BLE001 — health must never fail on a count query
-            counts = {"metadata_indexed": 0, "metadata_searchable": 0, "content_extracted": 0,
-                      "content_searchable": 0, "content_eligible": 0, "content_pending": 0,
-                      "intentional_metadata_only": 0, "metadata_only": 0, "failed": 0,
-                      "unsupported": 0, "too_large": 0}
+            counts = {
+                "metadata_indexed": 0,
+                "metadata_searchable": 0,
+                "content_extracted": 0,
+                "content_searchable": 0,
+                "content_eligible": 0,
+                "content_pending": 0,
+                "intentional_metadata_only": 0,
+                "metadata_only": 0,
+                "failed": 0,
+                "unsupported": 0,
+                "too_large": 0,
+            }
         layers = {
             "folder_layer_populated": folder_count > 0,
             "metadata_layer_populated": file_count > 0,
@@ -139,9 +162,8 @@ def source_index_health(
             "content_layer_populated": counts.get("content_searchable", 0) > 0,
             "metadata_search_layer_populated": counts.get("metadata_searchable", 0) > 0,
         }
-        safe = (
-            state in ("fresh", "degraded")
-            and (layers["metadata_layer_populated"] or layers["folder_layer_populated"])
+        safe = state in ("fresh", "degraded") and (
+            layers["metadata_layer_populated"] or layers["folder_layer_populated"]
         )
         summary_bits = []
         if not layers["folder_layer_populated"]:
@@ -153,8 +175,11 @@ def source_index_health(
         if state == "future_anomaly":
             summary_bits.append("last_indexed_at is in the future")
         if not summary_bits:
-            summary_bits.append("index layers present; safe for bounded client answers" if safe
-                                else "partial/blocked — prefer health-aware routing")
+            summary_bits.append(
+                "index layers present; safe for bounded client answers"
+                if safe
+                else "partial/blocked — prefer health-aware routing"
+            )
 
         file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
         gen_row = latest_generation_by_root.get(key)
@@ -167,7 +192,12 @@ def source_index_health(
             # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
             # sweep found indeterminate candidates (potential phantom rows still in the index), so its
             # metadata set is NOT certifiably complete — it must read partial, not complete (finding 5).
-            reconciliation_done = gen_row.get("status") == "completed"
+            # AND the completed generation must match CURRENT policy: a fingerprint mismatch (sensitivity /
+            # exclusion / root-path / matcher / indexing-policy change) means the completion is stale, so it
+            # reads partial and watcher-not-ready until the corrective generation runs (round-5 finding 4).
+            current_fp = configured_fp_by_root.get(key)
+            policy_current = current_fp is None or gen_row.get("policy_fingerprint") == current_fp
+            reconciliation_done = gen_row.get("status") == "completed" and policy_current
             metadata_walk_done = reconciliation_done
         else:
             # Legacy fallback (root with no V122 generation): accept ONLY the explicit success sentinel
@@ -186,9 +216,7 @@ def source_index_health(
         ):
             content_completeness_state = "none"
         elif (
-            counts.get("content_pending", 0) > 0
-            or counts["failed"] > 0
-            or not reconciliation_done
+            counts.get("content_pending", 0) > 0 or counts["failed"] > 0 or not reconciliation_done
         ):
             content_completeness_state = "partial"
         else:
@@ -212,95 +240,103 @@ def source_index_health(
         else:
             safe_for_content_answering = "none"
 
-        per_root.append({
-            "root_key": key,
-            "display_label": (sroot or {}).get("display_name") or key,
-            "root_class": (sroot or {}).get("root_class") or root.get("source_kind") or "unknown",
-            "enabled": bool(root.get("enabled", True)),
-            "last_scan_started": (structure_status.get("last_run") or {}).get("started_at"),
-            "last_scan_completed": (structure_status.get("last_run") or {}).get("finished_at"),
-            "last_successful_scan": last_indexed,
-            "scan_duration": None,
-            "scan_status": (structure_status.get("last_run") or {}).get("status"),
-            "indexing_watermark": last_indexed,
-            "total_folders_indexed": folder_count,
-            "total_files_indexed": file_count or struct_files,
-            # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
-            "content_indexed_file_count": counts["content_searchable"],
-            "metadata_only_file_count": counts["metadata_only"],
-            "metadata_indexed_file_count": counts["metadata_indexed"],
-            "metadata_searchable_file_count": counts.get("metadata_searchable", 0),
-            "content_eligible_file_count": counts.get("content_eligible", 0),
-            "content_pending_file_count": counts.get("content_pending", 0),
-            "intentional_metadata_only_file_count": counts.get("intentional_metadata_only", 0),
-            "content_extracted_file_count": counts["content_extracted"],
-            "content_searchable_file_count": counts["content_searchable"],
-            "failed_file_count": counts["failed"],
-            "too_large_file_count": counts["too_large"],
-            "metadata_completeness_state": metadata_completeness_state,
-            "content_completeness_state": content_completeness_state,
-            "safe_for_path_lookup": safe_for_path_lookup,
-            "safe_for_content_answering": safe_for_content_answering,
-            "live_readable_file_count": None,  # not cheap; clients use metadata.read_status
-            "unsupported_file_count": counts["unsupported"],
-            "skipped_file_count": sum(int(v) for v in skipped_by_code.values()) if len(
-                roots_env.get("roots") or []
-            ) == 1 else None,
-            "skipped_directory_count": int((sroot or {}).get("noise_count") or 0),
-            "largest_skipped_directories": [],
-            "extension_type_distribution": [],
-            "freshness_status": state,
-            "scan_error_count": int(structure_status.get("open_finding_count") or 0),
-            "recent_scan_errors": [],
-            "layers": layers,
-            "safe_for_client_answering": safe,
-            "diagnostic_summary": "; ".join(summary_bits)[:400],
-            "bootstrap": {
-                "file_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
-                    "file_index_bootstrapped")),
-                "structure_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
-                    "structure_index_bootstrapped")),
-                # V122-derived when a generation exists (completed reconciliation + folder map), else legacy.
-                "watcher_ready": watcher_ready,
-            },
-            "run_state": _run_state(config, watcher_ready, backend_available),
-            **bstate.get_structure_drift(key),
-        })
+        per_root.append(
+            {
+                "root_key": key,
+                "display_label": (sroot or {}).get("display_name") or key,
+                "root_class": (sroot or {}).get("root_class")
+                or root.get("source_kind")
+                or "unknown",
+                "enabled": bool(root.get("enabled", True)),
+                "last_scan_started": (structure_status.get("last_run") or {}).get("started_at"),
+                "last_scan_completed": (structure_status.get("last_run") or {}).get("finished_at"),
+                "last_successful_scan": last_indexed,
+                "scan_duration": None,
+                "scan_status": (structure_status.get("last_run") or {}).get("status"),
+                "indexing_watermark": last_indexed,
+                "total_folders_indexed": folder_count,
+                "total_files_indexed": file_count or struct_files,
+                # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
+                "content_indexed_file_count": counts["content_searchable"],
+                "metadata_only_file_count": counts["metadata_only"],
+                "metadata_indexed_file_count": counts["metadata_indexed"],
+                "metadata_searchable_file_count": counts.get("metadata_searchable", 0),
+                "content_eligible_file_count": counts.get("content_eligible", 0),
+                "content_pending_file_count": counts.get("content_pending", 0),
+                "intentional_metadata_only_file_count": counts.get("intentional_metadata_only", 0),
+                "content_extracted_file_count": counts["content_extracted"],
+                "content_searchable_file_count": counts["content_searchable"],
+                "failed_file_count": counts["failed"],
+                "too_large_file_count": counts["too_large"],
+                "metadata_completeness_state": metadata_completeness_state,
+                "content_completeness_state": content_completeness_state,
+                "safe_for_path_lookup": safe_for_path_lookup,
+                "safe_for_content_answering": safe_for_content_answering,
+                "live_readable_file_count": None,  # not cheap; clients use metadata.read_status
+                "unsupported_file_count": counts["unsupported"],
+                "skipped_file_count": sum(int(v) for v in skipped_by_code.values())
+                if len(roots_env.get("roots") or []) == 1
+                else None,
+                "skipped_directory_count": int((sroot or {}).get("noise_count") or 0),
+                "largest_skipped_directories": [],
+                "extension_type_distribution": [],
+                "freshness_status": state,
+                "scan_error_count": int(structure_status.get("open_finding_count") or 0),
+                "recent_scan_errors": [],
+                "layers": layers,
+                "safe_for_client_answering": safe,
+                "diagnostic_summary": "; ".join(summary_bits)[:400],
+                "bootstrap": {
+                    "file_index_bootstrapped": bool(
+                        (bootstrap_by_root.get(key) or {}).get("file_index_bootstrapped")
+                    ),
+                    "structure_index_bootstrapped": bool(
+                        (bootstrap_by_root.get(key) or {}).get("structure_index_bootstrapped")
+                    ),
+                    # V122-derived when a generation exists (completed reconciliation + folder map), else legacy.
+                    "watcher_ready": watcher_ready,
+                },
+                "run_state": _run_state(config, watcher_ready, backend_available),
+                **bstate.get_structure_drift(key),
+            }
+        )
 
     # Empty-roots handling
     if not per_root:
-        per_root.append({
-            "root_key": "(none)",
-            "display_label": "no source roots configured or indexed",
-            "root_class": "unknown",
-            "enabled": False,
-            "last_scan_started": None,
-            "last_scan_completed": None,
-            "last_successful_scan": None,
-            "scan_duration": None,
-            "scan_status": "never_succeeded",
-            "indexing_watermark": None,
-            "total_folders_indexed": 0,
-            "total_files_indexed": 0,
-            "content_indexed_file_count": 0,
-            "metadata_only_file_count": 0,
-            "live_readable_file_count": 0,
-            "unsupported_file_count": 0,
-            "skipped_file_count": 0,
-            "skipped_directory_count": 0,
-            "largest_skipped_directories": [],
-            "extension_type_distribution": [],
-            "freshness_status": "never_succeeded",
-            "scan_error_count": 0,
-            "recent_scan_errors": [],
-            "layers": {
-                "folder_layer_populated": False,
-                "metadata_layer_populated": False,
-                "content_layer_populated": False,
-            },
-            "safe_for_client_answering": False,
-            "diagnostic_summary": "No source roots available — configure external sources and run index.",
-        })
+        per_root.append(
+            {
+                "root_key": "(none)",
+                "display_label": "no source roots configured or indexed",
+                "root_class": "unknown",
+                "enabled": False,
+                "last_scan_started": None,
+                "last_scan_completed": None,
+                "last_successful_scan": None,
+                "scan_duration": None,
+                "scan_status": "never_succeeded",
+                "indexing_watermark": None,
+                "total_folders_indexed": 0,
+                "total_files_indexed": 0,
+                "content_indexed_file_count": 0,
+                "metadata_only_file_count": 0,
+                "live_readable_file_count": 0,
+                "unsupported_file_count": 0,
+                "skipped_file_count": 0,
+                "skipped_directory_count": 0,
+                "largest_skipped_directories": [],
+                "extension_type_distribution": [],
+                "freshness_status": "never_succeeded",
+                "scan_error_count": 0,
+                "recent_scan_errors": [],
+                "layers": {
+                    "folder_layer_populated": False,
+                    "metadata_layer_populated": False,
+                    "content_layer_populated": False,
+                },
+                "safe_for_client_answering": False,
+                "diagnostic_summary": "No source roots available — configure external sources and run index.",
+            }
+        )
 
     overall = "fresh"
     if all(r["freshness_status"] == "never_succeeded" for r in per_root):
@@ -317,7 +353,9 @@ def source_index_health(
     # reconciliation is surfaced even though the auto-rebuild bridge is deferred (dirty_bridge_enabled
     # is a constant False this branch), so clients know a folder map may lag and no auto-rebuild runs.
     real_roots = [r for r in per_root if r["root_key"] != "(none)"]
-    any_unbootstrapped = any(not r["bootstrap"]["watcher_ready"] for r in real_roots) or not real_roots
+    any_unbootstrapped = (
+        any(not r["bootstrap"]["watcher_ready"] for r in real_roots) or not real_roots
+    )
     any_drift = any(r.get("directory_change_detected") for r in real_roots)
     last_light = bstate.last_reconciliation(scan_type="lightweight") or {}
     last_full = bstate.last_reconciliation(scan_type="full") or {}
@@ -336,7 +374,9 @@ def source_index_health(
             "--structure-only` for drifted roots (structure map may be stale)"
         )
     elif int(queue.get("error_count") or 0) > 0:
-        recommended = "investigate failed file-index queue items (`hb-assistant source-watch status`)"
+        recommended = (
+            "investigate failed file-index queue items (`hb-assistant source-watch status`)"
+        )
 
     top_safe = bool(real_roots) and any(r["safe_for_client_answering"] for r in real_roots)
 
@@ -370,7 +410,8 @@ def source_index_health(
             "oldest_pending_age_seconds": queue.get("oldest_processing_age_seconds"),
         },
         "file_index": {
-            "last_incremental_update": queue.get("last_drain_at") or file_status.get("last_indexed_at"),
+            "last_incremental_update": queue.get("last_drain_at")
+            or file_status.get("last_indexed_at"),
             "pending_queue_count": queue.get("queued_count"),
             "failed_queue_count": queue.get("error_count"),
         },

@@ -775,7 +775,7 @@ def test_validate_cursor_strict_rules(tmp_path):
     cfg = _cfg(root)
 
     def V(cur):
-        return si._validate_cursor(cur, root, cfg)
+        return si._validate_cursor(cur, root, cfg, 20000)
 
     assert V({"frames": []}) is False  # version REQUIRED
     assert V({"version": "abc", "frames": []}) is False  # non-integer version → no crash, reject
@@ -975,24 +975,45 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
     conn.close()
     assert SQLiteMigrator(db_path=db).apply() == 122  # idempotent re-run
 
-    # Incremental V121→V122: drop the v122 marker + its table (columns can't be dropped in sqlite; the
-    # parity-guarded ADD COLUMN skips existing ones), then re-apply — only v122 re-lands.
+    # GENUINE incremental V121→V122: reduce a migrated DB to a real V121 shape — DROP the v122 marker, the
+    # generations table, the reconciliation index, AND every v122-added column (sqlite 3.35+ DROP COLUMN) —
+    # then re-apply and prove v122 actually recreates the table, index, all six columns, and the marker
+    # while the prior manifest data (120/121) survives.
+    v122_columns = [
+        ("source_intelligence_sources", "last_seen_generation"),
+        ("source_intelligence_sources", "last_seen_at"),
+        ("source_intelligence_sources", "last_indexed_fingerprint"),
+        ("source_intelligence_metadata", "extraction_disposition"),
+        ("source_intelligence_metadata", "content_indexed_at"),
+        ("source_index_bootstrap_runs", "generation_id"),
+    ]
     conn = sqlite3.connect(db)
     conn.execute("DELETE FROM schema_migrations WHERE version=122")
     conn.execute("DROP TABLE source_index_scan_generations")
+    conn.execute("DROP INDEX IF EXISTS idx_si_sources_last_seen_gen")
+    for table, col in v122_columns:
+        conn.execute(f"ALTER TABLE {table} DROP COLUMN {col}")
     conn.commit()
+    for table, col in v122_columns:  # sanity: genuinely V121-shaped now
+        assert col not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
     conn.close()
+
     assert SQLiteMigrator(db_path=db).apply() == 122
     conn = sqlite3.connect(db)
+    for table, col in v122_columns:  # every column recreated
+        assert col in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}, (table, col)
+    assert conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='source_index_scan_generations'"
+    ).fetchone()
+    assert conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_si_sources_last_seen_gen'"
+    ).fetchone()
     assert {
         r[0]
         for r in conn.execute(
             "SELECT version FROM schema_migrations WHERE version IN (120,121,122)"
         )
-    } == {120, 121, 122}
-    assert conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE name='source_index_scan_generations'"
-    ).fetchone()
+    } == {120, 121, 122}  # prior manifest data survives + v122 marker rewritten
     conn.close()
 
 
@@ -1126,7 +1147,7 @@ def test_validate_cursor_round4_rules(tmp_path):
     cfg = _cfg(root)
 
     def V(cur):
-        return si._validate_cursor(cur, root, cfg)
+        return si._validate_cursor(cur, root, cfg, 20000)
 
     # The FIRST frame must be the ROOT (d == "" or "."). A subtree-only cursor is rejected.
     assert V({"version": 1, "frames": [{"d": "a", "after": "f.txt"}]}) is False
@@ -1138,12 +1159,16 @@ def test_validate_cursor_round4_rules(tmp_path):
     assert V({"version": 1, "frames": [{"d": "", "after": ".."}]}) is False
     assert V({"version": 1, "frames": [{"d": "", "after": "a\x00b"}]}) is False
     assert V({"version": 1, "frames": [{"d": "", "after": None}]}) is False
-    # An in-root symlink child frame (root-first) is still rejected (target may have been retargeted).
-    (root / "a" / "link").symlink_to(root / "a", target_is_directory=True)
+    # An anchor naming a non-existent / non-matching entry is rejected (would skip real entries).
     assert (
-        V({"version": 1, "frames": [{"d": "", "after": "link"}, {"d": "link", "after": "f"}]})
-        is False
-    )
+        V({"version": 1, "frames": [{"d": "", "after": "zzzz"}]}) is False
+    )  # not an entry of root
+    # An in-root symlinked directory is excluded from traversal, so an anchor naming it is not a real
+    # (non-symlink) entry and the cursor is rejected (a retargeted symlink must not drive resume).
+    (root / "link").symlink_to(root / "a", target_is_directory=True)
+    assert V({"version": 1, "frames": [{"d": "", "after": "link"}]}) is False
+    # A deepest anchor that names a DIRECTORY (not a yielded file) would skip its whole subtree → rejected.
+    assert V({"version": 1, "frames": [{"d": "", "after": "a"}]}) is False
 
 
 def test_sensitive_to_plain_transition_clears_vault_content(tmp_path):
@@ -1237,3 +1262,211 @@ def test_new_exclusion_removes_indexed_rows_on_completed_root(tmp_path):
     assert any("active.txt" in h["path"] for h in repo.search_sources("active"))
     # The source file on disk is untouched.
     assert (root_dir / "ARCHIVE" / "old.txt").exists()
+
+
+# ===== Round 5 =====================================================================================
+# reconcile-cursor self-limiting restart, authoritative preserve (FTS/relationship/abs_path_hash),
+# policy-current health, and ownership-fenced abandon.
+
+
+def test_reconcile_ignores_persisted_cursor_and_restarts(tmp_path):
+    """Reconciliation restarts its keyset sweep from the beginning and never trusts a persisted
+    reconcile checkpoint: a forged-high (valid-format) `after` that would skip every stale row must NOT
+    let an absent file survive, and a malformed payload must not crash the pass (blocker 1)."""
+    from pathlib import Path as _P
+
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    (root_dir / "b.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    (root_dir / "b.txt").unlink()  # b is genuinely gone → must be reconciled away
+
+    gr = SourceIndexScanGenerationsRepository(db)
+    rph = si.hashlib.sha256(str(_P(str(root_dir))).encode("utf-8")).hexdigest()[:32]
+    fp = si._policy_fingerprint(r, _cfg(root_dir), rph)
+    g = gr.begin_generation_pass("work", "seed", policy_fingerprint=fp, root_path_hash=rph)
+    gr.mark_metadata_walk_complete(g["generation_id"], "seed")
+    # A forged checkpoint at the maximum source_id: if trusted, `source_id > after` returns nothing.
+    gr.mark_reconcile_pending(
+        g["generation_id"], "seed", reconcile_cursor_json='{"after":"' + "f" * 32 + '"}'
+    )
+    rep = si.scan_source_root(r, repo, _cfg(root_dir))
+    assert rep.generation_status == "completed"
+    d = (
+        sqlite3.connect(db)
+        .execute("SELECT deleted FROM source_intelligence_sources WHERE rel_path='b.txt'")
+        .fetchone()[0]
+    )
+    assert d == 1, "a forged reconcile checkpoint must not let an absent row survive reconciliation"
+
+
+def test_preserve_rebuilds_fts_from_retained_text(tmp_path):
+    """Preserve rebuilds the FTS row FROM the retained extracted text — not an empty path-only row — so a
+    content row with a missing FTS row stays body-searchable and health keeps counting it content-searchable
+    (blocker 3: the concrete plaintext-content-with-missing-FTS failure)."""
+    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
+
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "report.txt"
+    f.write_text("the concrete pour schedule")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    si.index_source_file(f, r, repo, _cfg(root_dir))  # extract content
+    assert any("report.txt" in h["rel_path"] for h in repo.search_source_files("concrete"))
+
+    # Drop the FTS row (retain the extracted text) and NULL the fingerprint so the next scan PRESERVES.
+    sid = source_id_for("external_file", source_root_key="work", rel_path="report.txt")
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "DELETE FROM source_intelligence_fts WHERE rowid=("
+        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?)",
+        (sid,),
+    )
+    conn.execute("UPDATE source_intelligence_metadata SET fts_rowid=NULL WHERE source_id=?", (sid,))
+    conn.execute(
+        "UPDATE source_intelligence_sources SET last_indexed_fingerprint=NULL WHERE source_id=?",
+        (sid,),
+    )
+    conn.commit()
+    conn.close()
+    assert repo.search_source_files("concrete") == []  # body search broken pre-repair
+
+    _run_to_completion(r, repo, _cfg(root_dir))
+    assert any("report.txt" in h["rel_path"] for h in repo.search_source_files("concrete")), (
+        "preserve must rebuild the FTS from retained text (not an empty path-only row)"
+    )
+    assert repo.content_status_counts("work")["content_searchable"] >= 1
+
+
+def test_preserve_refreshes_abs_path_hash_and_project_relationship(tmp_path):
+    """Preserve authoritatively refreshes derived identity — abs_path_hash and the belongs_to_project edge —
+    on a fingerprint mismatch, so a root-path or matcher-version change never leaves them stale (blocker 3)."""
+    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
+
+    root_dir = tmp_path / "root"
+    (root_dir / "24-118-00").mkdir(parents=True)
+    f = root_dir / "24-118-00" / "plan.txt"
+    f.write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    sid = source_id_for("external_file", source_root_key="work", rel_path="24-118-00/plan.txt")
+    correct_hash = si.hashlib.sha256(str(f).encode()).hexdigest()[:32]
+
+    # Corrupt abs_path_hash + the relationship confidence, NULL the fingerprint (→ preserve on rescan).
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "UPDATE source_intelligence_sources SET abs_path_hash='STALEHASH', "
+        "last_indexed_fingerprint=NULL WHERE source_id=?",
+        (sid,),
+    )
+    conn.execute(
+        "UPDATE source_intelligence_relationships SET confidence='WRONG' "
+        "WHERE src_source_id=? AND relation='belongs_to_project'",
+        (sid,),
+    )
+    conn.commit()
+    conn.close()
+
+    _run_to_completion(r, repo, _cfg(root_dir))
+    conn = sqlite3.connect(db)
+    got_hash = conn.execute(
+        "SELECT abs_path_hash FROM source_intelligence_sources WHERE source_id=?", (sid,)
+    ).fetchone()[0]
+    conf = conn.execute(
+        "SELECT confidence FROM source_intelligence_relationships "
+        "WHERE src_source_id=? AND relation='belongs_to_project'",
+        (sid,),
+    ).fetchone()[0]
+    conn.close()
+    assert got_hash == correct_hash, "preserve must refresh abs_path_hash"
+    assert conf == "high", "preserve must rebuild the project relationship under current policy"
+
+
+def test_health_stale_when_generation_fingerprint_mismatches_policy(tmp_path):
+    """Health must not certify a completed generation as complete/watcher-ready once its stored fingerprint
+    no longer matches the currently-configured root (a sensitivity/exclusion/root-path/matcher change) —
+    it reads partial and watcher-not-ready until the corrective generation runs (blocker 4)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir)
+    _run_to_completion(r, repo, cfg)
+    work = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert work["metadata_completeness_state"] == "complete"  # matches current policy
+
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "UPDATE source_index_scan_generations SET policy_fingerprint='STALEFP' WHERE status='completed'"
+    )
+    conn.commit()
+    conn.close()
+    work2 = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert work2["metadata_completeness_state"] == "partial", (
+        "stale completion must not read complete"
+    )
+    assert work2["bootstrap"]["watcher_ready"] is False
+
+
+def test_abandon_is_ownership_fenced(tmp_path):
+    db = _db(tmp_path)
+    gr = SourceIndexScanGenerationsRepository(db)
+    gid = gr.begin_generation_pass("work", "A", policy_fingerprint="fp", root_path_hash="rph")[
+        "generation_id"
+    ]
+    assert gr.abandon_generation(gid, "B") == 0  # a non-owner cannot abandon
+    st = (
+        sqlite3.connect(db)
+        .execute("SELECT status FROM source_index_scan_generations WHERE generation_id=?", (gid,))
+        .fetchone()[0]
+    )
+    assert st == "running", "a lost-lease worker must not abandon the new owner's generation"
+    assert gr.abandon_generation(gid, "A") == 1  # the rightful owner can
+    st2 = (
+        sqlite3.connect(db)
+        .execute("SELECT status FROM source_index_scan_generations WHERE generation_id=?", (gid,))
+        .fetchone()[0]
+    )
+    assert st2 == "abandoned"
+
+
+def test_scan_reports_conflict_when_abandon_loses_lease(tmp_path):
+    """An invalid cursor whose abandon affects 0 rows (lease taken over during filesystem validation) is a
+    retryable conflict, not an abandonment of the new owner's generation (blocker 5)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "keep.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+
+    gr = SourceIndexScanGenerationsRepository(db)
+    rph = si.hashlib.sha256(str(root_dir).encode()).hexdigest()[:32]
+    fp = si._policy_fingerprint(r, _cfg(root_dir), rph)
+    g = gr.begin_generation_pass("work", "runbad", policy_fingerprint=fp, root_path_hash=rph)
+    # An invalid cursor (first frame is not the root) so validation rejects it and the pass tries to abandon.
+    gr.mark_partial(
+        g["generation_id"],
+        "runbad",
+        cursor_json='{"version":1,"frames":[{"d":"gone","after":"x"}]}',
+    )
+
+    class _LostAbandon(SourceIndexScanGenerationsRepository):
+        def abandon_generation(self, *a, **k):  # noqa: ANN002
+            return 0  # lease lost during validation
+
+    rep = si.scan_source_root(r, repo, _cfg(root_dir), genrepo=_LostAbandon(db))
+    assert rep.generation_status == "conflict"
+    assert rep.error_code == "lease_lost"

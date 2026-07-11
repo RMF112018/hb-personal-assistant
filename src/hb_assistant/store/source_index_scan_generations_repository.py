@@ -515,18 +515,26 @@ class SourceIndexScanGenerationsRepository:
     def abandon_generation(
         self,
         generation_id: str,
+        run_id: str,
         *,
         last_error_code: str = "abandoned",
         conn: sqlite3.Connection | None = None,
-    ) -> None:
-        """Invalid/unvalidatable cursor/fingerprint/root: status→``abandoned`` (NO reconciliation)."""
+    ) -> int:
+        """Invalid/unvalidatable cursor/fingerprint/root: status→``abandoned`` (NO reconciliation).
+
+        Lease-fenced (``active_run_id=run_id AND status='running'``), returns the affected rowcount. Cursor
+        validation performs filesystem operations, so a lease can expire and be taken over WHILE it runs;
+        without this fence the old worker could abandon the NEW owner's generation. A rowcount of 0 means the
+        lease was lost — the caller must treat it as a conflict, not an abandonment."""
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            c.execute(
+            cur = c.execute(
                 "UPDATE source_index_scan_generations SET status='abandoned', active_run_id=NULL, "
-                "finished_at=?, updated_at=?, last_error_code=? WHERE generation_id=?",
-                (now, now, last_error_code, generation_id),
+                "finished_at=?, updated_at=?, last_error_code=? "
+                "WHERE generation_id=? AND active_run_id=? AND status='running'",
+                (now, now, last_error_code, generation_id, run_id),
             )
+            return cur.rowcount or 0
 
     def release_owner(
         self, generation_id: str, run_id: str, *, conn: sqlite3.Connection | None = None
