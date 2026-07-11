@@ -6,6 +6,7 @@ matching, and explicit writes via SourceIndexRepository. Never copies files into
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import logging
@@ -168,6 +169,24 @@ class DirectoryReadError(Exception):
         super().__init__(f"directory_read_error:depth={len([s for s in rel_dir.split('/') if s])}")
 
 
+# Filesystem-uncertainty taxonomy (V122, round-7 blocker 3). A confirmed ``ENOENT``/``ENOTDIR`` is a
+# structural fact (gone / not-a-directory) and is safe to treat as invalid/absent. Every OTHER OSError —
+# permission (``EACCES``/``EPERM``), transient I/O (``EIO``), stale handle (``ESTALE``), timeout, mount-loss,
+# or even a bare OSError with no errno — is INDETERMINATE: we CANNOT distinguish "truly gone" from
+# "momentarily unreachable", so it must fail closed (suspend / preserve), never abandon a cursor or silently
+# drop a possibly-present entry. Fail-closed-by-default is deliberately broader than any fixed errno list.
+def _is_confirmed_missing(exc: OSError) -> bool:
+    """True only for a CONFIRMED ``ENOENT``/``ENOTDIR`` — a structural fact (gone / not-a-directory)."""
+    return exc.errno in (errno.ENOENT, errno.ENOTDIR)
+
+
+def _is_indeterminate_oserror(exc: OSError) -> bool:
+    """True when an ``OSError`` cannot be trusted as a confirmed structural fact (anything that is not
+    ``ENOENT``/``ENOTDIR``) — permission / transient I/O / stale-handle / mount-loss / unknown errno. Such
+    errors must fail closed (suspend), never abandon a cursor or silently skip a possibly-present entry."""
+    return not _is_confirmed_missing(exc)
+
+
 # V122 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
 # resuming a cursor. NFC alone can map two distinct filesystem names to one key, so the tie-breaker is the
 # original name — two distinct entries never compare equal. Locked by test.
@@ -211,6 +230,10 @@ def _scandir_sorted(
         except ValueError:
             rel_dir = ""
         raise DirectoryReadError(rel_dir) from exc
+    try:
+        rel_dir = str(abs_dir.relative_to(root_path))
+    except ValueError:
+        rel_dir = ""
     out: list[tuple[tuple[str, str], str, Path, str, bool, bool]] = []
     for entry in raw:
         abs_path = Path(entry.path)
@@ -222,16 +245,27 @@ def _scandir_sorted(
             is_symlink = entry.is_symlink()
             is_dir = entry.is_dir(follow_symlinks=False)
             is_file = entry.is_file(follow_symlinks=False)
-        except OSError:
+        except OSError as exc:
+            # A per-entry stat that CONFIRMS the entry vanished (ENOENT/ENOTDIR — a mid-scan removal) is
+            # safe to skip: the full walk + each file's own restat reconciles the deletion. Any INDETERMINATE
+            # error must NOT silently drop a possibly-present file — fail closed so the walk suspends (F-01,
+            # round-7 blocker 3).
+            if _is_indeterminate_oserror(exc):
+                raise DirectoryReadError(rel_dir) from exc
             continue
         if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
             continue
         if is_symlink:
-            with suppress(OSError):
+            try:
                 if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
                     out.append(
                         (entry_sort_key(entry.name), entry.name, abs_path, rel_path, False, True)
                     )
+            except OSError as exc:
+                # A broken symlink (confirmed-missing target) is legitimately skipped; an indeterminate
+                # target error (permission / stale mount) must fail closed, never silently drop the entry.
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(rel_dir) from exc
             continue
         if is_dir:
             out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, True, False))
@@ -1041,10 +1075,16 @@ def _validate_cursor(
         return True  # a versioned cursor with no frames == start-from-root
     if not isinstance(frames, list):
         return False
+    import stat as _sm
+
     root = Path(root_path)
     try:
         root_resolved = root.resolve()
-    except OSError:
+    except OSError as exc:
+        # A CONFIRMED-missing root anchor (ENOENT/ENOTDIR) is genuinely invalid → abandon. An INDETERMINATE
+        # error (permission / stale mount) is NOT cursor corruption → suspend, preserve cursor (blocker 3).
+        if _is_indeterminate_oserror(exc):
+            raise DirectoryReadError("") from exc
         return False
 
     def _norm(rel: str) -> str:
@@ -1079,17 +1119,26 @@ def _validate_cursor(
                 return False
             try:
                 resolved = abs_dir.resolve()
-            except OSError:
+            except OSError as exc:
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(norm_d) from exc
                 return False
             if resolved != root_resolved and root_resolved not in resolved.parents:
                 return False
             # Reject ANY symlink frame (not merely an escaping one): its target may have changed since the
             # cursor was persisted, so resuming into it is unsafe regardless of where it currently points.
-            if (
-                not abs_dir.is_dir()
-                or abs_dir.is_symlink()
-                or pathsafe.symlink_escapes(abs_dir, root)
-            ):
+            # An explicit ``os.stat`` (not ``Path.is_dir()``, which swallows the stat errno) lets a transient
+            # I/O error be classified: indeterminate → suspend (preserve cursor), confirmed-missing / not-a-
+            # directory → abandon (blocker 3).
+            try:
+                dir_st = os.stat(abs_dir)  # follows symlinks — the frame must be a real directory
+                is_symlink_frame = abs_dir.is_symlink()
+                escapes = pathsafe.symlink_escapes(abs_dir, root)
+            except OSError as exc:
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(norm_d) from exc
+                return False
+            if not _sm.S_ISDIR(dir_st.st_mode) or is_symlink_frame or escapes:
                 return False
         # Parent→child must be EXACT: a deeper frame is the subdirectory named by its parent frame's
         # ``after`` (the entry the walker descended into), so ``child.d == parent.d / parent.after``.
@@ -1147,6 +1196,24 @@ def _probe_candidate(abs_c: Path, root_path: Path) -> str:
     return "present"
 
 
+def _probe_root_dir(root_path: Path) -> str:
+    """Classify a scan root → ``usable`` | ``absent`` | ``indeterminate`` (mount-safety, round-7 blocker 3).
+
+    ``usable`` only for a confirmed existing directory. ``absent`` for a confirmed ENOENT/ENOTDIR (the root
+    genuinely does not exist / is not a directory) or a non-directory inode now at the path. Any OTHER
+    OSError (permission / stale handle / transient I/O — a lost or flaky mount) is ``indeterminate``: the
+    scan SUSPENDS rather than failing as if the root were gone, so a previously-completed generation is never
+    invalidated by a momentary mount blip. Unlike the old ``Path.is_dir()`` probe this runs AFTER the
+    generation is claimed and its verdict is persisted in generation truth, so health closes trust at once."""
+    import stat as _sm
+
+    try:
+        st = os.stat(root_path)  # follows symlinks (a symlinked root dir is fine)
+    except OSError as exc:
+        return "absent" if _is_confirmed_missing(exc) else "indeterminate"
+    return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
+
+
 class _LeaseLost(Exception):
     """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
     ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
@@ -1188,13 +1255,11 @@ def scan_source_root(
 
     report = ScanReport(root_key=root.source_root_key)
     root_path = Path(root.path)
-    if not root_path.is_dir():
-        report.error_codes.append("root_not_found")
-        report.errors += 1
-        report.generation_status = "failed"
-        report.error_code = "root_not_found"
-        return report
-
+    # NOTE: the root-availability probe is deliberately deferred until AFTER the generation is claimed (see
+    # below) so a missing/stale mount is recorded in generation truth — the pre-claim ``Path.is_dir()`` guard
+    # here returned a failure while leaving the prior COMPLETED generation authoritative in health, so a lost
+    # mount silently kept advertising trust (round-7 blocker 3). Computing the fingerprint/hash needs only the
+    # path string, not an existing directory, so claiming first is safe.
     if genrepo is None:
         genrepo = SourceIndexScanGenerationsRepository(repo.db_path)
     if bstate is None:
@@ -1279,6 +1344,61 @@ def scan_source_root(
                 errors_count=report.errors,
             )
 
+    def _transition_or_conflict(affected: int, attempted_status: str) -> bool:
+        """Single lost-lease exit for the ownership-guarded GIVE-UP transitions (partial / reconcile_pending
+        / failed). ``affected == 0`` means a stale-lease takeover already claimed this generation, so this
+        run must NOT report ``attempted_status`` as authoritative — record a retryable ``lease_lost`` conflict
+        and stop. Returns ``True`` to continue, ``False`` when the caller should ``return report`` at once
+        (round-7 blocker 3). Factored from the pre-existing `_LeaseLost` handler so every give-up branch fails
+        the same way instead of duplicating the block ~10 times."""
+        if affected == 0:
+            _logger.warning(
+                "source_scan.lease_lost",
+                extra={
+                    "obsidian_mcp": {
+                        "root": root.source_root_key,
+                        "attempted_status": attempted_status,
+                    }
+                },
+            )
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return False
+        return True
+
+    # Root availability, now UNDER generation truth (blocker 3): a lost/stale mount is persisted as a
+    # failed/partial generation so health closes trust immediately, instead of the old pre-claim guard that
+    # returned while the prior COMPLETED generation stayed authoritative. Confirmed missing/not-a-directory →
+    # FAIL (root_not_found, auto-retries when the root returns); indeterminate (permission / stale mount) →
+    # SUSPEND (partial, no reconciliation) rather than falsely declaring the root gone.
+    root_probe = _probe_root_dir(root_path)
+    if root_probe == "absent":
+        report.error_codes.append("root_not_found")
+        report.errors += 1
+        report.error_code = "root_not_found"
+        if not _transition_or_conflict(
+            genrepo.fail_generation(gid, run_id, last_error_code="root_not_found"), "failed"
+        ):
+            return report
+        report.generation_status = "failed"
+        _finish_v119("failed")
+        return report
+    if root_probe == "indeterminate":
+        report.error_codes.append("root_probe_io_error")
+        report.error_code = "root_probe_io_error"
+        report.bounded_out = True
+        report.bounded_reason = "root_probe_io_error"
+        if not _transition_or_conflict(
+            genrepo.mark_partial(gid, run_id, last_error_code="root_probe_io_error"), "partial"
+        ):
+            return report
+        report.generation_status = "partial"
+        _finish_v119("partial")
+        return report
+
     walk_complete = gen.get("metadata_walk_completed_at") is not None
     # Decode the persisted cursor INSIDE the validation guard: a malformed/non-object JSON payload is
     # itself an invalid cursor (finding 4), so a decode error must ABANDON — never crash the pass or fall
@@ -1311,21 +1431,29 @@ def scan_source_root(
             try:
                 cursor_valid = _validate_cursor(cursor, root_path, config, fanout)
             except DirectoryFanoutError:
+                if not _transition_or_conflict(
+                    genrepo.fail_generation(gid, run_id, last_error_code="directory_fanout_limit"),
+                    "failed",
+                ):
+                    return report
                 report.error_code = "directory_fanout_limit"
                 report.error_codes.append("directory_fanout_limit")
-                genrepo.fail_generation(gid, run_id, last_error_code="directory_fanout_limit")
                 report.generation_status = "failed"
                 _finish_v119("failed")
                 return report
             except DirectoryReadError:
                 # Transient permission / I/O / stale-NAS-handle error while re-listing to verify an anchor —
                 # preserve the SAME cursor and suspend so the next pass retries from the same checkpoint.
-                genrepo.mark_partial(
-                    gid,
-                    run_id,
-                    cursor_json=cursor_raw,
-                    last_error_code="cursor_validation_io_error",
-                )
+                if not _transition_or_conflict(
+                    genrepo.mark_partial(
+                        gid,
+                        run_id,
+                        cursor_json=cursor_raw,
+                        last_error_code="cursor_validation_io_error",
+                    ),
+                    "partial",
+                ):
+                    return report
                 report.error_code = "cursor_validation_io_error"
                 report.error_codes.append("cursor_validation_io_error")
                 report.bounded_out = True
@@ -1528,32 +1656,40 @@ def scan_source_root(
                 # Per-generation hard ceiling (cumulative, COMMITTED) → no forward progress: FAIL.
                 if gen_ceiling is not None and files_observed >= int(gen_ceiling):
                     report.error_code = "generation_ceiling"
-                    genrepo.fail_generation(
-                        gid,
-                        run_id,
-                        last_error_code="generation_ceiling",
-                        files_observed=files_observed,
-                        metadata_upserted=metadata_upserted,
-                        files_unchanged=files_unchanged,
-                        errors_count=errors_count,
-                    )
+                    if not _transition_or_conflict(
+                        genrepo.fail_generation(
+                            gid,
+                            run_id,
+                            last_error_code="generation_ceiling",
+                            files_observed=files_observed,
+                            metadata_upserted=metadata_upserted,
+                            files_unchanged=files_unchanged,
+                            errors_count=errors_count,
+                        ),
+                        "failed",
+                    ):
+                        return report
                     report.generation_status = "failed"
                     _finish_v119("failed")
                     return report
             else:
                 _flush()  # loop exhausted normally
         except DirectoryFanoutError:
+            if not _transition_or_conflict(
+                genrepo.fail_generation(
+                    gid,
+                    run_id,
+                    last_error_code="directory_fanout_limit",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "failed",
+            ):
+                return report
             report.error_code = "directory_fanout_limit"
             report.error_codes.append("directory_fanout_limit")
-            genrepo.fail_generation(
-                gid,
-                run_id,
-                last_error_code="directory_fanout_limit",
-                files_observed=files_observed,
-                metadata_upserted=metadata_upserted,
-                files_unchanged=files_unchanged,
-                errors_count=errors_count,
-            )
             report.generation_status = "failed"
             _finish_v119("failed")
             return report
@@ -1564,16 +1700,20 @@ def scan_source_root(
             # unreadable subtree can never be published as a complete scan that then mass-deletes files (F-01).
             with suppress(Exception):
                 _flush()
-            genrepo.mark_partial(
-                gid,
-                run_id,
-                cursor_json=json.dumps(last_cursor) if last_cursor else None,
-                last_error_code="directory_read_error",
-                files_observed=files_observed,
-                metadata_upserted=metadata_upserted,
-                files_unchanged=files_unchanged,
-                errors_count=errors_count,
-            )
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    last_error_code="directory_read_error",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
             report.error_code = "directory_read_error"
             report.error_codes.append("directory_read_error")
             report.bounded_out = True
@@ -1594,16 +1734,20 @@ def scan_source_root(
         if pass_error:
             # An unresolved per-file stat/upsert error held the cursor: SUSPEND (partial) so the file is
             # retried; the generation is never marked complete with an unresolved observation (F-03).
-            genrepo.mark_partial(
-                gid,
-                run_id,
-                cursor_json=json.dumps(last_cursor) if last_cursor else None,
-                last_error_code="metadata_walk_error",
-                files_observed=files_observed,
-                metadata_upserted=metadata_upserted,
-                files_unchanged=files_unchanged,
-                errors_count=errors_count,
-            )
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    last_error_code="metadata_walk_error",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
             report.error_code = report.error_code or "metadata_walk_error"
             report.bounded_out = True
             report.generation_status = "partial"
@@ -1612,15 +1756,19 @@ def scan_source_root(
             return report
 
         if report.bounded_out:
-            genrepo.mark_partial(
-                gid,
-                run_id,
-                cursor_json=json.dumps(last_cursor) if last_cursor else None,
-                files_observed=files_observed,
-                metadata_upserted=metadata_upserted,
-                files_unchanged=files_unchanged,
-                errors_count=errors_count,
-            )
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
             report.generation_status = "partial"
             _emit_progress("")
             _finish_v119("partial")
@@ -1655,15 +1803,19 @@ def scan_source_root(
     # read errors are handled independently upstream (directory_read_error → suspend).
     empty_guard = int(getattr(config, "source_index_empty_root_delete_threshold", 50))
     if files_observed == 0 and repo.count_source_files(root.source_root_key) > empty_guard:
-        genrepo.fail_generation(
-            gid,
-            run_id,
-            last_error_code="empty_root_guard",
-            files_observed=files_observed,
-            metadata_upserted=metadata_upserted,
-            files_unchanged=files_unchanged,
-            errors_count=errors_count,
-        )
+        if not _transition_or_conflict(
+            genrepo.fail_generation(
+                gid,
+                run_id,
+                last_error_code="empty_root_guard",
+                files_observed=files_observed,
+                metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged,
+                errors_count=errors_count,
+            ),
+            "failed",
+        ):
+            return report
         report.error_code = "empty_root_guard"
         report.error_codes.append("empty_root_guard")
         report.generation_status = "failed"
@@ -1790,13 +1942,17 @@ def scan_source_root(
                 after_sid = resolved[-1][0]
                 committed_after_sid = after_sid
             if blocked:
-                genrepo.mark_reconcile_pending(
-                    gid,
-                    run_id,
-                    reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
-                    last_error_code="reconcile_indeterminate",
-                    deleted_count=deleted_count,
-                )
+                if not _transition_or_conflict(
+                    genrepo.mark_reconcile_pending(
+                        gid,
+                        run_id,
+                        reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+                        last_error_code="reconcile_indeterminate",
+                        deleted_count=deleted_count,
+                    ),
+                    "reconcile_pending",
+                ):
+                    return report
                 report.error_code = "reconcile_indeterminate"
                 report.error_codes.append("reconcile_indeterminate")
                 report.generation_status = "reconcile_pending"
@@ -1815,13 +1971,17 @@ def scan_source_root(
         report.errors += 1
         report.error_codes.append(type(exc).__name__)
         report.error_code = "survivor_refresh_failed"
-        genrepo.mark_reconcile_pending(
-            gid,
-            run_id,
-            reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
-            last_error_code="survivor_refresh_failed",
-            deleted_count=deleted_count,
-        )
+        if not _transition_or_conflict(
+            genrepo.mark_reconcile_pending(
+                gid,
+                run_id,
+                reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+                last_error_code="survivor_refresh_failed",
+                deleted_count=deleted_count,
+            ),
+            "reconcile_pending",
+        ):
+            return report
         report.generation_status = "reconcile_pending"
         _finish_v119("partial")
         return report

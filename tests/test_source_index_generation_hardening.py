@@ -7,6 +7,7 @@ Scratch DBs + temp roots only; no live/production DB, NAS, or watcher is touched
 
 from __future__ import annotations
 
+import errno
 import os
 import shutil
 import sqlite3
@@ -1699,3 +1700,469 @@ def test_fanout_during_cursor_validation_fails(tmp_path, monkeypatch):
         .fetchone()[0]
     )
     assert st == "failed"
+
+
+# ===== Round 7 =====================================================================================
+# Blocker 1: recovery from a no-progress failure must LIFT the block on the AUTHORITATIVE latest
+# generation (not resurrect a historical failed row); empty_root_guard joins the no-progress lifecycle;
+# restart is exposed through run_scan + the CLI. Blocker 2: policy trust certified from the latest
+# generation overall (never reopened by a running/partial/failed corrective pass), with an honest
+# current/stale/uncertified/unavailable state and available≠verified-safe. Blocker 3: root-availability
+# and per-entry filesystem uncertainty are classified (confirmed-invalid vs indeterminate) and every
+# give-up transition surfaces a lost lease as a conflict.
+
+
+# ----- Blocker 1: successful explicit recovery then a normal scan is NOT re-blocked -----------------
+def test_no_progress_recovery_then_ordinary_scan_not_blocked(tmp_path):
+    """The missing round-6 proof: after a no-forward-progress failure, an explicit restart that COMPLETES
+    must let the NEXT ordinary scan run — the block is lifted off the authoritative latest generation, not
+    resurrected from the historical failed row (round-7 blocker 1)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(30):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_directory_fanout_limit=10)
+
+    assert si.scan_source_root(r, repo, cfg).generation_status == "failed"  # G1: high fanout
+    assert "restart_required" in si.scan_source_root(r, repo, cfg).error_codes  # blocked
+
+    # Filesystem repair WITHOUT a policy change (same fanout=10): reduce below the cap. An explicit restart
+    # then creates G2, which COMPLETES.
+    for i in range(25):
+        (root_dir / f"f{i}.txt").unlink()  # 5 files remain, under fanout=10
+    rep_restart = si.scan_source_root(r, repo, cfg, restart=True)
+    assert rep_restart.generation_status == "completed"
+
+    # THE PROOF: a subsequent ordinary scan (restart=False) is not re-blocked by the historical G1 failure.
+    rep_ordinary = si.scan_source_root(r, repo, cfg)
+    assert "restart_required" not in rep_ordinary.error_codes
+    assert rep_ordinary.generation_status == "completed"
+
+
+def test_empty_root_guard_blocks_auto_retry_and_restart_recovers(tmp_path):
+    """empty_root_guard (lost-mount sentinel) now joins the no-forward-progress lifecycle: a vanished mount
+    must NOT spawn a fresh failed generation every scheduled scan; recovery is an explicit restart once the
+    mount is restored (round-7 blocker 1)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(5):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_empty_root_delete_threshold=2)
+    _run_to_completion(r, repo, cfg)
+
+    for i in range(5):
+        (root_dir / f"f{i}.txt").unlink()  # root reads empty; 5 active rows > threshold 2
+    rep = si.scan_source_root(r, repo, cfg)
+    assert rep.generation_status == "failed"
+    assert rep.error_code == "empty_root_guard"
+    n = _gen_count(db)
+
+    # An unchanged re-scan must NOT create + fail a new generation (auto-retry suppressed).
+    rep2 = si.scan_source_root(r, repo, cfg)
+    assert rep2.generation_status == "failed"
+    assert "restart_required" in rep2.error_codes
+    assert _gen_count(db) == n, (
+        "empty_root_guard must block auto-retry (no new generation each scan)"
+    )
+
+    # Mount restored + explicit restart → recovery.
+    for i in range(5):
+        (root_dir / f"f{i}.txt").write_text("x")
+    rep3 = si.scan_source_root(r, repo, cfg, restart=True)
+    assert rep3.generation_status == "completed"
+    assert "restart_required" not in rep3.error_codes
+
+
+def test_run_scan_forwards_restart(tmp_path, monkeypatch):
+    """The orchestration entry point forwards ``restart`` to the generation authority (the missing link);
+    ordinary calls default it to False (round-7 blocker 1)."""
+    from hb_assistant.obsidian_mcp import source_scan_runner as ssr
+    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    (root_dir / "a.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    bstate = SourceIndexBootstrapRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    captured: dict[str, object] = {}
+    orig = si.scan_source_root
+
+    def _spy(*a, **k):
+        captured["restart"] = k.get("restart")
+        return orig(*a, **k)
+
+    monkeypatch.setattr(si, "scan_source_root", _spy)
+    ssr.run_scan(r, repo, _cfg(root_dir), bstate, restart=True)
+    assert captured["restart"] is True
+    ssr.run_scan(r, repo, _cfg(root_dir), bstate)
+    assert captured["restart"] is False
+
+
+def test_cli_bootstrap_restart_reaches_bootstrap(monkeypatch):
+    """The operator CLI exposes ``--restart`` and threads it into the bootstrap entry point (round-7
+    blocker 1). Config loaders are stubbed so nothing touches real config or scans a root."""
+    from typer.testing import CliRunner
+
+    from hb_assistant.cli import source_watch as sw
+    from hb_assistant.obsidian_mcp import source_bootstrap as sb
+
+    captured: dict[str, object] = {}
+
+    def _fake_bootstrap(**kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "roots": []}
+
+    monkeypatch.setattr(sw, "_obsidian_config", lambda: None)
+    monkeypatch.setattr(sw, "_app_config", lambda: None)
+    monkeypatch.setattr(sw, "_db_path", lambda db: ":memory:")
+    monkeypatch.setattr(sb, "bootstrap", _fake_bootstrap)
+
+    res = CliRunner().invoke(sw.app, ["bootstrap", "--root-key", "work", "--restart"])
+    assert res.exit_code == 0, res.output
+    assert captured.get("restart") is True
+
+    captured.clear()
+    res2 = CliRunner().invoke(sw.app, ["bootstrap", "--root-key", "work"])
+    assert res2.exit_code == 0, res2.output
+    assert captured.get("restart") is False
+
+
+# ----- Blocker 2: policy trust certified from the latest generation overall -------------------------
+def _sensitive_cfg(root_dir: Path, **overrides) -> ObsidianMcpConfig:
+    base = ObsidianMcpConfig(
+        vault_root=str(root_dir),
+        external_sources=[
+            ExternalSourceRoot(
+                source_root_key="work", path=str(root_dir), enabled=True, sensitive=True
+            )
+        ],
+        external_source_index_enabled=True,
+    )
+    return base.model_copy(update=overrides) if overrides else base
+
+
+def test_health_certified_when_latest_generation_is_current_completed(tmp_path):
+    """Guard against over-closing: a root whose LATEST generation is a completed scan under current policy
+    reads ``policy_verification == current`` and stays safe for answering (round-7 blocker 2)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir)
+    _run_to_completion(r, repo, cfg)
+    w = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert w["policy_verification"] == "current"
+    # Certification does not over-close: path-lookup trust (policy-gated, not freshness-gated) opens. The
+    # ``safe_for_client_answering`` boolean also folds in a freshness gate, which this test harness zeroes
+    # (a future-dated index clock reads as ``future_anomaly``), so it is not asserted here.
+    assert w["safe_for_path_lookup"] is True
+    assert isinstance(w["safe_for_client_answering"], bool)
+
+
+def test_health_trust_closed_during_running_corrective_scan(tmp_path):
+    """The core blocker-2 defect: after a policy change, a running/partial CORRECTIVE generation carrying
+    the new fingerprint must NOT reopen trust before it completes. Trust is certified only from a COMPLETED
+    current-policy generation, so an incomplete corrective pass reads ``stale`` and fails closed."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r_plain = ExternalSourceRoot(source_root_key="work", path=str(root_dir), sensitive=False)
+    _run_to_completion(r_plain, repo, _cfg(root_dir))
+
+    # Policy change P→P' (sensitivity flip changes the fingerprint) + a BOUNDED corrective pass → the newest
+    # generation is partial@P' (NOT completed). An older completed@P still exists.
+    r_sens = ExternalSourceRoot(source_root_key="work", path=str(root_dir), sensitive=True)
+    cfg_sens_bounded = _sensitive_cfg(root_dir, source_index_scan_observed_files_per_pass=1)
+    rep = si.scan_source_root(r_sens, repo, cfg_sens_bounded)
+    assert rep.generation_status == "partial"
+
+    w = next(
+        x
+        for x in source_index_health(repo, _sensitive_cfg(root_dir))["roots"]
+        if x["root_key"] == "work"
+    )
+    assert w["policy_verification"] == "stale", w["policy_verification"]
+    assert w["safe_for_client_answering"] is False
+    assert w["safe_for_content_answering"] == "none"
+    assert w["safe_for_path_lookup"] is False
+
+
+def test_health_uncertified_configured_root_without_generation(tmp_path):
+    """A configured root that has never completed a V122 generation (targeted index only) is ``uncertified``
+    — its policy is KNOWN but never certified — so it fails closed for answering (round-7 blocker 2)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "doc.txt"
+    f.write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir)
+    si.index_source_file(f, r, repo, cfg)  # rows exist, NO generation created
+    w = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert w["policy_verification"] == "uncertified"
+    assert w["safe_for_client_answering"] is False
+    assert w["safe_for_content_answering"] == "none"
+
+
+def test_health_configless_reports_unavailable_but_serving_preserved(tmp_path):
+    """The configless / index-only profile (no configured policy) can no longer SILENTLY report verified
+    trust: ``policy_verification`` is ``unavailable`` and ``safe_for_client_answering`` is False (verified-
+    safe is honestly false), while ``index_only_available`` preserves advisory serving (round-7 blocker 2:
+    available ≠ verified-safe)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    _run_to_completion(r, repo, _cfg(root_dir))
+
+    # A configless serving config: no external_sources, so roots are index-derived and no policy fingerprint
+    # can be reconstructed for them.
+    configless = ObsidianMcpConfig(
+        vault_root=str(root_dir), external_sources=[], external_source_index_enabled=True
+    )
+    roots = source_index_health(repo, configless)["roots"]
+    work = next((x for x in roots if x["root_key"] == "work"), None)
+    assert work is not None, roots
+    assert work["policy_verification"] == "unavailable"
+    # "verified safe" is honestly false when policy cannot be verified...
+    assert work["safe_for_client_answering"] is False
+    assert work["safe_for_content_answering"] == "none"
+    assert work["safe_for_path_lookup"] is False
+    # ...but a SEPARATE advisory availability field exists so serving is not conflated with verification
+    # (available ≠ verified-safe). It tracks index layers + freshness, independent of policy (this harness's
+    # future-dated clock zeroes the freshness gate, so we assert the field's presence/shape, not True).
+    assert "index_only_available" in work
+    assert isinstance(work["index_only_available"], bool)
+
+
+# ----- Blocker 3: filesystem-uncertainty classification + lease-loss on give-up transitions ----------
+def test_probe_root_dir_classifies_three_outcomes(tmp_path, monkeypatch):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    assert si._probe_root_dir(root_dir) == "usable"
+    assert si._probe_root_dir(tmp_path / "missing") == "absent"  # confirmed ENOENT
+    afile = tmp_path / "f.txt"
+    afile.write_text("x")
+    assert si._probe_root_dir(afile) == "absent"  # a file is not a usable root directory
+
+    def _boom(path, *a, **k):
+        raise PermissionError(13, "denied")
+
+    monkeypatch.setattr(si.os, "stat", _boom)
+    assert (
+        si._probe_root_dir(root_dir) == "indeterminate"
+    )  # permission/transient → suspend, not "gone"
+
+
+def test_missing_root_records_failed_generation_and_closes_health(tmp_path):
+    """A root that vanishes AFTER a completed scan must be recorded in generation truth (a failed
+    generation), not returned via a pre-claim guard that leaves the prior completed generation authoritative
+    in health — so trust closes immediately (round-7 blocker 3)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir)
+    _run_to_completion(r, repo, cfg)
+    w0 = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert w0["policy_verification"] == "current" and w0["safe_for_path_lookup"] is True
+
+    shutil.rmtree(root_dir)  # the mount vanishes (confirmed-missing)
+    rep = si.scan_source_root(r, repo, cfg)
+    assert rep.generation_status == "failed"
+    assert rep.error_code == "root_not_found"
+    assert rep.generation_id is not None, "the failure must be recorded under a claimed generation"
+    st = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT status, last_error_code FROM source_index_scan_generations WHERE generation_id=?",
+            (rep.generation_id,),
+        )
+        .fetchone()
+    )
+    assert st == ("failed", "root_not_found")
+    w1 = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
+    assert w1["policy_verification"] != "current"
+    assert w1["safe_for_client_answering"] is False
+    assert w1["safe_for_path_lookup"] is False
+
+
+def test_indeterminate_root_probe_suspends_without_deletion(tmp_path, monkeypatch):
+    """An INDETERMINATE root probe (permission / stale mount) suspends the generation (partial) with NO
+    reconciliation — it must not be treated as a confirmed-gone root nor drive any deletion (blocker 3)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir)
+    _run_to_completion(r, repo, cfg)
+
+    monkeypatch.setattr(si, "_probe_root_dir", lambda p: "indeterminate")
+    rep = si.scan_source_root(r, repo, cfg)
+    assert rep.generation_status == "partial"
+    assert rep.error_code == "root_probe_io_error"
+    n_deleted = (
+        sqlite3.connect(db)
+        .execute("SELECT COUNT(*) FROM source_intelligence_sources WHERE deleted=1")
+        .fetchone()[0]
+    )
+    assert n_deleted == 0, "an indeterminate root probe must never delete"
+    monkeypatch.undo()
+    assert _run_to_completion(r, repo, cfg).generation_status == "completed"
+
+
+def test_validate_cursor_indeterminate_child_error_suspends_not_abandons(tmp_path, monkeypatch):
+    """An INDETERMINATE filesystem error while validating a child cursor frame (permission / stale mount)
+    propagates as DirectoryReadError (→ suspend, preserve cursor), never flattened into invalid-cursor
+    abandonment; a CONFIRMED-missing anchor still returns False (→ abandon) (round-7 blocker 3)."""
+    root = tmp_path / "root"
+    (root / "a").mkdir(parents=True)
+    (root / "a" / "f.txt").write_text("x")
+    cfg = _cfg(root)
+    cursor = {"version": 1, "frames": [{"d": "", "after": "a"}, {"d": "a", "after": "f.txt"}]}
+    assert si._validate_cursor(cursor, root, cfg, 20000) is True  # baseline valid
+
+    real_stat = si.os.stat
+
+    def _eacces(path, *a, **k):
+        if str(path).endswith("/a"):
+            raise PermissionError(13, "denied")
+        return real_stat(path, *a, **k)
+
+    monkeypatch.setattr(si.os, "stat", _eacces)
+    with pytest.raises(si.DirectoryReadError):
+        si._validate_cursor(cursor, root, cfg, 20000)
+
+    def _enoent(path, *a, **k):
+        if str(path).endswith("/a"):
+            raise FileNotFoundError(2, "gone")
+        return real_stat(path, *a, **k)
+
+    monkeypatch.setattr(si.os, "stat", _enoent)
+    assert si._validate_cursor(cursor, root, cfg, 20000) is False  # confirmed-missing → abandon
+
+
+def test_scandir_per_entry_indeterminate_raises_read_error(tmp_path, monkeypatch):
+    """A per-entry stat that is INDETERMINATE (permission / stale mount) must fail closed with
+    DirectoryReadError so the walk suspends — never silently drop a possibly-present file; a CONFIRMED-gone
+    entry (ENOENT) is safely skipped (round-7 blocker 3)."""
+    import contextlib as _cl
+
+    root = tmp_path / "root"
+    root.mkdir()
+    cfg = _cfg(root)
+
+    class _FakeEntry:
+        def __init__(self, name: str, path: str, err: int | None) -> None:
+            self.name = name
+            self.path = path
+            self._err = err
+
+        def _maybe(self) -> None:
+            if self._err is not None:
+                raise OSError(self._err, "boom")
+
+        def is_symlink(self) -> bool:
+            self._maybe()
+            return False
+
+        def is_dir(self, follow_symlinks: bool = True) -> bool:
+            self._maybe()
+            return False
+
+        def is_file(self, follow_symlinks: bool = True) -> bool:
+            self._maybe()
+            return True
+
+    def _scandir_with(err: int | None):
+        @_cl.contextmanager
+        def _cm(path):
+            yield [_FakeEntry("x.txt", str(root / "x.txt"), err)]
+
+        return _cm
+
+    monkeypatch.setattr(si.os, "scandir", _scandir_with(errno.EACCES))
+    with pytest.raises(si.DirectoryReadError):
+        si._scandir_sorted(root, root, cfg, 20000)
+
+    monkeypatch.setattr(si.os, "scandir", _scandir_with(errno.ENOENT))
+    assert (
+        si._scandir_sorted(root, root, cfg, 20000) == []
+    )  # confirmed-gone entry skipped, no raise
+
+
+def test_give_up_partial_transition_lease_loss_reports_conflict(tmp_path):
+    """A stale-lease takeover during a PARTIAL give-up transition (rowcount 0) is now surfaced as a
+    retryable conflict, not silently reported as an authoritative partial (round-7 blocker 3)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    class _LostAtPartial(SourceIndexScanGenerationsRepository):
+        def mark_partial(self, *a, **k):  # noqa: ANN002
+            return 0  # stale-lease takeover during the give-up transition
+
+    rep = si.scan_source_root(
+        r,
+        repo,
+        _cfg(root_dir, source_index_scan_observed_files_per_pass=1),  # bounded → partial path
+        genrepo=_LostAtPartial(db),
+    )
+    assert rep.conflict is True
+    assert rep.generation_status == "conflict"
+    assert rep.error_code == "lease_lost"
+
+
+def test_give_up_failed_transition_lease_loss_reports_conflict(tmp_path):
+    """A stale-lease takeover during a FAILED give-up transition (rowcount 0) is surfaced as a conflict,
+    not silently reported as an authoritative failure (round-7 blocker 3)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(30):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    class _LostAtFail(SourceIndexScanGenerationsRepository):
+        def fail_generation(self, *a, **k):  # noqa: ANN002
+            return 0
+
+    rep = si.scan_source_root(
+        r,
+        repo,
+        _cfg(root_dir, source_index_directory_fanout_limit=10),  # high fanout → fail path
+        genrepo=_LostAtFail(db),
+    )
+    assert rep.conflict is True
+    assert rep.generation_status == "conflict"
+    assert rep.error_code == "lease_lost"

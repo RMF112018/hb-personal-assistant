@@ -46,9 +46,12 @@ _GEN_COUNTER_COLUMNS: frozenset[str] = frozenset(
 # Terminal ``failed`` error codes that signal NO FORWARD PROGRESS under the current config: the plan's
 # lifecycle contract requires a relevant policy/configuration change or an explicit operator restart before
 # a new generation may start — an unchanged high-fanout directory or generation ceiling must NOT silently
-# create + fail a fresh generation on every scheduled pass. Any OTHER failure code auto-retries normally.
+# create + fail a fresh generation on every scheduled pass. ``empty_root_guard`` (the lost-mount blast-radius
+# sentinel) is documented as requiring operator confirmation, so it belongs here too: a vanished mount must
+# not spawn a fresh failed generation every scheduled scan — recovery is an explicit restart (or a real
+# policy change). Any OTHER failure code auto-retries normally.
 _NO_PROGRESS_ERROR_CODES: frozenset[str] = frozenset(
-    {"directory_fanout_limit", "generation_ceiling"}
+    {"directory_fanout_limit", "generation_ceiling", "empty_root_guard"}
 )
 
 
@@ -238,24 +241,30 @@ class SourceIndexScanGenerationsRepository:
                 # + no-progress code) BLOCKS restart unless the operator forced ``restart=True``. A policy
                 # change makes the fingerprint differ → not matched → a fresh generation starts (recovery).
                 if not restart:
-                    failed = c.execute(
-                        "SELECT * FROM source_index_scan_generations WHERE root_key=? AND "
-                        "status='failed' ORDER BY started_at DESC, rowid DESC LIMIT 1",
+                    # Block on the AUTHORITATIVE LATEST generation overall, never the latest *failed* row:
+                    # a newer ``completed`` (explicit-restart recovery) or ``abandoned`` (fingerprint-changed
+                    # recovery) after a no-progress failure must LIFT the block. Filtering to status='failed'
+                    # would skip past that newer row and resurrect a stale failure forever (round-7 blocker 1).
+                    # (Reached only when ``active is None``, so the latest row here is always terminal.)
+                    latest = c.execute(
+                        "SELECT * FROM source_index_scan_generations WHERE root_key=? "
+                        "ORDER BY started_at DESC, rowid DESC LIMIT 1",
                         (root_key,),
                     ).fetchone()
-                    if failed is not None:
-                        failed = dict(failed)
+                    if latest is not None:
+                        latest = dict(latest)
                         same_policy = (
-                            failed["policy_fingerprint"] == policy_fingerprint
-                            and int(failed["traversal_version"]) == int(traversal_version)
-                            and failed["root_path_hash"] == root_path_hash
+                            latest["status"] == "failed"
+                            and latest["policy_fingerprint"] == policy_fingerprint
+                            and int(latest["traversal_version"]) == int(traversal_version)
+                            and latest["root_path_hash"] == root_path_hash
                         )
-                        if same_policy and failed["last_error_code"] in _NO_PROGRESS_ERROR_CODES:
+                        if same_policy and latest["last_error_code"] in _NO_PROGRESS_ERROR_CODES:
                             return {
                                 "blocked": True,
-                                "generation_id": failed["generation_id"],
+                                "generation_id": latest["generation_id"],
                                 "status": "failed",
-                                "last_error_code": failed["last_error_code"],
+                                "last_error_code": latest["last_error_code"],
                             }
                 generation_id = uuid.uuid4().hex
                 c.execute(
@@ -474,11 +483,15 @@ class SourceIndexScanGenerationsRepository:
         last_error_code: str | None = None,
         conn: sqlite3.Connection | None = None,
         **counters: int,
-    ) -> None:
+    ) -> int:
         """A per-pass bound (or a suspend on an unresolved file / unreadable directory) stopped the walk:
         status→``partial``, lease released, cursor preserved. ``last_error_code`` records the suspend
-        reason (e.g. ``directory_read_error`` / ``metadata_walk_error``) without failing the generation."""
-        self._terminate(
+        reason (e.g. ``directory_read_error`` / ``metadata_walk_error``) without failing the generation.
+
+        Ownership-guarded (``active_run_id=run_id``): a rowcount of **0** means a stale-lease takeover
+        already claimed this generation, so the caller MUST treat it as a lost-lease conflict rather than
+        reporting an authoritative ``partial`` the new owner never wrote (round-7 blocker 3)."""
+        return self._terminate(
             generation_id,
             run_id,
             status="partial",
@@ -497,10 +510,13 @@ class SourceIndexScanGenerationsRepository:
         last_error_code: str | None = None,
         conn: sqlite3.Connection | None = None,
         **counters: int,
-    ) -> None:
+    ) -> int:
         """Metadata walk done but reconciliation not finished: status→``reconcile_pending`` (resumable
-        without re-walking), lease released, reconcile checkpoint preserved."""
-        self._terminate(
+        without re-walking), lease released, reconcile checkpoint preserved.
+
+        Ownership-guarded: a rowcount of **0** means the lease was taken over — the caller must treat it as
+        a lost-lease conflict, not an authoritative ``reconcile_pending`` (round-7 blocker 3)."""
+        return self._terminate(
             generation_id,
             run_id,
             status="reconcile_pending",
@@ -542,10 +558,13 @@ class SourceIndexScanGenerationsRepository:
         last_error_code: str,
         conn: sqlite3.Connection | None = None,
         **counters: int,
-    ) -> None:
+    ) -> int:
         """No-forward-progress / unrecoverable: status→``failed`` (NO reconciliation, requires a
-        config/fingerprint change or explicit restart — never silently reopened as ``partial``)."""
-        self._terminate(
+        config/fingerprint change or explicit restart — never silently reopened as ``partial``).
+
+        Ownership-guarded: a rowcount of **0** means the lease was taken over — the caller must treat it as
+        a lost-lease conflict, not an authoritative ``failed`` (round-7 blocker 3)."""
+        return self._terminate(
             generation_id,
             run_id,
             status="failed",
@@ -622,7 +641,9 @@ class SourceIndexScanGenerationsRepository:
         ``require_running`` adds ``AND status='running'`` to the lease guard so a state that certifies
         forward progress (completion) can only be written by the run that still owns a live generation — a
         rowcount of 0 then signals a lost lease. The give-up transitions (partial / reconcile_pending /
-        failed) omit it: losing the lease there simply no-ops (the new owner is authoritative)."""
+        failed) omit the ``status='running'`` predicate (a resumed generation may already be partial), but
+        are still ownership-guarded by ``active_run_id`` and now RETURN the rowcount: a 0 there is a
+        stale-lease takeover the caller must report as a conflict, not silently no-op (round-7 blocker 3)."""
         counters = counters or {}
         unknown = set(counters) - _GEN_COUNTER_COLUMNS
         if unknown:

@@ -156,17 +156,40 @@ def source_index_health(
                 "too_large": 0,
             }
         gen_row = latest_generation_by_root.get(key)
-        # POLICY-STALE gate (finding 2): a completed generation whose stored fingerprint no longer matches
-        # the configured root (a sensitivity / exclusion / root-path / matcher / indexing-policy change) may
-        # be serving plaintext-when-now-sensitive rows or rows for newly-excluded content, so EVERY trust
-        # output — client answering, path lookup, content answering, and the diagnostic summary — must fail
-        # closed until the corrective generation runs, not only metadata completeness + watcher readiness. A
-        # root with no V122 generation (legacy fallback) has no fingerprint to compare → not policy-stale.
+        # POLICY CERTIFICATION (round-7 blocker 2). Trust is certified from the AUTHORITATIVE LATEST
+        # generation overall — never from an independently-selected latest-COMPLETED row, which a newer
+        # running/partial/failed corrective pass would mask (reopening trust before reconciliation completes).
+        # A completed generation whose stored fingerprint no longer matches the configured root (a sensitivity
+        # / exclusion / root-path / matcher / indexing-policy change) may serve plaintext-when-now-sensitive or
+        # newly-excluded rows, so EVERY trust output fails closed until a COMPLETED generation under CURRENT
+        # policy exists. ``policy_verification`` reports this honestly instead of collapsing three distinct
+        # situations into one boolean:
+        #   current      — latest generation is ``completed`` AND its fingerprint matches current policy
+        #   stale        — a generation exists but the latest is not a current-policy completion (policy
+        #                  changed, or a corrective pass is running/partial/failed) → fail closed
+        #   uncertified  — configured root with NO generation yet (legacy transitional) → fail closed for
+        #                  answering, but completeness still uses the legacy bootstrap fallback below
+        #   unavailable  — no configured policy to verify against (configless / index-only serving profile):
+        #                  verification is impossible, so "verified safe" is honestly false, while the root may
+        #                  still be served ADVISORILY (see ``index_only_available``) — available ≠ verified-safe
         current_fp = configured_fp_by_root.get(key)
-        policy_current = (
-            gen_row is None or current_fp is None or gen_row.get("policy_fingerprint") == current_fp
+        # Completeness/watcher currency (unchanged semantics): matches current policy, or unverifiable.
+        policy_current = current_fp is None or (
+            gen_row is not None and gen_row.get("policy_fingerprint") == current_fp
         )
-        policy_stale = gen_row is not None and not policy_current
+        if current_fp is None:
+            policy_verification = "unavailable"
+        elif (
+            gen_row is not None
+            and gen_row.get("status") == "completed"
+            and gen_row.get("policy_fingerprint") == current_fp
+        ):
+            policy_verification = "current"
+        elif gen_row is None:
+            policy_verification = "uncertified"
+        else:
+            policy_verification = "stale"
+        policy_certified = policy_verification == "current"
         layers = {
             "folder_layer_populated": folder_count > 0,
             "metadata_layer_populated": file_count > 0,
@@ -174,16 +197,29 @@ def source_index_health(
             "content_layer_populated": counts.get("content_searchable", 0) > 0,
             "metadata_search_layer_populated": counts.get("metadata_searchable", 0) > 0,
         }
-        safe = (
-            not policy_stale
-            and state in ("fresh", "degraded")
-            and (layers["metadata_layer_populated"] or layers["folder_layer_populated"])
+        index_layers_ready = state in ("fresh", "degraded") and (
+            layers["metadata_layer_populated"] or layers["folder_layer_populated"]
         )
+        # Advisory availability: serving is POSSIBLE from the index layers even when policy cannot be verified
+        # (configless / index-only profile). This is NOT "verified safe" — a client answering off it proceeds
+        # without policy certification (blocker 2: available ≠ verified-safe). ``safe`` requires certification.
+        index_only_available = index_layers_ready
+        safe = policy_certified and index_layers_ready
         summary_bits = []
-        if policy_stale:
+        if policy_verification == "stale":
             summary_bits.append(
                 "indexing policy changed since the last completed scan — reindex required; "
                 "not safe for answering until the corrective scan completes"
+            )
+        elif policy_verification == "uncertified":
+            summary_bits.append(
+                "no completed scan under current policy for this root — not safe for answering until the "
+                "initial scan completes"
+            )
+        elif policy_verification == "unavailable":
+            summary_bits.append(
+                "policy verification unavailable — no configured policy for this root; index-only serving "
+                "is advisory, not verified safe"
             )
         if not layers["folder_layer_populated"]:
             summary_bits.append("folder map empty — run source-structure ingest")
@@ -210,8 +246,8 @@ def source_index_health(
             # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
             # sweep found indeterminate candidates (potential phantom rows still in the index), so its
             # metadata set is NOT certifiably complete — it must read partial, not complete (finding 5).
-            # AND it must match CURRENT policy: a fingerprint mismatch (``policy_stale`` above) means the
-            # completion is stale, so it reads partial and watcher-not-ready until the corrective run.
+            # AND it must match CURRENT policy: a fingerprint mismatch (``policy_current`` is False above)
+            # means the completion is stale, so it reads partial and watcher-not-ready until the corrective run.
             reconciliation_done = gen_row.get("status") == "completed" and policy_current
             metadata_walk_done = reconciliation_done
         else:
@@ -248,11 +284,12 @@ def source_index_health(
         # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
         # map — not merely a bare row count (V122) — AND the completion matches current policy (finding 2:
         # a policy-stale root may index newly-excluded paths, so path lookup fails closed too).
-        safe_for_path_lookup = (not policy_stale) and (
+        safe_for_path_lookup = policy_certified and (
             counts.get("metadata_searchable", 0) > 0 or folder_count > 0
         )
-        if policy_stale:
-            # A policy-stale generation may serve plaintext-when-now-sensitive content → fail closed.
+        if not policy_certified:
+            # Uncertified/stale/unavailable policy may serve plaintext-when-now-sensitive or newly-excluded
+            # content → fail closed. Serving without verification goes through ``index_only_available``.
             safe_for_content_answering = "none"
         elif content_completeness_state == "complete" and state in ("fresh", "degraded"):
             safe_for_content_answering = "complete"
@@ -291,6 +328,10 @@ def source_index_health(
                 "too_large_file_count": counts["too_large"],
                 "metadata_completeness_state": metadata_completeness_state,
                 "content_completeness_state": content_completeness_state,
+                # Honest policy state (blocker 2): current | stale | uncertified | unavailable. Trust booleans
+                # require ``current``; ``index_only_available`` is advisory serving without verification.
+                "policy_verification": policy_verification,
+                "index_only_available": index_only_available,
                 "safe_for_path_lookup": safe_for_path_lookup,
                 "safe_for_content_answering": safe_for_content_answering,
                 "live_readable_file_count": None,  # not cheap; clients use metadata.read_status

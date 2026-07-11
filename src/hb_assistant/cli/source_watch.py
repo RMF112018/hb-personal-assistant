@@ -89,6 +89,12 @@ def bootstrap_cmd(
         False, "--unbounded",
         help="UNSAFE: remove BOTH per-pass bounds (no file/time cap). Only for controlled diagnostics on "
              "a small root — never the initial bootstrap of a very large root."),
+    restart: bool = typer.Option(
+        False, "--restart",
+        help="Explicit operator recovery of a root blocked on a no-forward-progress failure (high fanout / "
+             "generation ceiling / lost mount). Bypasses the no-auto-retry block for ONE fresh attempt; "
+             "ordinary scheduled runs never use it. Prefer fixing the underlying cause (raise the fanout "
+             "cap, restore the mount) first — restart re-attempts under the SAME config."),
     jsonl: bool = typer.Option(
         False, "--jsonl",
         help="Stream one-line JSONL progress records on stdout (final record included). Without it, "
@@ -142,6 +148,7 @@ def bootstrap_cmd(
         max_files_per_pass=max_files_per_pass,
         max_seconds=max_seconds,
         unbounded=unbounded,
+        restart=restart,
         emit=None if dry_run else _emit_progress,
     )
     _emit(result, json_out=json_out, exit_code=0 if result.get("ok") else 1, jsonl=jsonl)

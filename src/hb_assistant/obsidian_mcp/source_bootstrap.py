@@ -116,6 +116,7 @@ def _bootstrap_file_layer(
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
     unbounded: bool = False,
+    restart: bool = False,
     emit: Any = None,
 ) -> dict[str, Any]:
     """Apply one bounded, resumable, OBSERVED pass over a root via the common run_scan wrapper.
@@ -124,14 +125,15 @@ def _bootstrap_file_layer(
     explicit ``unbounded`` removes them). ``success`` means the pass fully COMPLETED (walk exhausted +
     delete-reconcile ran) — only then is the file layer bootstrapped. ``bounded_out`` (a per-pass budget
     stopped early) is PARTIAL progress that needs a resume, not a failure. ``conflict`` means another live
-    run holds the root (surfaced as an error for the interactive bootstrap path).
+    run holds the root (surfaced as an error for the interactive bootstrap path). ``restart`` forwards an
+    explicit operator recovery that bypasses the no-forward-progress block for one attempt.
     """
     from .source_scan_runner import run_scan
 
     run = run_scan(
         root, repo, config, bstate, mode="bootstrap",
         max_files_per_pass=max_files_per_pass, max_seconds=max_seconds,
-        unbounded=unbounded, emit=emit,
+        unbounded=unbounded, restart=restart, emit=emit,
     )
     result: dict[str, Any] = run.report.as_dict() if run.report is not None else {
         "root_key": root.source_root_key
@@ -260,6 +262,7 @@ def bootstrap(
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
     unbounded: bool = False,
+    restart: bool = False,
     emit: Any = None,
 ) -> dict[str, Any]:
     """Bootstrap one/all roots across both layers; record durable readiness. Idempotent + fail-closed.
@@ -268,7 +271,8 @@ def bootstrap(
     recorded state). ``dry_run`` writes nothing (no index rows, no bootstrap_state) and returns a plan.
     ``max_files_per_pass`` / ``max_seconds`` bound the file-layer pass so a very large root indexes across
     repeated resumable invocations; a bounded (incomplete) pass reports ``bounded_out`` and leaves the
-    root not-yet-bootstrapped without failing.
+    root not-yet-bootstrapped without failing. ``restart`` is an explicit operator recovery that bypasses the
+    no-forward-progress block (fanout / generation-ceiling / lost-mount) for one attempt on the file layer.
     """
     if obsidian_config is None:
         obsidian_config = load_obsidian_config()
@@ -310,7 +314,7 @@ def bootstrap(
                 res = _bootstrap_file_layer(
                     root_obj, repo, obsidian_config, bstate,
                     max_files_per_pass=max_files_per_pass, max_seconds=max_seconds,
-                    unbounded=unbounded, emit=emit,
+                    unbounded=unbounded, restart=restart, emit=emit,
                 )
                 entry["file_index"] = res
                 file_ok = bool(res["success"])  # bootstrapped only on a completed pass

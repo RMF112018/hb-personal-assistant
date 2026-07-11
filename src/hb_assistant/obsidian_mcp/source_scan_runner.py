@@ -95,6 +95,7 @@ def run_scan(
     unbounded: bool = False,
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
+    restart: bool = False,
     emit: Callable[[dict[str, Any]], None] | None = None,
 ) -> ScanRunResult:
     """Run one bounded, observed, resumable METADATA-FIRST scan of ``root``. See module docstring.
@@ -102,7 +103,11 @@ def run_scan(
     V122: the durable single-active claim, the linked V119 pass row, heartbeats, and the terminal status
     are all owned by :func:`scan_source_root` (via the generation authority). This wrapper resolves bounds,
     supplies a redacted heartbeat/emit callback, and maps the returned generation status onto
-    :class:`ScanRunResult`. A ``conflict`` (a live pass already owns the root) stays retryable."""
+    :class:`ScanRunResult`. A ``conflict`` (a live pass already owns the root) stays retryable.
+
+    ``restart`` (default False) forwards an explicit operator recovery to the generation authority: it
+    bypasses the no-forward-progress block (fanout / generation-ceiling / lost-mount) for a SINGLE fresh
+    attempt. Ordinary scheduled/watcher runs never set it — recovery is deliberate, not automatic."""
     from .source_indexer import scan_source_root
 
     max_files_per_pass, max_seconds = _resolve_bounds(
@@ -151,6 +156,7 @@ def run_scan(
             bstate=bstate,
             run_id=run_id,
             mode=mode,
+            restart=restart,
         )
     except Exception as exc:  # systemic scan failure (per-file errors absorbed inside the scan)
         code = type(exc).__name__[:64]
