@@ -42,7 +42,11 @@ def test_live_surface_is_not_stale(cfg) -> None:
 
     fr = live_freshness(cfg)
     assert fr["stale"] is False, fr["warnings"]
-    assert fr["tool_surface_gateway_current"] is True
+    if fr.get("independent_baseline"):
+        assert fr["tool_surface_gateway_current"] is True
+    else:
+        assert fr["tool_surface_gateway_current"] in (True, None)
+    assert fr.get("execution_attestation_ok") is True
 
 
 def test_every_workflow_tool_is_live_or_routing_layer(cfg) -> None:

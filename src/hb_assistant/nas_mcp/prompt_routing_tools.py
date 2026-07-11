@@ -23,6 +23,7 @@ PROMPT_ROUTING_TOOLS: tuple[str, ...] = (
     "pa_tool_family_get",
     "pa_workflow_recipe_get",
     "pa_tool_surface_freshness_check",
+    "pa_tool_surface_runtime_attestation",
 )
 
 
@@ -94,11 +95,20 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             stored_entries = None
 
+        from .runtime_attestation import attestation_summary_for_freshness  # noqa: PLC0415
+
+        att = attestation_summary_for_freshness(config)
+        att_kw = {
+            "attestation_ok": att.get("attestation_ok"),
+            "attestation_failed_count": att.get("failed_count"),
+            "attestation_age_seconds": att.get("attestation_age_seconds"),
+        }
         if stored_entries is None and stored_semantic is None:
             return check_tool_surface(
                 groups,
                 stored_entries=None,
                 check_workflow_coverage=True,
+                **att_kw,
             )
         return check_tool_surface(
             groups,
@@ -114,6 +124,7 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
             live_profile=surface_profile_label(),
             stored_profile=stored_profile,
             help_index=dict.fromkeys(groups, True),
+            **att_kw,
         )
     except Exception as exc:  # noqa: BLE001 — freshness must never crash status/routing
         return check_tool_surface(
@@ -174,6 +185,10 @@ def dispatch_prompt_routing_tool(config: NasMcpConfig, tool_name: str, arguments
         return {"workflows": WORKFLOWS}
     if tool_name == "pa_tool_surface_freshness_check":
         return live_freshness(config)
+    if tool_name == "pa_tool_surface_runtime_attestation":
+        from .runtime_attestation import build_runtime_attestation  # noqa: PLC0415
+
+        return build_runtime_attestation(config)
     raise PromptRoutingError(f"unknown_prompt_routing_tool:{tool_name}")
 
 
@@ -192,6 +207,10 @@ def prompt_preflight_status(config: NasMcpConfig) -> dict[str, Any]:
         "tool_surface_schema_mismatch_count": 0,
         "tool_surface_gateway_current": True,
         "tool_surface_staleness_state": "unknown",
+        "tool_surface_attestation_ok": None,
+        "tool_surface_attestation_age_seconds": None,
+        "tool_surface_attestation_failed_count": None,
+        "client_writes_must_be_blocked": None,
     }
     try:
         fr = live_freshness(config)
@@ -203,6 +222,10 @@ def prompt_preflight_status(config: NasMcpConfig) -> dict[str, Any]:
                 len(fr.get("family_changed_tools", [])) + len(fr.get("class_changed_tools", []))),
             "tool_surface_gateway_current": fr.get("tool_surface_gateway_current", True),
             "tool_surface_staleness_state": fr.get("staleness_state", "unknown"),
+            "tool_surface_attestation_ok": fr.get("execution_attestation_ok"),
+            "tool_surface_attestation_age_seconds": fr.get("execution_attestation_age_seconds"),
+            "tool_surface_attestation_failed_count": fr.get("execution_attestation_failed_count"),
+            "client_writes_must_be_blocked": fr.get("client_writes_must_be_blocked"),
         })
     except Exception:  # noqa: BLE001
         out["tool_surface_staleness_state"] = "check_failed"

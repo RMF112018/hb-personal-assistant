@@ -85,19 +85,61 @@ def source_index_health(
     conn: Any = None,
     limit_errors: int = 5,
 ) -> dict[str, Any]:
-    """Per-root health for connected clients to decide whether to trust search results."""
+    """Per-root health for connected clients to decide whether to trust search results.
+
+    On NAS MCP the authoritative DB is a read-only snapshot mount. All nested repository
+    reads MUST reuse the caller-supplied read-only ``conn`` (or open readonly). Opening a
+    write connection against the snapshot fails with StoreReadinessError and must not
+    surface as a raw gateway exception for an advertised health tool.
+    """
     t0 = time.perf_counter()
+    try:
+        return _source_index_health_body(
+            repo,
+            config,
+            structure_repo=structure_repo,
+            conn=conn,
+            limit_errors=limit_errors,
+            started=t0,
+        )
+    except Exception as exc:  # noqa: BLE001 — fail-closed structured envelope
+        return {
+            "ok": False,
+            "error_code": "source_index_health_unavailable",
+            "reason": "health_aggregation_failed",
+            "message": str(exc)[:300],
+            "safe_for_client_answering": False,
+            "safe_for_metadata_discovery": False,
+            "safe_for_path_lookup": False,
+            "safe_for_content_answering": False,
+            "roots": [],
+            "elapsed_ms": int((time.perf_counter() - t0) * 1000),
+        }
+
+
+def _source_index_health_body(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    structure_repo: SourceStructureRepository | None = None,
+    conn: Any = None,
+    limit_errors: int = 5,
+    started: float,
+) -> dict[str, Any]:
+    """Inner health aggregation; requires conn threading for RO snapshot safety."""
+    t0 = started
     file_status = source_status(repo, config, conn=conn)
     roots_env = list_source_roots(repo, config, conn=conn)
     srepo = structure_repo or SourceStructureRepository(str(repo.db_path))
-    structure_status = srepo.status()
-    structure_roots = {r["root_key"]: r for r in srepo.list_roots(limit=100)}
+    structure_status = srepo.status(conn=conn)
+    structure_roots = {r["root_key"]: r for r in srepo.list_roots(limit=100, conn=conn)}
 
     # Bootstrap readiness + watcher/queue/reconciliation state (V117). All path-safe: bootstrap_state
     # and reconciliation rows carry only root_key; queue_health carries counts; the watcher-owner blob
     # is read ONLY for its heartbeat timestamp (never cwd/db_path).
     bstate = SourceIndexBootstrapRepository(str(repo.db_path))
-    bootstrap_by_root = {b["root_key"]: b for b in bstate.list_bootstrap_state()}
+    # CRITICAL: pass conn so RO snapshot mounts do not open a write connection.
+    bootstrap_by_root = {b["root_key"]: b for b in bstate.list_bootstrap_state(conn=conn)}
     # V122 durable generation truth per root (latest by start): completeness/readiness must derive from a
     # COMPLETED metadata walk (+ reconciliation), NOT the legacy all-or-nothing bootstrap-run status — a
     # failed/abandoned/running generation must never read as "complete".
@@ -106,7 +148,7 @@ def source_index_health(
     try:
         # Per-root newest generation (uncapped) — a global list cap could evict a root's latest row when
         # other roots have accumulated many generations, silently reading stale/legacy completeness.
-        latest_generation_by_root = genrepo.latest_generations()
+        latest_generation_by_root = genrepo.latest_generations(conn=conn)
     except Exception:  # noqa: BLE001 — health must never fail on the generation read
         latest_generation_by_root = {}
     # Configured roots by key + the current policy fingerprint per root, so completeness can be checked
@@ -122,12 +164,12 @@ def source_index_health(
         with contextlib.suppress(Exception):
             configured_fp_by_root[_er.source_root_key] = _root_fingerprint(_er, config)
     try:
-        queue = repo.queue_health()
+        queue = repo.queue_health(conn=conn)
     except Exception:
         queue = {}
     watcher_heartbeat = None
     try:
-        owner = repo.get_watcher_owner(ttl_seconds=900)
+        owner = repo.get_watcher_owner(ttl_seconds=900, conn=conn)
         if isinstance(owner, dict):
             watcher_heartbeat = owner.get("heartbeat_at")  # redacted: timestamp only, no paths
     except Exception:
@@ -249,7 +291,9 @@ def source_index_health(
         if state == "future_anomaly":
             summary_bits.append("last_indexed_at is in the future")
         if state == "unknown":
-            summary_bits.append("last_indexed_at is unparseable/invalid — index integrity uncertain")
+            summary_bits.append(
+                "last_indexed_at is unparseable/invalid — index integrity uncertain"
+            )
         if not summary_bits:
             summary_bits.append(
                 "index layers present; safe for bounded client answers"
@@ -390,7 +434,7 @@ def source_index_health(
                     "watcher_ready": watcher_ready,
                 },
                 "run_state": _run_state(config, watcher_ready, backend_available),
-                **bstate.get_structure_drift(key),
+                **bstate.get_structure_drift(key, conn=conn),
             }
         )
 
@@ -450,8 +494,8 @@ def source_index_health(
         any(not r["bootstrap"]["watcher_ready"] for r in real_roots) or not real_roots
     )
     any_drift = any(r.get("directory_change_detected") for r in real_roots)
-    last_light = bstate.last_reconciliation(scan_type="lightweight") or {}
-    last_full = bstate.last_reconciliation(scan_type="full") or {}
+    last_light = bstate.last_reconciliation(scan_type="lightweight", conn=conn) or {}
+    last_full = bstate.last_reconciliation(scan_type="full", conn=conn) or {}
     recommended = None
     if any_unbootstrapped:
         # Bounded, per-root guidance — NEVER an unbounded all-roots content walk (that is exactly the

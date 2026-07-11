@@ -42,7 +42,7 @@ from .profile import (
     scratch_output_write_enabled,
 )
 
-# N8C-22 client-exposure bridge helper tools. NOT part of the canonical 78 assistant tools — they are
+# N8C-22 client-exposure bridge helper tools. NOT part of the canonical assistant inventory — they are
 # read-only meta/gateway helpers named ``hb_assistant_*`` (never ``assistant_*``) so they stay outside
 # the exact-78 inventory invariant and the ``assistant_``-prefixed finality guard. Names carry no
 # finality/write verb (catalog / tool_help / tool_query).
@@ -1284,32 +1284,41 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         _make_obsidian_tool(tool_name)
 
     # N8C-22 client-exposure bridge: fallback catalog / help / gateway helper tools. Always registered
-    # (read-only meta). They let clients that cannot ingest the full 78-tool manifest still discover and
+    # (read-only meta). They let clients that cannot ingest the full assistant-tool set still discover and
     # reach the canonical assistant surface through a small, allowlisted entry point. They add NO new
-    # capability: the gateway only routes to the canonical 78 via the same audited broker.dispatch path.
+    # capability: the gateway only routes to the canonical assistant tools via the audited broker path.
     @mcp.tool()
     def hb_assistant_catalog(group: str | None = None) -> dict[str, Any]:
-        """Catalog of the read-only N8C assistant tool suite for connected clients. Lists the assistant groups
-        and their canonical tools with purpose, required/optional args, result limits, and safety class,
-        so a client can pick a tool then call it directly or via ``hb_assistant_tool_query``. Optionally
-        filter to one ``group`` (nav, context_packs, memory, decision_memory, review, intelligence,
-        research_packets, source_connector, answer_drafts, workflows, feedback, action_stages, quality).
-        Read-only; returns no secrets, raw payloads, credentials, or absolute paths."""
+        """Catalog of the N8C assistant tool suite for connected clients.
+
+        Lists assistant exposure groups and their tools with purpose, required/optional args,
+        result limits, and safety class. Counts are **dynamic** from the live registry (not a
+        hard-coded 78-tool / 13-group slogan). Optionally filter to one ``group``.
+        Read-only; returns no secrets, raw payloads, credentials, or absolute paths.
+        """
         if group is not None and group not in ASSISTANT_TOOL_GROUPS:
             raise ValueError(f"unknown_assistant_group:{group}")
         index = _extract_client_tool_index(mcp)
         scope = {group: ASSISTANT_TOOL_GROUPS[group]} if group else dict(ASSISTANT_TOOL_GROUPS)
+        group_rows = [
+            {"group": label, "tool_count": len(tools), "tools": list(tools)}
+            for label, tools in scope.items()
+        ]
+        tools_meta = [
+            _assistant_tool_meta(name, index) for tools in scope.values() for name in tools
+        ]
+        canonical_count = len(ALL_ASSISTANT_TOOLS)
+        group_count = len(ASSISTANT_TOOL_GROUPS)
         return {
-            "groups": [
-                {"group": label, "tool_count": len(tools), "tools": list(tools)}
-                for label, tools in scope.items()
-            ],
-            "tools": [_assistant_tool_meta(name, index) for tools in scope.values() for name in tools],
-            "canonical_assistant_tool_count": len(ALL_ASSISTANT_TOOLS),
+            "groups": group_rows,
+            "group_count": group_count if group is None else 1,
+            "tools": tools_meta,
+            "canonical_assistant_tool_count": canonical_count,
+            "directly_exposed_assistant_tool_count": canonical_count,
             "client_bridge_helper_tools": list(CLIENT_BRIDGE_HELPER_TOOLS),
-            # Non-canonical gateway-reachable write surfaces (operator-authorized N8C-24 expansion). Kept in
-            # SEPARATE sections so `tools` stays the canonical read-only 78; every one still passes the full
-            # broker write-gate chain when invoked.
+            # Non-canonical gateway-reachable write surfaces (operator-authorized expansion). Kept in
+            # SEPARATE sections so `tools` remains the canonical assistant inventory; every write still
+            # passes the full broker write-gate chain when invoked.
             "structured_intelligence_tools": [t for t in GATEWAY_ALLOWLIST
                                               if t.startswith(("pa_artifact_", "pa_session_",
                                                                "pa_canonical_", "pa_tool_manifest_",
@@ -1318,23 +1327,27 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             "ai_output_tools": ["ai_outputs_card_upsert"],
             "prompt_routing_tools": [t for t in GATEWAY_ALLOWLIST if t.startswith("pa_prompt_")
                                      or t in ("pa_tool_family_get", "pa_workflow_recipe_get",
-                                              "pa_tool_surface_freshness_check")],
+                                              "pa_tool_surface_freshness_check",
+                                              "pa_tool_surface_runtime_attestation")],
             "gateway_allowlist_count": len(GATEWAY_ALLOWLIST),
             "exposure": assistant_client_exposure_status(),
             "safety": (
-                "The `tools` list is the canonical read-only 78. The gateway also reaches the "
-                "structured-intelligence, client-output, and AI-output WRITE surfaces (operator-authorized); "
-                "every write still passes the full broker gate chain (safe-mode, per-tool gate, server-minted "
-                "approval, idempotency, path safety). Denied/raw-SQL/shell/exec/root-db/legacy hb_output_* "
-                "tools remain rejected."
+                f"The `tools` list is the canonical assistant inventory "
+                f"({canonical_count} tools across {group_count} groups when unfiltered). "
+                "The gateway also reaches structured-intelligence, client-output, and AI-output WRITE "
+                "surfaces (operator-authorized); every write still passes the full broker gate chain "
+                "(safe-mode, per-tool gate, server-minted approval, idempotency, path safety). "
+                "Denied/raw-SQL/shell/exec/root-db/legacy hb_output_* tools remain rejected."
             ),
         }
 
     @mcp.tool()
     def hb_assistant_tool_help(tool_name: str) -> dict[str, Any]:
-        """Schema + usage guidance for ONE approved read-only N8C assistant tool (must be one of the
-        canonical 78). Rejects unknown, denied, and non-assistant tool names. Use before calling a tool
-        directly or via ``hb_assistant_tool_query``."""
+        """Schema + usage guidance for ONE approved N8C assistant/gateway tool.
+
+        Must be on GATEWAY_ALLOWLIST. Rejects unknown, denied, and non-assistant tool names.
+        Use before calling a tool directly or via ``hb_assistant_tool_query``.
+        """
         if tool_name in DENIED_TOOL_NAMES:
             return _gateway_failure(
                 "hb_assistant_tool_help",
@@ -1359,14 +1372,13 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
     @mcp.tool()
     def hb_assistant_tool_query(tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Allowlisted gateway: call ONE tool by name for clients that cannot ingest the full manifest. The
-        allowlist is the canonical 78 read-only assistant tools PLUS the operator-authorized structured-
-        intelligence, client-output, and AI-output surfaces (GATEWAY_ALLOWLIST). Every gateway-routed WRITE
-        still passes the full broker gate chain (safe-mode, per-tool write gate, server-minted approval,
-        idempotency, path safety). It rejects denied names, raw SQL/shell/exec, root/db and legacy hb_output_*
-        tools, non-allowlisted names, and unbounded limits. It is NOT a generic RPC escape hatch. On success
-        it returns the same audited, bounded broker receipt (``ok``/``result``/``request_id``) the direct
-        wrappers use; the same profile gates, per-group kill switches, and audit logging apply."""
+        """Allowlisted gateway: call ONE tool by name for clients that cannot ingest the full manifest.
+
+        Allowlist is the live GATEWAY_ALLOWLIST (canonical assistant tools plus operator-authorized
+        structured-intelligence, client-output, AI-output, and routing surfaces). Every gateway-routed
+        WRITE still passes the full broker gate chain. Rejects denied names, raw SQL/shell/exec,
+        root/db and legacy hb_output_* tools, non-allowlisted names, and unbounded limits.
+        """
         if not isinstance(tool_name, str) or not tool_name:
             return _gateway_failure("hb_assistant_tool_query", "tool_name_required")
         if tool_name in DENIED_TOOL_NAMES:
@@ -1782,6 +1794,12 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             """Check whether the live tool surface (tools, families, classes, gateway scope) still matches
             the routing manifest. Reads warn on drift; write/promotion/archive routes fail closed. Read-only."""
             return _assistant_result("pa_tool_surface_freshness_check", {})
+
+        @mcp.tool()
+        def pa_tool_surface_runtime_attestation() -> dict[str, Any]:
+            """Execution-aware attestation: per exposed tool, verify schema load, discoverability, gateway
+            alias resolution, dependencies, and a bounded dry diagnostic. Read-only."""
+            return _assistant_result("pa_tool_surface_runtime_attestation", {})
 
     # Stamp read-only / destructive annotations on every registered tool (after all conditional
     # registration so the full surface is covered). Purely additive metadata for connected-client

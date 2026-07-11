@@ -111,6 +111,23 @@ PROMPT_ROUTING_TOOL_SPECS: dict[str, ToolSpec] = {
             profile_gate="HB_MCP_PROMPT_PREFLIGHT",
         ),
     ),
+    "pa_tool_surface_runtime_attestation": ToolSpec(
+        name="pa_tool_surface_runtime_attestation",
+        family="prompt_routing",
+        group="prompt_routing",
+        purpose="Execution-aware attestation: schema load, discoverability, gateway alias, dry diagnostic per exposed tool.",
+        required_args=(),
+        optional_args=(),
+        read_write_class="read_only",
+        safety_class="advisory_only",
+        tool_class="advisory_routing",
+        exposure=ExposureDeclaration(
+            availability=AvailabilityKind.FEATURE_FLAGGED,
+            profile_gate="HB_MCP_PROMPT_PREFLIGHT",
+        ),
+        use_when="Post-deploy or operator review to prove advertised tools are callable.",
+        do_not_use_when="Static manifest drift only — use pa_tool_surface_freshness_check first.",
+    ),
 }
 
 # N8C-22 client bridge helpers — catalog/help are read-only; tool_query is a write-capable gateway proxy.
@@ -310,7 +327,13 @@ def classify_tool(name: str, group: str | None = None) -> tuple[str, str, str]:
         "pa_artifact_proposal_review", "pa_tool_manifest_refresh_stage",
     ):
         return "staged_write", "staged_write_requires_review", "staged_write"
-    if name in ("pa_output_stage", "pa_output_commit", "pa_output_archive_commit"):
+    if name in (
+        "pa_output_stage", "pa_output_commit", "pa_output_archive_commit",
+        # Client-facing N8C-24 write aliases: same handlers/gate as their pa_output_* twins, so they
+        # must classify as staged_write too — not fall through to read_only and be advertised to
+        # connected clients (manifest/catalog/help) as safe reads while the broker gate blocks them.
+        "assistant_output_stage", "assistant_output_commit", "assistant_output_archive_commit",
+    ):
         return "staged_write", "staged_write_requires_review", "staged_write"
     if name.startswith("pa_output_"):
         return "read_only_retrieval", "bounded_read", "read_only"

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from hb_assistant.obsidian_mcp.prompt_preflight import _norm, _rank_workflows, route_prompt
+from hb_assistant.obsidian_mcp.prompt_preflight import (
+    _extract_prohibitions,
+    _norm,
+    _rank_workflows,
+    route_prompt,
+)
 from hb_assistant.obsidian_mcp.workflow_recipe_manifest import WORKFLOWS, workflow_record
 
 
@@ -27,6 +32,30 @@ def test_d3_delete_intent_flagged_destructive() -> None:
     assert plan["authorization"]["prompt_authorizes_execution"] is False
     assert plan["recommended_tools"] == []
     assert plan["clarifying_question"]
+
+
+def test_manifest_freshness_intent_routes_to_freshness_check() -> None:
+    # "is the manifest current + report any drift" is freshness intent, not a plain lookup. The
+    # "do not refresh" clause must forbid refresh (scoped `index` prohibition) without downgrading
+    # the route to manifest_lookup.
+    prompt = ("Check whether the Client Tool Operating Manifest is current and report any drift. "
+              "Do not refresh it.")
+    plan = route_prompt(prompt)
+    assert plan["recommended_workflow"] == "manifest_freshness_check"
+    assert plan["primary_family"] == "client_tool_manifest"
+    assert plan["recommended_tools"] == [
+        "pa_tool_manifest_freshness_check", "pa_tool_surface_freshness_check"
+    ]
+    # negation preserved: refresh forbidden, and no refresh/promote tool is recommended.
+    assert "index" in _extract_prohibitions(_norm(prompt))
+    assert not any("refresh" in t or "promote" in t for t in plan["recommended_tools"])
+
+
+def test_manifest_lookup_and_review_plan_are_not_stolen_by_freshness() -> None:
+    # The added freshness vocabulary must not cannibalise the sibling manifest workflows.
+    assert route_prompt("show me the tool operating manifest")["recommended_workflow"] == "manifest_lookup"
+    review = route_prompt("should I refresh the manifest? give me a review manifest drift plan")
+    assert review["recommended_workflow"] == "manifest_review_plan"
 
 
 def test_every_workflow_trigger_phrase_ranks_its_own_workflow() -> None:

@@ -1,0 +1,14 @@
+{
+  "captured_context": "post-realign dual-freshness verify (checklist section B4), live NAS MCP container hb-personal-assistant-mcp",
+  "manifest_deployment_runtime_drift": false,
+  "manifest_generated_from": "eb9b9fdbf7fd0643a6f3af531c6cbd264957d0e9",
+  "manifest_stale": false,
+  "manifest_staleness_state": "fresh",
+  "manifest_version": 10,
+  "runtime_commit": "eb9b9fdbf7fd0643a6f3af531c6cbd264957d0e9",
+  "surface_deployment_runtime_drift": false,
+  "surface_stale": false,
+  "surface_staleness_state": "current",
+  "surface_warnings": [],
+  "disposition": "ALIGNED — runtime == manifest generated_from; dual freshness agree; connector runtime/manifest-drift blocker RESOLVED"
+}

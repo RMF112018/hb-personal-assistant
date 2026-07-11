@@ -59,6 +59,9 @@ def test_all_known_write_tools_are_marked_destructive(surface: dict[str, object]
     Locks the write set so a future tool that mutates state cannot silently register as a safe read."""
     expected_writes = {
         "ai_outputs_card_upsert",
+        "assistant_output_archive_commit",
+        "assistant_output_commit",
+        "assistant_output_stage",
         "hb_assistant_tool_query",
         "pa_artifact_author",
         "pa_artifact_promotion_apply",
@@ -93,6 +96,7 @@ def test_read_only_routing_tools_are_safe_reads(surface: dict[str, object]) -> N
         "pa_tool_family_get",
         "pa_workflow_recipe_get",
         "pa_tool_surface_freshness_check",
+        "pa_tool_surface_runtime_attestation",
         "hb_assistant_catalog",
         "hb_assistant_tool_help",
     ]

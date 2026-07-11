@@ -120,7 +120,8 @@ warning; write / promotion / archive fail closed on a stale surface.**
 ## MCP tools (read-only, gateway-reachable)
 
 `pa_prompt_route`, `pa_prompt_route_explain`, `pa_tool_family_get`, `pa_workflow_recipe_get`,
-`pa_tool_surface_freshness_check`. Included in the client tool universe for **manifest help** (not in the
+`pa_tool_surface_freshness_check`, `pa_tool_surface_runtime_attestation`. Included in the client tool
+universe for **manifest help** (not in the
 canonical assistant inventory count). Gate: `HB_MCP_PROMPT_PREFLIGHT` (default-on).
 
 ## Mandatory MCP tool-surface maintenance

@@ -16,6 +16,7 @@ from .workflow_recipe_manifest import WORKFLOWS
 _ROUTING_LAYER = frozenset({
     "pa_prompt_route", "pa_prompt_route_explain", "pa_tool_family_get",
     "pa_workflow_recipe_get", "pa_tool_surface_freshness_check",
+    "pa_tool_surface_runtime_attestation",
 })
 
 
@@ -34,6 +35,7 @@ def _empty_categories() -> dict[str, bool]:
         "manifest_version_drift": False,
         "checksum_drift": False,
         "profile_context_changed": False,
+        "execution_attestation": False,
     }
 
 
@@ -54,6 +56,9 @@ def check_tool_surface(
     stored_profile: str | None = None,
     help_index: dict[str, Any] | None = None,
     check_error: str | None = None,
+    attestation_ok: bool | None = None,
+    attestation_failed_count: int | None = None,
+    attestation_age_seconds: int | None = None,
 ) -> dict[str, Any]:
     """Return a freshness report over the live tool surface vs stored snapshot.
 
@@ -212,6 +217,17 @@ def check_tool_surface(
             categories["help_coverage_drift"] = True
             warnings.append(f"help_coverage_missing:{missing_help[:20]}")
 
+    attestation_stale = False
+    if attestation_ok is not None:
+        if not attestation_ok or (attestation_failed_count or 0) > 0:
+            categories["execution_attestation"] = True
+            attestation_stale = True
+            warnings.append(
+                f"execution_attestation_failed:failed_count={attestation_failed_count or 0}"
+            )
+        elif attestation_age_seconds is not None and attestation_age_seconds > 86_400:
+            warnings.append(f"execution_attestation_age:{attestation_age_seconds}s")
+
     category_status: dict[str, str] = {}
     has_stored_baseline = stored_entries is not None or stored_semantic_checksum is not None
 
@@ -270,11 +286,24 @@ def check_tool_surface(
     else:
         category_status["profile_context"] = "current"
 
+    if attestation_ok is None:
+        category_status["execution_attestation"] = "indeterminate"
+    elif attestation_stale:
+        category_status["execution_attestation"] = "stale"
+    else:
+        category_status["execution_attestation"] = "current"
+
     checked_categories = sorted(k for k, v in category_status.items() if v != "indeterminate")
     unchecked_categories = sorted(k for k, v in category_status.items() if v == "indeterminate")
-    status_values = list(category_status.values())
+    status_values = [
+        v for k, v in category_status.items()
+        if v != "indeterminate" or k != "execution_attestation"
+    ]
 
-    if "stale" in status_values:
+    if attestation_stale:
+        stale = True
+        staleness_state = "stale"
+    elif "stale" in status_values:
         stale = True
         staleness_state = "stale"
     elif has_stored_baseline and "indeterminate" in status_values:
@@ -311,4 +340,10 @@ def check_tool_surface(
         "review_required": stale or staleness_state == "indeterminate",
         "independent_baseline": has_stored_baseline,
         "gateway_checked": gateway_checked,
+        "execution_attestation_ok": attestation_ok,
+        "execution_attestation_failed_count": attestation_failed_count,
+        "execution_attestation_age_seconds": attestation_age_seconds,
+        "client_writes_must_be_blocked": (
+            attestation_stale if attestation_ok is not None else None
+        ),
     }
