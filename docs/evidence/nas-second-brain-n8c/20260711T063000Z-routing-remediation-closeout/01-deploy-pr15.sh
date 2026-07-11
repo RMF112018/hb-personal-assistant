@@ -84,12 +84,9 @@ from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
 print(LATEST_SCHEMA_VERSION)
 PY
 )
+# Host-side read: img_py only mounts the live DB dir, not mcp-workspace.
 if [ -f "$WORKSPACE_DB" ]; then
-  WORKSPACE_HEAD=$(img_py <<PY
-import sqlite3
-print(sqlite3.connect("file:$WORKSPACE_DB?mode=ro", uri=True).execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0])
-PY
-)
+  WORKSPACE_HEAD=$(sqlite3 "$WORKSPACE_DB" "SELECT MAX(version) FROM schema_migrations;")
 else
   WORKSPACE_HEAD="(absent — will auto-migrate to $LATEST_HEAD on first start)"
 fi
