@@ -77,6 +77,25 @@ PY
 printf 'live DB head=%s (expect %s)\n' "$BEFORE_HEAD" "$EXPECT_HEAD"
 [ "$BEFORE_HEAD" = "$EXPECT_HEAD" ] || die "unexpected schema head"
 
+say "3b. Schema lineage (RO snapshot vs RW workspace)"
+WORKSPACE_DB=$BASE/app-support/mcp-workspace/db/hb-personal-assistant.sqlite
+LATEST_HEAD=$(img_py <<PY
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION
+print(LATEST_SCHEMA_VERSION)
+PY
+)
+if [ -f "$WORKSPACE_DB" ]; then
+  WORKSPACE_HEAD=$(img_py <<PY
+import sqlite3
+print(sqlite3.connect("file:$WORKSPACE_DB?mode=ro", uri=True).execute("SELECT MAX(version) FROM schema_migrations").fetchone()[0])
+PY
+)
+else
+  WORKSPACE_HEAD="(absent — will auto-migrate to $LATEST_HEAD on first start)"
+fi
+printf 'RO snapshot/live head=%s (deploy expect %s)\n' "$BEFORE_HEAD" "$EXPECT_HEAD"
+printf 'RW workspace head=%s (repo LATEST_SCHEMA_VERSION=%s)\n' "$WORKSPACE_HEAD" "$LATEST_HEAD"
+
 say "4. Refresh RO MCP snapshot"
 chown "$UIDGID" "$SNAP_DIR" "$(dirname "$SNAP_DIR")" 2>/dev/null || true
 "$DOCKER" run --rm -i --user "$UIDGID" \
@@ -108,9 +127,14 @@ say "6. Runtime identity"
 "$DOCKER" exec "$CONTAINER" python3 -c \
   "from hb_assistant.nas_mcp.broker import runtime_commit; rc=runtime_commit(); assert rc == '$DEPLOY_SHA', f'mismatch: {rc}'; print('runtime commit ok:', rc)"
 
-say "7. Freshness parity smoke"
+say "7. Freshness parity smoke (expected stale until manifest refresh)"
 "$DOCKER" exec "$CONTAINER" python3 -c \
-  'from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); fr=b.dispatch("pa_tool_surface_freshness_check",{})["result"]; print("stale", fr.get("stale"), "family_changed", len(fr.get("family_changed_tools") or []), "class_changed", len(fr.get("class_changed_tools") or [])); assert fr.get("stale") is False, fr.get("warnings")'
+  'from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); fr=b.dispatch("pa_tool_surface_freshness_check",{})["result"]; print("stale", fr.get("stale"), "family_changed", len(fr.get("family_changed_tools") or []), "class_changed", len(fr.get("class_changed_tools") or [])); stale=fr.get("stale");
+import sys
+if stale:
+    print("NOTE: surface stale before manifest refresh — proceed to 02-manifest-refresh-pr15.sh", file=sys.stderr)
+else:
+    print("surface fresh")'
 
 say "DONE — next: sudo sh /tmp/02-manifest-refresh-pr15.sh then /tmp/03-manifest-verify-pr15.sh and /tmp/04-live-50-prompt-corpus.sh"
 cat <<EOF

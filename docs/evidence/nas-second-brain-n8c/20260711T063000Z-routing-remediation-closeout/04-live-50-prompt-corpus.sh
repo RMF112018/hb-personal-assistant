@@ -23,7 +23,7 @@ RC=$("$DOCKER" exec "$CONTAINER" python3 -c \
   "from hb_assistant.nas_mcp.broker import runtime_commit; rc=runtime_commit(); print(rc); assert rc == '$DEPLOY_SHA', rc" 2>&1) || die "runtime commit mismatch: $RC"
 echo "runtime commit ok: $RC"
 
-say "Required corpus rows (42) — must pass"
+say "Required corpus rows (47) — must pass"
 set +e
 "$DOCKER" exec "$CONTAINER" python3 /app/scripts/run-audit-route-regression-matrix.py \
   --matrix "$CORPUS" --from-env --enforcement required --out "$REPORT_REQUIRED"

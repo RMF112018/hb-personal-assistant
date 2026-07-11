@@ -25,7 +25,8 @@ for t in ("pa_tool_surface_freshness_check","pa_tool_manifest_freshness_check","
 
 say "2. Stage manifest refresh"
 STAGE_OUT=$("$DOCKER" exec "$CONTAINER" python3 -c \
-  'import json; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); r=b.dispatch("pa_tool_manifest_refresh_stage",{}); print(json.dumps(r))')
+  'import json; from mcp.server.fastmcp import FastMCP; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools;
+cfg=NasMcpConfig.from_env(); b=NasMcpBroker(cfg); register_nas_mcp_tools(FastMCP("hb-nas-mcp", json_response=True, stateless_http=True), b); r=b.dispatch("pa_tool_manifest_refresh_stage",{}); print(json.dumps(r))')
 echo "$STAGE_OUT"
 echo "$STAGE_OUT" | grep -q '"ok": true' || die "stage failed"
 REFRESH_ID=$(echo "$STAGE_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["result"]["refresh_proposal_id"])')
@@ -34,7 +35,8 @@ printf 'refresh_proposal_id=%s\noperator_approval_id=%s\n' "$REFRESH_ID" "$APPRO
 
 say "3. Promote (server-minted approval)"
 PROMOTE_OUT=$("$DOCKER" exec "$CONTAINER" python3 -c \
-  "import json; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); r=b.dispatch('pa_tool_manifest_refresh_promote', {'refresh_proposal_id': '$REFRESH_ID', 'operator_approval_id': '$APPROVAL_ID'}); print(json.dumps(r))")
+  "import json; from mcp.server.fastmcp import FastMCP; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools;
+cfg=NasMcpConfig.from_env(); b=NasMcpBroker(cfg); register_nas_mcp_tools(FastMCP('hb-nas-mcp', json_response=True, stateless_http=True), b); r=b.dispatch('pa_tool_manifest_refresh_promote', {'refresh_proposal_id': '$REFRESH_ID', 'operator_approval_id': '$APPROVAL_ID'}); print(json.dumps(r))")
 echo "$PROMOTE_OUT"
 echo "$PROMOTE_OUT" | grep -q '"ok": true' || die "promote failed"
 
@@ -56,11 +58,13 @@ print('manifest refresh verified')"
 
 say "4b. Tool-surface freshness (write-route gate)"
 "$DOCKER" exec "$CONTAINER" python3 -c \
-  'import json; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); r=b.dispatch("pa_tool_surface_freshness_check",{})["result"]; print(json.dumps({"stale": r.get("stale"), "staleness_state": r.get("staleness_state"), "class_changed": len(r.get("class_changed_tools") or []), "family_changed": len(r.get("family_changed_tools") or []), "warnings_tail": (r.get("warnings") or [])[-3:]}, sort_keys=True)); assert r.get("stale") is False, r.get("warnings")'
+  'import json; from mcp.server.fastmcp import FastMCP; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools;
+cfg=NasMcpConfig.from_env(); b=NasMcpBroker(cfg); register_nas_mcp_tools(FastMCP("hb-nas-mcp", json_response=True, stateless_http=True), b); r=b.dispatch("pa_tool_surface_freshness_check",{})["result"]; print(json.dumps({"stale": r.get("stale"), "staleness_state": r.get("staleness_state"), "class_changed": len(r.get("class_changed_tools") or []), "family_changed": len(r.get("family_changed_tools") or []), "warnings_tail": (r.get("warnings") or [])[-3:]}, sort_keys=True)); assert r.get("stale") is False, r.get("warnings")'
 
 say "5. Routing spot-check (document_session should not be surface_stale)"
 "$DOCKER" exec "$CONTAINER" python3 -c \
-  'from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; b=NasMcpBroker(NasMcpConfig.from_env()); r=b.dispatch("pa_prompt_route",{"prompt":"Document this session as decisions and open loops"})["result"]; a=r.get("authorization") or {}; print("workflow", r.get("recommended_workflow"), "executable", a.get("currently_executable"), "blocked", a.get("execution_blocked_reason"))'
+  'from mcp.server.fastmcp import FastMCP; from hb_assistant.nas_mcp.broker import NasMcpBroker; from hb_assistant.nas_mcp.config import NasMcpConfig; from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools;
+cfg=NasMcpConfig.from_env(); b=NasMcpBroker(cfg); register_nas_mcp_tools(FastMCP("hb-nas-mcp", json_response=True, stateless_http=True), b); r=b.dispatch("pa_prompt_route",{"prompt":"Document this session as decisions and open loops"})["result"]; a=r.get("authorization") or {}; print("workflow", r.get("recommended_workflow"), "executable", a.get("currently_executable"), "blocked", a.get("execution_blocked_reason")); assert a.get("execution_blocked_reason") != "surface_stale", a'
 
 say "DONE"
 cat <<EOF

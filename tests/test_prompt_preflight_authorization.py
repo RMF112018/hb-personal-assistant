@@ -85,3 +85,14 @@ def test_read_route_approval_status_not_required() -> None:
     auth = plan["authorization"]
     assert auth["approval_status"] == "not_required"
     assert auth["approval_satisfied"] is False
+
+
+def test_create_proposal_without_promote_authorizes_staging() -> None:
+    """Audit row 40: create-proposal phrasing stages but does not authorize promotion."""
+    plan = route_prompt("Create a proposal but do not promote it.")
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] == "stage_artifact_proposals"
+    assert auth["staging_authorized"] is True
+    assert auth["prompt_permission"]["promote"] is False
+    assert auth["currently_executable"] is False
+    assert auth["execution_blocked_reason"] == "missing_arguments"

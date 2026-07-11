@@ -1,0 +1,52 @@
+{
+  "claims": {
+    "corpus_enforcement_split": {
+      "claim": "50-case corpus required/accepted_partial split",
+      "stats": {
+        "accepted_partial_count": 3,
+        "accepted_partial_rows": 3,
+        "case_count": 50,
+        "required_count": 47,
+        "required_rows": 47
+      },
+      "verified": true
+    },
+    "deployed_image_bytes_match_closeout_sha": {
+      "claim": "deployed image bytes == closeout SHA",
+      "note": "Requires NAS HB_RUNTIME_COMMIT + image digest attestation (operator step).",
+      "status": "exact_unverified_stamp",
+      "verified": false
+    },
+    "evidence_bundle_path": {
+      "claim": "closeout evidence bundle directory exists",
+      "path": "docs/evidence/nas-second-brain-n8c/20260711T063000Z-routing-remediation-closeout",
+      "verified": true
+    },
+    "latest_schema_version": {
+      "claim": "LATEST_SCHEMA_VERSION from migrator",
+      "value": 121,
+      "verified": true
+    },
+    "offline_routing_audit_collect": {
+      "claim": "scripts/test-prompt-routing-audit.sh --collect-only",
+      "verified": true
+    },
+    "offline_routing_pytest": {
+      "claim": "prompt_preflight + corpus pytest (not live)",
+      "exit_code": 0,
+      "verified": true
+    },
+    "origin_main_contains_closeout_sha": {
+      "claim": "origin/main contains 01b9b00bb2e79a6523397073152b56fe14c01527",
+      "method": "git merge-base --is-ancestor",
+      "verified": true
+    },
+    "pr15_evidence_commit": {
+      "claim": "PR-15 evidence commit 20e39150 exists",
+      "method": "git cat-file -t",
+      "verified": true
+    }
+  },
+  "disposition": "LOCAL_CLAIMS_VERIFIED",
+  "generated_at": "2026-07-11T07:16:10Z"
+}

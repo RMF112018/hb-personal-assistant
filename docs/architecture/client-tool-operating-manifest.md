@@ -115,6 +115,13 @@ map/route tools) is **default-ON** (kill-switch `HB_MCP_ASSISTANT_SOURCE_STRUCTU
 (`pa_*` / `assistant_output_*` aliases / AI outputs) appear as separate catalog sections and are **not**
 part of the 87.
 
+## Workflow layers vs N8C contracts
+
+The manifest publishes **15 prompt-preflight workflow recipes** (routing intents with tool sequences).
+Separately, N8C exposes **11 workflow contract types** via `assistant_list_workflows` /
+`assistant_route_workflow` for consumption classification. See the workflow-layer table and alias map in
+[prompt-preflight-tool-routing](prompt-preflight-tool-routing.md#workflow-layers-§12--two-complementary-surfaces).
+
 ## Mandatory MCP tool-surface maintenance
 
 Any change to the MCP tool surface must update this manifest, the catalog/help/query gateway, and the

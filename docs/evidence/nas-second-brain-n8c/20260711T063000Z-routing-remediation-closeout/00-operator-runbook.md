@@ -22,11 +22,17 @@ Local tarball SHA-256: `c93ee1caf2fa59328ea3448c7d76a41442fd71c89fc6ae49790e3eb6
 ssh -t hb-nas 'sudo sh /tmp/01-deploy-pr15.sh' | tee ~/deploy-pr15.txt
 ```
 
-Pass criteria: step **6** runtime commit `01b9b00b…`; step **7** `stale False` (may remain stale until manifest refresh — proceed).
+Pass criteria: step **6** runtime commit `01b9b00b…`; step **7** may print `stale True` (expected until manifest refresh — proceed).
 
 ## 2. Manifest refresh (stage → promote)
 
+**Important:** re-copy the script after any repo update — step 2 must bootstrap MCP registration
+(`register_nas_mcp_tools`) before `pa_tool_manifest_refresh_stage`, or F-008 parity fails with
+`schema_index_not_frozen`. NAS has no working `scp` — pipe over SSH instead:
+
 ```bash
+ssh hb-nas 'cat > /tmp/02-manifest-refresh-pr15.sh' \
+  < docs/evidence/nas-second-brain-n8c/20260711T063000Z-routing-remediation-closeout/02-manifest-refresh-pr15.sh
 ssh -t hb-nas 'sudo sh /tmp/02-manifest-refresh-pr15.sh' | tee ~/manifest-refresh-pr15.txt
 ```
 

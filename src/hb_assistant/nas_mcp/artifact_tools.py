@@ -337,7 +337,9 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
                 "recommendation": "stage a manifest refresh, then operator-approve promotion", "writes": False}
     if tool_name == "pa_tool_manifest_refresh_stage":
         from .live_tool_surface import manifest_schema_parity_check  # noqa: PLC0415
+        from .tool_registration import ensure_schema_index_frozen  # noqa: PLC0415
 
+        ensure_schema_index_frozen(config)
         parity = manifest_schema_parity_check(config)
         if not parity["ok"]:
             raise ArtifactWorkspaceError(

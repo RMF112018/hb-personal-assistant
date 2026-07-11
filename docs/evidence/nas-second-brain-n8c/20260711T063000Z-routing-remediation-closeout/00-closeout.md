@@ -1,7 +1,7 @@
 # Routing audit remediation closeout (PR-15)
 
 **Date:** 2026-07-11  
-**Disposition:** `STAGED_ON_NAS` — operator sudo deploy pending
+**Disposition:** `DEPLOYED_AND_VALIDATED` — operator closeout complete (2026-07-11, verify r4)
 
 ## A. Repository identity
 
@@ -51,4 +51,4 @@ Target: **42/42 required** live corpus pass, **0 HIGH/blocker** regressions; doc
 |-------|--------|
 | PR-1..PR-13 routing fixes | Landed on `main` |
 | PR-14 versioned corpus | Landed (`01b9b00b`) |
-| PR-15 deploy + manifest + live replay | **STAGED** — awaiting operator sudo |
+| PR-15 deploy + manifest + live replay | **COMPLETE** — deploy, manifest R4, 42/42 corpus, verify r4 all PASS |

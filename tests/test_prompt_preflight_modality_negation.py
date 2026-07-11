@@ -42,10 +42,12 @@ def test_capability_inquiry_promote_routes_to_discovery() -> None:
 def test_hypothetical_promote_does_not_authorize_promotion() -> None:
     plan = route_prompt("What if we promoted this?")
     assert plan["recommended_workflow"] not in ("apply_canonical_promotion", "inspect_promotion_receipt")
-    assert plan["recommended_workflow"] == "context_preflight"
+    assert plan["recommended_workflow"] == "plan_canonical_promotion"
+    assert plan["next_step"]["tool"] == "pa_artifact_proposal_plan_promotion"
     auth = plan["authorization"]
     assert auth["prompt_permission"]["promote"] is False
     assert auth["operation_modality"] == "hypothetical"
+    assert auth["currently_executable"] is True
 
 
 def test_imperative_promote_still_requests_promotion_permission() -> None:

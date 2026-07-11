@@ -42,8 +42,8 @@ def test_corpus_metadata() -> None:
     assert _CORPUS["corpus_version"] == 1
     assert _CORPUS["case_count"] == 50
     assert len(_CASES) == 50
-    assert _CORPUS["required_count"] == 42
-    assert _CORPUS["accepted_partial_count"] == 8
+    assert _CORPUS["required_count"] == 47
+    assert _CORPUS["accepted_partial_count"] == 3
     assert {c["audit_row"] for c in _CASES} == set(range(1, 51))
 
 

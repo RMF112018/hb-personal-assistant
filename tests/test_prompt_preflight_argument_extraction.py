@@ -156,6 +156,30 @@ def test_promotion_receipt_noun_only_does_not_route_inspect() -> None:
     assert plan["next_step"] is None
 
 
+def test_open_loop_relate_to_extracts_topical_query() -> None:
+    """Audit row 29: 'relate to' topical phrasing wires bounded list query."""
+    plan = route_prompt("Which open loops relate to the NAS deployment?")
+    assert plan["recommended_workflow"] == "canonical_open_loop_retrieval"
+    assert plan["next_step"]["tool"] == "assistant_list_open_loops"
+    assert plan["next_step"]["arguments"].get("query") == "the nas deployment"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_open_loop_remain_about_extracts_topical_query() -> None:
+    plan = route_prompt("What open loops remain about NAS deployment?")
+    assert plan["next_step"]["arguments"].get("query") == "nas deployment"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_relevant_files_question_routes_file_search_with_query() -> None:
+    """Audit row 11: relevance question wires bounded source file search."""
+    plan = route_prompt("Do not modify files; tell me which files are relevant.")
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert plan["next_step"]["arguments"]["query"] == "relevant files"
+    assert plan["authorization"]["read_tool_calls_authorized"] is True
+
+
 def test_search_intent_wins_over_incidental_typed_id_mention() -> None:
     """Audit row 50: file search must not be overridden by an unrelated ID mention."""
     plan = route_prompt(

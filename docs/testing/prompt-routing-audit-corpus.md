@@ -8,8 +8,8 @@ Versioned regression evidence for the independent prompt-routing audit (section 
 - **Version:** `corpus_version = 1`
 - **Cases:** 50 prompts from the July 10, 2026 audit
 - **Enforcement:**
-  - `required` (42) — must pass in CI (0 blocker/HIGH regressions)
-  - `accepted_partial` (8) — documented usability debt; xfail if expectations drift
+  - `required` (47) — must pass in CI (0 blocker/HIGH regressions)
+  - `accepted_partial` (3) — documented explain/advisory debt (rows 3, 4, 19); xfail if expectations drift
 
 Each case carries `expected` route fields compatible with `scripts/route_proof_lib.py` plus optional `expected_plan` (for example `recommended_call_mode` on audit row 1).
 

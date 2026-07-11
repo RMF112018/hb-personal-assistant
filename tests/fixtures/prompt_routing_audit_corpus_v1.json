@@ -4,8 +4,8 @@
   "audit_source": "Independent Prompt-Routing and Tool-Use Audit section 4",
   "description": "Versioned 50-prompt live routing matrix from the July 2026 audit. Post-remediation expectations.",
   "case_count": 50,
-  "required_count": 42,
-  "accepted_partial_count": 8,
+  "required_count": 47,
+  "accepted_partial_count": 3,
   "cases": [
     {
       "id": "audit_row_01",
@@ -98,7 +98,7 @@
       "id": "audit_row_06",
       "audit_row": 6,
       "prompt": "Do not stage this; only summarize it.",
-      "enforcement": "accepted_partial",
+      "enforcement": "required",
       "original_audit_verdict": "FAIL",
       "finding_ids": [],
       "route_kwargs": {},
@@ -107,6 +107,10 @@
         "tools_empty": true,
         "prohibitions_include": [
           "stage"
+        ],
+        "operation_modality_in": [
+          "advisory",
+          "imperative"
         ]
       },
       "expected_plan": {}
@@ -192,16 +196,17 @@
       "id": "audit_row_11",
       "audit_row": 11,
       "prompt": "Do not modify files; tell me which files are relevant.",
-      "enforcement": "accepted_partial",
+      "enforcement": "required",
       "original_audit_verdict": "FAIL",
       "finding_ids": [
         "F-007"
       ],
       "route_kwargs": {},
       "expected": {
-        "workflow": "context_preflight",
-        "tools_empty": true,
-        "currently_executable": false
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "read_authorized": true,
+        "currently_executable": true
       },
       "expected_plan": {}
     },
@@ -371,16 +376,17 @@
       "id": "audit_row_22",
       "audit_row": 22,
       "prompt": "What would happen if I promoted this?",
-      "enforcement": "accepted_partial",
+      "enforcement": "required",
       "original_audit_verdict": "FAIL",
       "finding_ids": [
         "F-004"
       ],
       "route_kwargs": {},
       "expected": {
-        "workflow": "apply_canonical_promotion",
+        "workflow": "plan_canonical_promotion",
+        "next_step_tool": "pa_artifact_proposal_plan_promotion",
         "prompt_permission_promote": false,
-        "currently_executable": false,
+        "currently_executable": true,
         "operation_modality_in": [
           "advisory",
           "hypothetical"
@@ -511,6 +517,9 @@
       "expected": {
         "workflow": "canonical_open_loop_retrieval",
         "next_step_tool": "assistant_list_open_loops",
+        "arguments_include": {
+          "query": "the nas deployment"
+        },
         "currently_executable": true
       },
       "expected_plan": {}
@@ -598,14 +607,14 @@
       "id": "audit_row_35",
       "audit_row": 35,
       "prompt": "Find references to `23-435-01` in my notes.",
-      "enforcement": "accepted_partial",
+      "enforcement": "required",
       "original_audit_verdict": "PARTIAL",
       "finding_ids": [],
       "route_kwargs": {},
       "expected": {
-        "workflow": "context_preflight",
-        "tools_empty": true,
-        "currently_executable": false
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true
       },
       "expected_plan": {}
     },
@@ -683,14 +692,18 @@
       "id": "audit_row_40",
       "audit_row": 40,
       "prompt": "Create a proposal but do not promote it.",
-      "enforcement": "accepted_partial",
+      "enforcement": "required",
       "original_audit_verdict": "FAIL",
       "finding_ids": [],
       "route_kwargs": {},
       "expected": {
-        "workflow": "context_preflight",
-        "tools_empty": true,
-        "prompt_permission_promote": false
+        "workflow": "stage_artifact_proposals",
+        "staging_authorized": true,
+        "prompt_permission_promote": false,
+        "currently_executable": false,
+        "execution_blocked_reason_in": [
+          "missing_arguments"
+        ]
       },
       "expected_plan": {}
     },

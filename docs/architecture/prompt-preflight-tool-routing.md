@@ -64,6 +64,30 @@ plugin infrastructure. Do not claim “platform safety layer” without platform
 `runtime_identity()` is structured; `runtime_commit()` remains a string accessor. Package-only is not
 “current”.
 
+## Workflow layers (§12 — two complementary surfaces)
+
+Connected clients encounter **two** workflow layers. They are related but not interchangeable.
+
+| Layer | Count | Primary API | Purpose |
+| --- | --- | --- | --- |
+| **Prompt-preflight workflow recipes** | 15 published | `pa_workflow_recipe_get`, client manifest | Deterministic routing intents (`source_file_search`, `mixed_private_retrieval`, `stage_artifact_proposals`, …) |
+| **N8C workflow contracts** | 11 types | `assistant_list_workflows`, `assistant_route_workflow` | Ephemeral consumption/routing layer (`ask_second_brain`, `meeting_prep`, …) |
+
+Prompt preflight chooses a **recipe** (tool sequence + authorization policy) before any tool call.
+N8C workflow contracts classify consumption patterns for assistant read surfaces; aliases map recipe
+IDs to contract types where they overlap (`workflow_models.WORKFLOW_TYPE_ALIASES`):
+
+| Recipe ID | N8C contract alias |
+| --- | --- |
+| `source_file_search` | `source_file_lookup` |
+| `canonical_decision_retrieval` | `decision_preference_lookup` |
+| `canonical_preference_retrieval` | `decision_preference_lookup` |
+| `canonical_open_loop_retrieval` | `open_loop_triage` |
+
+When a prompt routes through `pa_prompt_route`, treat the **recipe** as authoritative for tool choice
+and executability. Use N8C workflow tools when the client needs the consumption taxonomy, not as a
+second routing engine.
+
 ## Routing manifests (seed / compatibility)
 
 - `obsidian_mcp/tool_family_manifest.py` — families; `family_for_tool` is total.

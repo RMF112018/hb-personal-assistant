@@ -58,7 +58,9 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
         from .artifact_tools import _build_tool_index, _runtime_manifest_build_kwargs  # noqa: PLC0415
         from .broker import GATEWAY_ALLOWLIST, runtime_commit  # noqa: PLC0415
         from .live_tool_surface import gate_state_snapshot, surface_profile_label  # noqa: PLC0415
+        from .tool_registration import ensure_schema_index_frozen  # noqa: PLC0415
 
+        ensure_schema_index_frozen(config)
         groups = current_tool_groups(config)
         live_gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
         build_kwargs = _runtime_manifest_build_kwargs()

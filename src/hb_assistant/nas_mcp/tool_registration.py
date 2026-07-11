@@ -132,6 +132,22 @@ def seed_frozen_schema_index(index: dict[str, dict[str, Any]]) -> None:
     _LIVE_TOOL_SCHEMA_INDEX = dict(index)
 
 
+def ensure_schema_index_frozen(config: Any) -> None:
+    """Capture the live FastMCP tool-schema index when broker-only dispatch has not registered tools.
+
+    Operator ``docker exec`` refresh paths construct a fresh ``NasMcpBroker`` without running
+    ``register_nas_mcp_tools``; manifest refresh must still read args/purpose from the frozen index.
+    """
+    if schema_index_frozen():
+        return
+    from mcp.server.fastmcp import FastMCP  # noqa: PLC0415
+
+    from .broker import NasMcpBroker  # noqa: PLC0415
+
+    mcp = FastMCP("hb-nas-mcp-schema-freeze", json_response=True, stateless_http=True)
+    register_nas_mcp_tools(mcp, NasMcpBroker(config))
+
+
 def derive_tool_arg_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Purpose + required/optional args + result limits for one tool, derived from its live schema."""
     entry = index.get(name) or {}

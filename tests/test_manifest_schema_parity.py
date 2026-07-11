@@ -81,10 +81,12 @@ def test_parity_detects_required_args_drift(tmp_path: Path, monkeypatch) -> None
     assert rep["diffs"][0]["tool_name"] == "pa_prompt_route"
 
 
-def test_refresh_stage_fails_without_frozen_index(tmp_path: Path) -> None:
+def test_refresh_stage_auto_freezes_schema_index(tmp_path: Path) -> None:
     env = make_env(tmp_path)
-    with pytest.raises(Exception, match="manifest_schema_parity_failed"):
-        dispatch_manifest_tool(env["config"], "pa_tool_manifest_refresh_stage", {})
+    stg = dispatch_manifest_tool(env["config"], "pa_tool_manifest_refresh_stage", {})
+    assert schema_index_frozen()
+    assert stg["status"] == "staged"
+    assert stg.get("schema_parity", {}).get("ok") is True
 
 
 def test_refresh_stage_succeeds_after_registration(tmp_path: Path) -> None:

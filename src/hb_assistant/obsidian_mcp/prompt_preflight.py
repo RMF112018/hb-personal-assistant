@@ -73,6 +73,7 @@ _CAPABILITY_TRIGGER_TOKENS: dict[str, tuple[str, ...]] = {
     "stage": (
         "stage", "staging", "document this", "document the", "document", "capture this", "capture",
         "submit for review", "queue for review", "put this up for review", "for review",
+        "create a proposal", "create proposal", "make a proposal",
     ),
     "archive": ("archive",),
     "execute": ("execute", "go ahead and", "send it", "run the"),
@@ -100,7 +101,7 @@ _MODALITY_CAPABILITY_INQUIRY = re.compile(
     re.IGNORECASE,
 )
 _MODALITY_HYPOTHETICAL = re.compile(
-    r"\b(what if|suppose|imagine|would it|could we)\b",
+    r"\b(what if|what would happen|what happens if|suppose|imagine|would it|could we|if i promoted)\b",
     re.IGNORECASE,
 )
 _QUOTED_SPAN = re.compile(
@@ -287,6 +288,14 @@ _MIXED_FILES_NOTES_INTENT = re.compile(
     r"\bfiles?\s+and\s+notes?\b|\bnotes?\s+and\s+files?\b",
     re.IGNORECASE,
 )
+_RELEVANT_FILES_INTENT = re.compile(
+    r"\b(?:which|what)\s+files?\s+(?:are\s+)?relevant\b|\bfiles?\s+(?:are\s+)?relevant\b",
+    re.IGNORECASE,
+)
+_NOTES_WITH_STRUCTURED_ID = re.compile(
+    r"`[^`]+`.*\bnotes?\b|\bnotes?\b.*`[^`]+`",
+    re.IGNORECASE,
+)
 _OBJECT_TYPE_WORKFLOW_BOOSTS: dict[str, tuple[re.Pattern[str], int]] = {
     "source_file_search": (_SOURCE_FILE_OBJECT, 3),
     "vault_note_search": (_VAULT_OBJECT, 3),
@@ -332,6 +341,10 @@ def _object_type_workflow_boost(prompt_l: str, workflow_id: str) -> int:
             boost += points
     if workflow_id == "source_file_search" and _DOCUMENT_FIND_INTENT.search(normalized):
         boost += 4
+    if workflow_id == "source_file_search" and _RELEVANT_FILES_INTENT.search(normalized):
+        boost += 6
+    if workflow_id == "vault_note_search" and _NOTES_WITH_STRUCTURED_ID.search(normalized):
+        boost += 6
     if workflow_id == "source_root_map" and _DOCUMENT_FIND_INTENT.search(normalized):
         return -10
     if _VAULT_SEARCH_CONTEXT.search(normalized):
@@ -637,6 +650,62 @@ def _rank_workflows(
     return scored
 
 
+def _try_hypothetical_promotion_plan_route(
+    prompt: str,
+    prompt_l: str,
+    *,
+    prohibitions: set[str],
+    has_exact_id: bool,
+    available_tools: frozenset[str] | set[str] | None,
+    freshness: dict[str, Any] | None,
+    tool_groups: dict[str, str | None] | None,
+    runtime_policy: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Route advisory/hypothetical promotion questions to the planning workflow."""
+    if "promote" in prohibitions:
+        return None
+    if not _MODALITY_HYPOTHETICAL.search(prompt_l):
+        return None
+    if not re.search(r"\bpromot", prompt_l, re.IGNORECASE):
+        return None
+    plan_wf = workflow_record("plan_canonical_promotion")
+    if not plan_wf:
+        return None
+    return _route_workflow_plan(
+        prompt,
+        prompt_l,
+        best_wf=plan_wf,
+        best_score=3,
+        ranked=[(3, plan_wf)],
+        prohibitions=prohibitions,
+        has_exact_id=has_exact_id,
+        available_tools=available_tools,
+        freshness=freshness,
+        tool_groups=tool_groups,
+        runtime_policy=runtime_policy,
+    )
+
+
+def _prefer_hypothetical_promotion_plan(
+    prompt_l: str,
+    best_wf: dict[str, Any],
+    *,
+    prohibitions: set[str],
+) -> dict[str, Any]:
+    """Advisory/hypothetical promotion questions → plan workflow, not apply."""
+    if best_wf.get("workflow_id") != "apply_canonical_promotion":
+        return best_wf
+    if "promote" in prohibitions:
+        return best_wf
+    modality = _dominant_operation_modality(prompt_l)
+    if modality not in ("hypothetical", "advisory"):
+        return best_wf
+    if _has_imperative_capability_intent(prompt_l, "promote"):
+        return best_wf
+    plan_wf = workflow_record("plan_canonical_promotion")
+    return plan_wf if plan_wf else best_wf
+
+
 def _retrieval_budget(wf: dict[str, Any], has_exact_id: bool) -> dict[str, Any]:
     layer = wf["default_retrieval_layer"]
     if layer in ("metadata_discovery", "candidate_triage") and has_exact_id:
@@ -765,13 +834,16 @@ def required_args_for_tool(tool_name: str) -> list[str]:
 
 
 def _extract_topic_query(prompt_l: str) -> str | None:
-    """Best-effort topical fragment (e.g. 'about X' / 'for X'); not an ID."""
-    m = re.search(
-        r"\b(?:about|for|regarding|on)\s+([a-z0-9][\w\s\-]{0,64}?)(?:\?|\.|$)",
-        prompt_l,
+    """Best-effort topical fragment (e.g. 'about X' / 'relate to X'); not an ID."""
+    patterns = (
+        r"\b(?:relate(?:d)?\s+to|pertain(?:s)?\s+to)\s+([a-z0-9][\w\s\-]{0,64}?)(?:\?|\.|$)",
+        r"\b(?:remain|stays?)\s+(?:about|regarding)\s+([a-z0-9][\w\s\-]{0,64}?)(?:\?|\.|$)",
+        r"\b(?:about|for|regarding|on)\s+(?:the\s+)?([a-z0-9][\w\s\-]{0,64}?)(?:\?|\.|$)",
     )
-    if m:
-        return m.group(1).strip()
+    for pat in patterns:
+        m = re.search(pat, prompt_l, re.IGNORECASE)
+        if m:
+            return m.group(1).strip().lower()
     return None
 
 
@@ -896,6 +968,8 @@ def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
         return quoted[:200]
 
     patterns: list[tuple[str, str | None]] = [
+        (r"\b(?:which|what)\s+files?\s+(?:are\s+)?relevant\b", "relevant files"),
+        (r"\bfiles?\s+(?:are\s+)?relevant\b", "relevant files"),
         (r"\bsearch\s+the\s+vault\s+for\s+(.+?)(?:[.?!]|$)", None),
         (r"\bsearch\s+(?:my\s+)?work\s+files?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "work files"),
         (r"\bsearch(?:\s+the)?\s+nas(?:\s+files?)?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "nas files"),
@@ -909,7 +983,9 @@ def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
         m = re.search(pat, prompt_l, flags=re.I)
         if not m:
             continue
-        q = (m.group(1) or "").strip()
+        q = ""
+        if m.lastindex and m.lastindex >= 1:
+            q = (m.group(1) or "").strip()
         if not q and default:
             q = default
         if q:
@@ -1255,6 +1331,11 @@ def _evaluate_executability(
     if missing:
         if next_tool == "pa_artifact_proposal_stage":
             return False, "missing_arguments", False
+        if (
+            next_tool == "pa_artifact_proposal_plan_promotion"
+            and missing == ["proposal_bundle_id"]
+        ):
+            return True, None, approval_required_flag
         approval_required_flag = tool_needs_approval
         return False, "missing_arguments", approval_required_flag
 
@@ -1929,9 +2010,24 @@ def route_prompt(
     ranked = _rank_workflows(prompt_l, prohibitions)
 
     if not ranked:
+        hypo_plan = _try_hypothetical_promotion_plan_route(
+            prompt,
+            prompt_l,
+            prohibitions=prohibitions,
+            has_exact_id=has_exact_id,
+            available_tools=available_tools,
+            freshness=freshness,
+            tool_groups=tool_groups,
+            runtime_policy=runtime_policy,
+        )
+        if hypo_plan is not None:
+            return hypo_plan
         return _unknown_route(prompt, prompt_l, freshness, prohibitions)
 
     best_score, best_wf = ranked[0]
+    best_wf = _prefer_hypothetical_promotion_plan(prompt_l, best_wf, prohibitions=prohibitions)
+    if best_wf["workflow_id"] != ranked[0][1]["workflow_id"]:
+        best_score = max(best_score, 2)
     return _route_workflow_plan(
         prompt, prompt_l,
         best_wf=best_wf,
@@ -1991,6 +2087,8 @@ def _negated_assertion_route(
 def _is_ambiguous_notes(prompt_l: str) -> bool:
     """Bare 'notes' without vault/source/project cue → one clarification."""
     if _is_mixed_private_retrieval_intent(prompt_l):
+        return False
+    if _NOTES_WITH_STRUCTURED_ID.search(prompt_l):
         return False
     if "notes" not in prompt_l:
         return False
