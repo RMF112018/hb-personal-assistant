@@ -16,6 +16,11 @@ import re
 from typing import Any
 
 from .canonical_tool_specs import KNOWN_TOOL_GROUPS
+from .prompt_id_parser import (
+    extract_asserted_typed_ids as _extract_asserted_typed_ids,
+    extract_validated_id as _extract_validated_id,
+    is_illustrative_mention as _is_non_target_id_mention,
+)
 from .tool_family_manifest import family_record
 from .tool_metadata_types import ROUTE_SCHEMA_VERSION
 from .workflow_recipe_manifest import WORKFLOWS, workflow_record
@@ -122,6 +127,20 @@ _WRITE_CAPABILITY_WORD = re.compile(
 _ALLOW_READ_PHRASES = (
     "you may use read-only", "read-only tools", "beyond read-only", "beyond read only",
     "read only analysis", "read-only analysis", "may use read-only", "read-only analysis",
+)
+
+_READ_INTENT_RE = re.compile(
+    r"\b(show|list|display|inspect|review|retrieve|get|see|what are)\b",
+    re.IGNORECASE,
+)
+_READ_OBJECT_RE = re.compile(
+    r"\b(staged actions?|action stages?|staged items?|feedback|open loops?|decisions?|"
+    r"preferences?|proposals?|outputs?|files?|notes?)\b",
+    re.IGNORECASE,
+)
+_SCOPED_EXECUTE_BAN_RE = re.compile(
+    r"\b(?:do not|don't)\s+execute\b(?:\s+(?:them|those|it|anything|that|the staged|any action))?",
+    re.IGNORECASE,
 )
 
 
@@ -453,6 +472,50 @@ def _has_imperative_capability_intent(prompt_l: str, capability: str) -> bool:
     return False
 
 
+def _execute_ban_scoped_to_read_intent(prompt_l: str) -> bool:
+    """True when a read/inspect clause coexists with a scoped execute prohibition."""
+    clauses = _split_clauses(prompt_l)
+    read_clause = False
+    scoped_execute_ban = False
+    for clause in clauses:
+        c = clause.strip()
+        if _READ_INTENT_RE.search(c) and _READ_OBJECT_RE.search(c):
+            read_clause = True
+        if _SCOPED_EXECUTE_BAN_RE.search(c):
+            scoped_execute_ban = True
+        elif re.search(r"\b(?:do not|don't)\s+execute\b", c) and read_clause:
+            scoped_execute_ban = True
+    return read_clause and scoped_execute_ban
+
+
+def _prohibition_operation_scopes(
+    prompt_l: str, prohibitions: set[str],
+) -> tuple[list[str], list[str]]:
+    """Derive explicit prohibited/allowed operation lists after scope parsing."""
+    prohibited: list[str] = []
+    allowed: list[str] = []
+    if "write" in prohibitions:
+        prohibited.append("write")
+    if "stage" in prohibitions:
+        prohibited.append("stage")
+    if "promote" in prohibitions:
+        prohibited.append("promote")
+    if "external_action" in prohibitions:
+        prohibited.append("external_action")
+    if "execute" in prohibitions:
+        prohibited.append("execute_request")
+    elif "execute_non_read" in prohibitions:
+        prohibited.append("execute_non_read")
+        if _execute_ban_scoped_to_read_intent(prompt_l):
+            prohibited.append("execute_staged_actions")
+    if _execute_ban_scoped_to_read_intent(prompt_l) or "execute_non_read" in prohibitions:
+        allowed.extend(["read", "inspect", "list"])
+    if _is_read_only_posture(prompt_l) or _reads_explicitly_allowed(prompt_l):
+        if "read" not in allowed:
+            allowed.append("read")
+    return prohibited, allowed
+
+
 def _extract_prohibitions(prompt_l: str) -> set[str]:
     """Return capability names prohibited by scoped negation (not keyword-wide).
 
@@ -461,6 +524,7 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
     (without a beyond-read-only exception) bans non-advisory tool execution.
     """
     prohibitions: set[str] = set()
+    read_scoped_execute = _execute_ban_scoped_to_read_intent(prompt_l)
 
     # Explicit execute bans (not implied by "read-only").
     # Vocabulary:
@@ -473,6 +537,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         if beyond_read_only:
             prohibitions.add("execute_non_read")
             prohibitions.update({"write", "stage", "promote", "external_action"})
+        elif read_scoped_execute:
+            prohibitions.add("execute_non_read")
         else:
             prohibitions.add("execute")
 
@@ -509,6 +575,10 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         (r"\bdo not stage\b", {"stage"}),
         (r"\bdo not promote\b", {"promote"}),
         (r"\bdon't promote\b", {"promote"}),
+        (r"\bdo not apply\b", {"promote"}),
+        (r"\bdon't apply\b", {"promote"}),
+        (r"\bdo not modify\b", {"write"}),
+        (r"\bdon't modify\b", {"write"}),
         (r"\bnever promote\b", {"promote"}),
         (r"\bdo not deploy\b", {"deploy"}),
         (r"\bdo not\b[^\n.]{0,40}\bindex\b", {"index"}),
@@ -557,13 +627,14 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
                 if _capability_token_in_text(cap, span):
                     if cap == "promote" and "receipt" in span and "not a" in span:
                         continue
-                    if cap == "execute" and beyond_read_only:
+                    if cap == "execute" and (beyond_read_only or read_scoped_execute):
                         prohibitions.add("execute_non_read")
+                        prohibitions.discard("execute")
                         continue
                     prohibitions.add(cap)
 
     # Posture cleanup: read-only work must not carry a naked execute ban unless plan-only/identify.
-    if beyond_read_only or (
+    if beyond_read_only or read_scoped_execute or (
         _is_read_only_posture(prompt_l)
         and not re.search(r"\bplan only\b", prompt_l)
         and not re.search(r"\b(identify which tool|which tool should be used)\b", prompt_l)
@@ -572,6 +643,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         if beyond_read_only:
             prohibitions.add("execute_non_read")
             prohibitions.update({"write", "stage", "promote", "external_action"})
+        elif read_scoped_execute:
+            prohibitions.add("execute_non_read")
 
     _apply_anaphora_prohibitions(prompt_l, prohibitions)
 
@@ -741,8 +814,12 @@ def _plan_only_or_no_execute(prompt_l: str, prohibitions: set[str]) -> bool:
         return True
     # Bare "do not execute" without read-only posture and without beyond-read-only allow.
     if re.search(r"\b(do not|don't) execute\b", prompt_l):
-        if _is_read_only_posture(prompt_l) or re.search(r"\bbeyond read[- ]only\b", prompt_l):
-            # Read-only analysis / beyond-read-only still allows read tool calls.
+        if (
+            _is_read_only_posture(prompt_l)
+            or re.search(r"\bbeyond read[- ]only\b", prompt_l)
+            or _execute_ban_scoped_to_read_intent(prompt_l)
+        ):
+            # Read-only analysis / beyond-read-only / scoped read+execute-ban still allows reads.
             return False
         return True
     return False
@@ -772,9 +849,25 @@ _TOOL_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "pa_artifact_proposal_stage": ("session_id", "candidate_artifacts"),
     "pa_artifact_promotion_apply": ("promotion_bundle_id", "operator_approval_id"),
     "pa_output_commit": ("output_id", "operator_approval_id"),
-    "pa_output_stage": ("title", "content", "content_mode"),
+    "pa_output_stage": ("title", "file_type", "content_mode"),
+    "pa_output_metadata": ("output_id",),
     "pa_output_archive_plan": ("output_id",),
+    "pa_artifact_promotion_receipt_get": ("promotion_receipt_id",),
+    "assistant_get_feedback": ("feedback_id",),
+    "assistant_get_action_stage": ("stage_id",),
     "assistant_source_file_read": ("source_id",),
+}
+
+_WORKFLOW_OUTPUT_FORMAT: dict[str, tuple[str, str]] = {
+    "generate_csv_output": ("csv", "csv_text"),
+    "generate_json_output": ("json", "json_text"),
+    "generate_html_output": ("html", "html_text"),
+    "generate_markdown_output": ("md", "markdown_text"),
+    "generate_pdf_output": ("pdf", "pdf_from_html_or_markdown"),
+    "generate_pptx_output": ("pptx", "pptx_from_markdown_or_json"),
+    "generate_docx_output": ("docx", "docx_from_markdown_or_text"),
+    "generate_xlsx_output": ("xlsx", "xlsx_from_csv"),
+    "generate_zip_package": ("zip", "zip_base64"),
 }
 
 _QUERY_ARG_NAMES = frozenset({"query", "search_term"})
@@ -786,7 +879,11 @@ _GETTER_TOOLS = frozenset({
     "assistant_get_preference",
     "assistant_get_open_loop",
     "assistant_get_vault_note",
+    "assistant_get_feedback",
+    "assistant_get_action_stage",
     "assistant_source_file_read",
+    "pa_output_metadata",
+    "pa_artifact_promotion_receipt_get",
 })
 _TOPICAL_LIST_TOOLS = frozenset({
     "assistant_list_decisions",
@@ -794,25 +891,25 @@ _TOPICAL_LIST_TOOLS = frozenset({
     "assistant_list_open_loops",
 })
 
-# Typed canonical artifact IDs: {PREFIX}-{YYYYMMDD}-{hash6} (obsidian card materialization).
-_TYPED_CANONICAL_ID_RE = re.compile(
-    r"\b(DEC|PREF|LOOP)-(\d{8}-[A-F0-9]{6})\b",
-    re.IGNORECASE,
-)
-_TYPED_CANONICAL_MAX_LEN = 48
 _TYPED_RETRIEVAL_ROUTE: dict[str, tuple[str, str, str]] = {
     "DEC": ("decision_id", "assistant_get_decision", "canonical_decision_retrieval"),
     "PREF": ("preference_id", "assistant_get_preference", "canonical_preference_retrieval"),
     "LOOP": ("open_loop_id", "assistant_get_open_loop", "canonical_open_loop_retrieval"),
+    "OUTPUT": ("output_id", "pa_output_metadata", "inspect_generated_output_metadata"),
+    "PROMO": ("promotion_receipt_id", "pa_artifact_promotion_receipt_get", "inspect_promotion_receipt"),
 }
 _RETRIEVAL_VERB_RE = re.compile(
-    r"\b(show(?:\s+me)?(?:\s+the)?|retrieve|get|open|display)\b",
+    r"\b(show(?:\s+me)?(?:\s+the)?|retrieve|get|open|display|inspect|review|explain)\b",
     re.IGNORECASE,
 )
 _ARTIFACT_NOUN_CUES: tuple[tuple[str, str], ...] = (
     ("open loop", "LOOP"),
     ("preference", "PREF"),
     ("decision", "DEC"),
+    ("generated output", "OUTPUT"),
+    ("output file", "OUTPUT"),
+    ("output", "OUTPUT"),
+    ("promotion receipt", "PROMO"),
 )
 
 
@@ -847,50 +944,6 @@ def _extract_topic_query(prompt_l: str) -> str | None:
     return None
 
 
-def _typed_canonical_id_valid(token: str) -> bool:
-    if len(token) > _TYPED_CANONICAL_MAX_LEN:
-        return False
-    return bool(_TYPED_CANONICAL_ID_RE.fullmatch(token))
-
-
-def _is_non_target_id_mention(prompt: str, start: int, end: int) -> bool:
-    """True when a typed ID is illustrative (quoted example, mention-only), not the retrieval target."""
-    before = prompt[max(0, start - 80):start]
-    if re.search(r"\b(for example|e\.g\.|such as)\b", before, re.IGNORECASE):
-        return True
-    if re.search(r"\bmentions?\b", before, re.IGNORECASE):
-        return True
-    # Double/single-quoted spans are examples unless the clause also carries a retrieval verb.
-    left = prompt.rfind('"', 0, start)
-    right = prompt.find('"', end)
-    if left != -1 and right != -1 and left < start and right >= end:
-        clause = prompt[left:right + 1]
-        if not _RETRIEVAL_VERB_RE.search(clause):
-            return True
-    left = prompt.rfind("'", 0, start)
-    right = prompt.find("'", end)
-    if left != -1 and right != -1 and left < start and right >= end:
-        clause = prompt[left:right + 1]
-        if not _RETRIEVAL_VERB_RE.search(clause):
-            return True
-    return False
-
-
-def _extract_asserted_typed_ids(prompt: str) -> list[tuple[str, str]]:
-    """Return (prefix, canonical_id) pairs that are asserted retrieval targets (not examples)."""
-    out: list[tuple[str, str]] = []
-    seen: set[str] = set()
-    for match in _TYPED_CANONICAL_ID_RE.finditer(prompt):
-        token = match.group(0).upper()
-        if not _typed_canonical_id_valid(token) or token in seen:
-            continue
-        if _is_non_target_id_mention(prompt, match.start(), match.end()):
-            continue
-        seen.add(token)
-        out.append((match.group(1).upper(), token))
-    return out
-
-
 def _infer_typed_retrieval_prefix(prompt_l: str) -> str | None:
     for noun, prefix in _ARTIFACT_NOUN_CUES:
         if noun in prompt_l:
@@ -912,45 +965,6 @@ def _has_dominant_search_intent(prompt_l: str) -> bool:
         ):
             return True
     return False
-
-
-def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
-    """Extract a workflow-specific ID only when pattern matches repo contracts. Never invent."""
-    # Require delimiter or suffix so bare nouns (e.g. "decision" in "canonical decision") do not match.
-    patterns = {
-        "decision_id": (
-            r"\b(DEC-\d{8}-[A-F0-9]{6}|(?:dec|decision)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"decision_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "preference_id": (
-            r"\b(PREF-\d{8}-[A-F0-9]{6}|(?:pref|preference)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"preference_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "open_loop_id": (
-            r"\b(LOOP-\d{8}-[A-F0-9]{6}|(?:ol|open[_-]?loop)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"open[_-]?loop_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "operator_approval_id": r"\b((?:appr|approval)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-        "promotion_bundle_id": (
-            r"\b(PROMOB-[A-Z0-9]{6,16}|(?:promob|promotion[_-]?bundle)[_-][a-z0-9][a-z0-9_\-]{6,64})\b"
-        ),
-        "session_id": r"\b((?:sess|session)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-        "source_id": r"\b((?:src|source)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-    }
-    pat = patterns.get(arg_name)
-    if not pat:
-        return None
-    matches = [m.group(1) for m in re.finditer(pat, prompt, flags=re.I)]
-    if not matches:
-        return None
-    normalized = {m.upper() if m.upper().startswith(("DEC-", "PREF-", "LOOP-", "PROMOB-")) else m
-                  for m in matches}
-    if len(normalized) > 1:
-        return None
-    chosen = max(matches, key=len)
-    if chosen.upper().startswith(("DEC-", "PREF-", "LOOP-")) and not _typed_canonical_id_valid(chosen.upper()):
-        return None
-    return chosen
 
 
 def _extract_quoted_fragment(prompt: str) -> str | None:
@@ -996,6 +1010,45 @@ def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
     return None
 
 
+def _extract_output_title(prompt: str, prompt_l: str) -> str | None:
+    """Bounded title extraction for generated-output staging (never invents approval/output ids)."""
+    quoted = _extract_quoted_fragment(prompt)
+    if quoted and len(quoted) <= 120:
+        return quoted
+    patterns = (
+        r"\b(?:titled|called|named)\s+(.+?)(?:\s+with\b|\s+containing\b|[.?!]|$)",
+        r"\breport\s+titled\s+(.+?)(?:[.?!]|$)",
+        r"\btitle\s*[:=]\s*(.+?)(?:[.?!]|$)",
+    )
+    for pat in patterns:
+        m = re.search(pat, prompt, re.IGNORECASE)
+        if m:
+            title = m.group(1).strip(" '\"")
+            if title:
+                return title[:120]
+    return None
+
+
+def _extract_output_content_text(prompt: str, prompt_l: str) -> str | None:
+    """Best-effort content snippet for output staging when the operator supplies inline body text."""
+    patterns = (
+        r"\bwith\s+(?:content|body|text)\s+(.+?)(?:[.?!]|$)",
+        r"\bcontaining\s+(.+?)(?:[.?!]|$)",
+        r"\bwith\s+columns?\s+(.+?)(?:[.?!]|$)",
+    )
+    for pat in patterns:
+        m = re.search(pat, prompt_l, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()[:2000]
+    return None
+
+
+def _output_format_for_workflow(workflow_id: str | None) -> tuple[str, str] | None:
+    if not workflow_id:
+        return None
+    return _WORKFLOW_OUTPUT_FORMAT.get(workflow_id)
+
+
 def _extract_session_fields(prompt: str, prompt_l: str) -> dict[str, str]:
     """Bounded session-capture fields for document_session (never invents approval/session ids)."""
     out: dict[str, str] = {}
@@ -1015,7 +1068,13 @@ def _extract_session_fields(prompt: str, prompt_l: str) -> dict[str, str]:
     return out
 
 
-def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[str, Any]:
+def _extract_tool_arguments(
+    prompt: str,
+    prompt_l: str,
+    tool_name: str,
+    *,
+    workflow_id: str | None = None,
+) -> dict[str, Any]:
     """Populate tool arguments from the prompt using schema arg names (never invents IDs)."""
     args: dict[str, Any] = {}
     for arg in required_args_for_tool(tool_name):
@@ -1041,6 +1100,17 @@ def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[
                 for k, v in _extract_session_fields(prompt, prompt_l).items():
                     if k == arg:
                         args[arg] = v
+    if tool_name == "pa_output_stage":
+        fmt = _output_format_for_workflow(workflow_id)
+        if fmt:
+            args.setdefault("file_type", fmt[0])
+            args.setdefault("content_mode", fmt[1])
+        title = _extract_output_title(prompt, prompt_l)
+        if title:
+            args.setdefault("title", title)
+        content = _extract_output_content_text(prompt, prompt_l)
+        if content:
+            args.setdefault("content_text", content)
     if tool_name in _TOPICAL_LIST_TOOLS:
         topic = _extract_topic_query(prompt_l)
         if topic and "query" not in args:
@@ -1059,27 +1129,37 @@ def _resolve_next_tool_step(
     tools: list[str],
     prompt: str,
     prompt_l: str,
+    *,
+    workflow_id: str | None = None,
 ) -> tuple[str | None, dict[str, Any], str | None]:
     """Pick the executable next tool and extracted args (exact-ID getter overrides discovery-first list)."""
     if not tools:
         return None, {}, None
 
+    output_id = _extract_validated_id(prompt, "output_id")
+
     # Exact-ID getter: skip list/discovery when a validated id is present.
     for tool in tools:
         if tool not in _GETTER_TOOLS:
             continue
-        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        args = _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id)
         id_args = [a for a in required_args_for_tool(tool) if a.endswith(_ID_ARG_SUFFIX)]
         if id_args and all(args.get(a) for a in id_args) and not _missing_required_args(tool, args):
             return tool, args, "exact_id_getter"
 
+    if output_id and "pa_output_metadata" in tools:
+        args = _extract_tool_arguments(prompt, prompt_l, "pa_output_metadata", workflow_id=workflow_id)
+        args.setdefault("output_id", output_id)
+        if not _missing_required_args("pa_output_metadata", args):
+            return "pa_output_metadata", args, "exact_id_getter"
+
     for tool in tools:
-        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        args = _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id)
         if not _missing_required_args(tool, args):
             return tool, args, "extracted"
 
     tool = tools[0]
-    return tool, _extract_tool_arguments(prompt, prompt_l, tool), None
+    return tool, _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id), None
 
 
 def _argument_extraction_view(
@@ -1753,7 +1833,7 @@ def _route_workflow_plan(
         extraction_source = forced_extraction_source
     else:
         next_tool, next_args, extraction_source = _resolve_next_tool_step(
-            recommended_tools, prompt, prompt_l,
+            recommended_tools, prompt, prompt_l, workflow_id=best_wf["workflow_id"],
         )
     if topic and next_tool in _TOPICAL_LIST_TOOLS:
         next_args = dict(next_args)
@@ -1817,9 +1897,13 @@ def _route_workflow_plan(
             f"(topical discovery arg not supported on {next_tool})."
         )
 
+    prohibited_ops, allowed_ops = _prohibition_operation_scopes(prompt_l, prohibitions)
+
     plan: dict[str, Any] = {
         "route_schema_version": ROUTE_SCHEMA_VERSION,
         "prompt": prompt,
+        "prohibited_operations": prohibited_ops,
+        "allowed_operations": allowed_ops,
         "intent": {
             "primary_class": best_wf["intent_classes"][0] if best_wf["intent_classes"] else "unknown",
             "classes": list(best_wf["intent_classes"]),
@@ -1919,6 +2003,8 @@ def _try_typed_id_first_route(
         return None
 
     arg_name, getter_tool, workflow_id = route
+    if prefix == "OUTPUT" and re.search(r"\breceipt\b", prompt_l):
+        workflow_id = "retrieve_generated_output_receipt"
     artifact_label = next((n for n, p in _ARTIFACT_NOUN_CUES if p == prefix), prefix.lower())
 
     if len(tokens) > 1:

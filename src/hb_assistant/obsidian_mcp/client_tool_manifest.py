@@ -534,21 +534,77 @@ class ClientToolManifestRepository:
             hdr["entries"] = _hydrate_manifest_entries(hdr, entry_rows)
             return hdr
 
-    def freshness_check(self, current_tool_names: set[str], *, conn: Any = None) -> dict[str, Any]:
+    def freshness_check(
+        self,
+        current_tool_names: set[str],
+        *,
+        conn: Any = None,
+        live_runtime_commit: str | None = None,
+    ) -> dict[str, Any]:
+        """Compare live tool names (and optional runtime commit) to the active persisted manifest.
+
+        Deployment-runtime validity is part of client-manifest freshness: a name-set match
+        must not report ``fresh`` when ``generated_from_runtime_commit`` disagrees with the
+        live runtime SHA (the dual-surface contradiction observed in production).
+        """
         active = self.get_active(conn=conn)
         if not active:
-            return {"tool_manifest_stale": True, "staleness_state": "stale", "tool_manifest_review_required": True,
-                    "tool_manifest_missing_tools": sorted(current_tool_names), "tool_manifest_extra_tools": [],
-                    "reason": "no_active_manifest"}
+            return {
+                "tool_manifest_stale": True,
+                "staleness_state": "stale",
+                "tool_manifest_review_required": True,
+                "tool_manifest_missing_tools": sorted(current_tool_names),
+                "tool_manifest_extra_tools": [],
+                "reason": "no_active_manifest",
+                "deployment_runtime_drift": False,
+                "generated_from_runtime_commit": None,
+                "live_runtime_commit": live_runtime_commit,
+            }
         recorded = {e["tool_name"] for e in active["entries"]}
         missing = sorted(current_tool_names - recorded)   # live tools not in manifest
         extra = sorted(recorded - current_tool_names)     # manifest tools no longer live
-        changed = bool(missing or extra)
+        name_changed = bool(missing or extra)
+
+        stored_rc = active.get("generated_from_runtime_commit")
+        live_s = str(live_runtime_commit or "").strip()
+        stored_s = str(stored_rc or "").strip()
+        looks_like_sha = bool(live_s) and len(live_s) >= 7 and all(
+            c in "0123456789abcdef" for c in live_s.lower()
+        )
+        stored_looks_like_sha = bool(stored_s) and len(stored_s) >= 7 and all(
+            c in "0123456789abcdef" for c in stored_s.lower()
+        )
+        deployment_runtime_drift = False
+        if stored_looks_like_sha and looks_like_sha and live_s != stored_s:
+            deployment_runtime_drift = True
+        elif stored_looks_like_sha and live_s and not looks_like_sha:
+            # Package-only / unknown live identity cannot certify the stored SHA baseline.
+            deployment_runtime_drift = True
+
+        stale = name_changed or deployment_runtime_drift
+        if deployment_runtime_drift and not name_changed:
+            staleness_state = "deployment_runtime_commit_mismatch"
+        elif name_changed:
+            staleness_state = "tool_surface_changed"
+        else:
+            staleness_state = active["staleness_state"]
+
         return {
-            "tool_manifest_stale": changed, "tool_manifest_missing_tools": missing,
-            "tool_manifest_extra_tools": extra, "tool_manifest_review_required": changed,
-            "staleness_state": "tool_surface_changed" if changed else active["staleness_state"],
-            "manifest_version": active["manifest_version"], "checksum": active["checksum"],
+            "tool_manifest_stale": stale,
+            "tool_manifest_missing_tools": missing,
+            "tool_manifest_extra_tools": extra,
+            "tool_manifest_review_required": stale,
+            "staleness_state": staleness_state,
+            "manifest_version": active["manifest_version"],
+            "checksum": active["checksum"],
+            "deployment_runtime_drift": deployment_runtime_drift,
+            "generated_from_runtime_commit": stored_rc,
+            "live_runtime_commit": live_runtime_commit,
+            "reason": (
+                "deployment_runtime_commit_mismatch"
+                if deployment_runtime_drift and not name_changed
+                else ("tool_surface_changed" if name_changed else None)
+            ),
         }
 
     def stage_refresh(self, new_manifest: dict[str, Any], freshness_diff: dict[str, Any]) -> dict[str, Any]:

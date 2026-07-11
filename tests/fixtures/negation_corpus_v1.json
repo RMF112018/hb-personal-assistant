@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "description": "Clause-level negation scoping — prohibitions must not block unrelated safe reads.",
+  "cases": [
+    {
+      "id": "show_staged_no_execute",
+      "prompt": "Show staged actions; do not execute anything",
+      "expect_workflow": "action_stage_review",
+      "read_authorized": true,
+      "prohibited_operations_include": ["execute_staged_actions"],
+      "allowed_operations_include": ["read"],
+      "must_not_block_reason": "plan_only"
+    },
+    {
+      "id": "search_no_promote",
+      "prompt": "Search my work files but do not promote anything",
+      "expect_workflow": "source_file_search",
+      "read_authorized": true,
+      "prohibitions_include": ["promote"]
+    },
+    {
+      "id": "read_note_no_modify",
+      "prompt": "Search the vault for meeting notes but do not modify them",
+      "expect_workflow": "vault_note_search",
+      "read_authorized": true,
+      "prohibitions_include": ["write"]
+    },
+    {
+      "id": "plan_promote_no_apply",
+      "prompt": "What would happen if I promoted this?",
+      "expect_workflow": "plan_canonical_promotion",
+      "read_authorized": true,
+      "must_not_block_reason": "plan_only"
+    },
+    {
+      "id": "global_no_execute",
+      "prompt": "Do not execute this request",
+      "expect_workflow": "context_preflight",
+      "read_authorized": false,
+      "prohibitions_include": ["execute"]
+    }
+  ]
+}
