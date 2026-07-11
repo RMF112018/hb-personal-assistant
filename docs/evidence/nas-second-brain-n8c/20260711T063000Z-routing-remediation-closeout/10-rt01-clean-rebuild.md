@@ -1,7 +1,7 @@
 # RT-01 clean-context rebuild (PR-21/22/23)
 
 **Date:** 2026-07-11  
-**Disposition:** `STAGED_ON_NAS` — Tier B image + scripts on `/tmp/`; operator sudo deploy pending
+**Disposition:** `DEPLOYED_AND_VALIDATED` — Tier B image live on NAS (2026-07-11)
 
 ## A. Land commit
 
@@ -56,9 +56,7 @@ Transferred to `hb-nas:/tmp/` (2026-07-11):
 
 NAS tarball size verified: **105791674** bytes (matches local SHA-256).
 
-Automated `sudo` deploy blocked: NAS requires interactive password (`sudo -n` denied).
-
-## E. Operator sequence
+## E. Operator sequence (complete)
 
 ```bash
 ssh -t hb-nas 'sudo sh /tmp/01-deploy-pr15.sh' | tee ~/deploy-rt01.txt
@@ -66,4 +64,4 @@ ssh -t hb-nas 'sudo sh /tmp/02-manifest-refresh-pr15.sh' | tee ~/manifest-refres
 ssh -t hb-nas 'sudo sh /tmp/04-live-50-prompt-corpus.sh' | tee ~/live-corpus-rt01.txt
 ```
 
-Pass criteria: step **6** Tier B identity + forbidden-path scan; manifest `stale false`; **47/47** required corpus.
+All pass criteria met. Detail: `11-rt01-operator-deploy-results.md`

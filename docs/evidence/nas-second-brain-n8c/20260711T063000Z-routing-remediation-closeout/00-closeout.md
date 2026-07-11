@@ -1,7 +1,7 @@
 # Routing audit remediation closeout (PR-15 + PR-16..20)
 
 **Date:** 2026-07-11  
-**Disposition:** `DEPLOYED_AND_VALIDATED` — PR-15 closeout + PR-16..20 wave live on NAS
+**Disposition:** `DEPLOYED_AND_VALIDATED` — PR-15 closeout + PR-16..20 + RT-01 Tier B live on NAS
 
 ## A. Repository identity
 
@@ -54,6 +54,7 @@ Target: **42/42 required** live corpus pass, **0 HIGH/blocker** regressions; doc
 | PR-15 deploy + manifest + live replay | **COMPLETE** — `01b9b00b`, 42/42 corpus |
 | PR-16..PR-20 RT-03..06 + docs | Landed `931f69f0` |
 | PR-16..20 NAS deploy + live replay | **COMPLETE** — `931f69f0`, manifest promote, **47/47** required corpus |
+| RT-01 Tier B clean rebuild (PR-21..23) | **COMPLETE** — `542307fc`, Tier B identity, **47/47** required corpus |
 
 ## F. PR-16..20 live runtime (`931f69f0`)
 
@@ -67,14 +68,19 @@ schema_live_ro=119 workspace_rw=121
 
 Detail: `09-pr16-20-operator-deploy-results.md`
 
-## G. RT-01 Tier B clean rebuild (`542307fc`)
+## G. RT-01 Tier B live runtime (`542307fc`)
 
 ```text
 deploy_sha=542307fc6fc87b7a5713b8917e861a576a03c96c
 attestation_tier=CODE_VERIFIED_CLEAN_CONTEXT (Tier B)
-runtime_identity_kind=exact_unverified_stamp (expected)
+runtime_identity_kind=exact_unverified_stamp
+runtime_identity_verified=false
 image_digest=sha256:2af0fd38265a8f592afcb9f08d0b4cf0083a3add1d1f051544bd95104ff0009b
+live_required_corpus=47/47 pass (fail_count 0)
+manifest_version=8 workflow_count=15 surface_stale=false
+schema_live_ro=119 workspace_rw=121
+forbidden_path_scan=pass (/app/.claude absent)
 tarball_bytes=105791674 (vs 193164199 Tier A dirty build)
 ```
 
-Detail: `10-rt01-clean-rebuild.md` — operator deploy status updated after live replay.
+Detail: `11-rt01-operator-deploy-results.md` · build: `10-rt01-clean-rebuild.md`

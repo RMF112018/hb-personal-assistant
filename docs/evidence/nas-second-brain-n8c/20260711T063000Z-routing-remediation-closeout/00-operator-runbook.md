@@ -1,10 +1,10 @@
 # PR-15 operator runbook — deploy + manifest + live corpus
 
-**Land commit:** `542307fc6fc87b7a5713b8917e861a576a03c96c` (RT-01 Tier B clean rebuild)  
+**Live commit:** `542307fc6fc87b7a5713b8917e861a576a03c96c` (RT-01 Tier B — **deployed 2026-07-11**)  
 **Previous NAS runtime:** `931f69f04c697c4082f65fbf90ab2b6ae6c81af9` (PR-16..20, Tier A)  
 **Schema:** 119 (code-only deploy — no migration)
 
-Artifacts staged under `/tmp/` (2026-07-11, RT-01 wave). See `10-rt01-clean-rebuild.md`.
+Closeout: `11-rt01-operator-deploy-results.md` · build record: `10-rt01-clean-rebuild.md`
 
 | Artifact | Path | Size |
 |----------|------|------|
