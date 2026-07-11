@@ -38,3 +38,17 @@ def test_mcp_write_annotation_agrees_with_canonical_spec() -> None:
     assert _is_write_tool("hb_assistant_catalog") is False
     spec = CLIENT_BRIDGE_TOOL_SPECS["hb_assistant_tool_query"]
     assert spec.read_write_class == "write_proxy"
+
+
+def test_client_output_write_tools_classified_as_writes_not_reads() -> None:
+    # AI-output split-brain guard: every client-facing output WRITE tool must classify as a write in the
+    # canonical spec (which feeds the client manifest / catalog / help), agreeing with the broker gate.
+    # Previously assistant_output_* aliases fell through to read_only and were advertised as safe reads.
+    from hb_assistant.nas_mcp.profile import CLIENT_OUTPUT_WRITE_TOOLS
+
+    for name in CLIENT_OUTPUT_WRITE_TOOLS:
+        _tc, _sc, rw = classify_tool(name)
+        assert rw != "read_only", (name, rw)
+        assert _is_write_tool(name) is True, name
+    for name in ("assistant_output_stage", "assistant_output_commit", "assistant_output_archive_commit"):
+        assert classify_tool(name) == ("staged_write", "staged_write_requires_review", "staged_write")
