@@ -489,7 +489,7 @@ def test_health_query_uses_root_index_no_full_scan(tmp_path):
     ).fetchall()
     conn.close()
     txt = " | ".join(str(r[-1]) for r in plan)
-    # A root-scoped index is used (idx_si_sources_root, or after V120 the wider reconciliation index
+    # A root-scoped index is used (idx_si_sources_root, or after V122 the wider reconciliation index
     # idx_si_sources_last_seen_gen, which is also source_root_key-prefixed) — never a full-table scan.
     assert "idx_si_sources_root" in txt or "idx_si_sources_last_seen_gen" in txt
     assert "SCAN source_intelligence_sources" not in txt  # no full-table scan on health
@@ -500,7 +500,7 @@ def test_v119_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 120
+    assert v1 == v2 == 122
     import sqlite3
 
     conn = sqlite3.connect(db)

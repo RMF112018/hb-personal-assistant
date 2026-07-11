@@ -30,7 +30,7 @@ def insert_pass_row(
     generation_id: str,
     now: str,
 ) -> None:
-    """Connection-aware V119 pass-row insert (V120).
+    """Connection-aware V119 pass-row insert (V122).
 
     Inserts one ``source_index_bootstrap_runs`` row linked to a longer-lived scan generation, on a
     caller-supplied connection WITHOUT opening its own transaction — so it can participate in the

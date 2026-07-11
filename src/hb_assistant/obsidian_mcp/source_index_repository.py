@@ -34,7 +34,7 @@ def _now() -> str:
 
 
 def _map_disposition(disposition: str | None, extraction_status: str | None) -> str:
-    """Effective extraction disposition, mapping a legacy NULL from the extraction_status (V120).
+    """Effective extraction disposition, mapping a legacy NULL from the extraction_status (V122).
 
     Mirrors the read-time mapping in ``content_status_counts`` so search rows report the same disposition
     (``content|metadata_only|unsupported|too_large``) as health, with no row-wide backfill required.
@@ -235,7 +235,7 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                # Disposition is the explicit V120 column when present, else mapped from the legacy
+                # Disposition is the explicit V122 column when present, else mapped from the legacy
                 # extraction_status (NO row-wide backfill — mapped at read time). metadata_searchable =
                 # has a path/project FTS row; content_searchable = has NONEMPTY indexed text.
                 "SELECT COALESCE(m.extraction_disposition, CASE m.extraction_status "
@@ -344,7 +344,7 @@ class SourceIndexRepository:
 
         ``in_transaction=True`` (requires ``conn``) runs the write on the caller's already-open
         transaction WITHOUT opening/committing its own — so a whole metadata batch + its cursor
-        checkpoint can commit atomically (V120). Standalone callers omit it and get the historical
+        checkpoint can commit atomically (V122). Standalone callers omit it and get the historical
         own-transaction behaviour. ``record["preserve_content"]`` performs a metadata/path-FTS REPAIR
         that leaves valid extracted content intact (see :meth:`_upsert_source_file_locked`)."""
         if in_transaction:
@@ -381,42 +381,49 @@ class SourceIndexRepository:
         ).fetchone()
         old_fts_rowid = existing[0] if existing else None
 
-        # Generation stamp (V120): a metadata observation stamps last_seen_generation/last_seen_at so
+        # Generation stamp (V122): a metadata observation stamps last_seen_generation/last_seen_at so
         # generation-based reconciliation can tell "seen this generation" from "gone". A CHANGED file
         # moves updated_at (material change); a preserve REPAIR of an unchanged file must NOT move
         # updated_at (it would defeat the reconciliation guard / needlessly re-stale notes).
         gen = record.get("last_seen_generation")
         last_seen_at = now if gen is not None else None
+        # The policy fingerprint the row is now current under (V122): written in BOTH modes so the next
+        # generation can fast-skip only when the row is current for CURRENT policy. COALESCE-preserve on a
+        # NULL keeps a legacy row's prior value untouched (a bare re-observe with no fingerprint context).
+        fingerprint = record.get("last_indexed_fingerprint")
         if preserve:
             c.execute(
                 "INSERT INTO source_intelligence_sources "
                 "(source_id, source_kind, source_root_key, rel_path, abs_path_hash, "
                 " project_key, project_number, active, deleted, created_at, updated_at, "
-                " last_seen_generation, last_seen_at) "
-                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?) "
+                " last_seen_generation, last_seen_at, last_indexed_fingerprint) "
+                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?,?) "
                 "ON CONFLICT(source_id) DO UPDATE SET "
                 " source_root_key=excluded.source_root_key, active=1, deleted=0, "
                 " last_seen_generation=COALESCE(excluded.last_seen_generation, source_intelligence_sources.last_seen_generation), "
-                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at)",
+                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at), "
+                " last_indexed_fingerprint=COALESCE(excluded.last_indexed_fingerprint, source_intelligence_sources.last_indexed_fingerprint)",
                 (source_id, source_kind, record.get("source_root_key"), rel_path,
                  record.get("abs_path_hash"), record.get("project_key"), record.get("project_number"),
-                 now, now, gen, last_seen_at),
+                 now, now, gen, last_seen_at, fingerprint),
             )
         else:
             c.execute(
                 "INSERT INTO source_intelligence_sources "
                 "(source_id, source_kind, source_root_key, rel_path, abs_path_hash, "
                 " project_key, project_number, active, deleted, created_at, updated_at, "
-                " last_seen_generation, last_seen_at) "
-                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?) "
+                " last_seen_generation, last_seen_at, last_indexed_fingerprint) "
+                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?,?) "
                 "ON CONFLICT(source_id) DO UPDATE SET "
                 " source_root_key=excluded.source_root_key, project_key=excluded.project_key, "
                 " project_number=excluded.project_number, active=1, deleted=0, updated_at=excluded.updated_at, "
                 " last_seen_generation=COALESCE(excluded.last_seen_generation, source_intelligence_sources.last_seen_generation), "
-                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at)",
+                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at), "
+                # Authoritative in replace mode: a reprocess re-stamps the fingerprint the row is now current under.
+                " last_indexed_fingerprint=COALESCE(excluded.last_indexed_fingerprint, source_intelligence_sources.last_indexed_fingerprint)",
                 (source_id, source_kind, record.get("source_root_key"), rel_path,
                  record.get("abs_path_hash"), record.get("project_key"), record.get("project_number"),
-                 now, now, gen, last_seen_at),
+                 now, now, gen, last_seen_at, fingerprint),
             )
 
         aux = record.get("fts_aux") or record.get("project_key") or ""
@@ -450,7 +457,7 @@ class SourceIndexRepository:
 
         # ---- replace mode (a genuine change / transition) ----
         # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed). Always drop any prior
-        # row first, then maintain ONE row per source. PATH FTS INVARIANT (V120): every active external
+        # row first, then maintain ONE row per source. PATH FTS INVARIANT (V122): every active external
         # source keeps a searchable row — metadata-only files carry an EMPTY text_excerpt plus rel_path +
         # project aux, content files additionally carry the bounded excerpt. content_searchable is measured
         # from NONEMPTY source_intelligence_text, so a path-only FTS row never overstates content coverage.
@@ -613,21 +620,23 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             self._mark_generated_notes_stale(c, source_id)
 
-    # ----- V120 generation-aware batch reads/writes ------------------------------------------
+    # ----- V122 generation-aware batch reads/writes ------------------------------------------
     def load_metadata_state_batch(
         self, source_root_key: str, rel_paths: list[str], *, conn: sqlite3.Connection | None = None
     ) -> dict[str, dict[str, Any]]:
-        """Fast-skip state for a BOUNDED batch of paths:
-        ``rel_path -> {mtime, size, has_fts, disposition, project_key, content_searchable}``.
+        """Fast-skip state for a BOUNDED batch of paths: ``rel_path -> {mtime, size, has_fts, disposition,
+        project_key, project_number, content_mode, fingerprint}``.
 
         The metadata-first replacement for a full-root ``active_index_state`` preload — one query per
         batch keeps memory O(batch), never O(root). The walker fast-skips (or content-preserves) a file
         ONLY when its stat matches AND it is still fully consistent with CURRENT policy. Consistency needs
         more than stat: ``has_fts`` (a path/project FTS row exists), the read-time-mapped ``disposition``,
-        the stored ``project_key`` (so a project-matcher change that re-routes a file is NOT fast-skipped —
-        stale project fields/relationships get replaced), and ``content_searchable`` (nonempty indexed text)
-        so a plain→sensitive root flip cannot leave plaintext content fast-skipped on an unchanged file.
-        Deleted rows excluded; V99 root-scoped identity.
+        the stored ``project_key``/``project_number`` (a project-matcher change that re-routes a file is NOT
+        fast-skipped — stale project fields/relationships get replaced), ``content_mode`` (``plain`` = nonempty
+        excerpt / ``vault`` = encrypted ref / ``none``) so a sensitivity flip in EITHER direction is detected
+        and re-secured, and ``fingerprint`` (the policy fingerprint the row was last indexed under) so ANY
+        metadata/search-affecting policy or code change forces reprocessing rather than a skip. Deleted rows
+        excluded; V99 root-scoped identity.
         """
         if not rel_paths:
             return {}
@@ -642,12 +651,15 @@ class SourceIndexRepository:
                 "   WHEN 'ok' THEN 'content' WHEN 'failed' THEN 'content' "
                 "   WHEN 'unsupported' THEN 'unsupported' WHEN 'skipped_too_large' THEN 'too_large' "
                 "   ELSE 'metadata_only' END) AS disp, "
-                " s.project_key AS project_key, "
-                # content_searchable = NONEMPTY indexed text (matches content_status_counts); a bare
-                # path-FTS row does NOT count. Lets the walker detect plaintext that must be re-secured.
-                " CASE WHEN EXISTS (SELECT 1 FROM source_intelligence_text t "
-                "   WHERE t.source_id = s.source_id AND t.text_excerpt IS NOT NULL "
-                "   AND LENGTH(t.text_excerpt) > 0) THEN 1 ELSE 0 END AS content_searchable "
+                " s.project_key AS project_key, s.project_number AS project_number, "
+                " s.last_indexed_fingerprint AS fingerprint, "
+                # Content storage mode: plaintext excerpt vs encrypted-to-vault ref vs none. Lets the walker
+                # detect BOTH a sensitive root holding plaintext AND a plain root holding a vault ref.
+                " COALESCE((SELECT CASE "
+                "   WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 'plain' "
+                "   WHEN t.text_vault_ref IS NOT NULL AND LENGTH(t.text_vault_ref) > 0 THEN 'vault' "
+                "   ELSE 'none' END FROM source_intelligence_text t "
+                "   WHERE t.source_id = s.source_id), 'none') AS content_mode "
                 "FROM source_intelligence_sources s "
                 "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
                 "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
@@ -657,7 +669,8 @@ class SourceIndexRepository:
         return {
             row[0]: {
                 "mtime": row[1], "size": row[2], "has_fts": bool(row[3]), "disposition": row[4],
-                "project_key": row[5], "content_searchable": bool(row[6]),
+                "project_key": row[5], "project_number": row[6], "fingerprint": row[7],
+                "content_mode": row[8],
             }
             for row in rows
         }
@@ -1153,7 +1166,7 @@ class SourceIndexRepository:
                 # Weighted BM25 (text_excerpt:1, rel_path:8, aux/project:12) so filename/project matches
                 # rank above deep body-frequency matches — critical now that metadata-only files are
                 # searchable by path alone. Weights are locked by ranking tests. Per-column snippets +
-                # text presence + disposition drive match_basis/indexed_text_available shaping (V120).
+                # text presence + disposition drive match_basis/indexed_text_available shaping (V122).
                 "SELECT f.rel_path, f.aux, bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
                 " snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip_text, "
                 " snippet(source_intelligence_fts, 1, '[', ']', '…', 12) AS snip_path, "

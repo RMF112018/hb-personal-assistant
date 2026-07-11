@@ -1,4 +1,4 @@
-"""Reader/writer for the V120 ``source_index_scan_generations`` table — the SOLE generation-lifecycle
+"""Reader/writer for the V122 ``source_index_scan_generations`` table — the SOLE generation-lifecycle
 authority.
 
 A *scan generation* spans many bounded V119 passes over one root. This repository owns every piece of

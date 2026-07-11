@@ -99,7 +99,7 @@ def run_scan(
 ) -> ScanRunResult:
     """Run one bounded, observed, resumable METADATA-FIRST scan of ``root``. See module docstring.
 
-    V120: the durable single-active claim, the linked V119 pass row, heartbeats, and the terminal status
+    V122: the durable single-active claim, the linked V119 pass row, heartbeats, and the terminal status
     are all owned by :func:`scan_source_root` (via the generation authority). This wrapper resolves bounds,
     supplies a redacted heartbeat/emit callback, and maps the returned generation status onto
     :class:`ScanRunResult`. A ``conflict`` (a live pass already owns the root) stays retryable."""

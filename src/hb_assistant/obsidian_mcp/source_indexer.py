@@ -138,7 +138,7 @@ def walk_source_tree(
 
 
 class DirectoryFanoutError(Exception):
-    """A directory exceeded the configured fanout cap — fail closed rather than unbounded-sort (V120).
+    """A directory exceeded the configured fanout cap — fail closed rather than unbounded-sort (V122).
 
     Carries the redaction-safe rel_dir depth (never an absolute host path) for the ``last_error_code``.
     """
@@ -151,7 +151,7 @@ class DirectoryFanoutError(Exception):
 
 class DirectoryReadError(Exception):
     """A directory could not be enumerated for an INDETERMINATE reason (permission / transient I/O /
-    stale NAS handle / mount interruption) — NOT a confirmed removal (V120 §7, F-01).
+    stale NAS handle / mount interruption) — NOT a confirmed removal (V122 §7, F-01).
 
     A confirmed-gone directory (``ENOENT``/``ENOTDIR``) is treated as empty (its files reconcile as
     deleted only when the whole walk completes and each file's own restat confirms absence). An
@@ -166,7 +166,7 @@ class DirectoryReadError(Exception):
         super().__init__(f"directory_read_error:depth={len([s for s in rel_dir.split('/') if s])}")
 
 
-# V120 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
+# V122 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
 # resuming a cursor. NFC alone can map two distinct filesystem names to one key, so the tie-breaker is the
 # original name — two distinct entries never compare equal. Locked by test.
 def entry_sort_key(name: str) -> tuple[str, str]:
@@ -529,8 +529,10 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
         "source_kind": "external_file", "source_root_key": root.source_root_key,
         "rel_path": rel_path, "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
         "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
-        # Explicit V120 disposition column (resolves the pending vs metadata-only ambiguity).
+        # Explicit V122 disposition column (resolves the pending vs metadata-only ambiguity).
         "extraction_disposition": disposition,
+        # Stamp the current policy fingerprint so a later scan can fast-skip this targeted-indexed row.
+        "last_indexed_fingerprint": _root_fingerprint(root, config),
     }
     key, number, conf = match_path_to_project(rel_path)
     record["project_key"], record["project_number"] = key, number
@@ -603,12 +605,20 @@ def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInde
     return _index_source_file(abs_path, root, repo, config, conn=conn).source_id
 
 
+class MetadataStatError(Exception):
+    """A metadata observation could not stat/resolve the file (transient I/O, permission, disappeared
+    between the walk's stat and this one). In a generation context this is INDETERMINATE — the caller
+    must SUSPEND without advancing the cursor, never certify the file as processed (finding: second-stat
+    race). ``raise_on_error=True`` opts into this typed error instead of the historical ``source_id=None``."""
+
+
 def _index_source_metadata(
     abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
     config: ObsidianMcpConfig, *, generation_id: str | None, preserve_content: bool = False,
+    policy_fingerprint: str | None = None, raise_on_error: bool = False,
     conn: Any = None, in_transaction: bool = False,
 ) -> IndexOutcome:
-    """Index ONE external file's METADATA ONLY (V120 metadata-first root scan).
+    """Index ONE external file's METADATA ONLY (V122 metadata-first root scan).
 
     Stat -> disposition -> identity + metadata + path/project FTS, stamping ``last_seen_generation``.
     NEVER computes a SHA-256, parses, reads a body, or builds chunks — regardless of the parser opt-in
@@ -627,12 +637,19 @@ def _index_source_metadata(
     root_path = Path(root.path)
     try:
         rel_path = str(abs_path.relative_to(root_path))
-    except ValueError:
+    except ValueError as exc:
+        if raise_on_error:
+            raise MetadataStatError("path_not_in_root") from exc
         return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
     ext = abs_path.suffix.lower().lstrip(".")
     try:
         stat = abs_path.stat()
-    except OSError:
+    except OSError as exc:
+        # A stat failure here (the SECOND stat — the walk stat'd the file earlier) is INDETERMINATE, not a
+        # confirmed removal: in a generation context raise so the pass suspends with the cursor HELD rather
+        # than certifying the file as processed off a None outcome (finding: second-stat race).
+        if raise_on_error:
+            raise MetadataStatError("stat_failed") from exc
         return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
     size = stat.st_size
     disposition = extraction_disposition(ext, size, config)
@@ -642,6 +659,9 @@ def _index_source_metadata(
         "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
         "content_sha256": None, "extraction_disposition": disposition,
         "last_seen_generation": generation_id, "preserve_content": preserve_content,
+        "last_indexed_fingerprint": (
+            policy_fingerprint if policy_fingerprint is not None else _root_fingerprint(root, config)
+        ),
     }
     key, number, conf = match_path_to_project(rel_path)
     record["project_key"], record["project_number"] = key, number
@@ -774,7 +794,7 @@ class ScanReport:
     metadata_only: int = 0
     unsupported: int = 0
     too_large: int = 0
-    # V120 generation linkage (metadata-first scan). ``conflict`` = a live pass already owns the root
+    # V122 generation linkage (metadata-first scan). ``conflict`` = a live pass already owns the root
     # (retryable). ``generation_status`` mirrors the terminal generation state for the caller.
     run_id: str | None = None
     generation_id: str | None = None
@@ -801,7 +821,7 @@ _WALKER_VERSION = "gen-walk-v1"
 
 
 def _policy_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig, root_path_hash: str) -> str:
-    """Hash of EVERY metadata/search-affecting policy + code version (V120 §6).
+    """Hash of EVERY metadata/search-affecting policy + code version (V122 §6).
 
     Any change (walker/cursor version, exclusion policy, disposition inputs, project matching, FTS
     weighting/tokenizer, traversal version, or the root's path) changes the fingerprint, so a resumed
@@ -829,6 +849,15 @@ def _policy_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig, roo
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:32]
 
 
+def _root_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig) -> str:
+    """Current policy fingerprint for a root, computed the same way :func:`scan_source_root` does (so a row
+    stamped by a targeted index and one stamped by a scan agree). Stored per row as ``last_indexed_fingerprint``
+    and compared on the next generation: a mismatch means the row is stale for current policy and must be
+    reprocessed, not fast-skipped."""
+    root_path_hash = hashlib.sha256(str(Path(root.path)).encode("utf-8")).hexdigest()[:32]
+    return _policy_fingerprint(root, config, root_path_hash)
+
+
 def _tally_disposition(report: "ScanReport", disposition: str) -> None:
     if disposition == "content":
         report.content_attempted += 0  # metadata-first: no content attempted during a root scan
@@ -841,7 +870,7 @@ def _tally_disposition(report: "ScanReport", disposition: str) -> None:
 
 
 def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: ObsidianMcpConfig) -> bool:
-    """Structurally + physically validate a persisted traversal cursor BEFORE resuming (V120 §5).
+    """Structurally + physically validate a persisted traversal cursor BEFORE resuming (V122 §5).
 
     A resumed cursor is trusted only when: it is a dict; ``version`` is PRESENT and equals the current
     traversal version (a version-less or non-integer version is rejected — no lenient default); every frame
@@ -882,16 +911,28 @@ def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: Obs
     def _norm(rel: str) -> str:
         return rel.replace("\\", "/").strip("/")
 
+    def _valid_basename(name: str) -> bool:
+        # A cursor ``after`` names a single directory entry — never a path. Reject separators, NUL, and the
+        # traversal specials so a corrupted ``after`` can't smuggle a path fragment into the resume compare.
+        return bool(name) and not (
+            "/" in name or "\\" in name or "\0" in name or name in (".", "..")
+        )
+
     prev_norm: str | None = None
     prev_after: str | None = None
-    for fr in frames:
+    for i, fr in enumerate(frames):
         if not isinstance(fr, dict):
             return False
         d = fr.get("d")
         after = fr.get("after")
-        if not isinstance(d, str) or (after is not None and not isinstance(after, str)):
+        # Every ``after`` must be a single valid basename (no separators / NUL / '.' / '..').
+        if not isinstance(d, str) or not isinstance(after, str) or not _valid_basename(after):
             return False
         norm_d = _norm(d)
+        # The first frame MUST be the ROOT (d == "" or "."). A cursor that begins at an arbitrary
+        # subdirectory could skip discovery of new files elsewhere yet still reach ``completed``.
+        if i == 0 and norm_d != "":
+            return False
         if d not in ("", "."):
             segments = norm_d.split("/")
             if d.startswith("/") or ".." in segments or "" in segments:
@@ -921,7 +962,7 @@ def _validate_cursor(cursor: dict[str, Any] | None, root_path: Path, config: Obs
 
 
 def _probe_candidate(abs_c: Path, root_path: Path) -> str:
-    """Classify a stale reconcile candidate → ``present`` | ``absent`` | ``indeterminate`` (V120 §7).
+    """Classify a stale reconcile candidate → ``present`` | ``absent`` | ``indeterminate`` (V122 §7).
 
     Only a confirmed **regular, in-root** file is ``present`` (a survivor — never deleted, refreshed
     instead). Only a confirmed **ENOENT** is ``absent`` (delete-eligible). A permission error, transient
@@ -970,7 +1011,7 @@ def scan_source_root(
 
     A root scan reads only METADATA — it never hashes, parses, reads a body, or chunks a file (content
     extraction is the targeted :func:`index_source_file` path / PR 3's queue). Discovery runs under a
-    durable *scan generation* (V120): each bounded pass resumes past a persisted traversal cursor, commits
+    durable *scan generation* (V122): each bounded pass resumes past a persisted traversal cursor, commits
     metadata then checkpoints the cursor (a crash re-processes the batch, never skips it), and — only after
     the FULL metadata walk completes — reconciles deletions by generation (source_id keyset, restat before
     delete, never from a partial/failed generation). A per-generation ceiling or a high-fanout directory
@@ -1037,9 +1078,6 @@ def scan_source_root(
     files_unchanged = int(gen.get("files_unchanged") or 0)
     errors_count = int(gen.get("errors_count") or 0)
     deleted_count = int(gen.get("deleted_count") or 0)
-    # Per-PASS observed counter (resets each pass): the observed/ceiling bounds apply to THIS pass's walk,
-    # not the generation's cumulative total, so a resumed pass keeps making forward progress.
-    pass_observed = 0
 
     started = time.monotonic()
     last_progress = started
@@ -1080,7 +1118,7 @@ def scan_source_root(
             else:
                 cursor_decode_ok = False
 
-    # Validate a resumed cursor BEFORE walking (V120 §5): a malformed/escaping/renamed cursor ABANDONS the
+    # Validate a resumed cursor BEFORE walking (V122 §5): a malformed/escaping/renamed cursor ABANDONS the
     # generation (no reconciliation) and the next pass restarts from root — never silently walk a broken or
     # out-of-root tree (which could drive a false deletion at reconcile time).
     if not walk_complete and (not cursor_decode_ok or not _validate_cursor(cursor, root_path, config)):
@@ -1129,7 +1167,7 @@ def scan_source_root(
                         break
                     ext = abs_p.suffix.lower().lstrip(".")
                     recomputed = extraction_disposition(ext, st.st_size, config)
-                    cur_pk, _cur_num, _cur_conf = match_path_to_project(rel)
+                    cur_pk, cur_num, _cur_conf = match_path_to_project(rel)
                     prev = state.get(rel)
                     stat_match = (
                         prev is not None
@@ -1137,52 +1175,73 @@ def scan_source_root(
                         and prev["size"] == st.st_size
                     )
                     disp_match = prev is not None and prev["disposition"] == recomputed
-                    # A project-matcher policy change re-routes a file even when its bytes are unchanged;
-                    # the stored project_key must then be replaced (fields, FTS aux, relationships), so a
-                    # project mismatch defeats both fast-skip and preserve (finding 2).
-                    proj_match = prev is not None and prev.get("project_key") == cur_pk
-                    # A plain→sensitive root flip must re-secure existing plaintext: if the root is now
-                    # sensitive and the row still has searchable content, it is NOT fast-skipped/preserved —
-                    # a full replace clears the plaintext text/FTS (finding 1).
-                    sens_ok = not (
-                        bool(getattr(root, "sensitive", False))
-                        and prev is not None
-                        and prev.get("content_searchable")
+                    # Project routing must match on BOTH key and number: a matcher change that re-routes a
+                    # file (even unchanged bytes) forces a replace of the stale project fields/edge (finding).
+                    proj_match = (
+                        prev is not None
+                        and prev.get("project_key") == cur_pk
+                        and prev.get("project_number") == cur_num
                     )
-                    consistent = stat_match and disp_match and proj_match and sens_ok
-                    # Fast-skip ONLY a fully-current row: stat + disposition + project match, no sensitivity
-                    # re-secure owed, AND a path-FTS row already exists. Anything else is repaired.
-                    if consistent and prev["has_fts"]:
+                    # Content-storage mode must match current sensitivity in BOTH directions: a sensitive
+                    # root must not keep 'plain' (plaintext) and a plain root must not keep 'vault' (an
+                    # encrypted ref); either mismatch owes a re-secure and defeats fast-skip AND preserve.
+                    mode = prev.get("content_mode") if prev is not None else "none"
+                    sensitive = bool(getattr(root, "sensitive", False))
+                    sens_ok = not (
+                        (sensitive and mode == "plain") or ((not sensitive) and mode == "vault")
+                    )
+                    # Fingerprint gate: any metadata/search-affecting policy or code change (sensitivity,
+                    # project matcher, FTS format, root path, exclusions) changes the fingerprint, so a row
+                    # last indexed under a DIFFERENT fingerprint is reprocessed rather than skipped (finding).
+                    fp_match = prev is not None and prev.get("fingerprint") == fingerprint
+                    content_valid = stat_match and disp_match and sens_ok
+                    if content_valid and proj_match and fp_match and prev["has_fts"]:
+                        # Fully current for CURRENT policy → fast-skip (stamp last-seen only).
                         unchanged.append(rel)
                         files_unchanged += 1
+                        files_observed += 1
                         report.files_unchanged += 1
+                        report.files_walked += 1
+                        report.scanned += 1
                         report.skipped += 1
-                        last_cursor = cur  # a fast-skip is a resolved observation
+                        last_cursor = cur  # a fast-skip is a resolved, COMMITTED observation
                         continue
-                    # preserve = physically unchanged AND still policy-consistent but needs a metadata/FTS
-                    # REPAIR → keep valid extracted content; else a genuine change/transition clears content.
-                    preserve = bool(consistent)
+                    # preserve = content still valid (stat/disposition/sensitivity ok) and project unchanged,
+                    # but the row needs a metadata/FTS/fingerprint REPAIR → keep extracted content; else a
+                    # genuine change / policy transition clears + rebuilds content.
+                    preserve = bool(content_valid and proj_match)
                     try:
                         outcome = _index_source_metadata(
                             abs_p, root, repo, config, generation_id=gid,
-                            preserve_content=preserve, conn=c, in_transaction=True,
+                            preserve_content=preserve, policy_fingerprint=fingerprint,
+                            raise_on_error=True, conn=c, in_transaction=True,
                         )
-                    except Exception as exc:  # an unresolved upsert error: STOP (cursor held) → retried
+                    except Exception as exc:  # an unresolved stat/upsert error: STOP (cursor held) → retried
                         errors_count += 1
                         report.errors += 1
                         report.error_codes.append(type(exc).__name__)
                         pass_error = True
                         break
-                    if outcome.source_id is not None:
-                        metadata_upserted += 1
-                        report.metadata_upserted += 1
-                        report.indexed += 1
-                        report.indexed_source_ids.append(outcome.source_id)
-                        _tally_disposition(report, outcome.disposition)
-                        # Only a MATERIAL change re-stales generated notes; a preserve repair must not.
-                        if prev is not None and not preserve:
-                            repo._mark_generated_notes_stale(c, outcome.source_id)
-                    last_cursor = cur  # advance ONLY after a fully successful observation
+                    if outcome.source_id is None:
+                        # A metadata observation that produced no source id (second-stat race) is
+                        # INDETERMINATE — suspend without advancing the cursor rather than certify it.
+                        errors_count += 1
+                        report.errors += 1
+                        report.error_codes.append("metadata_no_source_id")
+                        pass_error = True
+                        break
+                    metadata_upserted += 1
+                    files_observed += 1
+                    report.metadata_upserted += 1
+                    report.files_walked += 1
+                    report.scanned += 1
+                    report.indexed += 1
+                    report.indexed_source_ids.append(outcome.source_id)
+                    _tally_disposition(report, outcome.disposition)
+                    # Only a MATERIAL change re-stales generated notes; a preserve repair must not.
+                    if prev is not None and not preserve:
+                        repo._mark_generated_notes_stale(c, outcome.source_id)
+                    last_cursor = cur  # advance ONLY after a fully successful, COMMITTED observation
                 repo.stamp_last_seen(
                     root.source_root_key, unchanged, gid, conn=c, in_transaction=True
                 )
@@ -1197,40 +1256,37 @@ def scan_source_root(
             batch.clear()
 
         try:
+            # ``pass_walked`` counts entries WALKED this pass (drives the per-pass observed bound);
+            # ``files_observed`` counts only COMMITTED observations (incremented in _flush),
+            # so an uncommitted batch suffix retried next pass is never double-counted toward the persisted
+            # counters or the generation ceiling (finding: committed-prefix accounting).
+            pass_walked = 0
             for abs_path, rel_path, cur in walk_generation(
                 root_path, config, cursor=cursor, fanout_limit=fanout
             ):
-                files_observed += 1
-                pass_observed += 1
-                report.files_walked += 1
-                report.scanned += 1
+                pass_walked += 1
                 batch.append((abs_path, rel_path, cur))
-                if len(batch) >= batch_size:
-                    _flush()
-                    now_m = time.monotonic()
-                    if now_m - last_progress >= heartbeat_s:
-                        last_progress = now_m
-                        _emit_progress(rel_path)
+                hit_observed = observed_limit is not None and pass_walked >= int(observed_limit)
+                if len(batch) < batch_size and not hit_observed:
+                    continue
+                # A flush boundary: commit the batch, then evaluate bounds against COMMITTED counters.
+                _flush()
+                now_m = time.monotonic()
+                if now_m - last_progress >= heartbeat_s:
+                    last_progress = now_m
+                    _emit_progress(rel_path)
                 if pass_error:
                     break  # an unresolved file stopped this batch → suspend below (F-03)
-                # Per-pass OBSERVED bound (this pass's walk, counting fast-skips too) → partial.
-                if observed_limit is not None and pass_observed >= observed_limit:
-                    _flush()
-                    if not pass_error:
-                        report.bounded_out = True
-                        report.bounded_reason = "observed_files_per_pass"
+                if hit_observed:  # per-pass OBSERVED bound → partial
+                    report.bounded_out = True
+                    report.bounded_reason = "observed_files_per_pass"
                     break
                 if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
-                    _flush()
-                    if not pass_error:
-                        report.bounded_out = True
-                        report.bounded_reason = "max_seconds"
+                    report.bounded_out = True
+                    report.bounded_reason = "max_seconds"
                     break
-                # Per-generation hard ceiling (cumulative) → no forward progress: FAIL (no reconciliation).
+                # Per-generation hard ceiling (cumulative, COMMITTED) → no forward progress: FAIL.
                 if gen_ceiling is not None and files_observed >= int(gen_ceiling):
-                    _flush()
-                    if pass_error:
-                        break
                     report.error_code = "generation_ceiling"
                     genrepo.fail_generation(
                         gid, run_id, last_error_code="generation_ceiling",
@@ -1369,6 +1425,13 @@ def scan_source_root(
                 if verdict == "absent":
                     resolved.append((sid, rel, "delete", False))
                     continue
+                # A present file that is now EXCLUDED/ignored by CURRENT policy is a POLICY REMOVAL, not a
+                # survivor: a newly-added exclusion prunes it from the walk, so at reconcile it must be
+                # DEACTIVATED from the index (the source file itself is never touched) — otherwise its record
+                # stays active/searchable forever (finding: exclusion changes).
+                if should_ignore(rel, abs_c.name) or is_excluded_source_path(rel, config):
+                    resolved.append((sid, rel, "delete", False))
+                    continue
                 # present survivor: preserve valid content when the file is physically unchanged.
                 try:
                     st = abs_c.stat()
@@ -1377,20 +1440,24 @@ def scan_source_root(
                     break
                 ext = abs_c.suffix.lower().lstrip(".")
                 recomputed = extraction_disposition(ext, st.st_size, config)
-                cur_pk, _num, _conf = match_path_to_project(rel)
+                cur_pk, cur_num, _conf = match_path_to_project(rel)
                 p = repo.load_metadata_state_batch(root.source_root_key, [rel]).get(rel)
                 stat_match = (
                     p is not None and p["mtime"] == st.st_mtime_ns and p["size"] == st.st_size
                 )
                 disp_match = p is not None and p["disposition"] == recomputed
-                proj_match = p is not None and p.get("project_key") == cur_pk
+                proj_match = (
+                    p is not None
+                    and p.get("project_key") == cur_pk
+                    and p.get("project_number") == cur_num
+                )
+                mode = p.get("content_mode") if p is not None else "none"
+                sensitive = bool(getattr(root, "sensitive", False))
                 sens_ok = not (
-                    bool(getattr(root, "sensitive", False))
-                    and p is not None
-                    and p.get("content_searchable")
+                    (sensitive and mode == "plain") or ((not sensitive) and mode == "vault")
                 )
                 # A survivor is content-preserved only when it is still fully policy-consistent; a project
-                # re-route or an owed sensitivity re-secure forces a full replace (findings 1 & 2).
+                # re-route or an owed sensitivity re-secure (either direction) forces a full replace.
                 preserve = bool(stat_match and disp_match and proj_match and sens_ok)
                 resolved.append((sid, rel, "refresh", preserve))
             if resolved:
@@ -1405,10 +1472,15 @@ def scan_source_root(
                             # generation is left reconcile_pending (never certified complete with an
                             # unresolved survivor). A bare last-seen stamp is forbidden — a full upsert
                             # (content preserved when unchanged) is the only thing that clears the candidate.
-                            _index_source_metadata(
+                            # raise_on_error + a None-guard mean a second-stat race here never silently
+                            # advances the reconcile cursor past an unresolved survivor.
+                            out = _index_source_metadata(
                                 root_path / rel, root, repo, config, generation_id=gid,
-                                preserve_content=preserve, conn=c, in_transaction=True,
+                                preserve_content=preserve, policy_fingerprint=fingerprint,
+                                raise_on_error=True, conn=c, in_transaction=True,
                             )
+                            if out.source_id is None:
+                                raise RuntimeError("survivor_refresh_no_source_id")
                     affected = genrepo.advance_reconcile_cursor(
                         gid, run_id, reconcile_cursor_json=json.dumps({"after": resolved[-1][0]}),
                         conn=c, in_transaction=True, deleted_count=deleted_count,

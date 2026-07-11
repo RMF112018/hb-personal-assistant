@@ -77,7 +77,7 @@ def source_index_health(
     # is read ONLY for its heartbeat timestamp (never cwd/db_path).
     bstate = SourceIndexBootstrapRepository(str(repo.db_path))
     bootstrap_by_root = {b["root_key"]: b for b in bstate.list_bootstrap_state()}
-    # V120 durable generation truth per root (latest by start): completeness/readiness must derive from a
+    # V122 durable generation truth per root (latest by start): completeness/readiness must derive from a
     # COMPLETED metadata walk (+ reconciliation), NOT the legacy all-or-nothing bootstrap-run status — a
     # failed/abandoned/running generation must never read as "complete".
     genrepo = SourceIndexScanGenerationsRepository(str(repo.db_path))
@@ -124,7 +124,7 @@ def source_index_health(
         )
         # Real, index-scoped extraction breakdown for THIS root (never derived from fts_available, which
         # is an all-or-nothing table-existence proxy). content_searchable requires nonempty text;
-        # metadata_searchable = has a path/project FTS row (V120 path-FTS invariant).
+        # metadata_searchable = has a path/project FTS row (V122 path-FTS invariant).
         try:
             counts = repo.content_status_counts(key, conn=conn)
         except Exception:  # noqa: BLE001 — health must never fail on a count query
@@ -158,11 +158,11 @@ def source_index_health(
 
         file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
         gen_row = latest_generation_by_root.get(key)
-        # Metadata completeness is REPORTED SEPARATELY from content completeness (V120): a metadata-first
+        # Metadata completeness is REPORTED SEPARATELY from content completeness (V122): a metadata-first
         # root can be fully metadata-indexed (searchable by path) with zero content extracted. Completeness
-        # derives from DURABLE GENERATION TRUTH when a V120 generation exists — the metadata WALK must have
+        # derives from DURABLE GENERATION TRUTH when a V122 generation exists — the metadata WALK must have
         # completed on a non-failed/non-abandoned generation; a failed/abandoned/running/partial generation
-        # is NOT complete. Roots with no V120 generation yet fall back to the legacy bootstrap status.
+        # is NOT complete. Roots with no V122 generation yet fall back to the legacy bootstrap status.
         if gen_row is not None:
             # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
             # sweep found indeterminate candidates (potential phantom rows still in the index), so its
@@ -170,7 +170,7 @@ def source_index_health(
             reconciliation_done = gen_row.get("status") == "completed"
             metadata_walk_done = reconciliation_done
         else:
-            # Legacy fallback (root with no V120 generation): accept ONLY the explicit success sentinel
+            # Legacy fallback (root with no V122 generation): accept ONLY the explicit success sentinel
             # ("bootstrapped"). Any other value ("partial"/"conflict"/"failed"/None) is NOT complete
             # (finding 5) — the prior ``!= "partial"`` wrongly certified conflict/failed/unknown as done.
             metadata_walk_done = file_index_status == "bootstrapped"
@@ -193,17 +193,17 @@ def source_index_health(
             content_completeness_state = "partial"
         else:
             content_completeness_state = "complete"
-        # Watcher readiness (V120): for a root the new architecture tracks, readiness is a COMPLETED
+        # Watcher readiness (V122): for a root the new architecture tracks, readiness is a COMPLETED
         # metadata+reconciliation generation AND structure truth (a folder map present) — NOT the persisted
         # legacy readiness bit, which could read ready off a partial/legacy bootstrap (finding 5). Roots
-        # with no V120 generation yet fall back to the legacy bit.
+        # with no V122 generation yet fall back to the legacy bit.
         legacy_watcher_ready = bool((bootstrap_by_root.get(key) or {}).get("watcher_ready"))
         if gen_row is not None:
             watcher_ready = bool(reconciliation_done and folder_count > 0)
         else:
             watcher_ready = legacy_watcher_ready
         # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
-        # map — not merely a bare row count (V120).
+        # map — not merely a bare row count (V122).
         safe_for_path_lookup = counts.get("metadata_searchable", 0) > 0 or folder_count > 0
         if content_completeness_state == "complete" and state in ("fresh", "degraded"):
             safe_for_content_answering = "complete"
@@ -260,7 +260,7 @@ def source_index_health(
                     "file_index_bootstrapped")),
                 "structure_index_bootstrapped": bool((bootstrap_by_root.get(key) or {}).get(
                     "structure_index_bootstrapped")),
-                # V120-derived when a generation exists (completed reconciliation + folder map), else legacy.
+                # V122-derived when a generation exists (completed reconciliation + folder map), else legacy.
                 "watcher_ready": watcher_ready,
             },
             "run_state": _run_state(config, watcher_ready, backend_available),

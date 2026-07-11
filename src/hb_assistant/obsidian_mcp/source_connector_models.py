@@ -22,7 +22,7 @@ from typing import Any
 
 from .memory_models import bound_text, sha256_hex
 
-# Split versions (V120): the source-REFERENCE checksum version and the pagination-CURSOR version are
+# Split versions (V122): the source-REFERENCE checksum version and the pagination-CURSOR version are
 # distinct so ranking/candidate changes invalidate outstanding cursors WITHOUT invalidating stored source
 # references. SOURCE_REF_VERSION keeps its original string so existing refs remain valid; only
 # SOURCE_CURSOR_VERSION advances (weighted BM25 + metadata-only path candidates changed the ordering).
@@ -235,7 +235,7 @@ def shape_source_file(row: dict[str, Any], *, snippet: str | None = None,
         "extension": (str(ext).lower().lstrip(".") if ext else None),
         "mime_type": mime_for_ext(ext),
     }
-    # V120 result shaping (additive): why the row matched + whether it carries extracted content, so a
+    # V122 result shaping (additive): why the row matched + whether it carries extracted content, so a
     # client distinguishes a path/filename/project match from a content match and never treats a path-only
     # hit as "no content available by mistake". Present only when the search layer supplied them.
     for key in ("match_basis", "indexed_text_available", "extraction_status", "extraction_disposition"):

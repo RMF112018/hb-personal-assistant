@@ -193,7 +193,7 @@ class ObsidianMcpConfig(BaseModel):
     # (SIGKILL/OOM) and reaped to "abandoned".
     source_index_bootstrap_heartbeat_seconds: float = 10.0
     source_index_bootstrap_stale_run_seconds: float = 120.0
-    # Metadata-first scan generations (PR 2 / V120). Three SEPARATE bounds: the metadata batch commit
+    # Metadata-first scan generations (PR 2 / V122). Three SEPARATE bounds: the metadata batch commit
     # size (cursor + metadata advance atomically per batch), the per-pass OBSERVED-file limit (counts
     # every walked entry, changed or fast-skipped — so an all-unchanged large root still bounds out),
     # and an optional per-generation hard ceiling (a no-forward-progress backstop: hitting it FAILS the
@@ -206,7 +206,7 @@ class ObsidianMcpConfig(BaseModel):
     # (directory_fanout_limit) rather than requiring an unbounded in-memory sort — and FAILS the
     # generation (no reconciliation) rather than looping as a partial.
     source_index_directory_fanout_limit: int = 20000
-    # Empty-root / lost-mount blast-radius guard (V120 F-01): if a generation observes ZERO files yet the
+    # Empty-root / lost-mount blast-radius guard (V122 F-01): if a generation observes ZERO files yet the
     # index still holds MORE THAN this many active rows for the root, the root most likely vanished (share
     # unmounted / empty mountpoint) — reconciliation would mass-delete valid records, so it fails closed
     # (empty_root_guard) and an operator must confirm. A genuine emptying at or below this count still

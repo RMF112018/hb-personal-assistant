@@ -48,12 +48,12 @@ def _cfg(root_dir: Path, **overrides) -> ObsidianMcpConfig:
     return base.model_copy(update=overrides) if overrides else base
 
 
-# ----- V120 migration: additive, idempotent, no full FTS rebuild --------------------------------
+# ----- V122 migration: additive, idempotent, no full FTS rebuild --------------------------------
 def test_v120_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 120
+    assert v1 == v2 == 122
     conn = sqlite3.connect(db)
     gcols = {r[1] for r in conn.execute("PRAGMA table_info(source_index_scan_generations)")}
     scols = {r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)")}
