@@ -155,6 +155,18 @@ def source_index_health(
                 "unsupported": 0,
                 "too_large": 0,
             }
+        gen_row = latest_generation_by_root.get(key)
+        # POLICY-STALE gate (finding 2): a completed generation whose stored fingerprint no longer matches
+        # the configured root (a sensitivity / exclusion / root-path / matcher / indexing-policy change) may
+        # be serving plaintext-when-now-sensitive rows or rows for newly-excluded content, so EVERY trust
+        # output — client answering, path lookup, content answering, and the diagnostic summary — must fail
+        # closed until the corrective generation runs, not only metadata completeness + watcher readiness. A
+        # root with no V122 generation (legacy fallback) has no fingerprint to compare → not policy-stale.
+        current_fp = configured_fp_by_root.get(key)
+        policy_current = (
+            gen_row is None or current_fp is None or gen_row.get("policy_fingerprint") == current_fp
+        )
+        policy_stale = gen_row is not None and not policy_current
         layers = {
             "folder_layer_populated": folder_count > 0,
             "metadata_layer_populated": file_count > 0,
@@ -162,10 +174,17 @@ def source_index_health(
             "content_layer_populated": counts.get("content_searchable", 0) > 0,
             "metadata_search_layer_populated": counts.get("metadata_searchable", 0) > 0,
         }
-        safe = state in ("fresh", "degraded") and (
-            layers["metadata_layer_populated"] or layers["folder_layer_populated"]
+        safe = (
+            not policy_stale
+            and state in ("fresh", "degraded")
+            and (layers["metadata_layer_populated"] or layers["folder_layer_populated"])
         )
         summary_bits = []
+        if policy_stale:
+            summary_bits.append(
+                "indexing policy changed since the last completed scan — reindex required; "
+                "not safe for answering until the corrective scan completes"
+            )
         if not layers["folder_layer_populated"]:
             summary_bits.append("folder map empty — run source-structure ingest")
         if not layers["metadata_layer_populated"]:
@@ -182,7 +201,6 @@ def source_index_health(
             )
 
         file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
-        gen_row = latest_generation_by_root.get(key)
         # Metadata completeness is REPORTED SEPARATELY from content completeness (V122): a metadata-first
         # root can be fully metadata-indexed (searchable by path) with zero content extracted. Completeness
         # derives from DURABLE GENERATION TRUTH when a V122 generation exists — the metadata WALK must have
@@ -192,11 +210,8 @@ def source_index_health(
             # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
             # sweep found indeterminate candidates (potential phantom rows still in the index), so its
             # metadata set is NOT certifiably complete — it must read partial, not complete (finding 5).
-            # AND the completed generation must match CURRENT policy: a fingerprint mismatch (sensitivity /
-            # exclusion / root-path / matcher / indexing-policy change) means the completion is stale, so it
-            # reads partial and watcher-not-ready until the corrective generation runs (round-5 finding 4).
-            current_fp = configured_fp_by_root.get(key)
-            policy_current = current_fp is None or gen_row.get("policy_fingerprint") == current_fp
+            # AND it must match CURRENT policy: a fingerprint mismatch (``policy_stale`` above) means the
+            # completion is stale, so it reads partial and watcher-not-ready until the corrective run.
             reconciliation_done = gen_row.get("status") == "completed" and policy_current
             metadata_walk_done = reconciliation_done
         else:
@@ -231,9 +246,15 @@ def source_index_health(
         else:
             watcher_ready = legacy_watcher_ready
         # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
-        # map — not merely a bare row count (V122).
-        safe_for_path_lookup = counts.get("metadata_searchable", 0) > 0 or folder_count > 0
-        if content_completeness_state == "complete" and state in ("fresh", "degraded"):
+        # map — not merely a bare row count (V122) — AND the completion matches current policy (finding 2:
+        # a policy-stale root may index newly-excluded paths, so path lookup fails closed too).
+        safe_for_path_lookup = (not policy_stale) and (
+            counts.get("metadata_searchable", 0) > 0 or folder_count > 0
+        )
+        if policy_stale:
+            # A policy-stale generation may serve plaintext-when-now-sensitive content → fail closed.
+            safe_for_content_answering = "none"
+        elif content_completeness_state == "complete" and state in ("fresh", "degraded"):
             safe_for_content_answering = "complete"
         elif counts["content_searchable"] > 0 and state in ("fresh", "degraded"):
             safe_for_content_answering = "partial"

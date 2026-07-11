@@ -975,6 +975,24 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
     conn.close()
     assert SQLiteMigrator(db_path=db).apply() == 122  # idempotent re-run
 
+    # Seed REPRESENTATIVE V120/V121 manifest DATA (not just the migration markers) so the "prior manifest
+    # data survives" claim is proven against real rows: a manifest carrying the V121 gateway_allowlist_json
+    # column and a classified entry carrying the V120 tool_class column.
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO pa_client_tool_manifests (manifest_id,manifest_version,manifest_status,"
+        "generated_at,tool_count,workflow_count,mapping_count,staleness_state,checksum,created_at,"
+        "updated_at,manifest_schema_version,gateway_allowlist_json) "
+        "VALUES ('m1','v1','active','t',1,0,0,'fresh','x','t','t',1,'[\"nas.read\"]')"
+    )
+    conn.execute(
+        "INSERT INTO pa_tool_manifest_entries (manifest_entry_id,manifest_id,tool_name,tool_class,"
+        "safety_class,read_write_class) VALUES ('e1','m1','nas.read','read_only_retrieval',"
+        "'safe_read','read_only')"
+    )
+    conn.commit()
+    conn.close()
+
     # GENUINE incremental V121→V122: reduce a migrated DB to a real V121 shape — DROP the v122 marker, the
     # generations table, the reconciliation index, AND every v122-added column (sqlite 3.35+ DROP COLUMN) —
     # then re-apply and prove v122 actually recreates the table, index, all six columns, and the marker
@@ -1013,7 +1031,20 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
         for r in conn.execute(
             "SELECT version FROM schema_migrations WHERE version IN (120,121,122)"
         )
-    } == {120, 121, 122}  # prior manifest data survives + v122 marker rewritten
+    } == {120, 121, 122}  # v122 marker rewritten; 120/121 markers intact
+    # The stronger claim: representative V120/V121 manifest ROWS survive the V122 reapply untouched.
+    assert (
+        conn.execute(
+            "SELECT gateway_allowlist_json FROM pa_client_tool_manifests WHERE manifest_id='m1'"
+        ).fetchone()[0]
+        == '["nas.read"]'
+    )  # V121 column value preserved
+    assert (
+        conn.execute(
+            "SELECT tool_class FROM pa_tool_manifest_entries WHERE manifest_entry_id='e1'"
+        ).fetchone()[0]
+        == "read_only_retrieval"
+    )  # V120 classification preserved
     conn.close()
 
 
@@ -1417,6 +1448,13 @@ def test_health_stale_when_generation_fingerprint_mismatches_policy(tmp_path):
         "stale completion must not read complete"
     )
     assert work2["bootstrap"]["watcher_ready"] is False
+    # ALL trust outputs must fail closed on a policy-stale generation, not only completeness + watcher
+    # readiness (round-6 blocker 2): a stale plain-root generation could otherwise still advertise safe
+    # answering / path lookup / partially-usable content.
+    assert work2["safe_for_client_answering"] is False
+    assert work2["safe_for_path_lookup"] is False
+    assert work2["safe_for_content_answering"] == "none"
+    assert "policy changed" in (work2["diagnostic_summary"] or "").lower()
 
 
 def test_abandon_is_ownership_fenced(tmp_path):
@@ -1470,3 +1508,194 @@ def test_scan_reports_conflict_when_abandon_loses_lease(tmp_path):
     rep = si.scan_source_root(r, repo, _cfg(root_dir), genrepo=_LostAbandon(db))
     assert rep.generation_status == "conflict"
     assert rep.error_code == "lease_lost"
+
+
+# ===== Round 6 =====================================================================================
+# no-auto-retry of no-forward-progress failures, all-trust-outputs fail-closed on policy-stale,
+# project-reroute re-stales generated cards, transient-I/O-during-validation suspends (not abandons).
+
+
+def _gen_count(db, root_key="work"):
+    return (
+        sqlite3.connect(db)
+        .execute("SELECT COUNT(*) FROM source_index_scan_generations WHERE root_key=?", (root_key,))
+        .fetchone()[0]
+    )
+
+
+def test_failed_high_fanout_not_auto_retried_until_policy_change(tmp_path):
+    """A no-forward-progress FAILED generation (high fanout) must NOT be silently re-created every scheduled
+    pass: repeated unchanged scans stay blocked (failed + restart_required, no new generation). A relevant
+    config change (raising the fanout limit → new fingerprint) recovers automatically (blocker 1)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(30):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_directory_fanout_limit=10)
+
+    rep1 = si.scan_source_root(r, repo, cfg)
+    assert rep1.generation_status == "failed"
+    assert rep1.error_code == "directory_fanout_limit"
+    n = _gen_count(db)
+
+    for _ in range(3):  # repeated UNCHANGED scans must not create+fail a new generation each time
+        rep = si.scan_source_root(r, repo, cfg)
+        assert rep.generation_status == "failed"
+        assert "restart_required" in rep.error_codes
+    assert _gen_count(db) == n, "an unchanged high-fanout failure must not spawn new generations"
+
+    # CONFIG-CHANGE recovery: raising the fanout limit changes the fingerprint → a fresh generation runs.
+    cfg2 = _cfg(root_dir, source_index_directory_fanout_limit=100)
+    rep_ok = _run_to_completion(r, repo, cfg2)
+    assert rep_ok.generation_status == "completed"
+    assert _gen_count(db) > n, "a relevant config change must lift the no-retry block"
+
+
+def test_failed_generation_explicit_restart_attempts_fresh(tmp_path):
+    """An explicit operator restart bypasses the no-retry block and attempts a FRESH generation (which may
+    itself fail under the same config) — distinct from the silently-suppressed auto-retry (blocker 1)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(30):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_directory_fanout_limit=10)
+
+    assert si.scan_source_root(r, repo, cfg).generation_status == "failed"
+    n = _gen_count(db)
+    assert (
+        "restart_required" in si.scan_source_root(r, repo, cfg).error_codes
+    )  # blocked without restart
+
+    rep_restart = si.scan_source_root(r, repo, cfg, restart=True)
+    assert rep_restart.generation_status == "failed"  # attempts again, fails under the same config
+    assert "restart_required" not in rep_restart.error_codes  # it ATTEMPTED — was not suppressed
+    assert _gen_count(db) == n + 1, "an explicit restart creates a fresh generation attempt"
+
+
+def test_project_reroute_restales_generated_note(tmp_path, monkeypatch):
+    """A project re-route (matcher change, same file bytes) is a MATERIAL derived-state change: content is
+    preserved but the generated card — which persists project_key/number/tags — must be re-staled, even
+    though the fast-skip is only defeated by the project mismatch (blocker 3, walk path)."""
+    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
+
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    f = root_dir / "plan.txt"
+    f.write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+
+    monkeypatch.setattr(si, "match_path_to_project", lambda rel: ("24-100-00", "24-100-00", "high"))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    sid = source_id_for("external_file", source_root_key="work", rel_path="plan.txt")
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "INSERT INTO source_intelligence_generated_notes "
+        "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+        "VALUES ('n1', ?, 'cards/plan.md', 'generated', 't', 't')",
+        (sid,),
+    )
+    conn.commit()
+    conn.close()
+
+    # Re-route to a DIFFERENT project (same file content) → content preserved, but the card is now stale.
+    monkeypatch.setattr(si, "match_path_to_project", lambda rel: ("24-200-00", "24-200-00", "high"))
+    _run_to_completion(r, repo, _cfg(root_dir))
+    status = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?",
+            (sid,),
+        )
+        .fetchone()[0]
+    )
+    assert status == "stale", (
+        "a project re-route must re-stale the generated card even under preserve"
+    )
+
+
+def test_transient_io_during_cursor_validation_suspends_not_abandons(tmp_path, monkeypatch):
+    """A transient directory read error WHILE validating a resumed cursor is not cursor corruption: the
+    generation must SUSPEND to partial with the cursor PRESERVED (retried next pass), never abandon and
+    restart from root (blocker 4)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for n in ("a.txt", "b.txt", "c.txt"):
+        (root_dir / n).write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_scan_observed_files_per_pass=1)
+
+    rep1 = si.scan_source_root(r, repo, cfg)
+    assert rep1.generation_status == "partial"  # bounded → a cursor is persisted
+    gid = rep1.generation_id
+    cursor_before = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT cursor_json FROM source_index_scan_generations WHERE generation_id=?", (gid,)
+        )
+        .fetchone()[0]
+    )
+    assert cursor_before
+
+    def _raise_io(*a, **k):
+        raise si.DirectoryReadError("transient")
+
+    monkeypatch.setattr(si, "_scandir_sorted", _raise_io)
+    rep2 = si.scan_source_root(r, repo, cfg)
+    assert rep2.generation_status == "partial", (
+        "transient I/O during validation must suspend, not abandon"
+    )
+    assert rep2.error_code == "cursor_validation_io_error"
+    row = (
+        sqlite3.connect(db)
+        .execute(
+            "SELECT status, cursor_json FROM source_index_scan_generations WHERE generation_id=?",
+            (gid,),
+        )
+        .fetchone()
+    )
+    assert row[0] == "partial"
+    assert row[1] == cursor_before, "the cursor must be preserved for retry, not cleared/abandoned"
+
+    monkeypatch.undo()
+    assert _run_to_completion(r, repo, cfg).generation_status == "completed"
+
+
+def test_fanout_during_cursor_validation_fails(tmp_path, monkeypatch):
+    """A fanout violation surfaced WHILE validating a resumed cursor has its own terminal classification:
+    the generation FAILS with directory_fanout_limit (not abandon, not partial) (blocker 4)."""
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for n in ("a.txt", "b.txt", "c.txt"):
+        (root_dir / n).write_text("x")
+    db = _db(tmp_path)
+    repo = SourceIndexRepository(db)
+    r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
+    cfg = _cfg(root_dir, source_index_scan_observed_files_per_pass=1)
+
+    rep1 = si.scan_source_root(r, repo, cfg)
+    assert rep1.generation_status == "partial"
+    gid = rep1.generation_id
+
+    def _raise_fanout(*a, **k):
+        raise si.DirectoryFanoutError("", 99999)
+
+    monkeypatch.setattr(si, "_scandir_sorted", _raise_fanout)
+    rep2 = si.scan_source_root(r, repo, cfg)
+    assert rep2.generation_status == "failed"
+    assert rep2.error_code == "directory_fanout_limit"
+    st = (
+        sqlite3.connect(db)
+        .execute("SELECT status FROM source_index_scan_generations WHERE generation_id=?", (gid,))
+        .fetchone()[0]
+    )
+    assert st == "failed"

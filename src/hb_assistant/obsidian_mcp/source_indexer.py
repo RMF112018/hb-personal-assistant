@@ -956,6 +956,16 @@ def _policy_fingerprint(
         "metadata_only": sorted(getattr(config, "source_index_metadata_only_file_types", []) or []),
         "unsupported": sorted(getattr(config, "source_index_unsupported_file_types", []) or []),
         "max_file_mb": int(getattr(config, "max_file_mb", 100)),
+        # The bounds that GOVERN no-forward-progress failures (high-fanout cap, per-generation ceiling) are
+        # part of the policy: raising them is the operator's "relevant policy change" that lifts a failed
+        # generation's no-auto-retry block (round-6 finding 1) — the changed fingerprint starts a fresh
+        # generation instead of re-failing the old one every pass.
+        "fanout_limit": int(getattr(config, "source_index_directory_fanout_limit", 20000)),
+        "generation_ceiling": (
+            int(config.source_index_generation_max_files)
+            if getattr(config, "source_index_generation_max_files", None) is not None
+            else None
+        ),
         "parser_optin": bool(
             getattr(config, "source_index_enable_synchronous_parser_extraction", False)
         ),
@@ -1005,7 +1015,11 @@ def _validate_cursor(
     deepest anchor is a FILE (a yielded entry). Without the semantic check a forged anchor (``after`` naming
     a non-existent or later entry, or the deepest anchor naming a directory) could make ``_resume_frame``
     skip real entries / an entire subtree and reach ``completed`` with false metadata completeness. Any
-    violation ⇒ the caller ABANDONS the generation (no reconciliation) and restarts from the root.
+    STRUCTURAL/SEMANTIC violation ⇒ returns ``False`` ⇒ the caller ABANDONS the generation (no
+    reconciliation) and restarts from the root. The semantic check re-lists each frame's directory, so it
+    may raise :class:`DirectoryReadError` (transient I/O — the caller SUSPENDS to ``partial``, cursor
+    preserved) or :class:`DirectoryFanoutError` (the caller FAILS the generation); these are NOT cursor
+    corruption and must not be flattened into ``False``.
     """
     if cursor is None:
         return True
@@ -1088,10 +1102,11 @@ def _validate_cursor(
         # SEMANTIC anchor check: ``after`` must be an ACTUAL entry of this directory (else resuming past it
         # would skip real entries), an intermediate anchor must be a DIRECTORY (the descended child) and the
         # deepest anchor must be a FILE (a yielded entry — a directory here would skip its whole subtree).
-        try:
-            entries = _scandir_sorted(abs_dir, root, config, fanout)
-        except (DirectoryReadError, DirectoryFanoutError):
-            return False  # cannot verify the anchor → treat as invalid (restart from root is safe)
+        # DirectoryReadError (transient I/O) and DirectoryFanoutError PROPAGATE to the caller: a transient
+        # NAS read failure is not cursor corruption (→ suspend, preserve cursor) and a fanout violation has
+        # its own terminal classification (→ fail). Only a STRUCTURALLY/SEMANTICALLY invalid cursor returns
+        # False here (→ abandon). Conflating the three into "invalid" wrongly abandons on transient I/O.
+        entries = _scandir_sorted(abs_dir, root, config, fanout)
         is_dir_by_name = {name: is_dir for (_k, name, _a, _r, is_dir, _s) in entries}
         if after not in is_dir_by_name:
             return False
@@ -1150,6 +1165,7 @@ def scan_source_root(
     bstate: Any = None,  # SourceIndexBootstrapRepository
     run_id: str | None = None,
     mode: str = "bootstrap",
+    restart: bool = False,
 ) -> ScanReport:
     """METADATA-FIRST, generation-driven, resumable walk of one root. NEVER called from a request handler.
 
@@ -1200,11 +1216,22 @@ def scan_source_root(
         traversal_version=tv,
         mode=mode,
         stale_lease_seconds=stale,
+        restart=restart,
     )
     if gen is None:
         report.conflict = True
         report.generation_status = "conflict"
         report.error_code = "active_run_conflict"
+        return report
+    if gen.get("blocked"):
+        # The latest generation FAILED with a no-forward-progress code (high-fanout / ceiling) under the
+        # current policy: no new generation was created. Recovery needs a policy/config change (changes the
+        # fingerprint) or an explicit restart — do NOT walk, do NOT reconcile, do NOT open a V119 pass.
+        report.generation_id = gen["generation_id"]
+        report.generation_status = "failed"
+        report.error_code = gen.get("last_error_code") or "restart_required"
+        report.error_codes.append(report.error_code)
+        report.error_codes.append("restart_required")
         return report
     gid = gen["generation_id"]
     report.generation_id = gid
@@ -1271,26 +1298,54 @@ def scan_source_root(
             else:
                 cursor_decode_ok = False
 
-    # Validate a resumed cursor BEFORE walking (V122 §5): a malformed/escaping/renamed cursor ABANDONS the
-    # generation (no reconciliation) and the next pass restarts from root — never silently walk a broken or
-    # out-of-root tree (which could drive a false deletion at reconcile time). The abandon is lease-fenced:
-    # cursor validation touches the filesystem, so a lease could expire + be taken over during it — a 0
-    # rowcount means we lost ownership and must NOT abandon the new owner's generation (close as conflict).
-    if not walk_complete and (
-        not cursor_decode_ok or not _validate_cursor(cursor, root_path, config, fanout)
-    ):
-        if genrepo.abandon_generation(gid, run_id, last_error_code="invalid_cursor") == 0:
-            report.conflict = True
-            report.generation_status = "conflict"
-            report.error_code = "lease_lost"
-            report.error_codes.append("lease_lost")
+    # Validate a resumed cursor BEFORE walking (V122 §5). Outcomes are distinct (finding 4): a malformed /
+    # escaping / renamed cursor is genuine corruption ⇒ ABANDON (no reconciliation, restart from root); a
+    # transient directory read error during validation is NOT corruption ⇒ SUSPEND to partial with the
+    # cursor PRESERVED (retried next pass); a fanout violation ⇒ FAIL with its own terminal classification.
+    # The abandon is lease-fenced: cursor validation touches the filesystem, so a lease could expire + be
+    # taken over during it — a 0 rowcount means we lost ownership and must NOT abandon the new owner's
+    # generation (close as conflict).
+    if not walk_complete:
+        cursor_valid = cursor_decode_ok
+        if cursor_decode_ok:
+            try:
+                cursor_valid = _validate_cursor(cursor, root_path, config, fanout)
+            except DirectoryFanoutError:
+                report.error_code = "directory_fanout_limit"
+                report.error_codes.append("directory_fanout_limit")
+                genrepo.fail_generation(gid, run_id, last_error_code="directory_fanout_limit")
+                report.generation_status = "failed"
+                _finish_v119("failed")
+                return report
+            except DirectoryReadError:
+                # Transient permission / I/O / stale-NAS-handle error while re-listing to verify an anchor —
+                # preserve the SAME cursor and suspend so the next pass retries from the same checkpoint.
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=cursor_raw,
+                    last_error_code="cursor_validation_io_error",
+                )
+                report.error_code = "cursor_validation_io_error"
+                report.error_codes.append("cursor_validation_io_error")
+                report.bounded_out = True
+                report.bounded_reason = "cursor_validation_io_error"
+                report.generation_status = "partial"
+                _finish_v119("partial")
+                return report
+        if not cursor_valid:
+            if genrepo.abandon_generation(gid, run_id, last_error_code="invalid_cursor") == 0:
+                report.conflict = True
+                report.generation_status = "conflict"
+                report.error_code = "lease_lost"
+                report.error_codes.append("lease_lost")
+                _finish_v119("interrupted")
+                return report
+            report.error_code = "invalid_cursor"
+            report.error_codes.append("invalid_cursor")
+            report.generation_status = "abandoned"
             _finish_v119("interrupted")
             return report
-        report.error_code = "invalid_cursor"
-        report.error_codes.append("invalid_cursor")
-        report.generation_status = "abandoned"
-        _finish_v119("interrupted")
-        return report
 
     # ---- Phase 1: metadata walk (skipped if the generation already completed its walk) ----
     if not walk_complete:
@@ -1412,8 +1467,12 @@ def scan_source_root(
                     report.indexed += 1
                     report.indexed_source_ids.append(outcome.source_id)
                     _tally_disposition(report, outcome.disposition)
-                    # Only a MATERIAL change re-stales generated notes; a preserve repair must not.
-                    if prev is not None and not preserve:
+                    # Re-stale generated notes on any MATERIAL derived-state change. Content preservation is
+                    # separate from material change: a preserve repair that only rebuilds FTS/fingerprint must
+                    # NOT re-stale, but a PROJECT RE-ROUTE is material even under preserve — a source card
+                    # persists project_key/number + project/<number> tags, so a re-route leaves the card
+                    # showing obsolete project metadata unless it is re-staled (finding 3).
+                    if prev is not None and (not preserve or not proj_match):
                         repo._mark_generated_notes_stale(c, outcome.source_id)
                     last_cursor = (
                         cur  # advance ONLY after a fully successful, COMMITTED observation
@@ -1634,7 +1693,8 @@ def scan_source_root(
             )
             if not cands:
                 break
-            resolved: list[tuple[str, str, str, bool]] = []  # (sid, rel, action, preserve)
+            # (sid, rel, action, preserve, restale_notes)
+            resolved: list[tuple[str, str, str, bool, bool]] = []
             blocked = False
             for sid, rel in cands:
                 abs_c = root_path / rel
@@ -1643,14 +1703,14 @@ def scan_source_root(
                     blocked = True
                     break
                 if verdict == "absent":
-                    resolved.append((sid, rel, "delete", False))
+                    resolved.append((sid, rel, "delete", False, False))
                     continue
                 # A present file that is now EXCLUDED/ignored by CURRENT policy is a POLICY REMOVAL, not a
                 # survivor: a newly-added exclusion prunes it from the walk, so at reconcile it must be
                 # DEACTIVATED from the index (the source file itself is never touched) — otherwise its record
                 # stays active/searchable forever (finding: exclusion changes).
                 if should_ignore(rel, abs_c.name) or is_excluded_source_path(rel, config):
-                    resolved.append((sid, rel, "delete", False))
+                    resolved.append((sid, rel, "delete", False, False))
                     continue
                 # present survivor: preserve valid content when the file is physically unchanged.
                 try:
@@ -1666,7 +1726,14 @@ def scan_source_root(
                 )
                 disp_match = p is not None and p["disposition"] == recomputed
                 # A project re-route (key/number change) does NOT block preserve — preserve rebuilds the
-                # project relationship authoritatively — so project match is intentionally not checked here.
+                # project relationship authoritatively — but it IS a MATERIAL derived-state change, so the
+                # generated card must be re-staled even under preserve (finding 3), same as the walk path.
+                cur_pk, cur_num, _conf = match_path_to_project(rel)
+                proj_match = (
+                    p is not None
+                    and p.get("project_key") == cur_pk
+                    and p.get("project_number") == cur_num
+                )
                 mode = p.get("content_mode") if p is not None else "none"
                 sensitive = bool(getattr(root, "sensitive", False))
                 sens_ok = not (
@@ -1676,10 +1743,11 @@ def scan_source_root(
                 # fingerprint change is rebuilt authoritatively by preserve, and only an owed sensitivity
                 # re-secure or a disposition flip forces a content-clearing replace.
                 preserve = bool(stat_match and disp_match and sens_ok)
-                resolved.append((sid, rel, "refresh", preserve))
+                restale = (not preserve) or (not proj_match)
+                resolved.append((sid, rel, "refresh", preserve, restale))
             if resolved:
                 with open_connection(repo.db_path) as c, transaction(c):
-                    for sid, rel, action, preserve in resolved:
+                    for sid, rel, action, preserve, restale in resolved:
                         if action == "delete":
                             repo.mark_deleted_by_source_id(sid, conn=c, in_transaction=True)
                             deleted_count += 1
@@ -1705,6 +1773,10 @@ def scan_source_root(
                             )
                             if out.source_id is None:
                                 raise RuntimeError("survivor_refresh_no_source_id")
+                            # Material derived-state change on a survivor (content replaced, or project
+                            # re-routed even under preserve) re-stales its generated card (finding 3).
+                            if restale:
+                                repo._mark_generated_notes_stale(c, out.source_id)
                     affected = genrepo.advance_reconcile_cursor(
                         gid,
                         run_id,

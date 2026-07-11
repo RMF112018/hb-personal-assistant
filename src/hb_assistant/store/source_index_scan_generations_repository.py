@@ -43,6 +43,14 @@ _GEN_COUNTER_COLUMNS: frozenset[str] = frozenset(
     {"files_observed", "metadata_upserted", "files_unchanged", "errors_count", "deleted_count"}
 )
 
+# Terminal ``failed`` error codes that signal NO FORWARD PROGRESS under the current config: the plan's
+# lifecycle contract requires a relevant policy/configuration change or an explicit operator restart before
+# a new generation may start — an unchanged high-fanout directory or generation ceiling must NOT silently
+# create + fail a fresh generation on every scheduled pass. Any OTHER failure code auto-retries normally.
+_NO_PROGRESS_ERROR_CODES: frozenset[str] = frozenset(
+    {"directory_fanout_limit", "generation_ceiling"}
+)
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -157,13 +165,23 @@ class SourceIndexScanGenerationsRepository:
         traversal_version: int = 1,
         mode: str = "bootstrap",
         stale_lease_seconds: float = 120.0,
+        restart: bool = False,
         conn: sqlite3.Connection | None = None,
     ) -> dict[str, Any] | None:
         """Atomically claim/resume-or-create a generation for ``root_key`` and link a new V119 pass.
 
         Returns a dict describing the claimed generation (``generation_id``, ``status='running'``,
-        ``resumed``, ``cursor_json``, ``reconcile_cursor_json``, ``metadata_walk_completed_at``), or
-        ``None`` if a LIVE pass (fresh lease) already owns the root — a retryable conflict, not fatal.
+        ``resumed``, ``cursor_json``, ``reconcile_cursor_json``, ``metadata_walk_completed_at``), or a
+        BLOCKED sentinel ``{"blocked": True, "generation_id", "status": "failed", "last_error_code"}`` when
+        the latest generation ``failed`` with a no-forward-progress code under the SAME policy (see below),
+        or ``None`` if a LIVE pass (fresh lease) already owns the root — a retryable conflict, not fatal.
+
+        No-forward-progress suppression (plan lifecycle contract): if there is no resumable generation and
+        the latest ``failed`` generation for this root has the SAME ``root_path_hash`` + ``traversal_version``
+        + ``policy_fingerprint`` and a no-forward-progress ``last_error_code`` (high-fanout / generation
+        ceiling), a new generation is NOT created — recovery requires a policy/configuration change (which
+        changes the fingerprint and lifts the block automatically) or an explicit ``restart=True`` operator
+        action. Otherwise an unchanged pathological root would create + fail a fresh generation every pass.
 
         Runs under ``BEGIN IMMEDIATE`` so the claim is mutually exclusive across processes.
         """
@@ -214,6 +232,31 @@ class SourceIndexScanGenerationsRepository:
                     )
 
             if active is None:
+                # No resumable generation. Before creating a fresh one, honor a no-forward-progress
+                # terminal failure: an unchanged high-fanout / generation-ceiling failure must not be
+                # silently retried every pass. A matching failed generation (same root/traversal/fingerprint
+                # + no-progress code) BLOCKS restart unless the operator forced ``restart=True``. A policy
+                # change makes the fingerprint differ → not matched → a fresh generation starts (recovery).
+                if not restart:
+                    failed = c.execute(
+                        "SELECT * FROM source_index_scan_generations WHERE root_key=? AND "
+                        "status='failed' ORDER BY started_at DESC, rowid DESC LIMIT 1",
+                        (root_key,),
+                    ).fetchone()
+                    if failed is not None:
+                        failed = dict(failed)
+                        same_policy = (
+                            failed["policy_fingerprint"] == policy_fingerprint
+                            and int(failed["traversal_version"]) == int(traversal_version)
+                            and failed["root_path_hash"] == root_path_hash
+                        )
+                        if same_policy and failed["last_error_code"] in _NO_PROGRESS_ERROR_CODES:
+                            return {
+                                "blocked": True,
+                                "generation_id": failed["generation_id"],
+                                "status": "failed",
+                                "last_error_code": failed["last_error_code"],
+                            }
                 generation_id = uuid.uuid4().hex
                 c.execute(
                     "INSERT INTO source_index_scan_generations "
