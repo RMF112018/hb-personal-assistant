@@ -16,6 +16,11 @@ import re
 from typing import Any
 
 from .canonical_tool_specs import KNOWN_TOOL_GROUPS
+from .prompt_id_parser import (
+    extract_asserted_typed_ids as _extract_asserted_typed_ids,
+    extract_validated_id as _extract_validated_id,
+    is_illustrative_mention as _is_non_target_id_mention,
+)
 from .tool_family_manifest import family_record
 from .tool_metadata_types import ROUTE_SCHEMA_VERSION
 from .workflow_recipe_manifest import WORKFLOWS, workflow_record
@@ -794,12 +799,6 @@ _TOPICAL_LIST_TOOLS = frozenset({
     "assistant_list_open_loops",
 })
 
-# Typed canonical artifact IDs: {PREFIX}-{YYYYMMDD}-{hash6} (obsidian card materialization).
-_TYPED_CANONICAL_ID_RE = re.compile(
-    r"\b(DEC|PREF|LOOP)-(\d{8}-[A-F0-9]{6})\b",
-    re.IGNORECASE,
-)
-_TYPED_CANONICAL_MAX_LEN = 48
 _TYPED_RETRIEVAL_ROUTE: dict[str, tuple[str, str, str]] = {
     "DEC": ("decision_id", "assistant_get_decision", "canonical_decision_retrieval"),
     "PREF": ("preference_id", "assistant_get_preference", "canonical_preference_retrieval"),
@@ -847,50 +846,6 @@ def _extract_topic_query(prompt_l: str) -> str | None:
     return None
 
 
-def _typed_canonical_id_valid(token: str) -> bool:
-    if len(token) > _TYPED_CANONICAL_MAX_LEN:
-        return False
-    return bool(_TYPED_CANONICAL_ID_RE.fullmatch(token))
-
-
-def _is_non_target_id_mention(prompt: str, start: int, end: int) -> bool:
-    """True when a typed ID is illustrative (quoted example, mention-only), not the retrieval target."""
-    before = prompt[max(0, start - 80):start]
-    if re.search(r"\b(for example|e\.g\.|such as)\b", before, re.IGNORECASE):
-        return True
-    if re.search(r"\bmentions?\b", before, re.IGNORECASE):
-        return True
-    # Double/single-quoted spans are examples unless the clause also carries a retrieval verb.
-    left = prompt.rfind('"', 0, start)
-    right = prompt.find('"', end)
-    if left != -1 and right != -1 and left < start and right >= end:
-        clause = prompt[left:right + 1]
-        if not _RETRIEVAL_VERB_RE.search(clause):
-            return True
-    left = prompt.rfind("'", 0, start)
-    right = prompt.find("'", end)
-    if left != -1 and right != -1 and left < start and right >= end:
-        clause = prompt[left:right + 1]
-        if not _RETRIEVAL_VERB_RE.search(clause):
-            return True
-    return False
-
-
-def _extract_asserted_typed_ids(prompt: str) -> list[tuple[str, str]]:
-    """Return (prefix, canonical_id) pairs that are asserted retrieval targets (not examples)."""
-    out: list[tuple[str, str]] = []
-    seen: set[str] = set()
-    for match in _TYPED_CANONICAL_ID_RE.finditer(prompt):
-        token = match.group(0).upper()
-        if not _typed_canonical_id_valid(token) or token in seen:
-            continue
-        if _is_non_target_id_mention(prompt, match.start(), match.end()):
-            continue
-        seen.add(token)
-        out.append((match.group(1).upper(), token))
-    return out
-
-
 def _infer_typed_retrieval_prefix(prompt_l: str) -> str | None:
     for noun, prefix in _ARTIFACT_NOUN_CUES:
         if noun in prompt_l:
@@ -912,45 +867,6 @@ def _has_dominant_search_intent(prompt_l: str) -> bool:
         ):
             return True
     return False
-
-
-def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
-    """Extract a workflow-specific ID only when pattern matches repo contracts. Never invent."""
-    # Require delimiter or suffix so bare nouns (e.g. "decision" in "canonical decision") do not match.
-    patterns = {
-        "decision_id": (
-            r"\b(DEC-\d{8}-[A-F0-9]{6}|(?:dec|decision)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"decision_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "preference_id": (
-            r"\b(PREF-\d{8}-[A-F0-9]{6}|(?:pref|preference)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"preference_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "open_loop_id": (
-            r"\b(LOOP-\d{8}-[A-F0-9]{6}|(?:ol|open[_-]?loop)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
-            r"open[_-]?loop_[a-z0-9][a-z0-9_\-]{3,64})\b"
-        ),
-        "operator_approval_id": r"\b((?:appr|approval)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-        "promotion_bundle_id": (
-            r"\b(PROMOB-[A-Z0-9]{6,16}|(?:promob|promotion[_-]?bundle)[_-][a-z0-9][a-z0-9_\-]{6,64})\b"
-        ),
-        "session_id": r"\b((?:sess|session)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-        "source_id": r"\b((?:src|source)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
-    }
-    pat = patterns.get(arg_name)
-    if not pat:
-        return None
-    matches = [m.group(1) for m in re.finditer(pat, prompt, flags=re.I)]
-    if not matches:
-        return None
-    normalized = {m.upper() if m.upper().startswith(("DEC-", "PREF-", "LOOP-", "PROMOB-")) else m
-                  for m in matches}
-    if len(normalized) > 1:
-        return None
-    chosen = max(matches, key=len)
-    if chosen.upper().startswith(("DEC-", "PREF-", "LOOP-")) and not _typed_canonical_id_valid(chosen.upper()):
-        return None
-    return chosen
 
 
 def _extract_quoted_fragment(prompt: str) -> str | None:

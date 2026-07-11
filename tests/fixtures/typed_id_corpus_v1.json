@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "description": "Central typed-ID parser corpus — plain text, markdown, quotes, multi-ID, invalid variants.",
+  "cases": [
+    {
+      "id": "dec_plain",
+      "prompt": "Retrieve decision DEC-20260708-7847F4",
+      "arg": "decision_id",
+      "expect": "DEC-20260708-7847F4"
+    },
+    {
+      "id": "dec_markdown",
+      "prompt": "Show me decision `DEC-20260708-7847F4`",
+      "arg": "decision_id",
+      "expect": "DEC-20260708-7847F4"
+    },
+    {
+      "id": "dec_quotes",
+      "prompt": "Retrieve the decision \"DEC-20260708-7847F4\"",
+      "arg": "decision_id",
+      "expect": "DEC-20260708-7847F4"
+    },
+    {
+      "id": "pref_plain",
+      "prompt": "Get PREF-20260708-2D3D8D",
+      "arg": "preference_id",
+      "expect": "PREF-20260708-2D3D8D"
+    },
+    {
+      "id": "loop_plain",
+      "prompt": "Open LOOP-20260708-B21D38",
+      "arg": "open_loop_id",
+      "expect": "LOOP-20260708-B21D38"
+    },
+    {
+      "id": "promob_hyphenated",
+      "prompt": "Apply promotion bundle PROMOB-20260711-001",
+      "arg": "promotion_bundle_id",
+      "expect": "PROMOB-20260711-001"
+    },
+    {
+      "id": "promob_markdown",
+      "prompt": "Promote bundle `PROMOB-ABCDEF12` using approval `APPR-12345678`",
+      "arg": "promotion_bundle_id",
+      "expect": "PROMOB-ABCDEF12"
+    },
+    {
+      "id": "approval_markdown",
+      "prompt": "Promote bundle `PROMOB-ABCDEF12` using approval `APPR-12345678`",
+      "arg": "operator_approval_id",
+      "expect": "APPR-12345678"
+    },
+    {
+      "id": "output_plain",
+      "prompt": "Inspect OUTPUT-20260708-001 metadata",
+      "arg": "output_id",
+      "expect": "OUTPUT-20260708-001"
+    },
+    {
+      "id": "session_slug",
+      "prompt": "Stage proposals for session session_abc12345",
+      "arg": "session_id",
+      "expect": "session_abc12345"
+    },
+    {
+      "id": "source_slug",
+      "prompt": "Read source src_work_file_99",
+      "arg": "source_id",
+      "expect": "src_work_file_99"
+    },
+    {
+      "id": "hex_feedback",
+      "prompt": "Get feedback abcd1234abcd1234abcd1234",
+      "arg": "feedback_id",
+      "expect": "abcd1234abcd1234abcd1234"
+    },
+    {
+      "id": "multi_promob_ambiguous",
+      "prompt": "Compare PROMOB-20260711-001 and PROMOB-20260711-002",
+      "arg": "promotion_bundle_id",
+      "expect": null
+    },
+    {
+      "id": "partial_promob_reject",
+      "prompt": "Apply PROMOB-20260711 only",
+      "arg": "promotion_bundle_id",
+      "expect": null
+    },
+    {
+      "id": "example_dec_not_target",
+      "prompt": "For example, \"DEC-20260708-7847F4\" is a decision ID format.",
+      "arg": "decision_id",
+      "expect": null,
+      "asserted_empty": true
+    }
+  ]
+}

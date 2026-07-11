@@ -1395,6 +1395,16 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                 arg_err,
                 subject_tool=tool_name,
             )
+        from hb_assistant.obsidian_mcp.prompt_id_parser import validate_tool_argument_ids  # noqa: PLC0415
+
+        id_errors = validate_tool_argument_ids(tool_name, arguments)
+        if id_errors:
+            first_field = next(iter(id_errors))
+            return _gateway_failure(
+                "hb_assistant_tool_query",
+                id_errors[first_field],
+                subject_tool=tool_name,
+            )
         return broker.dispatch(tool_name, arguments)
 
     # N8C-23 Structured Intelligence Artifact Workspace tools. Read/advisory + staged-write (never the vault);
