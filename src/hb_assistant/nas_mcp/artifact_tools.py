@@ -328,13 +328,24 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
             raise ArtifactWorkspaceError(f"unknown_workflow:{name}")
         return {"workflow_recipes": recipes}
     if tool_name == "pa_tool_manifest_freshness_check":
-        return mrepo.freshness_check(current_tool_names(config))
+        return mrepo.freshness_check(
+            current_tool_names(config), live_runtime_commit=runtime_commit
+        )
     if tool_name == "pa_tool_manifest_review_plan":
-        fr = mrepo.freshness_check(current_tool_names(config))
-        return {"review_required": fr["tool_manifest_review_required"], "staleness": fr.get("staleness_state"),
-                "missing_tools": fr.get("tool_manifest_missing_tools", []),
-                "extra_tools": fr.get("tool_manifest_extra_tools", []),
-                "recommendation": "stage a manifest refresh, then operator-approve promotion", "writes": False}
+        fr = mrepo.freshness_check(
+            current_tool_names(config), live_runtime_commit=runtime_commit
+        )
+        return {
+            "review_required": fr["tool_manifest_review_required"],
+            "staleness": fr.get("staleness_state"),
+            "missing_tools": fr.get("tool_manifest_missing_tools", []),
+            "extra_tools": fr.get("tool_manifest_extra_tools", []),
+            "deployment_runtime_drift": fr.get("deployment_runtime_drift", False),
+            "generated_from_runtime_commit": fr.get("generated_from_runtime_commit"),
+            "live_runtime_commit": fr.get("live_runtime_commit"),
+            "recommendation": "stage a manifest refresh, then operator-approve promotion",
+            "writes": False,
+        }
     if tool_name == "pa_tool_manifest_refresh_stage":
         from .live_tool_surface import manifest_schema_parity_check  # noqa: PLC0415
         from .tool_registration import ensure_schema_index_frozen  # noqa: PLC0415
@@ -354,7 +365,9 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
             manifest_version=version,
             **_runtime_manifest_build_kwargs(),
         )
-        fr = mrepo.freshness_check(current_tool_names(config))
+        fr = mrepo.freshness_check(
+            current_tool_names(config), live_runtime_commit=runtime_commit
+        )
         staged = mrepo.stage_refresh(new_manifest, fr)
         staged["schema_parity"] = {
             "ok": True,
@@ -481,7 +494,9 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
     if not active:
         # Internal baseline: persist active DB snapshot for freshness; vault write only if flag.
         if first_install_autopromote:
-            fr = mrepo.freshness_check(current_tool_names(config))
+            fr = mrepo.freshness_check(
+                current_tool_names(config), live_runtime_commit=runtime_commit
+            )
             staged = mrepo.stage_refresh(built, fr)
             promoted = _promote_manifest_refresh(
                 config, mrepo,
@@ -516,7 +531,9 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
         "vault_materialization": "unchanged",
     }
     if auto_stage:
-        fr = mrepo.freshness_check(current_tool_names(config))
+        fr = mrepo.freshness_check(
+            current_tool_names(config), live_runtime_commit=runtime_commit
+        )
         staged = mrepo.stage_refresh(built, fr)
         out["auto_staged"] = True
         out["refresh_proposal_id"] = staged.get("refresh_proposal_id")
@@ -553,8 +570,13 @@ def artifact_workspace_status(config: Any) -> dict[str, Any]:
     except Exception:  # noqa: BLE001 — status must never crash
         out["artifact_workspace_status_error"] = "unavailable"
     try:
+        from .broker import runtime_commit as _runtime_commit  # noqa: PLC0415
+
         mrepo = ClientToolManifestRepository(str(config.db_path))
-        fr = mrepo.freshness_check(current_tool_names(config))
+        live_rc = _runtime_commit()
+        fr = mrepo.freshness_check(
+            current_tool_names(config), live_runtime_commit=live_rc
+        )
         active = mrepo.get_active()
         out.update({
             "client_tool_manifest_version": active["manifest_version"] if active else None,
@@ -568,6 +590,11 @@ def artifact_workspace_status(config: Any) -> dict[str, Any]:
             "client_tool_manifest_missing_tool_count": len(fr.get("tool_manifest_missing_tools", [])),
             "client_tool_manifest_extra_tool_count": len(fr.get("tool_manifest_extra_tools", [])),
             "client_tool_manifest_review_required": fr.get("tool_manifest_review_required", True),
+            "client_tool_manifest_deployment_runtime_drift": fr.get("deployment_runtime_drift", False),
+            "client_tool_manifest_generated_from_runtime_commit": fr.get(
+                "generated_from_runtime_commit"
+            ),
+            "client_tool_manifest_live_runtime_commit": fr.get("live_runtime_commit"),
         })
     except Exception:  # noqa: BLE001
         out["client_tool_manifest_status_error"] = "unavailable"

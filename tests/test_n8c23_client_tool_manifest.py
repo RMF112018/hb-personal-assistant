@@ -55,6 +55,30 @@ def test_freshness_no_active_manifest_is_stale(tmp_path: Path) -> None:
     assert fr["tool_manifest_stale"] and fr["staleness_state"] == "stale"
 
 
+def test_freshness_fails_on_deployment_runtime_commit_mismatch(tmp_path: Path) -> None:
+    """Name-set match must not report fresh when live runtime SHA ≠ generated_from_runtime_commit."""
+    repo = ClientToolManifestRepository(make_env(tmp_path)["db"])
+    stored_sha = "542307fc6fc87b7a5713b8917e861a576a03c96c"
+    live_sha = "fc36311e64a63e9506ca624a4536423c2afa48d9"
+    m = build_manifest(_index(), runtime_commit=stored_sha, now="2026-07-11T00:00:00+00:00")
+    repo.save_manifest(m)
+    # Without live commit: tool names match → not stale (legacy call path).
+    fr_names = repo.freshness_check(set(_index()))
+    assert fr_names["tool_manifest_stale"] is False
+    # With mismatched live SHA: must be stale + review_required.
+    fr = repo.freshness_check(set(_index()), live_runtime_commit=live_sha)
+    assert fr["tool_manifest_stale"] is True
+    assert fr["tool_manifest_review_required"] is True
+    assert fr["deployment_runtime_drift"] is True
+    assert fr["staleness_state"] == "deployment_runtime_commit_mismatch"
+    assert fr["generated_from_runtime_commit"] == stored_sha
+    assert fr["live_runtime_commit"] == live_sha
+    # Matching SHA remains fresh.
+    fr_ok = repo.freshness_check(set(_index()), live_runtime_commit=stored_sha)
+    assert fr_ok["tool_manifest_stale"] is False
+    assert fr_ok["deployment_runtime_drift"] is False
+
+
 def test_manifest_get_labels_unpersisted_as_ephemeral_not_active(tmp_path: Path) -> None:
     # Defect C: pa_tool_manifest_get must NOT claim active/fresh when nothing is persisted — it has to
     # agree with pa_tool_manifest_freshness_check (which reports "no_active_manifest / stale").
