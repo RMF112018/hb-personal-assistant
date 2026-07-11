@@ -1090,6 +1090,78 @@ def _runtime_policy_permission(
     }
 
 
+_EXECUTION_BLOCKER_PRECEDENCE: tuple[str, ...] = (
+    "plan_only",
+    "operation_prohibited",
+    "surface_unavailable",
+    "profile_disabled",
+    "not_directly_exposed",
+    "gateway_denied",
+    "token_scope_denied",
+    "no_recommended_tool",
+    "missing_arguments",
+    "approval_required",
+    "safe_mode_active",
+    "surface_stale",
+    "not_authorized",
+)
+
+
+def _approval_status(
+    *,
+    approval_satisfied: bool,
+    tool_needs_approval: bool,
+    additional_approval: bool,
+    promote_requested: bool,
+    is_write: bool,
+) -> str:
+    """Tri-state approval posture (F-018): not_required | required_unsatisfied | satisfied."""
+    if approval_satisfied:
+        return "satisfied"
+    needs = tool_needs_approval or additional_approval or (promote_requested and is_write)
+    if not needs:
+        return "not_required"
+    return "required_unsatisfied"
+
+
+def _extended_prompt_permission(
+    *,
+    allow_read: bool,
+    staging_ok: bool,
+    write_ok: bool,
+    promote_perm: bool,
+    external_ok: bool,
+    prohibitions: set[str],
+) -> dict[str, bool]:
+    """Prompt-scoped permission dimensions (F-011)."""
+    return {
+        "read": allow_read,
+        "stage": staging_ok,
+        "write": write_ok,
+        "promote": promote_perm,
+        "external_action": external_ok,
+        "execute_non_read": (
+            "execute_non_read" not in prohibitions and "execute" not in prohibitions
+        ),
+        "index": "index" not in prohibitions,
+        "deploy": "deploy" not in prohibitions,
+    }
+
+
+def _extended_server_policy_permission(action_class: str) -> dict[str, bool]:
+    """Server-policy permission dimensions parallel to prompt_permission (F-011)."""
+    return {
+        "read": True,
+        "stage": action_class == "staged_write",
+        "write": action_class in _WRITE_CLASSES,
+        "promote": action_class == "canonical_promotion",
+        "external_action": False,
+        "execute_non_read": action_class in _WRITE_CLASSES or action_class == "archive",
+        "index": True,
+        "deploy": True,
+    }
+
+
 def _capability_gates(prohibitions: set[str], *, action_class: str) -> dict[str, Any]:
     """Prompt-scoped capability gates (index/deploy/archive/external) with blocked reasons."""
     gates: dict[str, Any] = {}
@@ -1122,7 +1194,12 @@ def _evaluate_executability(
     runtime_policy: dict[str, Any],
     freshness_stale: bool,
 ) -> tuple[bool, str | None, bool]:
-    """Ordered gate precedence for ``currently_executable`` (does not execute)."""
+    """Ordered gate precedence for ``currently_executable`` (does not execute).
+
+    First matching blocker wins (see ``_EXECUTION_BLOCKER_PRECEDENCE``). Missing required
+    arguments — including ``operator_approval_id`` — always yield ``missing_arguments`` before
+    ``approval_required`` (F-012).
+    """
     approval_required_flag = False
 
     if plan_only or ("execute" in prohibitions and not allow_read):
@@ -1149,9 +1226,6 @@ def _evaluate_executability(
         return False, "no_recommended_tool", False
 
     if missing:
-        non_appr_missing = [a for a in missing if a != "operator_approval_id"]
-        if not non_appr_missing and "operator_approval_id" in missing:
-            return False, "approval_required", True
         if next_tool == "pa_artifact_proposal_stage":
             return False, "missing_arguments", False
         approval_required_flag = tool_needs_approval
@@ -1276,27 +1350,33 @@ def _authorization(
     )
 
     prompt_authorizes_execution = bool(allow_read and not plan_only and not is_write)
+    prompt_permission = _extended_prompt_permission(
+        allow_read=allow_read,
+        staging_ok=staging_ok,
+        write_ok=write_ok,
+        promote_perm=promote_perm,
+        external_ok=external_ok,
+        prohibitions=prohibitions,
+    )
+    server_policy_permission = _extended_server_policy_permission(action_class=action_class)
+    approval_status = _approval_status(
+        approval_satisfied=approval_satisfied,
+        tool_needs_approval=tool_needs_approval,
+        additional_approval=additional_approval,
+        promote_requested=promote_requested,
+        is_write=is_write,
+    )
 
     return {
         "action_class": action_class,
         "write_risk": wf["write_risk"],
         "requested_operation_class": action_class if action_class != "read" else "read",
         "operation_requested": action_class,
-        "prompt_permission": {
-            "read": allow_read,
-            "stage": staging_ok,
-            "write": write_ok,
-            "promote": promote_perm,
-            "external_action": external_ok,
-        },
-        "server_policy_permission": {
-            "read": True,
-            "stage": action_class == "staged_write",
-            "write": action_class in _WRITE_CLASSES,
-            "promote": action_class == "canonical_promotion",
-            "external_action": False,
-        },
+        "prompt_permission": prompt_permission,
+        "server_policy_permission": server_policy_permission,
         "approval_satisfied": approval_satisfied,
+        "approval_status": approval_status,
+        "execution_blocker_precedence": list(_EXECUTION_BLOCKER_PRECEDENCE),
         "approval_required": approval_required_flag or tool_needs_approval,
         "currently_executable": currently_executable,
         "execution_blocked_reason": blocked_reason,
@@ -1895,18 +1975,24 @@ def _base_auth_read_only(
     blocked = None if allow_read else "not_authorized"
     if allow_read:
         blocked = "no_recommended_tool"  # clarification / empty tool sequence
+    prompt_permission = _extended_prompt_permission(
+        allow_read=allow_read,
+        staging_ok=False,
+        write_ok=False,
+        promote_perm=False,
+        external_ok=False,
+        prohibitions=prohibitions,
+    )
     return {
         "action_class": "read",
         "write_risk": "none",
         "requested_operation_class": "read",
         "operation_requested": "read",
-        "prompt_permission": {
-            "read": allow_read, "stage": False, "write": False, "promote": False, "external_action": False,
-        },
-        "server_policy_permission": {
-            "read": True, "stage": False, "write": False, "promote": False, "external_action": False,
-        },
-        "approval_satisfied": True,
+        "prompt_permission": prompt_permission,
+        "server_policy_permission": _extended_server_policy_permission(action_class="read"),
+        "approval_satisfied": False,
+        "approval_status": "not_required",
+        "execution_blocker_precedence": list(_EXECUTION_BLOCKER_PRECEDENCE),
         "currently_executable": False,
         "execution_blocked_reason": blocked if not allow_read else "no_recommended_tool",
         "read_tool_calls_authorized": allow_read,
