@@ -602,6 +602,16 @@ class NasMcpBroker:
         if not self._concurrency.try_acquire():
             base_audit["rate_limit_result"] = limits.DENY_CONCURRENCY
             return self._deny(base_audit, limits.DENY_CONCURRENCY, started)
+        missing_req = self._missing_required_arguments(tool_name, arguments)
+        if missing_req:
+            reason = (
+                f"missing_required_arg:{missing_req[0]}"
+                if len(missing_req) == 1
+                else f"missing_required_args:{','.join(missing_req)}"
+            )
+            return self._deny(
+                base_audit, reason, started, extra={"missing_fields": missing_req},
+            )
         try:
             # Resolve effective (env + raise-only override) size/row/search/card limits.
             eff_config, override_ids = limits.apply_effective_limits(
@@ -611,7 +621,10 @@ class NasMcpBroker:
                 base_audit.setdefault("override_id", override_ids[0])
             result = self._invoke(tool_name, arguments, eff_config)
         except (DbSelectError, FsToolError, PathAccessError, RootPolicyError, KeyError, ValueError, TypeError) as exc:
-            return self._deny(base_audit, str(exc), started)
+            from .failure_envelope import normalize_dispatch_failure  # noqa: PLC0415
+
+            reason, extra = normalize_dispatch_failure(exc)
+            return self._deny(base_audit, reason, started, extra=extra)
         finally:
             self._concurrency.release()
         duration_ms = int((time.perf_counter() - started) * 1000)
@@ -652,8 +665,24 @@ class NasMcpBroker:
             return "write"
         return "read"
 
-    def _deny(self, base: dict[str, Any], reason: str, started: float) -> dict[str, Any]:
-        from .failure_envelope import map_deny_reason, plugin_failure  # noqa: PLC0415
+    @staticmethod
+    def _missing_required_arguments(tool_name: str, arguments: dict[str, Any]) -> list[str]:
+        from hb_assistant.obsidian_mcp.prompt_preflight import required_args_for_tool  # noqa: PLC0415
+
+        return [
+            arg for arg in required_args_for_tool(tool_name)
+            if arguments.get(arg) in (None, "", [], {})
+        ]
+
+    def _deny(
+        self,
+        base: dict[str, Any],
+        reason: str,
+        started: float,
+        *,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        from .failure_envelope import map_deny_reason, missing_fields_from_reason, plugin_failure  # noqa: PLC0415
 
         duration_ms = int((time.perf_counter() - started) * 1000)
         event = {
@@ -665,6 +694,11 @@ class NasMcpBroker:
         }
         self._audit.write(event)
         stage, code, retryable = map_deny_reason(reason)
+        envelope_extra = dict(extra or {})
+        if "missing_fields" not in envelope_extra:
+            parsed = missing_fields_from_reason(reason)
+            if parsed:
+                envelope_extra["missing_fields"] = parsed
         return plugin_failure(
             tool=base["tool_name"],
             request_id=base["request_id"],
@@ -676,6 +710,7 @@ class NasMcpBroker:
             reached_broker=True,
             reached_handler=False,
             runtime_commit=runtime_commit(),
+            extra=envelope_extra or None,
         )
 
     def _invoke(self, tool_name: str, arguments: dict[str, Any], config: NasMcpConfig | None = None) -> dict[str, Any]:

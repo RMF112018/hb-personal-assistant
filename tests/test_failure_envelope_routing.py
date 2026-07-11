@@ -7,6 +7,7 @@ import pytest
 from hb_assistant.nas_mcp.failure_envelope import (
     gateway_plugin_failure,
     map_deny_reason,
+    normalize_dispatch_failure,
     plugin_failure,
 )
 from hb_assistant.obsidian_mcp.tool_metadata_types import PluginFailureStage
@@ -15,8 +16,9 @@ from hb_assistant.obsidian_mcp.tool_metadata_types import PluginFailureStage
 @pytest.mark.parametrize(
     ("reason", "stage", "code"),
     [
-        ("missing_required_arg:prompt", PluginFailureStage.SCHEMA_VALIDATION, "invalid_arguments"),
-        ("missing_required_arg:session_id", PluginFailureStage.SCHEMA_VALIDATION, "invalid_arguments"),
+        ("missing_required_arg:prompt", PluginFailureStage.SCHEMA_VALIDATION, "missing_required_argument"),
+        ("missing_required_arg:session_id", PluginFailureStage.SCHEMA_VALIDATION, "missing_required_argument"),
+        ("missing_required_args:session_id,candidate_artifacts", PluginFailureStage.SCHEMA_VALIDATION, "missing_required_argument"),
         ("tool_not_registered: assistant_output_stage", PluginFailureStage.BROKER_DISPATCH, "tool_not_registered"),
         ("tool_not_registered:pa_foo", PluginFailureStage.BROKER_DISPATCH, "tool_not_registered"),
         ("unknown_or_non_assistant_tool:bogus", PluginFailureStage.GATEWAY_ALLOWLIST, "gateway_denied"),
@@ -56,6 +58,24 @@ def test_gateway_plugin_failure_pre_broker_shape() -> None:
     assert env["reached_handler"] is False
     assert env["gateway_tool"] == "hb_assistant_tool_query"
     assert "not_an_allowlisted_assistant_tool" in env["safe_message"]
+
+
+def test_normalize_dispatch_failure_maps_keyerror_to_missing_fields() -> None:
+    reason, extra = normalize_dispatch_failure(KeyError("decision_id"))
+    assert reason == "missing_required_arg:decision_id"
+    assert extra == {"missing_fields": ["decision_id"]}
+
+
+def test_gateway_missing_required_arg_includes_missing_fields() -> None:
+    env = gateway_plugin_failure(
+        tool="assistant_get_decision",
+        reason="missing_required_arg:decision_id",
+        gateway_tool="hb_assistant_tool_query",
+    )
+    assert env["error_code"] == "missing_required_argument"
+    assert env["failure_stage"] == "schema_validation"
+    assert env["missing_fields"] == ["decision_id"]
+    assert env["safe_message"] == "missing_required_arg:decision_id"
 
 
 def test_broker_deny_envelope_for_tool_not_registered() -> None:

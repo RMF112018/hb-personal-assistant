@@ -117,6 +117,17 @@ def test_tools_return_data(mcp_env) -> None:
     assert _ok(b, "assistant_get_open_loop", {"open_loop_id": oid})["open_loop"]["open_loop_id"] == oid
 
 
+def test_missing_decision_id_emits_structured_envelope(mcp_env) -> None:
+    """F-016: missing getter ID → schema_validation + missing_fields, not dispatch_denied."""
+    r = mcp_env["broker"].dispatch("assistant_get_decision", {})
+    assert r["ok"] is False
+    assert r["failure_stage"] == "schema_validation"
+    assert r["error_code"] == "missing_required_argument"
+    assert r["missing_fields"] == ["decision_id"]
+    assert r["safe_message"] == "missing_required_arg:decision_id"
+    assert "'" not in r["safe_message"]
+
+
 def test_missing_denied_cleanly(mcp_env) -> None:
     r = mcp_env["broker"].dispatch("assistant_get_decision", {"decision_id": "nope"})
     assert r["ok"] is False and "decision_not_found" in r["error"]

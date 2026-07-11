@@ -75,13 +75,55 @@ def plugin_failure(
     return out
 
 
+def missing_fields_from_reason(reason: str) -> list[str] | None:
+    """Parse structured missing-argument deny reasons into field names."""
+    r = str(reason or "").strip()
+    if r.startswith("missing_required_arg:"):
+        field = r.split(":", 1)[1].strip()
+        return [field] if field else None
+    if r.startswith("missing_required_args:"):
+        fields = [f.strip() for f in r.split(":", 1)[1].split(",") if f.strip()]
+        return fields or None
+    return None
+
+
+def normalize_dispatch_failure(exc: BaseException) -> tuple[str, dict[str, Any] | None]:
+    """Map handler exceptions to bounded deny reasons (never raw KeyError strings)."""
+    code = getattr(exc, "code", None)
+    if isinstance(code, str):
+        if code == "missing_required_arg":
+            msg = str(exc)
+            match = re.search(r"requires '([^']+)'", msg)
+            field = match.group(1) if match else "argument"
+            reason = f"missing_required_arg:{field}"
+            return reason, {"missing_fields": [field]}
+        if code.startswith("missing_required_arg:"):
+            field = code.split(":", 1)[1].strip()
+            return f"missing_required_arg:{field}", {"missing_fields": [field]}
+
+    if isinstance(exc, KeyError) and exc.args:
+        key = exc.args[0]
+        if isinstance(key, str):
+            if key.startswith(("tool_not_registered", "unknown root_key", "table_key not allowlisted")):
+                return key, None
+            field = key.strip("'\"")
+            if field:
+                return f"missing_required_arg:{field}", {"missing_fields": [field]}
+
+    msg = str(exc).strip()
+    if msg.startswith(("missing_required_arg:", "missing_required_args:")):
+        fields = missing_fields_from_reason(msg)
+        return msg, {"missing_fields": fields} if fields else None
+    return msg, None
+
+
 def map_deny_reason(reason: str) -> tuple[PluginFailureStage, str, bool]:
     """Map broker/gateway deny_reason string → (stage, error_code, retryable)."""
     r = str(reason or "").strip()
     if r.startswith("tool_not_registered"):
         return PluginFailureStage.BROKER_DISPATCH, "tool_not_registered", False
     if r.startswith("missing_required_arg"):
-        return PluginFailureStage.SCHEMA_VALIDATION, "invalid_arguments", False
+        return PluginFailureStage.SCHEMA_VALIDATION, "missing_required_argument", False
     if r.startswith("unknown_or_non_assistant_tool") or r.startswith("not_an_allowlisted_assistant_tool"):
         return PluginFailureStage.GATEWAY_ALLOWLIST, "gateway_denied", False
     if r.startswith("denied_tool:"):
@@ -113,7 +155,12 @@ def gateway_plugin_failure(
 ) -> dict[str, Any]:
     """Structured envelope for pre-broker gateway validation failures."""
     stage, code, retryable = map_deny_reason(reason)
-    extra = {"gateway_tool": gateway_tool} if gateway_tool else None
+    extra: dict[str, Any] = {}
+    if gateway_tool:
+        extra["gateway_tool"] = gateway_tool
+    parsed = missing_fields_from_reason(reason)
+    if parsed:
+        extra["missing_fields"] = parsed
     return plugin_failure(
         tool=tool,
         request_id=request_id or uuid.uuid4().hex,
@@ -125,5 +172,5 @@ def gateway_plugin_failure(
         reached_broker=False,
         reached_handler=False,
         runtime_commit=runtime_commit,
-        extra=extra,
+        extra=extra or None,
     )
