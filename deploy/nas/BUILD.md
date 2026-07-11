@@ -8,15 +8,20 @@ How to produce the `hb-personal-assistant:nas` image for viewer mode.
 - **Runtime publish must be loopback only** (`127.0.0.1:8000`).
 - **`start.sh` never builds implicitly** — image must exist before `compose up --no-build`.
 
-## Option A — Prebuild / load (preferred short-term)
+## Option A — Prebuild / load (preferred; RT-01 Tier B)
 
-Build on a functioning machine (Mac/CI) with working Docker bridge DNS:
+Build from a **clean** `git archive` context only (never `docker build .` from a dirty checkout):
 
 ```sh
 cd /path/to/hb-personal-assistant
-docker build -f deploy/nas/Dockerfile -t hb-personal-assistant:nas .
-docker save hb-personal-assistant:nas | gzip > hb-personal-assistant-nas.tar.gz
+bash scripts/build-nas-image.sh
+# emits /tmp/hb-nas-<short>.tar.gz and /tmp/hb-nas-<short>.build-manifest.json
 ```
+
+Transfer both tarball and `.build-manifest.json` to NAS `/tmp/` before deploy.
+
+**Deprecated:** `docker build -f deploy/nas/Dockerfile -t hb-personal-assistant:nas .` — risks baking
+`.claude/worktrees/`, `local_audit_outputs/`, and other non-repo paths into the image.
 
 Transfer to NAS (tar over SSH if scp unavailable), then on NAS:
 

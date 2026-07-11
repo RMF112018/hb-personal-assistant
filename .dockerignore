@@ -5,6 +5,16 @@
 # VCS / dev
 .git
 .gitignore
+.claude
+.claude/**
+.code-graph
+.code-graph/**
+.grok
+.grok/**
+.cursor
+.cursor/**
+local_audit_outputs
+local_audit_outputs/**
 .venv
 **/__pycache__
 **/*.pyc
@@ -16,10 +26,16 @@
 **/._*
 **/.DS_Store
 
-# Node / frontend build artifacts (backend image does not need them)
+# Node / frontend (backend NAS image does not need the workspace)
+frontend
 **/node_modules
 frontend/dist
 frontend/node_modules
+
+# Planning / implementation notes (not runtime)
+docs/planning
+docs/implementation
+subrepos
 
 # --- SAFETY: never bake config, DB, secrets, or vault into the image ---
 # Repo config carries Mac paths + tenant/client identity; the container gets config only via HB_PA_CONFIG.

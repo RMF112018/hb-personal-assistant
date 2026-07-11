@@ -139,10 +139,11 @@ payload = {
             "exit_code": $PYTEST_RC,
         },
         "deployed_image_bytes_match_closeout_sha": {
-            "claim": "deployed image bytes == closeout SHA",
+            "claim": "deployed image bytes == closeout SHA (independent attestation)",
             "verified": False,
             "status": "exact_unverified_stamp",
-            "note": "Requires NAS HB_RUNTIME_COMMIT + image digest attestation (operator step).",
+            "image_attestation_tier": "CODE_VERIFIED_IMAGE_UNATTESTED",
+            "note": "931f69f0: code-verified via routing corpus; image unattested (dirty build context). Tier B requires scripts/build-nas-image.sh.",
         },
     },
 }

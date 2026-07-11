@@ -1,6 +1,9 @@
-"""Runtime identity verification — F-002 remediation (PR-2)."""
+"""Runtime identity verification — F-002 remediation (PR-2) + RT-01 attestation gates."""
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import pytest
 
@@ -31,21 +34,51 @@ def test_runtime_identity_unverified_stamp_when_sha_without_verification(
     assert ident.runtime_identity_verified is False
 
 
-def test_runtime_identity_verified_commit_when_build_gate_set(
+def test_runtime_identity_unverified_when_verified_flag_without_digest(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
+    from hb_assistant.nas_mcp import build_manifest as bm
     from hb_assistant.nas_mcp.broker import runtime_identity
     from hb_assistant.obsidian_mcp.tool_metadata_types import RuntimeIdentityKind
 
+    manifest_path = tmp_path / ".hb-build-manifest.json"
+    manifest_path.write_text(json.dumps({"context_clean": True}), encoding="utf-8")
+    monkeypatch.setattr(bm, "_DEFAULT_MANIFEST_PATH", manifest_path)
     monkeypatch.setenv("HB_RUNTIME_COMMIT", "a3bf1f57d2fb2ffefc8837cab2801622d71adff3")
     monkeypatch.setenv("HB_BUILD_COMMIT_VERIFIED", "1")
-    monkeypatch.setenv("HB_BUILD_IMAGE_DIGEST", "sha256:abc123")
+
+    ident = runtime_identity()
+    assert ident.runtime_identity_kind == RuntimeIdentityKind.EXACT_UNVERIFIED_STAMP
+    assert ident.runtime_identity_verified is False
+
+
+def test_runtime_identity_verified_commit_requires_digest_and_clean_manifest(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    from hb_assistant.nas_mcp import build_manifest as bm
+    from hb_assistant.nas_mcp.broker import runtime_identity
+    from hb_assistant.obsidian_mcp.tool_metadata_types import RuntimeIdentityKind
+
+    manifest_path = tmp_path / ".hb-build-manifest.json"
+    manifest_path.write_text(
+        json.dumps({"context_clean": True, "context_method": "git_archive"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(bm, "_DEFAULT_MANIFEST_PATH", manifest_path)
+    monkeypatch.setenv("HB_RUNTIME_COMMIT", "a3bf1f57d2fb2ffefc8837cab2801622d71adff3")
+    monkeypatch.setenv("HB_BUILD_COMMIT_VERIFIED", "1")
+    monkeypatch.setenv(
+        "HB_BUILD_IMAGE_DIGEST",
+        "sha256:" + "a" * 64,
+    )
     monkeypatch.setenv("HB_BUILD_TIMESTAMP", "2026-07-10T14:00:00Z")
 
     ident = runtime_identity()
     assert ident.runtime_identity_kind == RuntimeIdentityKind.EXACT_VERIFIED_COMMIT
     assert ident.runtime_identity_verified is True
-    assert ident.runtime_image_digest == "sha256:abc123"
+    assert ident.runtime_image_digest == "sha256:" + "a" * 64
     assert ident.runtime_build_timestamp == "2026-07-10T14:00:00Z"
 
 
@@ -61,7 +94,7 @@ def test_runtime_identity_prefers_runtime_commit_over_build_sha(
     assert ident.runtime_commit == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
-def test_assistant_client_exposure_status_includes_identity_fields(
+def test_assistant_client_exposure_status_unverified_without_full_attestation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from hb_assistant.nas_mcp.broker import assistant_client_exposure_status
@@ -70,8 +103,8 @@ def test_assistant_client_exposure_status_includes_identity_fields(
     monkeypatch.setenv("HB_BUILD_COMMIT_VERIFIED", "1")
 
     status = assistant_client_exposure_status()
-    assert status["runtime_identity_kind"] == "exact_verified_commit"
-    assert status["runtime_identity_verified"] is True
+    assert status["runtime_identity_kind"] == "exact_unverified_stamp"
+    assert status["runtime_identity_verified"] is False
     assert status["generated_from_runtime_commit"] == "4e56e753800c045aa2311289a9b5c46360db8f3a"
 
 
@@ -82,3 +115,4 @@ def test_dockerfile_bakes_build_provenance_env() -> None:
     assert "ARG HB_BUILD_SHA=" in text
     assert "ENV HB_BUILD_SHA=${HB_BUILD_SHA}" in text
     assert "HB_BUILD_COMMIT_VERIFIED" in text
+    assert "org.opencontainers.image.revision" in text

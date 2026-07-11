@@ -17,6 +17,10 @@ ARG HB_BUILD_COMMIT_VERIFIED=0
 ARG HB_BUILD_IMAGE_DIGEST=
 ARG HB_BUILD_TIMESTAMP=
 
+LABEL org.opencontainers.image.revision="${HB_BUILD_SHA}" \
+      org.opencontainers.image.source="https://github.com/RMF112018/hb-personal-assistant" \
+      org.opencontainers.image.created="${HB_BUILD_TIMESTAMP}"
+
 # Non-root runtime user mapped to the NAS runtime identity (personal-assistant-svc = 1028:100/users)
 # so files written into the mounted app-support tree keep correct NAS ownership.
 RUN set -eux; \

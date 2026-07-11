@@ -9,7 +9,8 @@
 | `deploy_sha` | `931f69f04c697c4082f65fbf90ab2b6ae6c81af9` |
 | `previous_runtime` | `01b9b00bb2e79a6523397073152b56fe14c01527` |
 | `loaded_image_id` | `sha256:19f28e1deaff49fc7cf5c95de4a2ed94e0075c7aff56aadf661daf0116a3d36d` |
-| `runtime_identity_kind` | `exact_verified_commit` |
+| `runtime_identity_kind` (reported) | `exact_verified_commit` (overstated — see RT-01) |
+| `image_attestation_tier` | `CODE_VERIFIED_IMAGE_UNATTESTED` |
 | `runtime_build_timestamp` | `20260711T072424Z` |
 | `manifest_version` | 7 |
 | `published_workflows` | 15 |
@@ -62,6 +63,7 @@ Local paths (operator machine):
 
 ## Residual notes
 
+- **RT-01:** Image built from dirty checkout (`~20k` extra files, mostly `.claude/worktrees/`). `HB_BUILD_COMMIT_VERIFIED=1` overstated identity — policy-correct tier is `CODE_VERIFIED_IMAGE_UNATTESTED`. See `RT-01-image-attestation-tiers.md`; superseded by clean rebuild (PR-23).
 - First deploy attempt failed at step 3b (container mount bug); fixed in `fc4bf0f1`, re-run succeeded.
 - Full 50-case informational replay not captured in transcript excerpt; **47 required** gate is the completion standard.
 - `accepted_partial` rows (3, 4, 19) remain intentional explain/advisory debt.

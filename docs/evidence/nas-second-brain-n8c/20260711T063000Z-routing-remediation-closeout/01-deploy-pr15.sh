@@ -1,5 +1,5 @@
 #!/bin/sh
-# NAS deploy — routing audit remediation (PR-16..PR-20 wave, code-only schema 119)
+# NAS deploy — RT-01 clean-context image (code-only schema 119)
 # RUN ON THE NAS: sudo sh /tmp/01-deploy-pr15.sh
 set -eu
 
@@ -50,6 +50,26 @@ else
       HB_RUNTIME_COMMIT: \"$DEPLOY_SHA\"" "$COMPOSE"
 fi
 grep HB_RUNTIME_COMMIT "$COMPOSE" || die "HB_RUNTIME_COMMIT not present in compose after patch"
+
+SHORT=$(printf '%.8s' "$DEPLOY_SHA")
+BUILD_MANIFEST=/tmp/hb-nas-${SHORT}.build-manifest.json
+if [ -f "$BUILD_MANIFEST" ]; then
+  IMAGE_DIGEST=$(python3 -c "import json; print(json.load(open('$BUILD_MANIFEST'))['image_digest'])")
+  if grep -q 'HB_BUILD_IMAGE_DIGEST:' "$COMPOSE"; then
+    sed -i "s|HB_BUILD_IMAGE_DIGEST:.*|HB_BUILD_IMAGE_DIGEST: \"$IMAGE_DIGEST\"|" "$COMPOSE"
+  else
+    sed -i "/HB_RUNTIME_COMMIT:/a\\
+      HB_BUILD_IMAGE_DIGEST: \"$IMAGE_DIGEST\"" "$COMPOSE"
+  fi
+  grep HB_BUILD_IMAGE_DIGEST "$COMPOSE" || die "HB_BUILD_IMAGE_DIGEST not present after patch"
+  printf 'injected image digest from %s\n' "$BUILD_MANIFEST"
+else
+  echo "NOTE: no $BUILD_MANIFEST — HB_BUILD_IMAGE_DIGEST not injected"
+fi
+# RT-01: never set HB_BUILD_COMMIT_VERIFIED=1 without registry signing (Tier C).
+if grep -q 'HB_BUILD_COMMIT_VERIFIED:' "$COMPOSE"; then
+  sed -i 's|HB_BUILD_COMMIT_VERIFIED:.*|HB_BUILD_COMMIT_VERIFIED: "0"|' "$COMPOSE"
+fi
 echo "compose backup: $COMPOSE_BAK"
 
 say "1. Retag current image as :prev (rollback anchor)"

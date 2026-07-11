@@ -370,9 +370,20 @@ def runtime_identity() -> Any:
     except Exception:
         package_version = None
 
-    verified = os.environ.get("HB_BUILD_COMMIT_VERIFIED", "").strip() == "1"
+    from hb_assistant.nas_mcp.build_manifest import (  # noqa: PLC0415
+        commit_identity_verified,
+        read_build_manifest,
+    )
+
+    verified_flag = os.environ.get("HB_BUILD_COMMIT_VERIFIED", "").strip() == "1"
     image_digest = (os.environ.get("HB_BUILD_IMAGE_DIGEST") or "").strip() or None
     build_ts = (os.environ.get("HB_BUILD_TIMESTAMP") or "").strip() or None
+    manifest = read_build_manifest()
+    verified = commit_identity_verified(
+        verified_flag=verified_flag,
+        image_digest=image_digest,
+        manifest=manifest,
+    )
 
     sha_re = re.compile(r"^[0-9a-f]{7,40}$", re.I)
     for var in ("HB_RUNTIME_COMMIT", "HB_BUILD_SHA"):
