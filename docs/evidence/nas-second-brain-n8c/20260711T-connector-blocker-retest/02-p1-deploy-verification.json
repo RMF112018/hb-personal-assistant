@@ -1,0 +1,61 @@
+{
+  "context": "Post-deploy live verification of PR #301 (merge commit fce2fe92) on the NAS MCP container hb-personal-assistant-mcp. Clears the two connector re-test release blockers + adjacent findings.",
+  "deploy": {
+    "runtime_commit": "fce2fe928099ff51d36ececa7cf129914686fc41",
+    "build_image_digest": "sha256:2b1cb54ccb50818c57c09b1e485ba690ed051e0106b48d7e94f712a5c0d3aa38",
+    "runtime_identity_kind": "EXACT_UNVERIFIED_STAMP",
+    "schema_head": 123,
+    "schema_migration": "none (code-only deploy)",
+    "rollback_anchor_image": "hb-personal-assistant:prev-20260711T225758Z (prev id sha256:3da56b7d)"
+  },
+  "dual_freshness": {
+    "manifest_version": 11,
+    "manifest_tool_count": 146,
+    "manifest_generated_from": "fce2fe928099ff51d36ececa7cf129914686fc41",
+    "manifest_stale": false,
+    "manifest_staleness_state": "fresh",
+    "surface_stale": false,
+    "surface_staleness_state": "current",
+    "surface_deployment_runtime_drift": false,
+    "surface_warnings": []
+  },
+  "blocker_1_source_index_health": {
+    "status": "RESOLVED",
+    "health_ok": true,
+    "health_error_code": null,
+    "executed_not_unavailable": true,
+    "returns_structured_payload": ["bootstrap", "file_index", "overall_freshness", "roots", "safe_for_client_answering", "telemetry"],
+    "agrees_with_source_status_ok": true,
+    "note": "Previously failed with StoreReadinessError 'Database unavailable at .../mcp-snapshot/db'; PR #301 threads the read-only conn through nested repos so no write connection is opened against the RO snapshot mount."
+  },
+  "blocker_2_manifest_freshness_routing": {
+    "status": "RESOLVED",
+    "prompt": "Check whether the Client Tool Operating Manifest is current and report any drift. Do not refresh it.",
+    "recommended_workflow": "manifest_freshness_check",
+    "recommended_tools": ["pa_tool_manifest_freshness_check", "pa_tool_surface_freshness_check"],
+    "note": "Was manifest_lookup/pa_tool_manifest_get. Added manifest-scoped freshness trigger vocabulary; 'do not refresh' still honoured as an index prohibition."
+  },
+  "ai_output_authorization_classification": {
+    "status": "RESOLVED",
+    "assistant_output_stage": ["staged_write", "staged_write_requires_review", "staged_write"],
+    "assistant_output_commit": ["staged_write", "staged_write_requires_review", "staged_write"],
+    "assistant_output_archive_commit": ["staged_write", "staged_write_requires_review", "staged_write"],
+    "note": "classify_tool previously fell through to read_only for these write aliases; now staged_write, matching the broker gate + MCP annotations. Parity test binds classify_tool to _is_write_tool for CLIENT_OUTPUT_WRITE_TOOLS."
+  },
+  "catalog_prose": {
+    "status": "RESOLVED",
+    "assistant_group_count": 14,
+    "note": "Dynamic counts from the live registry; the hard-coded 78-tool/13-group prose is gone."
+  },
+  "execution_aware_attestation": {
+    "status": "RESOLVED",
+    "attestation_ok": true,
+    "passed_count": 146,
+    "failed_count": 0,
+    "no_fixture_count": 0,
+    "direct_gateway_parity": {"alias_pairs_checked": 10, "alias_pairs_ok": 10, "mismatches": []},
+    "elapsed_ms": 17965,
+    "note": "pa_tool_surface_runtime_attestation (PR-33) now smoke-tests every server-policy-available tool; source_index_health is among the 146 that pass, so freshness is now execution-aware, not registry-only."
+  },
+  "disposition": "Both connector re-test release blockers RESOLVED live. Runtime/manifest aligned at fce2fe92; dual freshness green; execution attestation 146/146 pass."
+}
