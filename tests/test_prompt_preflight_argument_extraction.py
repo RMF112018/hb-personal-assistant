@@ -115,6 +115,47 @@ def test_example_typed_id_is_not_retrieval_target() -> None:
     assert "conflicting_ids" not in plan
 
 
+def test_look_through_files_routes_source_search() -> None:
+    """Audit row 14: look-through phrasing is search-equivalent."""
+    plan = route_prompt("Look through the files in Work.")
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert plan["next_step"]["arguments"]["query"] == "files in work"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_documents_under_root_routes_file_search_not_root_map() -> None:
+    """Audit row 15: document retrieval beats root-map when both cues appear."""
+    plan = route_prompt("Find documents stored under my Work source root.")
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_original_pdf_contract_routes_source_file_search() -> None:
+    """Audit row 33: original PDF/contract cues imply indexed source file search."""
+    plan = route_prompt("Find the original PDF contract.")
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert "contract" in plan["next_step"]["arguments"]["query"].lower()
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_source_map_question_routes_root_map() -> None:
+    """Audit row 38: source-map questions route to structure/root-map workflow."""
+    plan = route_prompt("What does my source map say about Work?")
+    assert plan["recommended_workflow"] == "source_root_map"
+    assert plan["authorization"]["read_tool_calls_authorized"] is True
+
+
+def test_promotion_receipt_noun_only_does_not_route_inspect() -> None:
+    """Audit row 12: bare receipt noun in a prohibition must not create inspect intent."""
+    plan = route_prompt('Do not delete anything named "promotion receipt."')
+    assert plan["recommended_workflow"] == "context_preflight"
+    assert plan["recommended_workflow"] != "inspect_promotion_receipt"
+    assert plan["next_step"] is None
+
+
 def test_search_intent_wins_over_incidental_typed_id_mention() -> None:
     """Audit row 50: file search must not be overridden by an unrelated ID mention."""
     plan = route_prompt(

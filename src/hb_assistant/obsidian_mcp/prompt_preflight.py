@@ -241,13 +241,87 @@ def _classify_clause_modality(clause: str) -> str:
         r"\b("
         r"do|don't|never|stage|promote|search|find|write|archive|deploy|execute|"
         r"generate|create|save|commit|go ahead|list|retrieve|read|conduct|map|document|capture|record|log|"
-        r"make|bundle|remember|export|build|package|submit|queue|put"
+        r"make|bundle|remember|export|build|package|submit|queue|put|look"
         r")\b",
         c,
         re.IGNORECASE,
     ):
         return "imperative"
     return "advisory"
+
+
+_SEARCH_VERB_NORMALIZERS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\blook\s+through\b", re.IGNORECASE), "search through"),
+    (re.compile(r"\blook\s+in\b", re.IGNORECASE), "search in"),
+)
+_VAULT_SEARCH_CONTEXT = re.compile(
+    r"\bsearch\s+the\s+vault\b|\bvault\s+for\b|\bsearch\s+vault\b",
+    re.IGNORECASE,
+)
+
+_DOCUMENT_FIND_INTENT = re.compile(
+    r"\b(?:find|search|locate|retrieve)\b.*\b(?:documents|(?:original\s+)?pdf|contracts?|original|files?)\b|"
+    r"\b(?:documents|(?:original\s+)?pdf|contracts?|original)\b.*\b(?:find|search|locate|stored\s+under)\b|"
+    r"\bfind\s+the\s+original\b",
+    re.IGNORECASE,
+)
+_SOURCE_FILE_OBJECT = re.compile(
+    r"\b(?:documents|original\s+pdf(?:\s+contract)?|pdf\s+(?:contract|file|document)|contracts?|"
+    r"original|source\s+files?|project\s+file|indexed)\b",
+    re.IGNORECASE,
+)
+_VAULT_OBJECT = re.compile(
+    r"\b(?:vault|obsidian|meeting\s+notes?)\b",
+    re.IGNORECASE,
+)
+_STRUCTURE_OBJECT = re.compile(
+    r"\b(?:source\s+map|source\s+roots?|folder\s+(?:map|structure|tree)|"
+    r"map\s+the\s+(?:root|folder|project)|structure\s+under|configured\s+source\s+roots?)\b",
+    re.IGNORECASE,
+)
+_RECEIPT_INSPECTION_VERBS = re.compile(
+    r"\b(?:inspect|explain|retrieve|search|review|what\s+(?:is|does)|show|open|display|read|was\s+it)\b",
+    re.IGNORECASE,
+)
+_OBJECT_TYPE_WORKFLOW_BOOSTS: dict[str, tuple[re.Pattern[str], int]] = {
+    "source_file_search": (_SOURCE_FILE_OBJECT, 3),
+    "vault_note_search": (_VAULT_OBJECT, 3),
+    "source_root_map": (_STRUCTURE_OBJECT, 3),
+    "source_folder_map": (_STRUCTURE_OBJECT, 2),
+    "source_project_map": (
+        re.compile(r"\b(?:project\s+folder|where\s+is\s+(?:the\s+)?project)\b", re.IGNORECASE),
+        2,
+    ),
+}
+
+
+def _normalize_retrieval_verbs(prompt_l: str) -> str:
+    """Map look-through / look-in phrasing to search-equivalent tokens for scoring."""
+    text = prompt_l
+    for pattern, replacement in _SEARCH_VERB_NORMALIZERS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def _object_type_workflow_boost(prompt_l: str, workflow_id: str) -> int:
+    """Boost workflows whose object-type cues match the prompt (F-007 / F-015)."""
+    normalized = _normalize_retrieval_verbs(prompt_l)
+    boost = 0
+    spec = _OBJECT_TYPE_WORKFLOW_BOOSTS.get(workflow_id)
+    if spec is not None:
+        pattern, points = spec
+        if pattern.search(normalized):
+            boost += points
+    if workflow_id == "source_file_search" and _DOCUMENT_FIND_INTENT.search(normalized):
+        boost += 4
+    if workflow_id == "source_root_map" and _DOCUMENT_FIND_INTENT.search(normalized):
+        return -10
+    if _VAULT_SEARCH_CONTEXT.search(normalized):
+        if workflow_id == "vault_note_search":
+            boost += 4
+        elif workflow_id == "source_file_search":
+            boost -= 4
+    return boost
 
 
 def _dominant_operation_modality(prompt_l: str) -> str:
@@ -264,6 +338,7 @@ def _dominant_operation_modality(prompt_l: str) -> str:
 
 def _scoring_text(prompt_l: str, *, write_policy: bool) -> str:
     """Text surface used for workflow trigger scoring (modality- and quote-aware)."""
+    prompt_l = _normalize_retrieval_verbs(prompt_l)
     clauses = _split_clauses(prompt_l)
     blocked_modalities = frozenset({"hypothetical", "capability_inquiry"})
     if any(_classify_clause_modality(c) in blocked_modalities for c in clauses):
@@ -508,7 +583,19 @@ def _score_workflow(prompt_l: str, wf: dict[str, Any], prohibitions: set[str] | 
         if skip:
             continue
         score += 2 if " " in p else 1
-    return score
+
+    wf_id = wf["workflow_id"]
+    if wf_id == "inspect_promotion_receipt":
+        if score == 0:
+            return 0
+        if "promotion receipt" in score_surface:
+            if not _RECEIPT_INSPECTION_VERBS.search(score_surface):
+                return 0
+            if re.search(r"\b(?:vault|obsidian)\b", score_surface):
+                return 0
+
+    score += _object_type_workflow_boost(prompt_l, wf_id)
+    return max(0, score)
 
 
 _INTENT_TIE_TIER: dict[str, int] = {
@@ -780,6 +867,7 @@ def _extract_quoted_fragment(prompt: str) -> str | None:
 
 def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
     """Extract a bounded search/query string from natural-language retrieval prompts."""
+    prompt_l = _normalize_retrieval_verbs(prompt_l)
     quoted = _extract_quoted_fragment(prompt)
     if quoted:
         return quoted[:200]
@@ -789,6 +877,7 @@ def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
         (r"\bsearch\s+(?:my\s+)?work\s+files?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "work files"),
         (r"\bsearch(?:\s+the)?\s+nas(?:\s+files?)?(?:\s+for\s+(.+?))?(?:[.?!]|$)", "nas files"),
         (r"\bsearch(?:\s+indexed)?(?:\s+\w+){0,4}\s+for\s+(.+?)(?:[.?!]|$)", None),
+        (r"\bsearch\s+through\s+(?:the\s+)?(.+?)(?:[.?!]|$)", None),
         (r"\b(?:find|look for|search for)\s+(?:the\s+)?(.+?)(?:[.?!]|$)", None),
         (r"\bfind\s+(?:my\s+)?project\s+notes(?:\s+about\s+(.+?))?(?:[.?!]|$)", "project notes"),
         (r"\bsearch\s+(?:my\s+)?(.+?)(?:[.?!]|$)", None),

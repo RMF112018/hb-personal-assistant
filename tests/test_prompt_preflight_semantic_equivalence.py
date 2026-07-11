@@ -27,6 +27,8 @@ EQUIVALENCE_GROUPS: list[dict] = [
             "Look in the nas for contract",
             "Find files on the nas",
             "Search original files for specs",
+            "Look through the files in Work.",
+            "Search my Work source files.",
         ],
     },
     {
@@ -50,8 +52,8 @@ EQUIVALENCE_GROUPS: list[dict] = [
 ]
 
 
-def test_audit_matrix_has_forty_four_cases() -> None:
-    assert len(_AUDIT_CASES) == 44
+def test_audit_matrix_has_forty_nine_cases() -> None:
+    assert len(_AUDIT_CASES) == 49
 
 
 @pytest.mark.parametrize("case", _AUDIT_CASES, ids=[c["id"] for c in _AUDIT_CASES])
