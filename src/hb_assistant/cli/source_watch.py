@@ -178,11 +178,13 @@ def run_cmd(
     refused = False
     for root in [r for r in getattr(ocfg, "external_sources", []) or [] if r.enabled]:
         fkey = root.source_root_key
-        state = sb.resolve_run_state(fkey, db_path=dbp, obsidian_config=ocfg, backend_available=backend)
+        state = sb.resolve_run_state(
+            fkey, db_path=dbp, obsidian_config=ocfg, app_config=acfg, backend_available=backend
+        )
         if state == sb.RUN_STATE_NOT_BOOTSTRAPPED and bootstrap_if_needed:
             sb.bootstrap(db_path=dbp, obsidian_config=ocfg, app_config=acfg, root_key=fkey)
             state = sb.resolve_run_state(
-                fkey, db_path=dbp, obsidian_config=ocfg, backend_available=backend
+                fkey, db_path=dbp, obsidian_config=ocfg, app_config=acfg, backend_available=backend
             )
         if state == sb.RUN_STATE_NOT_BOOTSTRAPPED and require_bootstrap:
             refused = True
@@ -227,6 +229,7 @@ def status_cmd(
 
     dbp = _db_path(db)
     ocfg = _obsidian_config()
+    acfg = _app_config()
     backend = _watchdog_available()
     repo = SourceIndexRepository(dbp)
     bstate = SourceIndexBootstrapRepository(dbp)
@@ -254,7 +257,7 @@ def status_cmd(
             "structure_index_bootstrapped": bool(st.get("structure_index_bootstrapped")),
             "watcher_ready": bool(st.get("watcher_ready")),
             "run_state": sb.resolve_run_state(
-                fkey, db_path=dbp, obsidian_config=ocfg, backend_available=backend
+                fkey, db_path=dbp, obsidian_config=ocfg, app_config=acfg, backend_available=backend
             ),
             "last_reconciliation": (bstate.last_reconciliation(fkey) or {}).get("finished_at"),
             **bstate.get_structure_drift(fkey),

@@ -46,7 +46,10 @@ def _freshness_state(
 ) -> str:
     if not is_active:
         return "blocked"
-    if not last_indexed_at:
+    if last_indexed_at is None:
+        # ONLY a genuine never-run root (NULL timestamp). An empty string or garbage is a MALFORMED value
+        # (a corrupt/partial write), not "never run" — it must fall through to the parser and fail closed
+        # below, never read as ``never_succeeded`` (which is a benign not-yet-indexed state).
         return "never_succeeded"
     # Future-timestamp anomaly. The stored timestamp is UTC (repository ``_now`` uses
     # ``datetime.now(timezone.utc)``), so the comparison clock MUST be UTC too. The old
@@ -59,9 +62,12 @@ def _freshness_state(
         parsed = datetime.fromisoformat(str(last_indexed_at))
         parsed = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
         is_future = parsed.astimezone(timezone.utc).replace(microsecond=0) > now_utc
-    except ValueError:
-        # Unparseable timestamp: best-effort lexical compare, still on a UTC basis (never local).
-        is_future = str(last_indexed_at)[:19] > now_utc.strftime("%Y-%m-%dT%H:%M:%S")
+    except (ValueError, TypeError):
+        # Unparseable/malformed timestamp: FAIL CLOSED. The old lexical fallback compared raw bytes, so a
+        # garbage value sorting before "now" fell through to ``fresh`` and RE-OPENED trust. Return the
+        # fail-closed ``unknown`` state — it is NOT in the ("fresh","degraded") trust set, so
+        # index-layers/client/content/path answering all close (see the gates below).
+        return "unknown"
     if is_future:
         return "future_anomaly"
     if open_errors:
@@ -107,7 +113,7 @@ def source_index_health(
     # against CURRENT policy: a completed generation whose stored fingerprint no longer matches the
     # configured root (a sensitivity / exclusion / root-path / matcher change) must NOT read as complete or
     # watcher-ready until the corrective generation runs.
-    from .source_indexer import _root_fingerprint
+    from .source_indexer import _root_fingerprint, derive_watcher_ready
 
     configured_fp_by_root: dict[str, str] = {}
     for _er in getattr(config, "external_sources", []) or []:
@@ -242,6 +248,8 @@ def source_index_health(
             summary_bits.append("never successfully indexed")
         if state == "future_anomaly":
             summary_bits.append("last_indexed_at is in the future")
+        if state == "unknown":
+            summary_bits.append("last_indexed_at is unparseable/invalid — index integrity uncertain")
         if not summary_bits:
             summary_bits.append(
                 "index layers present; safe for bounded client answers"
@@ -290,15 +298,25 @@ def source_index_health(
         # legacy readiness bit, which could read ready off a partial/legacy bootstrap (finding 5). Roots
         # with no V122 generation yet fall back to the legacy bit.
         legacy_watcher_ready = bool((bootstrap_by_root.get(key) or {}).get("watcher_ready"))
-        if gen_row is not None:
-            watcher_ready = bool(reconciliation_done and folder_count > 0)
-        else:
-            watcher_ready = legacy_watcher_ready
+        # Shared authority (V122 blocker 2): identical rule used by ``resolve_run_state`` so the CLI can
+        # never launch a watcher this projection reports as not-ready. FAIL-CLOSED on an unverifiable policy
+        # (``current_fp is None``) — stricter than the content-completeness ``policy_current`` above, which
+        # legitimately treats an absent current policy as "nothing to contradict".
+        watcher_ready = derive_watcher_ready(
+            gen_row=gen_row,
+            current_fp=current_fp,
+            folder_count=folder_count,
+            legacy_ready=legacy_watcher_ready,
+        )
         # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
         # map — not merely a bare row count (V122) — AND the completion matches current policy (finding 2:
-        # a policy-stale root may index newly-excluded paths, so path lookup fails closed too).
-        safe_for_path_lookup = policy_certified and (
-            counts.get("metadata_searchable", 0) > 0 or folder_count > 0
+        # a policy-stale root may index newly-excluded paths, so path lookup fails closed too) — AND the
+        # freshness timestamp is not MALFORMED (blocker 3: an unparseable ``last_indexed_at`` is a corrupt
+        # index signal; closing only client/content answering would leave the full trust surface open).
+        safe_for_path_lookup = (
+            policy_certified
+            and state != "unknown"
+            and (counts.get("metadata_searchable", 0) > 0 or folder_count > 0)
         )
         if not policy_certified:
             # Uncertified/stale/unavailable policy may serve plaintext-when-now-sensitive or newly-excluded
@@ -416,7 +434,7 @@ def source_index_health(
     overall = "fresh"
     if all(r["freshness_status"] == "never_succeeded" for r in per_root):
         overall = "never_succeeded"
-    elif any(r["freshness_status"] in ("blocked", "future_anomaly") for r in per_root):
+    elif any(r["freshness_status"] in ("blocked", "future_anomaly", "unknown") for r in per_root):
         overall = "degraded"
     elif any(not r["safe_for_client_answering"] for r in per_root):
         overall = "partial"

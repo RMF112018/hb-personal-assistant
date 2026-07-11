@@ -142,7 +142,15 @@ def _bootstrap_file_layer(
     result["run_id"] = run.run_id
     result["run_status"] = run.status
     result["conflict"] = run.conflict
-    result["found"] = run.report is not None and "root_not_found" not in run.report.error_codes
+    # A conflict now carries a report (blocker 4) — but a conflict is NOT a "found root" outcome. Guard
+    # with ``not run.conflict`` so a conflict stays classified exactly as before (out of the success
+    # bucket): the fix adds the lease_lost/active_run_conflict DISTINCTION (via error_code/report), not a
+    # pass/fail reclassification.
+    result["found"] = (
+        run.report is not None
+        and not run.conflict
+        and "root_not_found" not in run.report.error_codes
+    )
     result["success"] = run.status == "completed"
     result["bounded_out"] = run.status == "partial"
     return result
@@ -445,12 +453,15 @@ def reconcile_root(
             run = run_scan(root_obj, repo, obsidian_config, bstate, mode="reconcile")
             if run.conflict:
                 # A live run already holds this root: reconcile is RETRYABLE (deferred to the next
-                # cycle), never discarded and never a hard failure.
+                # cycle), never discarded and never a hard failure. Label the reason with the REAL conflict
+                # code (blocker 4) so a mid-pass ``lease_lost`` takeover is distinguishable from a benign
+                # start-time ``active_run_conflict`` in the receipt + return.
+                conflict_code = run.error_code or "active_run_conflict"
                 bstate.finish_reconciliation_run(
-                    run_id, status="failed", last_error="deferred_active_run_conflict"
+                    run_id, status="failed", last_error=f"deferred_{conflict_code}"
                 )
                 return {"ok": True, "run_id": run_id, "root_key": file_key, "scan_type": scan_type,
-                        "deferred": True, "reason": "active_run_conflict"}
+                        "deferred": True, "reason": conflict_code}
             report = run.report
             files_seen = report.scanned if report is not None else 0
             changes = (report.indexed + report.deleted) if report is not None else 0
@@ -465,10 +476,13 @@ def reconcile_root(
             seen_rel: set[str] = set()
             live_dirs: set[str] = set()
             walk_complete = True  # False if we truncate at max_files (an INCOMPLETE walk)
+            walk_errors: list[str] = []  # non-empty => an indeterminate read (fail closed on deletions)
             # Streaming walk (dirs + files): skip predicates + dir-subtree pruning happen inside
-            # walk_source_tree, so a huge low-value root does not front-load a full sorted tree.
+            # walk_source_tree, so a huge low-value root does not front-load a full sorted tree. The
+            # error_sink captures INDETERMINATE (non-ENOENT) read failures so an unreadable subtree can
+            # never look empty and drive deletions.
             for kind, abs_path, rel_path in walk_source_tree(
-                root_path, obsidian_config, want_dirs=True
+                root_path, obsidian_config, want_dirs=True, error_sink=walk_errors
             ):
                 if kind == "dir":
                     live_dirs.add(rel_path)
@@ -501,8 +515,26 @@ def reconcile_root(
                     )
                     changes += 1
                     enqueued += 1
-            # deletions: active indexed files no longer on disk. ONLY enqueue after a COMPLETE walk — on a
-            # truncated (bounded) walk, an unseen path is "not reached", NOT gone (false-deletion guard).
+            # deletions: active indexed files no longer on disk. ONLY enqueue after a trustworthy COMPLETE
+            # census of the root — three fail-closed guards, each also recorded as a non-success receipt so
+            # a suppressed sweep is observable, not a silent "clean" reconcile:
+            #  * truncated at max_files    -> an unseen path is "not reached", NOT gone (bounded-walk guard;
+            #                                 walk_complete already False above, receipt stays 'completed').
+            #  * indeterminate read error  -> an unreadable subtree could hide still-present files.
+            #  * zero files but many rows  -> accessible-but-empty mount / lost share can look like every
+            #                                 file was confirmed-deleted (blast-radius guard; identical
+            #                                 threshold + count to the generation path, source_indexer.py).
+            if walk_errors:
+                walk_complete = False
+                reconcile_status = "failed"
+                last_error = "lightweight_walk_indeterminate"
+            empty_guard = int(
+                getattr(obsidian_config, "source_index_empty_root_delete_threshold", 50)
+            )
+            if walk_complete and files_seen == 0 and repo.count_source_files(file_key) > empty_guard:
+                walk_complete = False
+                reconcile_status = "failed"
+                last_error = "lightweight_empty_root_guard"
             if walk_complete:
                 for gone in repo.active_rel_paths(file_key) - seen_rel:
                     repo.enqueue_event(
@@ -565,13 +597,76 @@ def reconcile_root(
 
 # ----- watcher run-state resolution (amendment 5) --------------------------------------------
 def resolve_run_state(
-    file_key: str, *, db_path: str, obsidian_config: ObsidianMcpConfig, backend_available: bool
+    file_key: str,
+    *,
+    db_path: str,
+    obsidian_config: ObsidianMcpConfig,
+    app_config: Any,
+    backend_available: bool,
+    explicit_map: dict[str, str] | None = None,
 ) -> str:
-    """Deterministic per-root run state for `source-watch run`/`status` and the health projection."""
+    """Deterministic per-root run state for `source-watch run`/`status` and the health projection.
+
+    Watcher readiness is the SHARED ``derive_watcher_ready`` authority (V122 blocker 2): the latest
+    generation must be a CURRENT-policy completion WITH a structure folder map — NOT the persisted
+    ``watcher_ready`` bit alone, which could read ready after a policy change or a newer
+    partial/running/failed generation. Every new read is FAIL CLOSED: a generation-repository read error,
+    a fingerprint-computation error, or a structure read error resolves to NOT ready — never a silent
+    fallback to the stale legacy bit. ``app_config`` is required for the CANONICAL exact structure-key
+    mapping (``resolve_structure_key``) — health's fuzzy substring match is deliberately NOT reproduced.
+    """
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
+
+    from .source_indexer import _root_fingerprint, derive_watcher_ready
+    from .source_structure_repository import SourceStructureRepository
+
     if not bool(getattr(obsidian_config, "external_source_watch_enabled", False)):
         return RUN_STATE_DISABLED
     state = SourceIndexBootstrapRepository(db_path).get_bootstrap_state(file_key) or {}
-    if not state.get("watcher_ready"):
+    legacy_ready = bool(state.get("watcher_ready"))
+
+    # Latest generation. A READ FAILURE is indeterminate → fail closed (do NOT fall back to the legacy
+    # bit). A clean read returning no row is the genuine no-generation case (helper → legacy fallback).
+    try:
+        gen_row = SourceIndexScanGenerationsRepository(db_path).latest_generations().get(file_key)
+    except Exception:
+        return RUN_STATE_NOT_BOOTSTRAPPED
+
+    # Current policy fingerprint. A compute failure leaves ``current_fp`` None, which the helper treats as
+    # fail closed (an unverifiable policy must never launch a live watcher).
+    root_obj = next(
+        (r for r in obsidian_config.external_sources if r.source_root_key == file_key), None
+    )
+    current_fp: str | None = None
+    if root_obj is not None:
+        try:
+            current_fp = _root_fingerprint(root_obj, obsidian_config)
+        except Exception:
+            current_fp = None
+
+    # Structure folder_count via the CANONICAL exact/explicit mapping (never fuzzy). Any read failure →
+    # folder_count 0 (fail closed).
+    folder_count = 0
+    try:
+        scan_roots = dict(
+            getattr(getattr(app_config, "source_structure", None), "scan_roots", {}) or {}
+        )
+        skey = resolve_structure_key(file_key, scan_roots, explicit_map)
+        if skey is not None:
+            row = _structure_root_row(SourceStructureRepository(db_path), skey)
+            folder_count = int((row or {}).get("folder_count") or 0)
+    except Exception:
+        folder_count = 0
+
+    ready = derive_watcher_ready(
+        gen_row=gen_row,
+        current_fp=current_fp,
+        folder_count=folder_count,
+        legacy_ready=legacy_ready,
+    )
+    if not ready:
         return RUN_STATE_NOT_BOOTSTRAPPED
     if not backend_available:
         return RUN_STATE_BACKEND_UNAVAILABLE

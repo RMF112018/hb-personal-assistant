@@ -82,8 +82,23 @@ def effective_max_files(root: ExternalSourceRoot, config: ObsidianMcpConfig) -> 
     return int(getattr(config, "external_source_scan_max_files", 5000))
 
 
+def _redact_walk_error(root_path: Path, target: Path) -> str:
+    """Redaction-safe token (parent-hash + depth, never an absolute host path) for ``error_sink``."""
+    from .source_scan_runner import redact_rel_prefix
+
+    try:
+        rel = str(target.relative_to(root_path))
+    except ValueError:
+        rel = ""
+    return redact_rel_prefix(rel)
+
+
 def walk_source_tree(
-    root_path: Path, config: ObsidianMcpConfig, *, want_dirs: bool = False
+    root_path: Path,
+    config: ObsidianMcpConfig,
+    *,
+    want_dirs: bool = False,
+    error_sink: list[str] | None = None,
 ) -> Iterator[tuple[str, Path, str]]:
     """Lazily walk ``root_path`` depth-first, yielding ``(kind, abs_path, rel_path)`` where ``kind``
     is ``"file"`` (always) or ``"dir"`` (only when ``want_dirs``).
@@ -96,6 +111,15 @@ def walk_source_tree(
     file is yielded only if it resolves inside the root. No file content is read.
 
     Callers apply their own ``max_files`` cap on the yielded ``"file"`` entries.
+
+    ``error_sink`` (opt-in): this walker is intentionally fail-OPEN (it silently skips every unreadable
+    directory/entry so a bounded stat-walk never aborts). A caller that uses the walk to drive DELETIONS
+    (lightweight reconcile) cannot tolerate that — an unreadable subtree would look empty and mass-delete
+    its still-present rows. When ``error_sink`` is provided, an INDETERMINATE OSError (anything but a
+    confirmed ``ENOENT``/``ENOTDIR`` — permission / transient I/O / stale-handle / mount-loss) at any of
+    the three swallow points appends a redaction-safe token to it, so the caller can fail closed. A
+    confirmed missing dir/entry stays a silent skip (a genuine removal). Callers that pass no sink are
+    byte-for-byte unchanged.
     """
     root_path = Path(root_path)
     stack: list[Path] = [root_path]
@@ -103,7 +127,9 @@ def walk_source_tree(
         current = stack.pop()
         try:
             entries = sorted(os.scandir(current), key=lambda e: e.name)
-        except OSError:
+        except OSError as exc:
+            if error_sink is not None and _is_indeterminate_oserror(exc):
+                error_sink.append(_redact_walk_error(root_path, current))
             continue
         subdirs: list[Path] = []
         for entry in entries:
@@ -116,16 +142,21 @@ def walk_source_tree(
                 is_symlink = entry.is_symlink()
                 is_dir = entry.is_dir(follow_symlinks=False)
                 is_file = entry.is_file(follow_symlinks=False)
-            except OSError:
+            except OSError as exc:
+                if error_sink is not None and _is_indeterminate_oserror(exc):
+                    error_sink.append(_redact_walk_error(root_path, abs_path))
                 continue
             if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
                 # prune: neither descend an excluded dir nor yield an excluded file
                 continue
             if is_symlink:
                 # never descend a symlink dir; include a symlinked file only if it stays in-root
-                with suppress(OSError):
+                try:
                     if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
                         yield ("file", abs_path, rel_path)
+                except OSError as exc:
+                    if error_sink is not None and _is_indeterminate_oserror(exc):
+                        error_sink.append(_redact_walk_error(root_path, abs_path))
                 continue
             if is_dir:
                 if want_dirs:
@@ -185,6 +216,32 @@ def _is_indeterminate_oserror(exc: OSError) -> bool:
     ``ENOENT``/``ENOTDIR``) — permission / transient I/O / stale-handle / mount-loss / unknown errno. Such
     errors must fail closed (suspend), never abandon a cursor or silently skip a possibly-present entry."""
     return not _is_confirmed_missing(exc)
+
+
+def derive_watcher_ready(
+    *,
+    gen_row: dict[str, Any] | None,
+    current_fp: str | None,
+    folder_count: int,
+    legacy_ready: bool,
+) -> bool:
+    """Single authority for "is the file watcher clear to run for this root?" — shared by the health
+    projection and ``resolve_run_state`` so the CLI can never launch a watcher the health service reports
+    as not-ready (V122 blocker 2).
+
+    For a root the V122 architecture tracks (``gen_row`` present), readiness is FAIL-CLOSED: the current
+    policy fingerprint must be KNOWN (``current_fp is not None`` — an unverifiable policy must never launch
+    a live watcher), the latest generation must be ``completed`` under THAT fingerprint, and a structure
+    folder map must exist. A root with no V122 generation yet falls back to the persisted legacy bit.
+    """
+    if gen_row is not None:
+        return bool(
+            current_fp is not None
+            and gen_row.get("status") == "completed"
+            and gen_row.get("policy_fingerprint") == current_fp
+            and folder_count > 0
+        )
+    return bool(legacy_ready)
 
 
 # V122 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
@@ -2189,13 +2246,48 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                                 rebuild_status, rebuild_code = "error", run.error_code
                 repo.complete_event(event["event_id"], rebuild_status, error_code=rebuild_code)
             elif event["event_type"] == "deleted":
-                if event["rel_path"]:
-                    repo.mark_deleted(
-                        "external_file",
-                        event["rel_path"],
-                        source_root_key=event.get("source_root_key"),
-                    )
-                repo.complete_event(event["event_id"], "done")
+                rel_path = event["rel_path"]
+                src_key = event.get("source_root_key")
+                if not rel_path:
+                    repo.complete_event(event["event_id"], "done")
+                elif src_key == _VAULT_ROOT_KEY:
+                    # The vault is always local/mounted: a vault-file deletion is a real user action,
+                    # not a mount blip. Preserve existing behavior (no NAS-mount revalidation).
+                    repo.mark_deleted("external_file", rel_path, source_root_key=src_key)
+                    repo.complete_event(event["event_id"], "done")
+                else:
+                    # External (NAS) root: NEVER mark_deleted on an enqueued event alone. Between enqueue
+                    # and drain the whole mount can drop — every candidate would then probe "absent" and
+                    # mass-delete still-present rows. Revalidate: the root must be confirmed USABLE, then
+                    # the file itself confirmed ABSENT. Anything else is a distinct, retryable skip.
+                    root = roots.get(src_key)
+                    if root is None:
+                        repo.complete_event(
+                            event["event_id"], "skipped", error_code="unconfigured_root"
+                        )
+                    else:
+                        root_path = Path(root.path)
+                        root_state = _probe_root_dir(root_path)
+                        if root_state != "usable":
+                            # absent/indeterminate root → the deletion is unproven (retry next reconcile)
+                            repo.complete_event(
+                                event["event_id"], "skipped", error_code="root_unavailable"
+                            )
+                        else:
+                            probe = _probe_candidate(root_path / rel_path, root_path)
+                            if probe == "absent":
+                                repo.mark_deleted(
+                                    "external_file", rel_path, source_root_key=src_key
+                                )
+                                repo.complete_event(event["event_id"], "done")
+                            elif probe == "present":
+                                repo.complete_event(
+                                    event["event_id"], "skipped", error_code="still_present"
+                                )
+                            else:  # indeterminate → unproven, retry next reconcile
+                                repo.complete_event(
+                                    event["event_id"], "skipped", error_code="indeterminate"
+                                )
             elif (
                 event["source_root_key"] == _VAULT_ROOT_KEY
                 and event["rel_path"]

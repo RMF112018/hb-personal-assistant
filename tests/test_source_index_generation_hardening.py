@@ -12,17 +12,25 @@ import os
 import shutil
 import sqlite3
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+from hb_assistant.obsidian_mcp import source_bootstrap as sb
 from hb_assistant.obsidian_mcp import source_indexer as si
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
-from hb_assistant.obsidian_mcp.source_health_service import source_index_health
+from hb_assistant.obsidian_mcp.source_health_service import _freshness_state, source_index_health
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+from hb_assistant.obsidian_mcp.source_scan_runner import run_scan
 from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
 from hb_assistant.store.source_index_scan_generations_repository import (
     SourceIndexScanGenerationsRepository,
+)
+
+_GEN_REPO_ATTR = (
+    "hb_assistant.store.source_index_scan_generations_repository.SourceIndexScanGenerationsRepository"
 )
 
 _TEMPLATE_DB: str | None = None
@@ -2186,3 +2194,226 @@ def test_give_up_failed_transition_lease_loss_reports_conflict(tmp_path):
     assert rep.conflict is True
     assert rep.generation_status == "conflict"
     assert rep.error_code == "lease_lost"
+
+
+# ============================================================ ROUND-8 blocker regressions ========
+def _bstate(db):
+    return SourceIndexBootstrapRepository(db)
+
+
+# ----- Blocker 3: malformed / boundary freshness timestamps must FAIL CLOSED (never read `fresh`) -----
+def _iso_now(delta_s: int = -5) -> str:
+    return (datetime.now(timezone.utc) + timedelta(seconds=delta_s)).replace(
+        microsecond=0
+    ).isoformat()
+
+
+def test_r8_freshness_fresh_for_valid_now_and_offsets():
+    assert _freshness_state(last_indexed_at=_iso_now(-5)) == "fresh"  # tz-aware UTC, just past
+    assert _freshness_state(last_indexed_at="2020-01-01T00:00:00") == "fresh"  # naive -> UTC, past
+    assert _freshness_state(last_indexed_at="2020-01-01T00:00:00Z") == "fresh"  # trailing Z, past
+    assert _freshness_state(last_indexed_at="2020-01-01T00:00:00-04:00") == "fresh"  # offset, past
+    # An offset value whose UTC instant crosses the local date boundary but is still in the past.
+    assert _freshness_state(last_indexed_at="2020-01-01T02:00:00+05:00") == "fresh"
+
+
+def test_r8_freshness_future_anomaly_for_future_values():
+    assert _freshness_state(last_indexed_at="2999-01-01T00:00:00Z") == "future_anomaly"
+    assert _freshness_state(last_indexed_at="2999-01-01T00:00:00") == "future_anomaly"  # naive future
+    assert _freshness_state(last_indexed_at="2999-01-01T00:00:00+05:00") == "future_anomaly"
+
+
+def test_r8_freshness_none_is_never_succeeded_but_empty_is_malformed():
+    assert _freshness_state(last_indexed_at=None) == "never_succeeded"
+    # An empty string is a CORRUPT value, NOT a benign never-run root -> must fail closed, not read
+    # as never_succeeded (the internal-consistency fix).
+    assert _freshness_state(last_indexed_at="") == "unknown"
+
+
+def test_r8_freshness_unknown_for_malformed_never_fresh():
+    for bad in ("not-a-date", "2026-13-99T00:00:00", "garbage", "2026/07/11"):
+        assert _freshness_state(last_indexed_at=bad) == "unknown"
+
+
+def test_r8_freshness_blocked_takes_precedence():
+    assert _freshness_state(last_indexed_at="not-a-date", is_active=False) == "blocked"
+
+
+# ----- Blocker 2 helper: derive_watcher_ready fails closed on unverifiable policy -----
+def _gen(status="completed", fp="fp"):
+    return {"status": status, "policy_fingerprint": fp}
+
+
+def test_r8_derive_watcher_ready_rules():
+    # Ready only for a completed CURRENT-policy generation with a folder map.
+    assert si.derive_watcher_ready(gen_row=_gen(), current_fp="fp", folder_count=3, legacy_ready=False)
+    # Unverifiable policy (current_fp None) must FAIL CLOSED even if the generation looks complete.
+    assert not si.derive_watcher_ready(
+        gen_row=_gen(), current_fp=None, folder_count=3, legacy_ready=True
+    )
+    # Not-completed / fingerprint mismatch / no folder map all fail closed.
+    assert not si.derive_watcher_ready(
+        gen_row=_gen(status="partial"), current_fp="fp", folder_count=3, legacy_ready=True
+    )
+    assert not si.derive_watcher_ready(
+        gen_row=_gen(fp="other"), current_fp="fp", folder_count=3, legacy_ready=True
+    )
+    assert not si.derive_watcher_ready(
+        gen_row=_gen(), current_fp="fp", folder_count=0, legacy_ready=True
+    )
+    # No V122 generation -> honor the persisted legacy bit (either way).
+    assert si.derive_watcher_ready(gen_row=None, current_fp="fp", folder_count=0, legacy_ready=True)
+    assert not si.derive_watcher_ready(
+        gen_row=None, current_fp="fp", folder_count=9, legacy_ready=False
+    )
+
+
+# ----- Blocker 1 leaf: walk_source_tree error_sink separates confirmed-missing from indeterminate -----
+def _make_tree(tmp_path):
+    root = tmp_path / "root"
+    (root / "sub").mkdir(parents=True)
+    (root / "top.txt").write_text("x")
+    (root / "sub" / "deep.txt").write_text("y")
+    return root
+
+
+def test_r8_walk_error_sink_records_indeterminate_only(tmp_path):
+    root = _make_tree(tmp_path)
+    cfg = _cfg(root)
+    real_scandir = os.scandir
+    sub = str(root / "sub")
+
+    def _scandir_eio(path, *a, **k):
+        if os.fspath(path) == sub:
+            raise OSError(errno.EIO, "io")  # INDETERMINATE
+        return real_scandir(path, *a, **k)
+
+    sink: list[str] = []
+    orig = si.os.scandir
+    si.os.scandir = _scandir_eio
+    try:
+        files = [rel for kind, _abs, rel in si.walk_source_tree(root, cfg, error_sink=sink) if kind == "file"]
+    finally:
+        si.os.scandir = orig
+    assert "top.txt" in files  # walk still fail-OPEN: readable parts yielded
+    assert sink  # but the indeterminate subtree was RECORDED so the caller can fail closed
+
+
+def test_r8_walk_error_sink_silent_for_confirmed_missing(tmp_path):
+    root = _make_tree(tmp_path)
+    cfg = _cfg(root)
+    real_scandir = os.scandir
+    sub = str(root / "sub")
+
+    def _scandir_enoent(path, *a, **k):
+        if os.fspath(path) == sub:
+            raise OSError(errno.ENOENT, "gone")  # CONFIRMED missing
+        return real_scandir(path, *a, **k)
+
+    sink: list[str] = []
+    orig = si.os.scandir
+    si.os.scandir = _scandir_enoent
+    try:
+        list(si.walk_source_tree(root, cfg, error_sink=sink))
+    finally:
+        si.os.scandir = orig
+    assert sink == []  # a confirmed removal stays a silent skip, never a fail-closed signal
+
+
+def test_r8_walk_no_sink_is_unchanged(tmp_path):
+    root = _make_tree(tmp_path)
+    cfg = _cfg(root)
+    real_scandir = os.scandir
+    sub = str(root / "sub")
+
+    def _scandir_eio(path, *a, **k):
+        if os.fspath(path) == sub:
+            raise OSError(errno.EIO, "io")
+        return real_scandir(path, *a, **k)
+
+    orig = si.os.scandir
+    si.os.scandir = _scandir_eio
+    try:
+        # No error_sink -> the legacy fail-open behavior (no exception, readable parts yielded).
+        files = [rel for kind, _abs, rel in si.walk_source_tree(root, cfg) if kind == "file"]
+    finally:
+        si.os.scandir = orig
+    assert "top.txt" in files
+
+
+# ----- Blocker 4: run_scan must PRESERVE the real conflict shape (lease_lost vs active_run_conflict) --
+def _conflict_env(tmp_path):
+    root_dir = tmp_path / "root"
+    root_dir.mkdir()
+    for i in range(3):
+        (root_dir / f"f{i}.txt").write_text("x")
+    db = _db(tmp_path)
+    return root_dir, db, SourceIndexRepository(db), _bstate(db), ExternalSourceRoot(
+        source_root_key="work", path=str(root_dir)
+    )
+
+
+class _LeaseLossGenRepo(SourceIndexScanGenerationsRepository):
+    def advance_cursor(self, *a, **k):  # noqa: ANN002 — stale-lease takeover mid-batch
+        return 0
+
+
+class _StartConflictGenRepo(SourceIndexScanGenerationsRepository):
+    def begin_generation_pass(self, *a, **k):  # noqa: ANN002 — a live run already holds the root
+        return None
+
+
+def test_r8_run_scan_preserves_lease_lost(tmp_path, monkeypatch):
+    root_dir, _db_path, repo, bstate, r = _conflict_env(tmp_path)
+    monkeypatch.setattr(_GEN_REPO_ATTR, _LeaseLossGenRepo)
+    res = run_scan(r, repo, _cfg(root_dir), bstate, mode="bootstrap")
+    assert res.conflict is True and res.status == "conflict"
+    assert res.error_code == "lease_lost"  # NOT collapsed to active_run_conflict
+    assert res.report is not None and res.run_id is not None
+
+
+def test_r8_run_scan_preserves_active_run_conflict(tmp_path, monkeypatch):
+    root_dir, _db_path, repo, bstate, r = _conflict_env(tmp_path)
+    monkeypatch.setattr(_GEN_REPO_ATTR, _StartConflictGenRepo)
+    res = run_scan(r, repo, _cfg(root_dir), bstate, mode="bootstrap")
+    assert res.conflict is True and res.status == "conflict"
+    assert res.error_code == "active_run_conflict"
+    assert res.report is not None and res.run_id is not None
+
+
+@pytest.mark.parametrize(
+    "gen_cls,expected",
+    [(_LeaseLossGenRepo, "lease_lost"), (_StartConflictGenRepo, "active_run_conflict")],
+)
+def test_r8_bootstrap_file_layer_conflict_stays_failure(tmp_path, monkeypatch, gen_cls, expected):
+    root_dir, _db_path, repo, bstate, r = _conflict_env(tmp_path)
+    monkeypatch.setattr(_GEN_REPO_ATTR, gen_cls)
+    result = sb._bootstrap_file_layer(r, repo, _cfg(root_dir), bstate)
+    # A conflict is NOT reclassified into the success/found bucket (blocker 4 keeps classification stable).
+    assert result["conflict"] is True
+    assert result["found"] is False
+    assert result["success"] is False
+    # The DISTINCT conflict code reaches the caller (lease_lost appends to error_codes; the start-time
+    # active_run_conflict carries an empty error_codes list — a distinguishable classification).
+    if expected == "lease_lost":
+        assert "lease_lost" in result["error_codes"]
+    else:
+        assert "lease_lost" not in result["error_codes"]
+
+
+@pytest.mark.parametrize(
+    "gen_cls,expected",
+    [(_LeaseLossGenRepo, "lease_lost"), (_StartConflictGenRepo, "active_run_conflict")],
+)
+def test_r8_reconcile_full_conflict_reason_distinguishes(tmp_path, monkeypatch, gen_cls, expected):
+    root_dir, db, _repo, _bstate_obj, _r = _conflict_env(tmp_path)
+    monkeypatch.setattr(_GEN_REPO_ATTR, gen_cls)
+
+    class _Stub:  # app_config is never dereferenced on the full-conflict early-return path
+        source_structure = type("S", (), {"scan_roots": {}})()
+
+    rec = sb.reconcile_root(
+        db_path=db, file_key="work", obsidian_config=_cfg(root_dir), app_config=_Stub(),
+        scan_type="full",
+    )
+    assert rec["deferred"] is True and rec["reason"] == expected

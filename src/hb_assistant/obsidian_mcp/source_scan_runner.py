@@ -169,7 +169,11 @@ def run_scan(
         return ScanRunResult("failed", False, run_id, None, code)
 
     if report.conflict:
-        return ScanRunResult("conflict", True, None, None, "active_run_conflict")
+        # Preserve the REAL conflict shape: a start-time held-lease conflict (``active_run_conflict``)
+        # and a mid-pass stale-lease takeover (``lease_lost``) carry distinct ``report.error_code`` and
+        # must NOT be collapsed — callers rely on the distinction (and on the report/run_id) to classify
+        # a takeover vs a benign already-running root.
+        return ScanRunResult("conflict", True, report.run_id, report, report.error_code)
     status = {
         "completed": "completed",
         "partial": "partial",
