@@ -129,6 +129,20 @@ _ALLOW_READ_PHRASES = (
     "read only analysis", "read-only analysis", "may use read-only", "read-only analysis",
 )
 
+_READ_INTENT_RE = re.compile(
+    r"\b(show|list|display|inspect|review|retrieve|get|see|what are)\b",
+    re.IGNORECASE,
+)
+_READ_OBJECT_RE = re.compile(
+    r"\b(staged actions?|action stages?|staged items?|feedback|open loops?|decisions?|"
+    r"preferences?|proposals?|outputs?|files?|notes?)\b",
+    re.IGNORECASE,
+)
+_SCOPED_EXECUTE_BAN_RE = re.compile(
+    r"\b(?:do not|don't)\s+execute\b(?:\s+(?:them|those|it|anything|that|the staged|any action))?",
+    re.IGNORECASE,
+)
+
 
 def _normalize_unicode_quotes(text: str) -> str:
     return (
@@ -458,6 +472,50 @@ def _has_imperative_capability_intent(prompt_l: str, capability: str) -> bool:
     return False
 
 
+def _execute_ban_scoped_to_read_intent(prompt_l: str) -> bool:
+    """True when a read/inspect clause coexists with a scoped execute prohibition."""
+    clauses = _split_clauses(prompt_l)
+    read_clause = False
+    scoped_execute_ban = False
+    for clause in clauses:
+        c = clause.strip()
+        if _READ_INTENT_RE.search(c) and _READ_OBJECT_RE.search(c):
+            read_clause = True
+        if _SCOPED_EXECUTE_BAN_RE.search(c):
+            scoped_execute_ban = True
+        elif re.search(r"\b(?:do not|don't)\s+execute\b", c) and read_clause:
+            scoped_execute_ban = True
+    return read_clause and scoped_execute_ban
+
+
+def _prohibition_operation_scopes(
+    prompt_l: str, prohibitions: set[str],
+) -> tuple[list[str], list[str]]:
+    """Derive explicit prohibited/allowed operation lists after scope parsing."""
+    prohibited: list[str] = []
+    allowed: list[str] = []
+    if "write" in prohibitions:
+        prohibited.append("write")
+    if "stage" in prohibitions:
+        prohibited.append("stage")
+    if "promote" in prohibitions:
+        prohibited.append("promote")
+    if "external_action" in prohibitions:
+        prohibited.append("external_action")
+    if "execute" in prohibitions:
+        prohibited.append("execute_request")
+    elif "execute_non_read" in prohibitions:
+        prohibited.append("execute_non_read")
+        if _execute_ban_scoped_to_read_intent(prompt_l):
+            prohibited.append("execute_staged_actions")
+    if _execute_ban_scoped_to_read_intent(prompt_l) or "execute_non_read" in prohibitions:
+        allowed.extend(["read", "inspect", "list"])
+    if _is_read_only_posture(prompt_l) or _reads_explicitly_allowed(prompt_l):
+        if "read" not in allowed:
+            allowed.append("read")
+    return prohibited, allowed
+
+
 def _extract_prohibitions(prompt_l: str) -> set[str]:
     """Return capability names prohibited by scoped negation (not keyword-wide).
 
@@ -466,6 +524,7 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
     (without a beyond-read-only exception) bans non-advisory tool execution.
     """
     prohibitions: set[str] = set()
+    read_scoped_execute = _execute_ban_scoped_to_read_intent(prompt_l)
 
     # Explicit execute bans (not implied by "read-only").
     # Vocabulary:
@@ -478,6 +537,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         if beyond_read_only:
             prohibitions.add("execute_non_read")
             prohibitions.update({"write", "stage", "promote", "external_action"})
+        elif read_scoped_execute:
+            prohibitions.add("execute_non_read")
         else:
             prohibitions.add("execute")
 
@@ -514,6 +575,10 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         (r"\bdo not stage\b", {"stage"}),
         (r"\bdo not promote\b", {"promote"}),
         (r"\bdon't promote\b", {"promote"}),
+        (r"\bdo not apply\b", {"promote"}),
+        (r"\bdon't apply\b", {"promote"}),
+        (r"\bdo not modify\b", {"write"}),
+        (r"\bdon't modify\b", {"write"}),
         (r"\bnever promote\b", {"promote"}),
         (r"\bdo not deploy\b", {"deploy"}),
         (r"\bdo not\b[^\n.]{0,40}\bindex\b", {"index"}),
@@ -562,13 +627,14 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
                 if _capability_token_in_text(cap, span):
                     if cap == "promote" and "receipt" in span and "not a" in span:
                         continue
-                    if cap == "execute" and beyond_read_only:
+                    if cap == "execute" and (beyond_read_only or read_scoped_execute):
                         prohibitions.add("execute_non_read")
+                        prohibitions.discard("execute")
                         continue
                     prohibitions.add(cap)
 
     # Posture cleanup: read-only work must not carry a naked execute ban unless plan-only/identify.
-    if beyond_read_only or (
+    if beyond_read_only or read_scoped_execute or (
         _is_read_only_posture(prompt_l)
         and not re.search(r"\bplan only\b", prompt_l)
         and not re.search(r"\b(identify which tool|which tool should be used)\b", prompt_l)
@@ -577,6 +643,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         if beyond_read_only:
             prohibitions.add("execute_non_read")
             prohibitions.update({"write", "stage", "promote", "external_action"})
+        elif read_scoped_execute:
+            prohibitions.add("execute_non_read")
 
     _apply_anaphora_prohibitions(prompt_l, prohibitions)
 
@@ -746,8 +814,12 @@ def _plan_only_or_no_execute(prompt_l: str, prohibitions: set[str]) -> bool:
         return True
     # Bare "do not execute" without read-only posture and without beyond-read-only allow.
     if re.search(r"\b(do not|don't) execute\b", prompt_l):
-        if _is_read_only_posture(prompt_l) or re.search(r"\bbeyond read[- ]only\b", prompt_l):
-            # Read-only analysis / beyond-read-only still allows read tool calls.
+        if (
+            _is_read_only_posture(prompt_l)
+            or re.search(r"\bbeyond read[- ]only\b", prompt_l)
+            or _execute_ban_scoped_to_read_intent(prompt_l)
+        ):
+            # Read-only analysis / beyond-read-only / scoped read+execute-ban still allows reads.
             return False
         return True
     return False
@@ -1733,9 +1805,13 @@ def _route_workflow_plan(
             f"(topical discovery arg not supported on {next_tool})."
         )
 
+    prohibited_ops, allowed_ops = _prohibition_operation_scopes(prompt_l, prohibitions)
+
     plan: dict[str, Any] = {
         "route_schema_version": ROUTE_SCHEMA_VERSION,
         "prompt": prompt,
+        "prohibited_operations": prohibited_ops,
+        "allowed_operations": allowed_ops,
         "intent": {
             "primary_class": best_wf["intent_classes"][0] if best_wf["intent_classes"] else "unknown",
             "classes": list(best_wf["intent_classes"]),
