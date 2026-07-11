@@ -107,8 +107,12 @@ V93_STATEMENTS: list[str] = [
       )
     );
     """,
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_relpath "
-    "ON source_intelligence_sources(source_kind, rel_path) WHERE rel_path IS NOT NULL;",
+    # Uniqueness is ROOT-SCOPED: the same rel_path can legitimately exist under two different roots
+    # (e.g. a file at "Altman/…" under both `work` and `syn-work`). A narrow (source_kind, rel_path)
+    # index would reject that and block multi-root indexing, so the index carries source_root_key. (The
+    # V99 reconcile + V123 migration drop the historical narrow idx_si_sources_relpath from older DBs.)
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_root_relpath "
+    "ON source_intelligence_sources(source_kind, source_root_key, rel_path) WHERE rel_path IS NOT NULL;",
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_domain "
     "ON source_intelligence_sources(domain_ref_table, domain_ref_id) WHERE domain_ref_id IS NOT NULL;",
     "CREATE INDEX IF NOT EXISTS idx_si_sources_project ON source_intelligence_sources(project_key);",

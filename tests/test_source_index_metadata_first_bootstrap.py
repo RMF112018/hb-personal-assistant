@@ -500,7 +500,7 @@ def test_v119_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 122
+    assert v1 == v2 == 123
     import sqlite3
 
     conn = sqlite3.connect(db)

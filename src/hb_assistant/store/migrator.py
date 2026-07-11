@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 122
+LATEST_SCHEMA_VERSION = 123
 
 
 class StaffingMigrationError(RuntimeError):
@@ -9161,6 +9161,28 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (122, 'v122_source_index_scan_generations', ?)",
+                    (now,),
+                )
+
+            # --- V123: drop the redundant/buggy narrow rel_path unique index ------------------------
+            # ``idx_si_sources_relpath (source_kind, rel_path)`` omits source_root_key, so it wrongly
+            # rejects the SAME rel_path under two different roots (e.g. "Altman/…" under both `work` and
+            # `syn-work`) — blocking multi-root indexing with a UNIQUE violation on that index (the upsert's
+            # ON CONFLICT(source_id) never sees it). The root-scoped ``idx_si_sources_root_relpath`` (V99
+            # reconcile) already enforces correct per-root uniqueness. The V99 reconcile dropped the narrow
+            # index, but the base-table DDL re-created it (``CREATE … IF NOT EXISTS``), so DBs migrated
+            # before this fix still carry it. Drop it unconditionally (idempotent) and ensure the correct
+            # index exists. Additive/index-only — no data touched.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 123")
+            if cur.fetchone() is None:
+                conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
+                conn.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_root_relpath "
+                    "ON source_intelligence_sources(source_kind, source_root_key, rel_path) "
+                    "WHERE rel_path IS NOT NULL"
+                )
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (123, 'v123_drop_narrow_relpath_index', ?)",
                     (now,),
                 )
 
