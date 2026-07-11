@@ -157,6 +157,71 @@ class SourceIndexScanGenerationsRepository:
             ).fetchall()
         return {r["root_key"]: dict(r) for r in rows}
 
+    def prune_generations(
+        self,
+        root_key: str | None = None,
+        *,
+        keep: int = 20,
+        dry_run: bool = False,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any]:
+        """Bounded, FAIL-CLOSED retention: keep at most ``keep`` most-recent generation rows PER ROOT,
+        pruning older terminal rows so ``source_index_scan_generations`` never grows unbounded.
+
+        Two rows are ALWAYS retained regardless of ``keep`` (so trust/lifecycle can never be pruned):
+
+        * the ACTIVE generation (``running`` / ``partial`` / ``reconcile_pending``) — a live pass owns it;
+        * the latest COMPLETED generation — the authoritative row health + watcher readiness derive from,
+          and the one current source rows reference via ``last_seen_generation``.
+
+        ``keep`` floors at 1. ``root_key=None`` prunes every root. ``dry_run`` reports counts without
+        deleting. Older ``failed``/``abandoned``/superseded-``completed`` rows beyond the window are removed;
+        their linked V119 pass rows keep their (now-dangling, soft) ``generation_id`` — no FK, no cascade."""
+        keep = max(1, int(keep))
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            c.row_factory = sqlite3.Row
+            if root_key is None:
+                roots = [
+                    r[0]
+                    for r in c.execute(
+                        "SELECT DISTINCT root_key FROM source_index_scan_generations"
+                    ).fetchall()
+                ]
+            else:
+                roots = [root_key]
+            pruned_by_root: dict[str, int] = {}
+            for rk in roots:
+                rows = c.execute(
+                    "SELECT generation_id, status FROM source_index_scan_generations "
+                    "WHERE root_key=? ORDER BY started_at DESC, rowid DESC",
+                    (rk,),
+                ).fetchall()
+                keep_ids = {r["generation_id"] for r in rows[:keep]}
+                # ALWAYS retain the active generation (there is at most one per root by the partial index).
+                keep_ids.update(
+                    r["generation_id"]
+                    for r in rows
+                    if r["status"] in ("running", "partial", "reconcile_pending")
+                )
+                # ALWAYS retain the latest COMPLETED generation (rows are newest-first).
+                for r in rows:
+                    if r["status"] == "completed":
+                        keep_ids.add(r["generation_id"])
+                        break
+                delete_ids = [r["generation_id"] for r in rows if r["generation_id"] not in keep_ids]
+                if delete_ids and not dry_run:
+                    c.executemany(
+                        "DELETE FROM source_index_scan_generations WHERE generation_id=?",
+                        [(g,) for g in delete_ids],
+                    )
+                pruned_by_root[rk] = len(delete_ids)
+        return {
+            "keep": keep,
+            "dry_run": dry_run,
+            "pruned_by_root": pruned_by_root,
+            "total_pruned": sum(pruned_by_root.values()),
+        }
+
     # ----- atomic pass-start -----------------------------------------------------------------
     def begin_generation_pass(
         self,

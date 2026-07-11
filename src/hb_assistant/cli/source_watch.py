@@ -347,3 +347,36 @@ def reconcile_cmd(
     ]
     _emit({"ok": all(r.get("ok") for r in results), "scan_type": scan_type, "results": results},
           json_out=json_out)
+
+
+@app.command("prune-generations")
+def prune_generations_cmd(
+    root_key: Optional[str] = typer.Option(None, "--root-key", help="Prune a single root."),
+    all_roots: bool = typer.Option(False, "--all-roots", help="Prune every root with generations."),
+    keep: Optional[int] = typer.Option(
+        None, "--keep", help="Keep at most N most-recent generations per root (default: config)."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Report counts without deleting."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Bounded generation retention: prune old scan-generation rows, keeping the N most recent per root.
+
+    FAIL-CLOSED — never removes the active generation or the latest COMPLETED generation (health/watcher
+    trust them). Wire this into the scheduler to keep source_index_scan_generations bounded over time."""
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
+
+    if not all_roots and not root_key:
+        _emit({"ok": False, "error": "specify --root-key or --all-roots"},
+              json_out=json_out, exit_code=2)
+    dbp = _db_path(db)
+    ocfg = _obsidian_config()
+    keep_n = keep if keep is not None else int(
+        getattr(ocfg, "source_index_generation_retention_count", 20)
+    )
+    repo = SourceIndexScanGenerationsRepository(dbp)
+    result = repo.prune_generations(
+        None if all_roots else root_key, keep=keep_n, dry_run=dry_run
+    )
+    _emit({"ok": True, **result}, json_out=json_out)

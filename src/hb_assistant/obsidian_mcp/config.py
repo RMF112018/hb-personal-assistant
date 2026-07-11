@@ -216,6 +216,11 @@ class ObsidianMcpConfig(BaseModel):
     # Bumped whenever the walker/cursor traversal order or frame format changes; folded into the
     # generation policy_fingerprint so an incompatible cursor abandons + restarts.
     source_index_traversal_version: int = 1
+    # Generation retention: keep at most this many scan-generation rows PER ROOT (most recent first).
+    # Pruning is bounded + fail-closed — it NEVER removes the active generation or the latest COMPLETED
+    # generation (health/watcher trust them), regardless of this count. Floors at 1. Prevents the
+    # source_index_scan_generations table from growing unbounded across repeated bounded passes.
+    source_index_generation_retention_count: int = 20
     schema_version: int = 9
 
     model_config = {"extra": "forbid"}
