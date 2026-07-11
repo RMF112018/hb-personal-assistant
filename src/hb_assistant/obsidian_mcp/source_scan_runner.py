@@ -95,48 +95,38 @@ def run_scan(
     unbounded: bool = False,
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
+    restart: bool = False,
     emit: Callable[[dict[str, Any]], None] | None = None,
 ) -> ScanRunResult:
-    """Run one bounded, observed, resumable scan of ``root``. See module docstring."""
+    """Run one bounded, observed, resumable METADATA-FIRST scan of ``root``. See module docstring.
+
+    V122: the durable single-active claim, the linked V119 pass row, heartbeats, and the terminal status
+    are all owned by :func:`scan_source_root` (via the generation authority). This wrapper resolves bounds,
+    supplies a redacted heartbeat/emit callback, and maps the returned generation status onto
+    :class:`ScanRunResult`. A ``conflict`` (a live pass already owns the root) stays retryable.
+
+    ``restart`` (default False) forwards an explicit operator recovery to the generation authority: it
+    bypasses the no-forward-progress block (fanout / generation-ceiling / lost-mount) for a SINGLE fresh
+    attempt. Ordinary scheduled/watcher runs never set it — recovery is deliberate, not automatic."""
     from .source_indexer import scan_source_root
 
     max_files_per_pass, max_seconds = _resolve_bounds(
         config, unbounded, max_files_per_pass, max_seconds
     )
     run_id = uuid.uuid4().hex
-    stale = float(getattr(config, "source_index_bootstrap_stale_run_seconds", 120.0))
-
-    active = False  # do we hold a durable run record to heartbeat/finish?
-    try:
-        claimed = bstate.start_bootstrap_run(
-            run_id, root.source_root_key, mode, stale_seconds=stale
-        )
-        if claimed is None:
-            # Atomic enforcement (the ONE flow-affecting lifecycle op): a live run holds this root.
-            return ScanRunResult("conflict", True, None, None, "active_run_conflict")
-        active = True
-    except Exception:  # noqa: BLE001 — lifecycle unavailable must NOT block indexing (constraint 8)
-        _logger.warning(
-            "source_scan.run_start_failed",
-            extra={"obsidian_mcp": {"root": root.source_root_key, "mode": mode}},
-        )
 
     def _progress(report: Any, rel_path: str, elapsed: float) -> None:
         prefix = redact_rel_prefix(rel_path)
-        if active:
-            with suppress(Exception):  # heartbeat is best-effort
-                bstate.heartbeat_bootstrap_run(
-                    run_id,
-                    phase="scan",
-                    current_rel_prefix=prefix,
-                    files_walked=report.files_walked,
-                    metadata_upserted=report.metadata_upserted,
-                    files_unchanged=report.files_unchanged,
-                    content_attempted=report.content_attempted,
-                    content_succeeded=report.content_succeeded,
-                    content_failed=report.content_failed,
-                    errors_count=report.errors,
-                )
+        with suppress(Exception):  # heartbeat is best-effort (never changes indexing results)
+            bstate.heartbeat_bootstrap_run(
+                run_id,
+                phase="scan",
+                current_rel_prefix=prefix,
+                files_walked=report.files_walked,
+                metadata_upserted=report.metadata_upserted,
+                files_unchanged=report.files_unchanged,
+                errors_count=report.errors,
+            )
         if emit is not None:
             with suppress(Exception):
                 fps = (report.files_walked / elapsed) if elapsed > 0 else 0.0
@@ -147,9 +137,7 @@ def run_scan(
                         "phase": "scan",
                         "files_walked": report.files_walked,
                         "metadata_upserted": report.metadata_upserted,
-                        "content_attempted": report.content_attempted,
-                        "content_succeeded": report.content_succeeded,
-                        "content_failed": report.content_failed,
+                        "files_unchanged": report.files_unchanged,
                         "errors": report.errors,
                         "current_dir_prefix": prefix,
                         "elapsed_s": round(elapsed, 2),
@@ -157,7 +145,6 @@ def run_scan(
                     }
                 )
 
-    finished = False
     try:
         report = scan_source_root(
             root,
@@ -166,50 +153,31 @@ def run_scan(
             max_files_per_pass=max_files_per_pass,
             max_seconds=max_seconds,
             progress=_progress,
+            bstate=bstate,
+            run_id=run_id,
+            mode=mode,
+            restart=restart,
         )
-        bounded_reason = None
-        if "root_not_found" in report.error_codes:
-            status = "failed"
-        elif report.bounded_out:
-            status = "partial"
-            over_files = max_files_per_pass is not None and report.indexed >= int(
-                max_files_per_pass
-            )
-            bounded_reason = "max_files_per_pass" if over_files else "max_seconds"
-        elif report.completed:
-            status = "completed"
-        else:  # truncated at the global scan cap — incomplete but resumable
-            status = "partial"
-            bounded_reason = "scan_max_files"
-        if active:
-            with suppress(Exception):
-                bstate.finish_bootstrap_run(
-                    run_id,
-                    status=status,
-                    bounded_reason=bounded_reason,
-                    completed_metadata_walk=report.completed,
-                    reconciliation_completed=report.completed,
-                    current_rel_prefix=None,
-                    files_walked=report.files_walked,
-                    metadata_upserted=report.metadata_upserted,
-                    files_unchanged=report.files_unchanged,
-                    content_attempted=report.content_attempted,
-                    content_succeeded=report.content_succeeded,
-                    content_failed=report.content_failed,
-                    errors_count=report.errors,
-                )
-        finished = True
-        return ScanRunResult(status, False, run_id, report, None)
-    except (
-        Exception
-    ) as exc:  # a systemic scan failure (per-file errors are absorbed inside the scan)
+    except Exception as exc:  # systemic scan failure (per-file errors absorbed inside the scan)
         code = type(exc).__name__[:64]
-        if active:
-            with suppress(Exception):
-                bstate.finish_bootstrap_run(run_id, status="failed", last_error_code=code)
-        finished = True
+        _logger.warning(
+            "source_scan.run_failed",
+            extra={"obsidian_mcp": {"root": root.source_root_key, "mode": mode}},
+        )
+        with suppress(Exception):
+            bstate.finish_bootstrap_run(run_id, status="failed", last_error_code=code)
         return ScanRunResult("failed", False, run_id, None, code)
-    finally:
-        if active and not finished:
-            with suppress(Exception):
-                bstate.interrupt_bootstrap_run(run_id)
+
+    if report.conflict:
+        # Preserve the REAL conflict shape: a start-time held-lease conflict (``active_run_conflict``)
+        # and a mid-pass stale-lease takeover (``lease_lost``) carry distinct ``report.error_code`` and
+        # must NOT be collapsed — callers rely on the distinction (and on the report/run_id) to classify
+        # a takeover vs a benign already-running root.
+        return ScanRunResult("conflict", True, report.run_id, report, report.error_code)
+    status = {
+        "completed": "completed",
+        "partial": "partial",
+        "reconcile_pending": "partial",
+        "failed": "failed",
+    }.get(report.generation_status or "", "partial")
+    return ScanRunResult(status, False, report.run_id, report, report.error_code)

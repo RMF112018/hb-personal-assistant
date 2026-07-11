@@ -22,7 +22,14 @@ from typing import Any
 
 from .memory_models import bound_text, sha256_hex
 
-SOURCE_CONNECTOR_VERSION = "source-connector-v1"
+# Split versions (V122): the source-REFERENCE checksum version and the pagination-CURSOR version are
+# distinct so ranking/candidate changes invalidate outstanding cursors WITHOUT invalidating stored source
+# references. SOURCE_REF_VERSION keeps its original string so existing refs remain valid; only
+# SOURCE_CURSOR_VERSION advances (weighted BM25 + metadata-only path candidates changed the ordering).
+SOURCE_REF_VERSION = "source-connector-v1"
+SOURCE_CURSOR_VERSION = "source-cursor-v2"
+# Back-compat alias (refs): older imports of SOURCE_CONNECTOR_VERSION resolve to the ref version.
+SOURCE_CONNECTOR_VERSION = SOURCE_REF_VERSION
 
 # Caps (bounded reads/lists; the repo also clamps).
 MAX_LIMIT = 100
@@ -81,7 +88,7 @@ def _b64u_decode(token: str) -> bytes:
 
 def _source_id_checksum(source_id: str) -> str:
     """Version-bound short checksum so a forged/typo'd ref is rejected before any DB hit."""
-    return sha256_hex(f"{SOURCE_CONNECTOR_VERSION}|source_ref|{source_id}")[:8]
+    return sha256_hex(f"{SOURCE_REF_VERSION}|source_ref|{source_id}")[:8]
 
 
 def encode_source_ref(source_id: str) -> str:
@@ -149,7 +156,7 @@ def clamp_limit(limit: int | None, *, default: int = DEFAULT_LIMIT, maximum: int
 
 def compute_query_digest(params: dict[str, Any]) -> str:
     """Digest binding a cursor to the exact (query, filters, order) it was issued for."""
-    return sha256_hex(f"{SOURCE_CONNECTOR_VERSION}|{canonical_json(params)}")[:16]
+    return sha256_hex(f"{SOURCE_CURSOR_VERSION}|{canonical_json(params)}")[:16]
 
 
 def encode_cursor(*, query_digest: str, order: str, after: list[Any]) -> str:
@@ -158,7 +165,7 @@ def encode_cursor(*, query_digest: str, order: str, after: list[Any]) -> str:
     For search the tuple leads with the bm25 ``rank`` float, which round-trips exactly through JSON
     (Python's shortest-repr float serialization), so keyset continuation is deterministic.
     """
-    payload = {"v": SOURCE_CONNECTOR_VERSION, "qd": query_digest, "order": order, "after": after}
+    payload = {"v": SOURCE_CURSOR_VERSION, "qd": query_digest, "order": order, "after": after}
     return _b64u_encode(canonical_json(payload).encode("utf-8"))
 
 
@@ -172,7 +179,7 @@ def decode_cursor(cursor: str, *, query_digest: str, order: str) -> list[Any]:
         payload = json.loads(_b64u_decode(str(cursor or "")).decode("utf-8"))
     except (ValueError, UnicodeDecodeError) as exc:
         raise SourceConnectorValidationError("invalid_cursor") from exc
-    if not isinstance(payload, dict) or payload.get("v") != SOURCE_CONNECTOR_VERSION:
+    if not isinstance(payload, dict) or payload.get("v") != SOURCE_CURSOR_VERSION:
         raise SourceConnectorValidationError("invalid_cursor")
     if payload.get("qd") != query_digest or payload.get("order") != order:
         raise SourceConnectorValidationError("cursor_query_mismatch")
@@ -228,6 +235,12 @@ def shape_source_file(row: dict[str, Any], *, snippet: str | None = None,
         "extension": (str(ext).lower().lstrip(".") if ext else None),
         "mime_type": mime_for_ext(ext),
     }
+    # V122 result shaping (additive): why the row matched + whether it carries extracted content, so a
+    # client distinguishes a path/filename/project match from a content match and never treats a path-only
+    # hit as "no content available by mistake". Present only when the search layer supplied them.
+    for key in ("match_basis", "indexed_text_available", "extraction_status", "extraction_disposition"):
+        if key in row:
+            shaped[key] = row.get(key)
     if include_snippet:
         shaped["snippet"] = bound_snippet(snippet)
     return shaped

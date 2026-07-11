@@ -6,10 +6,13 @@ matching, and explicit writes via SourceIndexRepository. Never copies files into
 
 from __future__ import annotations
 
+import errno
 import hashlib
+import json
 import logging
 import os
 import threading
+import unicodedata
 from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
@@ -79,8 +82,23 @@ def effective_max_files(root: ExternalSourceRoot, config: ObsidianMcpConfig) -> 
     return int(getattr(config, "external_source_scan_max_files", 5000))
 
 
+def _redact_walk_error(root_path: Path, target: Path) -> str:
+    """Redaction-safe token (parent-hash + depth, never an absolute host path) for ``error_sink``."""
+    from .source_scan_runner import redact_rel_prefix
+
+    try:
+        rel = str(target.relative_to(root_path))
+    except ValueError:
+        rel = ""
+    return redact_rel_prefix(rel)
+
+
 def walk_source_tree(
-    root_path: Path, config: ObsidianMcpConfig, *, want_dirs: bool = False
+    root_path: Path,
+    config: ObsidianMcpConfig,
+    *,
+    want_dirs: bool = False,
+    error_sink: list[str] | None = None,
 ) -> Iterator[tuple[str, Path, str]]:
     """Lazily walk ``root_path`` depth-first, yielding ``(kind, abs_path, rel_path)`` where ``kind``
     is ``"file"`` (always) or ``"dir"`` (only when ``want_dirs``).
@@ -93,6 +111,15 @@ def walk_source_tree(
     file is yielded only if it resolves inside the root. No file content is read.
 
     Callers apply their own ``max_files`` cap on the yielded ``"file"`` entries.
+
+    ``error_sink`` (opt-in): this walker is intentionally fail-OPEN (it silently skips every unreadable
+    directory/entry so a bounded stat-walk never aborts). A caller that uses the walk to drive DELETIONS
+    (lightweight reconcile) cannot tolerate that — an unreadable subtree would look empty and mass-delete
+    its still-present rows. When ``error_sink`` is provided, an INDETERMINATE OSError (anything but a
+    confirmed ``ENOENT``/``ENOTDIR`` — permission / transient I/O / stale-handle / mount-loss) at any of
+    the three swallow points appends a redaction-safe token to it, so the caller can fail closed. A
+    confirmed missing dir/entry stays a silent skip (a genuine removal). Callers that pass no sink are
+    byte-for-byte unchanged.
     """
     root_path = Path(root_path)
     stack: list[Path] = [root_path]
@@ -100,7 +127,9 @@ def walk_source_tree(
         current = stack.pop()
         try:
             entries = sorted(os.scandir(current), key=lambda e: e.name)
-        except OSError:
+        except OSError as exc:
+            if error_sink is not None and _is_indeterminate_oserror(exc):
+                error_sink.append(_redact_walk_error(root_path, current))
             continue
         subdirs: list[Path] = []
         for entry in entries:
@@ -113,16 +142,21 @@ def walk_source_tree(
                 is_symlink = entry.is_symlink()
                 is_dir = entry.is_dir(follow_symlinks=False)
                 is_file = entry.is_file(follow_symlinks=False)
-            except OSError:
+            except OSError as exc:
+                if error_sink is not None and _is_indeterminate_oserror(exc):
+                    error_sink.append(_redact_walk_error(root_path, abs_path))
                 continue
             if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
                 # prune: neither descend an excluded dir nor yield an excluded file
                 continue
             if is_symlink:
                 # never descend a symlink dir; include a symlinked file only if it stays in-root
-                with suppress(OSError):
+                try:
                     if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
                         yield ("file", abs_path, rel_path)
+                except OSError as exc:
+                    if error_sink is not None and _is_indeterminate_oserror(exc):
+                        error_sink.append(_redact_walk_error(root_path, abs_path))
                 continue
             if is_dir:
                 if want_dirs:
@@ -133,6 +167,257 @@ def walk_source_tree(
         # push in reverse so the sorted children pop in ascending order (stable DFS)
         for d in reversed(subdirs):
             stack.append(d)
+
+
+class DirectoryFanoutError(Exception):
+    """A directory exceeded the configured fanout cap — fail closed rather than unbounded-sort (V122).
+
+    Carries the redaction-safe rel_dir depth (never an absolute host path) for the ``last_error_code``.
+    """
+
+    def __init__(self, rel_dir: str, count_over: int) -> None:
+        self.rel_dir = rel_dir
+        self.count_over = count_over
+        super().__init__(
+            f"directory_fanout_limit:depth={len([s for s in rel_dir.split('/') if s])}"
+        )
+
+
+class DirectoryReadError(Exception):
+    """A directory could not be enumerated for an INDETERMINATE reason (permission / transient I/O /
+    stale NAS handle / mount interruption) — NOT a confirmed removal (V122 §7, F-01).
+
+    A confirmed-gone directory (``ENOENT``/``ENOTDIR``) is treated as empty (its files reconcile as
+    deleted only when the whole walk completes and each file's own restat confirms absence). An
+    indeterminate error MUST fail closed: the walk cannot claim that subtree is empty, so the generation
+    is SUSPENDED (partial, resumable) with no reconciliation — an unreadable subtree can never be
+    published as a complete scan that then mass-deletes its indexed files. Carries only the redaction-safe
+    rel_dir depth, never an absolute host path.
+    """
+
+    def __init__(self, rel_dir: str) -> None:
+        self.rel_dir = rel_dir
+        super().__init__(f"directory_read_error:depth={len([s for s in rel_dir.split('/') if s])}")
+
+
+# Filesystem-uncertainty taxonomy (V122, round-7 blocker 3). A confirmed ``ENOENT``/``ENOTDIR`` is a
+# structural fact (gone / not-a-directory) and is safe to treat as invalid/absent. Every OTHER OSError —
+# permission (``EACCES``/``EPERM``), transient I/O (``EIO``), stale handle (``ESTALE``), timeout, mount-loss,
+# or even a bare OSError with no errno — is INDETERMINATE: we CANNOT distinguish "truly gone" from
+# "momentarily unreachable", so it must fail closed (suspend / preserve), never abandon a cursor or silently
+# drop a possibly-present entry. Fail-closed-by-default is deliberately broader than any fixed errno list.
+def _is_confirmed_missing(exc: OSError) -> bool:
+    """True only for a CONFIRMED ``ENOENT``/``ENOTDIR`` — a structural fact (gone / not-a-directory)."""
+    return exc.errno in (errno.ENOENT, errno.ENOTDIR)
+
+
+def _is_indeterminate_oserror(exc: OSError) -> bool:
+    """True when an ``OSError`` cannot be trusted as a confirmed structural fact (anything that is not
+    ``ENOENT``/``ENOTDIR``) — permission / transient I/O / stale-handle / mount-loss / unknown errno. Such
+    errors must fail closed (suspend), never abandon a cursor or silently skip a possibly-present entry."""
+    return not _is_confirmed_missing(exc)
+
+
+def derive_watcher_ready(
+    *,
+    gen_row: dict[str, Any] | None,
+    current_fp: str | None,
+    folder_count: int,
+    legacy_ready: bool,
+) -> bool:
+    """Single authority for "is the file watcher clear to run for this root?" — shared by the health
+    projection and ``resolve_run_state`` so the CLI can never launch a watcher the health service reports
+    as not-ready (V122 blocker 2).
+
+    For a root the V122 architecture tracks (``gen_row`` present), readiness is FAIL-CLOSED: the current
+    policy fingerprint must be KNOWN (``current_fp is not None`` — an unverifiable policy must never launch
+    a live watcher), the latest generation must be ``completed`` under THAT fingerprint, and a structure
+    folder map must exist. A root with no V122 generation yet falls back to the persisted legacy bit.
+    """
+    if gen_row is not None:
+        return bool(
+            current_fp is not None
+            and gen_row.get("status") == "completed"
+            and gen_row.get("policy_fingerprint") == current_fp
+            and folder_count > 0
+        )
+    return bool(legacy_ready)
+
+
+# V122 traversal comparator: a COLLISION-SAFE total order used for BOTH sorting a directory listing and
+# resuming a cursor. NFC alone can map two distinct filesystem names to one key, so the tie-breaker is the
+# original name — two distinct entries never compare equal. Locked by test.
+def entry_sort_key(name: str) -> tuple[str, str]:
+    return (unicodedata.normalize("NFC", name), name)
+
+
+def _scandir_sorted(
+    abs_dir: Path, root_path: Path, config: ObsidianMcpConfig, fanout_limit: int
+) -> list[tuple[tuple[str, str], str, Path, str, bool, bool]]:
+    """Bounded, pruned, deterministically-sorted listing of one directory.
+
+    Reads at most ``fanout_limit + 1`` entries; if the directory has more, raises
+    :class:`DirectoryFanoutError` (fail closed — never load+sort an unbounded listing). Otherwise returns
+    entries sorted by :func:`entry_sort_key`, each as
+    ``(sort_key, name, abs_path, rel_path, is_dir, is_symlink)`` with excluded/hidden/ignored entries
+    pruned (same policy as :func:`walk_source_tree`). Symlinked dirs are marked so the walker never
+    descends them; a symlinked file is included only if it resolves inside the root.
+    """
+    raw: list[os.DirEntry[str]] = []
+    try:
+        with os.scandir(abs_dir) as it:
+            for entry in it:
+                raw.append(entry)
+                if len(raw) > fanout_limit:
+                    try:
+                        rel_dir = str(abs_dir.relative_to(root_path))
+                    except ValueError:
+                        rel_dir = ""
+                    raise DirectoryFanoutError(rel_dir, len(raw))
+    except (FileNotFoundError, NotADirectoryError):
+        # Confirmed gone (ENOENT/ENOTDIR): the directory legitimately no longer exists. Treat as empty —
+        # its indexed files are deleted only if the FULL walk completes and each file's own restat
+        # confirms absence (never from this empty listing alone).
+        return []
+    except OSError as exc:
+        # INDETERMINATE (permission / transient I/O / stale handle / mount interruption): we must NOT
+        # claim this subtree is empty. Fail closed so the generation is suspended, not falsely completed.
+        try:
+            rel_dir = str(abs_dir.relative_to(root_path))
+        except ValueError:
+            rel_dir = ""
+        raise DirectoryReadError(rel_dir) from exc
+    try:
+        rel_dir = str(abs_dir.relative_to(root_path))
+    except ValueError:
+        rel_dir = ""
+    out: list[tuple[tuple[str, str], str, Path, str, bool, bool]] = []
+    for entry in raw:
+        abs_path = Path(entry.path)
+        try:
+            rel_path = str(abs_path.relative_to(root_path))
+        except ValueError:
+            continue
+        try:
+            is_symlink = entry.is_symlink()
+            is_dir = entry.is_dir(follow_symlinks=False)
+            is_file = entry.is_file(follow_symlinks=False)
+        except OSError as exc:
+            # A per-entry stat that CONFIRMS the entry vanished (ENOENT/ENOTDIR — a mid-scan removal) is
+            # safe to skip: the full walk + each file's own restat reconciles the deletion. Any INDETERMINATE
+            # error must NOT silently drop a possibly-present file — fail closed so the walk suspends (F-01,
+            # round-7 blocker 3).
+            if _is_indeterminate_oserror(exc):
+                raise DirectoryReadError(rel_dir) from exc
+            continue
+        if should_ignore(rel_path, entry.name) or is_excluded_source_path(rel_path, config):
+            continue
+        if is_symlink:
+            try:
+                if abs_path.is_file() and not pathsafe.symlink_escapes(abs_path, root_path):
+                    out.append(
+                        (entry_sort_key(entry.name), entry.name, abs_path, rel_path, False, True)
+                    )
+            except OSError as exc:
+                # A broken symlink (confirmed-missing target) is legitimately skipped; an indeterminate
+                # target error (permission / stale mount) must fail closed, never silently drop the entry.
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(rel_dir) from exc
+            continue
+        if is_dir:
+            out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, True, False))
+        elif is_file:
+            out.append((entry_sort_key(entry.name), entry.name, abs_path, rel_path, False, False))
+    out.sort(key=lambda e: e[0])
+    return out
+
+
+@dataclass
+class _WalkFrame:
+    rel_dir: str
+    abs_dir: Path
+    entries: list[tuple[tuple[str, str], str, Path, str, bool, bool]]
+    idx: int
+    current: str | None = (
+        None  # name of the entry currently in progress at this level (for the cursor)
+    )
+
+
+def _resume_frame(
+    rel_dir: str,
+    root_path: Path,
+    config: ObsidianMcpConfig,
+    fanout_limit: int,
+    after_name: str | None,
+) -> _WalkFrame:
+    abs_dir = root_path if rel_dir in ("", ".") else root_path / rel_dir
+    entries = _scandir_sorted(abs_dir, root_path, config, fanout_limit)
+    idx = 0
+    if after_name is not None:
+        after_key = entry_sort_key(after_name)
+        while idx < len(entries) and entries[idx][0] <= after_key:
+            idx += 1
+    return _WalkFrame(rel_dir=rel_dir, abs_dir=abs_dir, entries=entries, idx=idx)
+
+
+def walk_generation(
+    root_path: Path,
+    config: ObsidianMcpConfig,
+    *,
+    cursor: dict[str, Any] | None,
+    fanout_limit: int,
+) -> Iterator[tuple[Path, str, dict[str, Any]]]:
+    """Deterministic, RESUMABLE, depth-first file walk yielding ``(abs_path, rel_path, cursor_after)``.
+
+    Unlike :func:`walk_source_tree`, this resumes past a durable ``cursor`` WITHOUT re-listing the
+    already-completed sibling directories: the cursor is a versioned frame stack
+    ``{"version": tv, "frames": [{"d": rel_dir, "after": name}, ...]}`` where each frame's ``after`` names
+    the entry that was in progress at that level (an intermediate frame's ``after`` is the subdir we
+    descended into; the deepest frame's ``after`` is the last committed file). On resume each frame is
+    re-listed, entries with ``entry_sort_key <= after`` are skipped, and the deeper frames re-enter the
+    in-progress subtree — so DFS pre-order is preserved exactly.
+
+    ``cursor_after`` yielded with each file is the resume cursor to persist AFTER committing that file.
+    Raises :class:`DirectoryFanoutError` if any directory exceeds ``fanout_limit`` (fail closed).
+    """
+    frames = (cursor or {}).get("frames") or []
+    stack: list[_WalkFrame] = []
+    if frames:
+        # Rebuild the in-progress path. Intermediate frames' `current` = the descended child (so the
+        # cursor we emit re-includes them); the deepest frame resumes at entries > its `after`.
+        for i, fr in enumerate(frames):
+            rel_dir = str(fr.get("d") or "")
+            after = fr.get("after")
+            wf = _resume_frame(rel_dir, root_path, config, fanout_limit, after)
+            if i < len(frames) - 1:
+                # Intermediate frame: `after` IS the in-progress child we descended into. Re-record it
+                # so a cursor emitted before this frame advances still includes this level.
+                wf.current = after
+            stack.append(wf)
+    else:
+        stack.append(_resume_frame("", root_path, config, fanout_limit, None))
+
+    def _cursor_after() -> dict[str, Any]:
+        return {
+            "version": int(getattr(config, "source_index_traversal_version", 1)),
+            "frames": [
+                {"d": f.rel_dir, "after": f.current} for f in stack if f.current is not None
+            ],
+        }
+
+    while stack:
+        frame = stack[-1]
+        if frame.idx >= len(frame.entries):
+            stack.pop()
+            continue
+        _key, name, abs_path, rel_path, is_dir, _is_symlink = frame.entries[frame.idx]
+        frame.idx += 1
+        frame.current = name
+        if is_dir:
+            child = _resume_frame(rel_path, root_path, config, fanout_limit, None)
+            stack.append(child)
+            continue
+        yield (abs_path, rel_path, _cursor_after())
 
 
 def is_deferred_source_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
@@ -157,7 +442,12 @@ def is_source_notes_path(rel_path: str, config: ObsidianMcpConfig) -> bool:
     the watcher its own writes). Prefix match on the configured folder (default 'Source Notes'),
     normalized + case-insensitive, honoring a custom/multi-segment folder.
     """
-    folder = (getattr(config, "source_notes_folder", None) or "Source Notes").replace("\\", "/").strip("/").lower()
+    folder = (
+        (getattr(config, "source_notes_folder", None) or "Source Notes")
+        .replace("\\", "/")
+        .strip("/")
+        .lower()
+    )
     if not folder:
         return False
     rel = str(rel_path).replace("\\", "/").strip("/").lower()
@@ -236,7 +526,9 @@ def extraction_disposition(ext: str, size: int, config: ObsidianMcpConfig) -> st
     return "unsupported"
 
 
-def _extract(path: Path, ext: str, max_chars: int, *, enable_parsers: bool = False) -> dict[str, Any]:
+def _extract(
+    path: Path, ext: str, max_chars: int, *, enable_parsers: bool = False
+) -> dict[str, Any]:
     """Deterministic, best-effort extraction. Never raises on bad input.
 
     Text is read with a bounded streaming read (never the whole file). Synchronous native/ZIP/MIME
@@ -249,35 +541,52 @@ def _extract(path: Path, ext: str, max_chars: int, *, enable_parsers: bool = Fal
             text = _read_text_head(path, max_chars)
             return {"text_excerpt": text, "char_count": len(text), "extraction_status": "ok"}
         except OSError as exc:  # unreadable
-            return {"text_excerpt": "", "char_count": 0, "extraction_status": "failed",
-                    "failure_code": type(exc).__name__}
+            return {
+                "text_excerpt": "",
+                "char_count": 0,
+                "extraction_status": "failed",
+                "failure_code": type(exc).__name__,
+            }
     if not enable_parsers:
         return {"text_excerpt": None, "char_count": 0, "extraction_status": "metadata_only"}
     if ext == "eml":
         # First-class email (Phase 10E): deterministic MIME body as the indexed excerpt. The full
         # headers/attachments live in the archive note; only the body text is indexed here.
         from .source_email_archive import parse_email_file
+
         em = parse_email_file(path)
-        status = "ok" if em.parse_status == "complete" else (
-            "failed" if em.parse_status == "failed" else "partial")
-        return {"text_excerpt": em.canonical_body_markdown[:max_chars],
-                "char_count": len(em.canonical_body_markdown[:max_chars]),
-                "extraction_status": status}
+        status = (
+            "ok"
+            if em.parse_status == "complete"
+            else ("failed" if em.parse_status == "failed" else "partial")
+        )
+        return {
+            "text_excerpt": em.canonical_body_markdown[:max_chars],
+            "char_count": len(em.canonical_body_markdown[:max_chars]),
+            "extraction_status": status,
+        }
     try:
         if ext == "pdf":
             from hb_assistant.files.parsers.pdf import PDFParser
+
             r = PDFParser().parse(path, max_chars)
         elif ext == "docx":
             from hb_assistant.files.parsers.docx import DOCXParser
+
             r = DOCXParser().parse(path, max_chars)
         elif ext == "xlsx":
             from hb_assistant.files.parsers.xlsx import XLSXParser
+
             r = XLSXParser().parse(path, max_chars)
         else:
             return {"text_excerpt": None, "char_count": 0, "extraction_status": "unsupported"}
     except Exception as exc:  # parser robustness backstop
-        return {"text_excerpt": "", "char_count": 0, "extraction_status": "failed",
-                "failure_code": type(exc).__name__}
+        return {
+            "text_excerpt": "",
+            "char_count": 0,
+            "extraction_status": "failed",
+            "failure_code": type(exc).__name__,
+        }
     status = "failed" if r.get("failure_code") else "ok"
     return {**r, "extraction_status": status}
 
@@ -313,6 +622,7 @@ def _norm_extraction_status(status: str | None) -> str:
 class IndexOutcome:
     """Structured result of indexing one file — lets the scan aggregate accurate counters without a
     per-file DB reread. ``source_id`` is None only when the file could not be registered at all."""
+
     source_id: str | None
     disposition: str  # content | metadata_only | unsupported | too_large
     changed: bool
@@ -321,8 +631,14 @@ class IndexOutcome:
     extraction_status: str
 
 
-def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
-                       config: ObsidianMcpConfig, *, conn: Any = None) -> IndexOutcome:
+def _index_source_file(
+    abs_path: Path,
+    root: ExternalSourceRoot,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    conn: Any = None,
+) -> IndexOutcome:
     """Index one external file (idempotent caller decides skip). Returns a structured IndexOutcome.
 
     Gate order (PR 1): stat -> size/disposition -> ONLY content-eligible files are SHA-256 hashed and
@@ -344,16 +660,29 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
     disposition = extraction_disposition(ext, size, config)
 
     record: dict[str, Any] = {
-        "source_kind": "external_file", "source_root_key": root.source_root_key,
-        "rel_path": rel_path, "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
-        "file_ext": ext, "size_bytes": size, "mtime_ns": stat.st_mtime_ns,
+        "source_kind": "external_file",
+        "source_root_key": root.source_root_key,
+        "rel_path": rel_path,
+        "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
+        "file_ext": ext,
+        "size_bytes": size,
+        "mtime_ns": stat.st_mtime_ns,
+        # Explicit V122 disposition column (resolves the pending vs metadata-only ambiguity).
+        "extraction_disposition": disposition,
+        # Stamp the current policy fingerprint so a later scan can fast-skip this targeted-indexed row.
+        "last_indexed_fingerprint": _root_fingerprint(root, config),
     }
     key, number, conf = match_path_to_project(rel_path)
     record["project_key"], record["project_number"] = key, number
     if number:
-        record["relationships"] = [{
-            "dst_kind": "project", "dst_ref": number, "relation": "belongs_to_project", "confidence": conf,
-        }]
+        record["relationships"] = [
+            {
+                "dst_kind": "project",
+                "dst_ref": number,
+                "relation": "belongs_to_project",
+                "confidence": conf,
+            }
+        ]
 
     hashed = False
     extraction_attempted = False
@@ -377,6 +706,7 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
                 # Sensitive root: encrypt the excerpt to the Text Vault; keep only a marker in-DB,
                 # and DO NOT index sensitive text into FTS (extracted but not content-searchable).
                 from hb_assistant.security.text_vault import encrypt_text
+
                 record["text_vault_ref"] = encrypt_text(excerpt)
                 record["text_excerpt"] = None
                 record["excerpt_char_count"] = 0
@@ -403,17 +733,130 @@ def _index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceInd
 
     source_id = repo.upsert_source_file(record, conn=conn)
     return IndexOutcome(
-        source_id=source_id, disposition=disposition, changed=True, hashed=hashed,
+        source_id=source_id,
+        disposition=disposition,
+        changed=True,
+        hashed=hashed,
         extraction_attempted=extraction_attempted,
         extraction_status=str(record.get("extraction_status", "ok")),
     )
 
 
-def index_source_file(abs_path: Path, root: ExternalSourceRoot, repo: SourceIndexRepository,
-                      config: ObsidianMcpConfig, *, conn: Any = None) -> str | None:
-    """Compatibility wrapper preserving the historical ``source_id | None`` return for existing callers
-    (drain_queue, tests, external use). New code wanting counters uses :func:`_index_source_file`."""
+def index_source_file(
+    abs_path: Path,
+    root: ExternalSourceRoot,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    conn: Any = None,
+) -> str | None:
+    """TARGETED single-file indexing (metadata + eligible content extraction) — the compatibility entry
+    point for watcher events, rebuild drains, tests, and external callers. Unlike a ROOT SCAN (which is
+    metadata-only, :func:`_index_source_metadata`), this path DOES hash + extract content for a
+    content-eligible file, since a single targeted file cannot stall a whole-root bootstrap. Preserves the
+    historical ``source_id | None`` return."""
     return _index_source_file(abs_path, root, repo, config, conn=conn).source_id
+
+
+class MetadataStatError(Exception):
+    """A metadata observation could not stat/resolve the file (transient I/O, permission, disappeared
+    between the walk's stat and this one). In a generation context this is INDETERMINATE — the caller
+    must SUSPEND without advancing the cursor, never certify the file as processed (finding: second-stat
+    race). ``raise_on_error=True`` opts into this typed error instead of the historical ``source_id=None``."""
+
+
+def _index_source_metadata(
+    abs_path: Path,
+    root: ExternalSourceRoot,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    generation_id: str | None,
+    preserve_content: bool = False,
+    policy_fingerprint: str | None = None,
+    raise_on_error: bool = False,
+    conn: Any = None,
+    in_transaction: bool = False,
+) -> IndexOutcome:
+    """Index ONE external file's METADATA ONLY (V122 metadata-first root scan).
+
+    Stat -> disposition -> identity + metadata + path/project FTS, stamping ``last_seen_generation``.
+    NEVER computes a SHA-256, parses, reads a body, or builds chunks — regardless of the parser opt-in
+    flag — so a root scan cannot stall/OOM on a pathological file, and no content is read during discovery.
+    Content extraction is deferred to the targeted :func:`index_source_file` path (and PR 3's queue). A
+    content-eligible file therefore records ``extraction_disposition='content'`` with
+    ``extraction_status='pending'`` (eligible, not yet extracted); a metadata-only file records
+    ``metadata_only``/``pending``.
+
+    ``preserve_content=True`` marks this a metadata/path-FTS REPAIR of a PHYSICALLY UNCHANGED file (a legacy
+    row missing a path-FTS row or disposition): the upsert then keeps any valid extracted text/chunks/digest
+    intact rather than clearing them. Otherwise (a genuine change or a disposition/sensitivity transition)
+    the record carries no excerpt, so the upsert INVALIDATES stale content while retaining a path FTS row.
+    ``in_transaction`` threads the write onto the caller's open txn for atomic batch commit.
+    """
+    root_path = Path(root.path)
+    try:
+        rel_path = str(abs_path.relative_to(root_path))
+    except ValueError as exc:
+        if raise_on_error:
+            raise MetadataStatError("path_not_in_root") from exc
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
+    ext = abs_path.suffix.lower().lstrip(".")
+    try:
+        stat = abs_path.stat()
+    except OSError as exc:
+        # A stat failure here (the SECOND stat — the walk stat'd the file earlier) is INDETERMINATE, not a
+        # confirmed removal: in a generation context raise so the pass suspends with the cursor HELD rather
+        # than certifying the file as processed off a None outcome (finding: second-stat race).
+        if raise_on_error:
+            raise MetadataStatError("stat_failed") from exc
+        return IndexOutcome(None, "unsupported", False, False, False, "unsupported")
+    size = stat.st_size
+    disposition = extraction_disposition(ext, size, config)
+    record: dict[str, Any] = {
+        "source_kind": "external_file",
+        "source_root_key": root.source_root_key,
+        "rel_path": rel_path,
+        "abs_path_hash": hashlib.sha256(str(abs_path).encode()).hexdigest()[:32],
+        "file_ext": ext,
+        "size_bytes": size,
+        "mtime_ns": stat.st_mtime_ns,
+        "content_sha256": None,
+        "extraction_disposition": disposition,
+        "last_seen_generation": generation_id,
+        "preserve_content": preserve_content,
+        "last_indexed_fingerprint": (
+            policy_fingerprint
+            if policy_fingerprint is not None
+            else _root_fingerprint(root, config)
+        ),
+    }
+    key, number, conf = match_path_to_project(rel_path)
+    record["project_key"], record["project_number"] = key, number
+    if number:
+        record["relationships"] = [
+            {
+                "dst_kind": "project",
+                "dst_ref": number,
+                "relation": "belongs_to_project",
+                "confidence": conf,
+            }
+        ]
+    record["extraction_status"] = {
+        "content": "pending",  # eligible, not yet extracted (targeted path / PR 3 queue does that)
+        "metadata_only": "pending",
+        "unsupported": "unsupported",
+        "too_large": "skipped_too_large",
+    }[disposition]
+    source_id = repo.upsert_source_file(record, conn=conn, in_transaction=in_transaction)
+    return IndexOutcome(
+        source_id=source_id,
+        disposition=disposition,
+        changed=not preserve_content,
+        hashed=False,
+        extraction_attempted=False,
+        extraction_status=str(record["extraction_status"]),
+    )
 
 
 _VAULT_ROOT_KEY = "__vault_notes__"
@@ -428,13 +871,21 @@ def _note_tags(text: str) -> str:
         for line in head.splitlines():
             stripped = line.strip()
             if stripped.startswith("tags:"):
-                rest = stripped[len("tags:"):].strip().strip("[]")
-                tags.update(t.strip().strip("'\"#") for t in rest.replace(",", " ").split() if t.strip())
+                rest = stripped[len("tags:") :].strip().strip("[]")
+                tags.update(
+                    t.strip().strip("'\"#") for t in rest.replace(",", " ").split() if t.strip()
+                )
     return " ".join(sorted(t for t in tags if t))
 
 
-def index_obsidian_note(abs_path: Path, vault_root: Path, repo: SourceIndexRepository,
-                        config: ObsidianMcpConfig, *, conn: Any = None) -> str | None:
+def index_obsidian_note(
+    abs_path: Path,
+    vault_root: Path,
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    conn: Any = None,
+) -> str | None:
     try:
         rel_path = str(abs_path.relative_to(vault_root))
         stat = abs_path.stat()
@@ -445,13 +896,20 @@ def index_obsidian_note(abs_path: Path, vault_root: Path, repo: SourceIndexRepos
     excerpt = text[:max_excerpt]
     _, number, _conf = match_path_to_project(rel_path)
     record: dict[str, Any] = {
-        "source_kind": "obsidian_note", "source_root_key": _VAULT_ROOT_KEY, "rel_path": rel_path,
-        "file_ext": "md", "size_bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns,
-        "content_sha256": _sha256_file(abs_path), "extraction_status": "ok",
-        "text_excerpt": excerpt, "excerpt_char_count": len(excerpt),
+        "source_kind": "obsidian_note",
+        "source_root_key": _VAULT_ROOT_KEY,
+        "rel_path": rel_path,
+        "file_ext": "md",
+        "size_bytes": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+        "content_sha256": _sha256_file(abs_path),
+        "extraction_status": "ok",
+        "text_excerpt": excerpt,
+        "excerpt_char_count": len(excerpt),
         "excerpt_truncated": len(text) > max_excerpt,
         "full_text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-        "project_number": number, "fts_aux": _note_tags(text),
+        "project_number": number,
+        "fts_aux": _note_tags(text),
     }
     return repo.upsert_source_file(record, conn=conn)
 
@@ -473,9 +931,13 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         # Never re-index our own generated source cards (Source Notes/...) or full-email archive
         # notes (Email Archive/...) as vault notes — that would feed the watcher its own writes and,
         # for archives, leak full email bodies/addresses into the note FTS.
-        if (should_ignore(rel_path, abs_path.name) or is_excluded_source_path(rel_path, config)
-                or is_source_notes_path(rel_path, config) or is_email_archive_path(rel_path)
-                or pathsafe.symlink_escapes(abs_path, vault_root)):
+        if (
+            should_ignore(rel_path, abs_path.name)
+            or is_excluded_source_path(rel_path, config)
+            or is_source_notes_path(rel_path, config)
+            or is_email_archive_path(rel_path)
+            or pathsafe.symlink_escapes(abs_path, vault_root)
+        ):
             continue
         report.scanned += 1
         if report.scanned > max_files:
@@ -484,9 +946,12 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         seen.add(rel_path)
         try:
             existing = repo.lookup_by_path("obsidian_note", rel_path)
-            if (existing and not existing["deleted"]
-                    and existing["mtime_ns"] == abs_path.stat().st_mtime_ns
-                    and existing["content_sha256"] == _sha256_file(abs_path)):
+            if (
+                existing
+                and not existing["deleted"]
+                and existing["mtime_ns"] == abs_path.stat().st_mtime_ns
+                and existing["content_sha256"] == _sha256_file(abs_path)
+            ):
                 report.skipped += 1
                 continue
             if index_obsidian_note(abs_path, vault_root, repo, config) is not None:
@@ -528,18 +993,288 @@ class ScanReport:
     metadata_only: int = 0
     unsupported: int = 0
     too_large: int = 0
+    # V122 generation linkage (metadata-first scan). ``conflict`` = a live pass already owns the root
+    # (retryable). ``generation_status`` mirrors the terminal generation state for the caller.
+    run_id: str | None = None
+    generation_id: str | None = None
+    generation_status: str | None = None
+    conflict: bool = False
+    bounded_reason: str | None = None
+    error_code: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "root_key": self.root_key, "scanned": self.scanned, "indexed": self.indexed,
-            "skipped": self.skipped, "deleted": self.deleted, "errors": self.errors,
-            "truncated": self.truncated, "bounded_out": self.bounded_out,
+            "root_key": self.root_key,
+            "scanned": self.scanned,
+            "indexed": self.indexed,
+            "skipped": self.skipped,
+            "deleted": self.deleted,
+            "errors": self.errors,
+            "truncated": self.truncated,
+            "bounded_out": self.bounded_out,
             "completed": self.completed,
-            "metadata_upserted": self.metadata_upserted, "files_unchanged": self.files_unchanged,
-            "content_attempted": self.content_attempted, "content_succeeded": self.content_succeeded,
-            "content_failed": self.content_failed, "metadata_only": self.metadata_only,
-            "unsupported": self.unsupported, "too_large": self.too_large,
+            "metadata_upserted": self.metadata_upserted,
+            "files_unchanged": self.files_unchanged,
+            "content_attempted": self.content_attempted,
+            "content_succeeded": self.content_succeeded,
+            "content_failed": self.content_failed,
+            "metadata_only": self.metadata_only,
+            "unsupported": self.unsupported,
+            "too_large": self.too_large,
         }
+
+
+# Bumped when the walker/cursor traversal order or frame format changes (folded into the fingerprint).
+_WALKER_VERSION = "gen-walk-v1"
+
+
+def _policy_fingerprint(
+    root: ExternalSourceRoot, config: ObsidianMcpConfig, root_path_hash: str
+) -> str:
+    """Hash of EVERY metadata/search-affecting policy + code version (V122 §6).
+
+    Any change (walker/cursor version, exclusion policy, disposition inputs, project matching, FTS
+    weighting/tokenizer, traversal version, or the root's path) changes the fingerprint, so a resumed
+    generation with an incompatible cursor is abandoned + restarted and previously fast-skippable files
+    are reclassified. Never includes an absolute path (only ``root_path_hash``)."""
+    payload = {
+        "walker": _WALKER_VERSION,
+        "traversal_version": int(getattr(config, "source_index_traversal_version", 1)),
+        "excluded": sorted(getattr(config, "source_index_excluded_path_parts", []) or []),
+        "deferred": sorted(getattr(config, "source_index_deferred_path_parts", []) or []),
+        "text_exts": sorted(_TEXT_EXTS),
+        "parser_exts": sorted(_SYNC_PARSER_EXTS),
+        "metadata_only": sorted(getattr(config, "source_index_metadata_only_file_types", []) or []),
+        "unsupported": sorted(getattr(config, "source_index_unsupported_file_types", []) or []),
+        "max_file_mb": int(getattr(config, "max_file_mb", 100)),
+        # The bounds that GOVERN no-forward-progress failures (high-fanout cap, per-generation ceiling) are
+        # part of the policy: raising them is the operator's "relevant policy change" that lifts a failed
+        # generation's no-auto-retry block (round-6 finding 1) — the changed fingerprint starts a fresh
+        # generation instead of re-failing the old one every pass.
+        "fanout_limit": int(getattr(config, "source_index_directory_fanout_limit", 20000)),
+        "generation_ceiling": (
+            int(config.source_index_generation_max_files)
+            if getattr(config, "source_index_generation_max_files", None) is not None
+            else None
+        ),
+        "parser_optin": bool(
+            getattr(config, "source_index_enable_synchronous_parser_extraction", False)
+        ),
+        "project_matcher": "hb-num-v1",
+        "fts": "bm25:1,8,12|unicode61",
+        # A sensitivity flip changes how content is handled (encrypt-to-vault vs plain, FTS eligibility),
+        # so it must invalidate the generation → a fresh generation reclassifies + re-secures every row.
+        "sensitive": bool(getattr(root, "sensitive", False)),
+        "root_key": root.source_root_key,
+        "root_path_hash": root_path_hash,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:32]
+
+
+def _root_fingerprint(root: ExternalSourceRoot, config: ObsidianMcpConfig) -> str:
+    """Current policy fingerprint for a root, computed the same way :func:`scan_source_root` does (so a row
+    stamped by a targeted index and one stamped by a scan agree). Stored per row as ``last_indexed_fingerprint``
+    and compared on the next generation: a mismatch means the row is stale for current policy and must be
+    reprocessed, not fast-skipped."""
+    root_path_hash = hashlib.sha256(str(Path(root.path)).encode("utf-8")).hexdigest()[:32]
+    return _policy_fingerprint(root, config, root_path_hash)
+
+
+def _tally_disposition(report: "ScanReport", disposition: str) -> None:
+    if disposition == "content":
+        report.content_attempted += 0  # metadata-first: no content attempted during a root scan
+    elif disposition == "metadata_only":
+        report.metadata_only += 1
+    elif disposition == "unsupported":
+        report.unsupported += 1
+    elif disposition == "too_large":
+        report.too_large += 1
+
+
+def _validate_cursor(
+    cursor: dict[str, Any] | None, root_path: Path, config: ObsidianMcpConfig, fanout: int
+) -> bool:
+    """Structurally + physically + SEMANTICALLY validate a persisted traversal cursor BEFORE resuming.
+
+    A resumed cursor is trusted only when: it is a dict; ``version`` is PRESENT and equals the current
+    traversal version (a version-less or non-integer version is rejected — no lenient default); every frame
+    is ``{"d": <root-relative dir>, "after": <basename>}``; each frame directory is contained within the root
+    (no absolute path, no ``..`` escape, resolves inside root), still exists as a real directory, and is NOT
+    a symlink at all; the first frame is the ROOT; each deeper frame's directory is EXACTLY
+    ``parent.d / parent.after`` (the child we descended into); and — SEMANTICALLY — each ``after`` is an
+    ACTUAL entry in its directory, an intermediate anchor is that directory (the descended child) and the
+    deepest anchor is a FILE (a yielded entry). Without the semantic check a forged anchor (``after`` naming
+    a non-existent or later entry, or the deepest anchor naming a directory) could make ``_resume_frame``
+    skip real entries / an entire subtree and reach ``completed`` with false metadata completeness. Any
+    STRUCTURAL/SEMANTIC violation ⇒ returns ``False`` ⇒ the caller ABANDONS the generation (no
+    reconciliation) and restarts from the root. The semantic check re-lists each frame's directory, so it
+    may raise :class:`DirectoryReadError` (transient I/O — the caller SUSPENDS to ``partial``, cursor
+    preserved) or :class:`DirectoryFanoutError` (the caller FAILS the generation); these are NOT cursor
+    corruption and must not be flattened into ``False``.
+    """
+    if cursor is None:
+        return True
+    if not isinstance(cursor, dict):
+        return False
+    tv = int(getattr(config, "source_index_traversal_version", 1))
+    # A stored cursor MUST declare its version explicitly and numerically — a missing or non-integer
+    # version is not a match (guards the int() conversion against arbitrary payloads).
+    if "version" not in cursor:
+        return False
+    try:
+        cursor_version = int(cursor["version"])
+    except (TypeError, ValueError):
+        return False
+    if cursor_version != tv:
+        return False
+    frames = cursor.get("frames")
+    if frames is None:
+        return True  # a versioned cursor with no frames == start-from-root
+    if not isinstance(frames, list):
+        return False
+    import stat as _sm
+
+    root = Path(root_path)
+    try:
+        root_resolved = root.resolve()
+    except OSError as exc:
+        # A CONFIRMED-missing root anchor (ENOENT/ENOTDIR) is genuinely invalid → abandon. An INDETERMINATE
+        # error (permission / stale mount) is NOT cursor corruption → suspend, preserve cursor (blocker 3).
+        if _is_indeterminate_oserror(exc):
+            raise DirectoryReadError("") from exc
+        return False
+
+    def _norm(rel: str) -> str:
+        return rel.replace("\\", "/").strip("/")
+
+    def _valid_basename(name: str) -> bool:
+        # A cursor ``after`` names a single directory entry — never a path. Reject separators, NUL, and the
+        # traversal specials so a corrupted ``after`` can't smuggle a path fragment into the resume compare.
+        return bool(name) and not (
+            "/" in name or "\\" in name or "\0" in name or name in (".", "..")
+        )
+
+    prev_norm: str | None = None
+    prev_after: str | None = None
+    for i, fr in enumerate(frames):
+        if not isinstance(fr, dict):
+            return False
+        d = fr.get("d")
+        after = fr.get("after")
+        # Every ``after`` must be a single valid basename (no separators / NUL / '.' / '..').
+        if not isinstance(d, str) or not isinstance(after, str) or not _valid_basename(after):
+            return False
+        norm_d = _norm(d)
+        # The first frame MUST be the ROOT (d == "" or "."). A cursor that begins at an arbitrary
+        # subdirectory could skip discovery of new files elsewhere yet still reach ``completed``.
+        if i == 0 and norm_d != "":
+            return False
+        abs_dir = root if norm_d == "" else root / norm_d
+        if d not in ("", "."):
+            segments = norm_d.split("/")
+            if d.startswith("/") or ".." in segments or "" in segments:
+                return False
+            try:
+                resolved = abs_dir.resolve()
+            except OSError as exc:
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(norm_d) from exc
+                return False
+            if resolved != root_resolved and root_resolved not in resolved.parents:
+                return False
+            # Reject ANY symlink frame (not merely an escaping one): its target may have changed since the
+            # cursor was persisted, so resuming into it is unsafe regardless of where it currently points.
+            # An explicit ``os.stat`` (not ``Path.is_dir()``, which swallows the stat errno) lets a transient
+            # I/O error be classified: indeterminate → suspend (preserve cursor), confirmed-missing / not-a-
+            # directory → abandon (blocker 3).
+            try:
+                dir_st = os.stat(abs_dir)  # follows symlinks — the frame must be a real directory
+                is_symlink_frame = abs_dir.is_symlink()
+                escapes = pathsafe.symlink_escapes(abs_dir, root)
+            except OSError as exc:
+                if _is_indeterminate_oserror(exc):
+                    raise DirectoryReadError(norm_d) from exc
+                return False
+            if not _sm.S_ISDIR(dir_st.st_mode) or is_symlink_frame or escapes:
+                return False
+        # Parent→child must be EXACT: a deeper frame is the subdirectory named by its parent frame's
+        # ``after`` (the entry the walker descended into), so ``child.d == parent.d / parent.after``.
+        if prev_norm is not None:
+            if prev_after is None:
+                return False
+            expected = _norm(f"{prev_norm}/{prev_after}" if prev_norm else prev_after)
+            if norm_d != expected:
+                return False
+        # SEMANTIC anchor check: ``after`` must be an ACTUAL entry of this directory (else resuming past it
+        # would skip real entries), an intermediate anchor must be a DIRECTORY (the descended child) and the
+        # deepest anchor must be a FILE (a yielded entry — a directory here would skip its whole subtree).
+        # DirectoryReadError (transient I/O) and DirectoryFanoutError PROPAGATE to the caller: a transient
+        # NAS read failure is not cursor corruption (→ suspend, preserve cursor) and a fanout violation has
+        # its own terminal classification (→ fail). Only a STRUCTURALLY/SEMANTICALLY invalid cursor returns
+        # False here (→ abandon). Conflating the three into "invalid" wrongly abandons on transient I/O.
+        entries = _scandir_sorted(abs_dir, root, config, fanout)
+        is_dir_by_name = {name: is_dir for (_k, name, _a, _r, is_dir, _s) in entries}
+        if after not in is_dir_by_name:
+            return False
+        is_deepest = i == len(frames) - 1
+        if is_deepest and is_dir_by_name[after]:
+            return False
+        if not is_deepest and not is_dir_by_name[after]:
+            return False
+        prev_norm = norm_d
+        prev_after = after
+    return True
+
+
+def _probe_candidate(abs_c: Path, root_path: Path) -> str:
+    """Classify a stale reconcile candidate → ``present`` | ``absent`` | ``indeterminate`` (V122 §7).
+
+    Only a confirmed **regular, in-root** file is ``present`` (a survivor — never deleted, refreshed
+    instead). Only a confirmed **ENOENT** is ``absent`` (delete-eligible). A permission error, transient
+    I/O error, symlink escape, or a non-regular inode now occupying the path is ``indeterminate`` — the
+    candidate is NEVER deleted (that would be the exact false-deletion hazard PR 2 exists to prevent); the
+    generation stays ``reconcile_pending`` until the condition clears.
+    """
+    import stat as _sm
+
+    try:
+        st = os.stat(abs_c)  # follows symlinks; a missing/broken target raises ENOENT
+    except FileNotFoundError:
+        return "absent"
+    except OSError:
+        return "indeterminate"
+    try:
+        if not _sm.S_ISREG(st.st_mode):
+            return "indeterminate"
+        if pathsafe.symlink_escapes(abs_c, root_path):
+            return "indeterminate"
+    except OSError:
+        return "indeterminate"
+    return "present"
+
+
+def _probe_root_dir(root_path: Path) -> str:
+    """Classify a scan root → ``usable`` | ``absent`` | ``indeterminate`` (mount-safety, round-7 blocker 3).
+
+    ``usable`` only for a confirmed existing directory. ``absent`` for a confirmed ENOENT/ENOTDIR (the root
+    genuinely does not exist / is not a directory) or a non-directory inode now at the path. Any OTHER
+    OSError (permission / stale handle / transient I/O — a lost or flaky mount) is ``indeterminate``: the
+    scan SUSPENDS rather than failing as if the root were gone, so a previously-completed generation is never
+    invalidated by a momentary mount blip. Unlike the old ``Path.is_dir()`` probe this runs AFTER the
+    generation is claimed and its verdict is persisted in generation truth, so health closes trust at once."""
+    import stat as _sm
+
+    try:
+        st = os.stat(root_path)  # follows symlinks (a symlinked root dir is fine)
+    except OSError as exc:
+        return "absent" if _is_confirmed_missing(exc) else "indeterminate"
+    return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
+
+
+class _LeaseLost(Exception):
+    """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
+    ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
+    aborts WITHOUT touching the generation (its new owner is authoritative)."""
 
 
 def scan_source_root(
@@ -550,103 +1285,788 @@ def scan_source_root(
     max_files_per_pass: int | None = None,
     max_seconds: float | None = None,
     progress: Any = None,
+    genrepo: Any = None,  # SourceIndexScanGenerationsRepository
+    bstate: Any = None,  # SourceIndexBootstrapRepository
+    run_id: str | None = None,
+    mode: str = "bootstrap",
+    restart: bool = False,
 ) -> ScanReport:
-    """Bounded, idempotent, RESUMABLE walk of one root. NEVER called from a request handler.
+    """METADATA-FIRST, generation-driven, resumable walk of one root. NEVER called from a request handler.
 
-    Change detection is mtime+size fast-skip against a preloaded index-state map (one query), so an
-    unchanged file costs a stat + dict lookup — no per-file DB read and no re-hash. Re-running after an
-    interruption therefore skips already-indexed files cheaply and continues; that is what makes a very
-    large root (hundreds of thousands of files) indexable across multiple bounded passes.
-
-    ``max_files_per_pass`` / ``max_seconds`` bound a single invocation. When a pass stops early on
-    either budget (``bounded_out``), delete-reconciliation is SKIPPED — the walk is incomplete, so an
-    unseen file is not-yet-visited, not gone. Delete-reconciliation runs ONLY on a fully-completed pass.
+    A root scan reads only METADATA — it never hashes, parses, reads a body, or chunks a file (content
+    extraction is the targeted :func:`index_source_file` path / PR 3's queue). Discovery runs under a
+    durable *scan generation* (V122): each bounded pass resumes past a persisted traversal cursor, commits
+    metadata then checkpoints the cursor (a crash re-processes the batch, never skips it), and — only after
+    the FULL metadata walk completes — reconciles deletions by generation (source_id keyset, restat before
+    delete, never from a partial/failed generation). A per-generation ceiling or a high-fanout directory
+    FAILS the generation (no reconciliation), never reopening as partial.
     """
     import time
+    import uuid as _uuid
 
-    from hb_assistant.store.connection import open_connection
+    from hb_assistant.store.connection import open_connection, transaction
+    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
 
     report = ScanReport(root_key=root.source_root_key)
     root_path = Path(root.path)
-    if not root_path.is_dir():
+    # NOTE: the root-availability probe is deliberately deferred until AFTER the generation is claimed (see
+    # below) so a missing/stale mount is recorded in generation truth — the pre-claim ``Path.is_dir()`` guard
+    # here returned a failure while leaving the prior COMPLETED generation authoritative in health, so a lost
+    # mount silently kept advertising trust (round-7 blocker 3). Computing the fingerprint/hash needs only the
+    # path string, not an existing directory, so claiming first is safe.
+    if genrepo is None:
+        genrepo = SourceIndexScanGenerationsRepository(repo.db_path)
+    if bstate is None:
+        bstate = SourceIndexBootstrapRepository(repo.db_path)
+    if run_id is None:
+        run_id = _uuid.uuid4().hex
+    report.run_id = run_id
+
+    root_path_hash = hashlib.sha256(str(root_path).encode("utf-8")).hexdigest()[:32]
+    fingerprint = _policy_fingerprint(root, config, root_path_hash)
+    tv = int(getattr(config, "source_index_traversal_version", 1))
+    stale = float(getattr(config, "source_index_bootstrap_stale_run_seconds", 120.0))
+
+    gen = genrepo.begin_generation_pass(
+        root.source_root_key,
+        run_id,
+        policy_fingerprint=fingerprint,
+        root_path_hash=root_path_hash,
+        traversal_version=tv,
+        mode=mode,
+        stale_lease_seconds=stale,
+        restart=restart,
+    )
+    if gen is None:
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "active_run_conflict"
+        return report
+    if gen.get("blocked"):
+        # The latest generation FAILED with a no-forward-progress code (high-fanout / ceiling) under the
+        # current policy: no new generation was created. Recovery needs a policy/config change (changes the
+        # fingerprint) or an explicit restart — do NOT walk, do NOT reconcile, do NOT open a V119 pass.
+        report.generation_id = gen["generation_id"]
+        report.generation_status = "failed"
+        report.error_code = gen.get("last_error_code") or "restart_required"
+        report.error_codes.append(report.error_code)
+        report.error_codes.append("restart_required")
+        return report
+    gid = gen["generation_id"]
+    report.generation_id = gid
+    gen_started = gen["started_at"]
+
+    # Bounds: observed-file limit (counts EVERY walked entry, changed or fast-skipped), batch commit size,
+    # optional per-generation hard ceiling, high-fanout cap.
+    observed_limit = int(
+        getattr(config, "source_index_scan_observed_files_per_pass", None) or 0
+    ) or (int(max_files_per_pass) if max_files_per_pass is not None else None)
+    batch_size = max(1, int(getattr(config, "source_index_metadata_batch_size", 500)))
+    gen_ceiling = getattr(config, "source_index_generation_max_files", None)
+    fanout = int(getattr(config, "source_index_directory_fanout_limit", 20000))
+    heartbeat_s = float(getattr(config, "source_index_bootstrap_heartbeat_seconds", 10.0))
+
+    # Running totals across ALL passes of this generation (resumed generation carries prior totals).
+    files_observed = int(gen.get("files_observed") or 0)
+    metadata_upserted = int(gen.get("metadata_upserted") or 0)
+    files_unchanged = int(gen.get("files_unchanged") or 0)
+    errors_count = int(gen.get("errors_count") or 0)
+    deleted_count = int(gen.get("deleted_count") or 0)
+
+    started = time.monotonic()
+    last_progress = started
+
+    def _emit_progress(rel_hint: str) -> None:
+        if progress is None:
+            return
+        with suppress(Exception):
+            progress(report, rel_hint, time.monotonic() - started)
+
+    def _finish_v119(status: str) -> None:
+        with suppress(Exception):
+            bstate.finish_bootstrap_run(
+                run_id,
+                status=status,
+                bounded_reason=report.bounded_reason,
+                last_error_code=report.error_code,
+                completed_metadata_walk=report.generation_status
+                in ("reconcile_pending", "completed"),
+                reconciliation_completed=report.generation_status == "completed",
+                files_walked=report.files_walked,
+                metadata_upserted=report.metadata_upserted,
+                files_unchanged=report.files_unchanged,
+                errors_count=report.errors,
+            )
+
+    def _transition_or_conflict(affected: int, attempted_status: str) -> bool:
+        """Single lost-lease exit for the ownership-guarded GIVE-UP transitions (partial / reconcile_pending
+        / failed). ``affected == 0`` means a stale-lease takeover already claimed this generation, so this
+        run must NOT report ``attempted_status`` as authoritative — record a retryable ``lease_lost`` conflict
+        and stop. Returns ``True`` to continue, ``False`` when the caller should ``return report`` at once
+        (round-7 blocker 3). Factored from the pre-existing `_LeaseLost` handler so every give-up branch fails
+        the same way instead of duplicating the block ~10 times."""
+        if affected == 0:
+            _logger.warning(
+                "source_scan.lease_lost",
+                extra={
+                    "obsidian_mcp": {
+                        "root": root.source_root_key,
+                        "attempted_status": attempted_status,
+                    }
+                },
+            )
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return False
+        return True
+
+    # Root availability, now UNDER generation truth (blocker 3): a lost/stale mount is persisted as a
+    # failed/partial generation so health closes trust immediately, instead of the old pre-claim guard that
+    # returned while the prior COMPLETED generation stayed authoritative. Confirmed missing/not-a-directory →
+    # FAIL (root_not_found, auto-retries when the root returns); indeterminate (permission / stale mount) →
+    # SUSPEND (partial, no reconciliation) rather than falsely declaring the root gone.
+    root_probe = _probe_root_dir(root_path)
+    if root_probe == "absent":
         report.error_codes.append("root_not_found")
         report.errors += 1
+        report.error_code = "root_not_found"
+        if not _transition_or_conflict(
+            genrepo.fail_generation(gid, run_id, last_error_code="root_not_found"), "failed"
+        ):
+            return report
+        report.generation_status = "failed"
+        _finish_v119("failed")
+        return report
+    if root_probe == "indeterminate":
+        report.error_codes.append("root_probe_io_error")
+        report.error_code = "root_probe_io_error"
+        report.bounded_out = True
+        report.bounded_reason = "root_probe_io_error"
+        if not _transition_or_conflict(
+            genrepo.mark_partial(gid, run_id, last_error_code="root_probe_io_error"), "partial"
+        ):
+            return report
+        report.generation_status = "partial"
+        _finish_v119("partial")
         return report
 
-    max_files = effective_max_files(root, config)
-    prior = repo.active_index_state(root.source_root_key)  # rel_path -> (mtime_ns, size_bytes)
-    seen: set[str] = set()
-    started = time.monotonic()
-    heartbeat_s = float(getattr(config, "source_index_bootstrap_heartbeat_seconds", 10.0))
-    last_progress = started
-    # One shared connection for the whole pass: avoids a per-file open/close on a 400k-file root.
-    with open_connection(repo.db_path) as conn:
-        for _kind, abs_path, rel_path in walk_source_tree(root_path, config):
-            if report.scanned >= max_files:
-                report.truncated = True
-                break
-            report.scanned += 1
-            report.files_walked += 1
-            seen.add(rel_path)
+    walk_complete = gen.get("metadata_walk_completed_at") is not None
+    # Decode the persisted cursor INSIDE the validation guard: a malformed/non-object JSON payload is
+    # itself an invalid cursor (finding 4), so a decode error must ABANDON — never crash the pass or fall
+    # through to a walk from root that then reconciles against a tree the cursor never described.
+    cursor_raw = gen.get("cursor_json")
+    cursor: dict[str, Any] | None = None
+    cursor_decode_ok = True
+    if cursor_raw:
+        try:
+            decoded = json.loads(cursor_raw)
+        except (ValueError, TypeError):
+            cursor_decode_ok = False
+        else:
+            # A well-formed but non-object payload (list/number/string) is not a valid cursor either.
+            if isinstance(decoded, dict):
+                cursor = decoded
+            else:
+                cursor_decode_ok = False
+
+    # Validate a resumed cursor BEFORE walking (V122 §5). Outcomes are distinct (finding 4): a malformed /
+    # escaping / renamed cursor is genuine corruption ⇒ ABANDON (no reconciliation, restart from root); a
+    # transient directory read error during validation is NOT corruption ⇒ SUSPEND to partial with the
+    # cursor PRESERVED (retried next pass); a fanout violation ⇒ FAIL with its own terminal classification.
+    # The abandon is lease-fenced: cursor validation touches the filesystem, so a lease could expire + be
+    # taken over during it — a 0 rowcount means we lost ownership and must NOT abandon the new owner's
+    # generation (close as conflict).
+    if not walk_complete:
+        cursor_valid = cursor_decode_ok
+        if cursor_decode_ok:
             try:
-                stat = abs_path.stat()
-                prev = prior.get(rel_path)
-                # mtime+size fast-skip: unchanged file -> no re-hash, no write (the resume hot path).
-                if prev is not None and prev == (stat.st_mtime_ns, stat.st_size):
-                    report.skipped += 1
-                    report.files_unchanged += 1
-                    continue
-                outcome = _index_source_file(abs_path, root, repo, config, conn=conn)
-                if outcome.source_id is not None:
-                    report.indexed += 1
+                cursor_valid = _validate_cursor(cursor, root_path, config, fanout)
+            except DirectoryFanoutError:
+                if not _transition_or_conflict(
+                    genrepo.fail_generation(gid, run_id, last_error_code="directory_fanout_limit"),
+                    "failed",
+                ):
+                    return report
+                report.error_code = "directory_fanout_limit"
+                report.error_codes.append("directory_fanout_limit")
+                report.generation_status = "failed"
+                _finish_v119("failed")
+                return report
+            except DirectoryReadError:
+                # Transient permission / I/O / stale-NAS-handle error while re-listing to verify an anchor —
+                # preserve the SAME cursor and suspend so the next pass retries from the same checkpoint.
+                if not _transition_or_conflict(
+                    genrepo.mark_partial(
+                        gid,
+                        run_id,
+                        cursor_json=cursor_raw,
+                        last_error_code="cursor_validation_io_error",
+                    ),
+                    "partial",
+                ):
+                    return report
+                report.error_code = "cursor_validation_io_error"
+                report.error_codes.append("cursor_validation_io_error")
+                report.bounded_out = True
+                report.bounded_reason = "cursor_validation_io_error"
+                report.generation_status = "partial"
+                _finish_v119("partial")
+                return report
+        if not cursor_valid:
+            if genrepo.abandon_generation(gid, run_id, last_error_code="invalid_cursor") == 0:
+                report.conflict = True
+                report.generation_status = "conflict"
+                report.error_code = "lease_lost"
+                report.error_codes.append("lease_lost")
+                _finish_v119("interrupted")
+                return report
+            report.error_code = "invalid_cursor"
+            report.error_codes.append("invalid_cursor")
+            report.generation_status = "abandoned"
+            _finish_v119("interrupted")
+            return report
+
+    # ---- Phase 1: metadata walk (skipped if the generation already completed its walk) ----
+    if not walk_complete:
+        batch: list[tuple[Path, str, dict[str, Any]]] = []
+        last_cursor = cursor
+        # Set when an unresolved per-file stat/upsert error is hit: the pass stops at that file (the cursor
+        # is NOT advanced past it) and the generation is suspended (partial) rather than completed with a
+        # hole (F-03) — the file is retried next pass.
+        pass_error = False
+
+        def _flush() -> None:
+            """Commit ONE batch ATOMICALLY: all metadata upserts + unchanged last-seen stamps + counters +
+            the cursor checkpoint in a SINGLE transaction. A crash rolls the whole batch back (re-processed
+            next pass, never skipped). The cursor advances ONLY through a contiguous run of successfully
+            persisted/fast-skipped observations — the first unresolved file stops the batch (``pass_error``)
+            so completion can never skip it. If the cursor advance affects 0 rows this run LOST the lease →
+            raise _LeaseLost and abort."""
+            nonlocal files_observed, metadata_upserted, files_unchanged, errors_count
+            nonlocal last_cursor, pass_error
+            if not batch:
+                return
+            rels = [rel for _a, rel, _c in batch]
+            with open_connection(repo.db_path) as c, transaction(c):
+                state = repo.load_metadata_state_batch(root.source_root_key, rels, conn=c)
+                unchanged: list[str] = []
+                for abs_p, rel, cur in batch:
+                    try:
+                        st = abs_p.stat()
+                    except OSError:
+                        # Unresolved stat error (disappeared mid-walk / transient I/O): STOP. Do NOT
+                        # advance the cursor past it — it is retried next pass, and the generation cannot
+                        # be marked complete while it is unresolved.
+                        errors_count += 1
+                        report.errors += 1
+                        report.error_codes.append("stat_error")
+                        pass_error = True
+                        break
+                    ext = abs_p.suffix.lower().lstrip(".")
+                    recomputed = extraction_disposition(ext, st.st_size, config)
+                    cur_pk, cur_num, _cur_conf = match_path_to_project(rel)
+                    prev = state.get(rel)
+                    stat_match = (
+                        prev is not None
+                        and prev["mtime"] == st.st_mtime_ns
+                        and prev["size"] == st.st_size
+                    )
+                    disp_match = prev is not None and prev["disposition"] == recomputed
+                    # Project routing must match on BOTH key and number: a matcher change that re-routes a
+                    # file (even unchanged bytes) forces a replace of the stale project fields/edge (finding).
+                    proj_match = (
+                        prev is not None
+                        and prev.get("project_key") == cur_pk
+                        and prev.get("project_number") == cur_num
+                    )
+                    # Content-storage mode must match current sensitivity in BOTH directions: a sensitive
+                    # root must not keep 'plain' (plaintext) and a plain root must not keep 'vault' (an
+                    # encrypted ref); either mismatch owes a re-secure and defeats fast-skip AND preserve.
+                    mode = prev.get("content_mode") if prev is not None else "none"
+                    sensitive = bool(getattr(root, "sensitive", False))
+                    sens_ok = not (
+                        (sensitive and mode == "plain") or ((not sensitive) and mode == "vault")
+                    )
+                    # Fingerprint gate: any metadata/search-affecting policy or code change (sensitivity,
+                    # project matcher, FTS format, root path, exclusions) changes the fingerprint, so a row
+                    # last indexed under a DIFFERENT fingerprint is reprocessed rather than skipped (finding).
+                    fp_match = prev is not None and prev.get("fingerprint") == fingerprint
+                    content_valid = stat_match and disp_match and sens_ok
+                    if content_valid and proj_match and fp_match and prev["has_fts"]:
+                        # Fully current for CURRENT policy → fast-skip (stamp last-seen only).
+                        unchanged.append(rel)
+                        files_unchanged += 1
+                        files_observed += 1
+                        report.files_unchanged += 1
+                        report.files_walked += 1
+                        report.scanned += 1
+                        report.skipped += 1
+                        last_cursor = cur  # a fast-skip is a resolved, COMMITTED observation
+                        continue
+                    # preserve = the extracted CONTENT is still valid (stat/disposition/sensitivity ok), but
+                    # the row's DERIVED state is stale (fingerprint change, project re-route, missing/legacy
+                    # FTS). Preserve keeps content and AUTHORITATIVELY rebuilds the derived state (FTS from
+                    # retained text, project/abs_path_hash, fingerprint). Content is cleared ONLY when it is
+                    # itself invalid (a genuine change, disposition flip, or owed sensitivity re-secure).
+                    preserve = bool(content_valid)
+                    try:
+                        outcome = _index_source_metadata(
+                            abs_p,
+                            root,
+                            repo,
+                            config,
+                            generation_id=gid,
+                            preserve_content=preserve,
+                            policy_fingerprint=fingerprint,
+                            raise_on_error=True,
+                            conn=c,
+                            in_transaction=True,
+                        )
+                    except (
+                        Exception
+                    ) as exc:  # an unresolved stat/upsert error: STOP (cursor held) → retried
+                        errors_count += 1
+                        report.errors += 1
+                        report.error_codes.append(type(exc).__name__)
+                        pass_error = True
+                        break
+                    if outcome.source_id is None:
+                        # A metadata observation that produced no source id (second-stat race) is
+                        # INDETERMINATE — suspend without advancing the cursor rather than certify it.
+                        errors_count += 1
+                        report.errors += 1
+                        report.error_codes.append("metadata_no_source_id")
+                        pass_error = True
+                        break
+                    metadata_upserted += 1
+                    files_observed += 1
                     report.metadata_upserted += 1
+                    report.files_walked += 1
+                    report.scanned += 1
+                    report.indexed += 1
                     report.indexed_source_ids.append(outcome.source_id)
-                    # Aggregate per-disposition counters straight from the outcome (no DB reread).
-                    if outcome.disposition == "content":
-                        report.content_attempted += 1
-                        if outcome.extraction_status == "ok":
-                            report.content_succeeded += 1
-                        elif outcome.extraction_status == "failed":
-                            report.content_failed += 1
-                    elif outcome.disposition == "metadata_only":
-                        report.metadata_only += 1
-                    elif outcome.disposition == "unsupported":
-                        report.unsupported += 1
-                    elif outcome.disposition == "too_large":
-                        report.too_large += 1
-                    if prev is not None:
-                        repo.mark_generated_notes_stale(outcome.source_id, conn=conn)
-            except Exception as exc:  # never let one bad file abort the scan
-                report.errors += 1
-                report.error_codes.append(type(exc).__name__)
-                _logger.warning("source_index.scan_file_error", extra={"obsidian_mcp": {
-                    "root": root.source_root_key, "error_code": type(exc).__name__}})
-            # Throttled progress emission (failure-isolated: a telemetry/heartbeat error never aborts the
-            # scan). Reports counters + a REDACTED current-directory token — never an absolute host path.
-            if progress is not None:
+                    _tally_disposition(report, outcome.disposition)
+                    # Re-stale generated notes on any MATERIAL derived-state change. Content preservation is
+                    # separate from material change: a preserve repair that only rebuilds FTS/fingerprint must
+                    # NOT re-stale, but a PROJECT RE-ROUTE is material even under preserve — a source card
+                    # persists project_key/number + project/<number> tags, so a re-route leaves the card
+                    # showing obsolete project metadata unless it is re-staled (finding 3).
+                    if prev is not None and (not preserve or not proj_match):
+                        repo._mark_generated_notes_stale(c, outcome.source_id)
+                    last_cursor = (
+                        cur  # advance ONLY after a fully successful, COMMITTED observation
+                    )
+                repo.stamp_last_seen(
+                    root.source_root_key, unchanged, gid, conn=c, in_transaction=True
+                )
+                affected = genrepo.advance_cursor(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    conn=c,
+                    in_transaction=True,
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                )
+                if affected == 0:
+                    raise _LeaseLost()
+            batch.clear()
+
+        try:
+            # ``pass_walked`` counts entries WALKED this pass (drives the per-pass observed bound);
+            # ``files_observed`` counts only COMMITTED observations (incremented in _flush),
+            # so an uncommitted batch suffix retried next pass is never double-counted toward the persisted
+            # counters or the generation ceiling (finding: committed-prefix accounting).
+            pass_walked = 0
+            for abs_path, rel_path, cur in walk_generation(
+                root_path, config, cursor=cursor, fanout_limit=fanout
+            ):
+                pass_walked += 1
+                batch.append((abs_path, rel_path, cur))
+                hit_observed = observed_limit is not None and pass_walked >= int(observed_limit)
+                if len(batch) < batch_size and not hit_observed:
+                    continue
+                # A flush boundary: commit the batch, then evaluate bounds against COMMITTED counters.
+                _flush()
                 now_m = time.monotonic()
                 if now_m - last_progress >= heartbeat_s:
                     last_progress = now_m
-                    # Observability must never change indexing results — a progress/heartbeat error is
-                    # swallowed here (constraint 8).
-                    with suppress(Exception):
-                        progress(report, rel_path, now_m - started)
-            # Per-pass budget: stop cleanly and leave the rest for a resume (NO delete-reconcile).
-            if max_files_per_pass is not None and report.indexed >= int(max_files_per_pass):
-                report.bounded_out = True
-                break
-            if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
-                report.bounded_out = True
-                break
+                    _emit_progress(rel_path)
+                if pass_error:
+                    break  # an unresolved file stopped this batch → suspend below (F-03)
+                if hit_observed:  # per-pass OBSERVED bound → partial
+                    report.bounded_out = True
+                    report.bounded_reason = "observed_files_per_pass"
+                    break
+                if max_seconds is not None and (time.monotonic() - started) >= float(max_seconds):
+                    report.bounded_out = True
+                    report.bounded_reason = "max_seconds"
+                    break
+                # Per-generation hard ceiling (cumulative, COMMITTED) → no forward progress: FAIL.
+                if gen_ceiling is not None and files_observed >= int(gen_ceiling):
+                    report.error_code = "generation_ceiling"
+                    if not _transition_or_conflict(
+                        genrepo.fail_generation(
+                            gid,
+                            run_id,
+                            last_error_code="generation_ceiling",
+                            files_observed=files_observed,
+                            metadata_upserted=metadata_upserted,
+                            files_unchanged=files_unchanged,
+                            errors_count=errors_count,
+                        ),
+                        "failed",
+                    ):
+                        return report
+                    report.generation_status = "failed"
+                    _finish_v119("failed")
+                    return report
+            else:
+                _flush()  # loop exhausted normally
+        except DirectoryFanoutError:
+            if not _transition_or_conflict(
+                genrepo.fail_generation(
+                    gid,
+                    run_id,
+                    last_error_code="directory_fanout_limit",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "failed",
+            ):
+                return report
+            report.error_code = "directory_fanout_limit"
+            report.error_codes.append("directory_fanout_limit")
+            report.generation_status = "failed"
+            _finish_v119("failed")
+            return report
+        except DirectoryReadError:
+            # A directory could not be enumerated for an INDETERMINATE reason (permission / transient I/O /
+            # stale NAS handle / mount interruption). We must not claim that subtree is empty, so commit the
+            # progress made so far and SUSPEND the generation (partial, resumable, NO reconciliation) — an
+            # unreadable subtree can never be published as a complete scan that then mass-deletes files (F-01).
+            with suppress(Exception):
+                _flush()
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    last_error_code="directory_read_error",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
+            report.error_code = "directory_read_error"
+            report.error_codes.append("directory_read_error")
+            report.bounded_out = True
+            report.bounded_reason = "directory_read_error"
+            report.generation_status = "partial"
+            _finish_v119("partial")
+            return report
+        except _LeaseLost:
+            # A stale-lease takeover claimed this generation mid-batch. Do NOT touch the generation (its
+            # new owner is authoritative); just close this pass as a retryable conflict.
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return report
 
-        report.completed = not report.bounded_out and not report.truncated
-        if report.completed:
-            # Delete-reconcile ONLY on a complete pass (full `seen`); reuse the preloaded state keys.
-            for gone in set(prior) - seen:
-                repo.mark_deleted(
-                    "external_file", gone, source_root_key=root.source_root_key, conn=conn
+        if pass_error:
+            # An unresolved per-file stat/upsert error held the cursor: SUSPEND (partial) so the file is
+            # retried; the generation is never marked complete with an unresolved observation (F-03).
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    last_error_code="metadata_walk_error",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
+            report.error_code = report.error_code or "metadata_walk_error"
+            report.bounded_out = True
+            report.generation_status = "partial"
+            _emit_progress("")
+            _finish_v119("partial")
+            return report
+
+        if report.bounded_out:
+            if not _transition_or_conflict(
+                genrepo.mark_partial(
+                    gid,
+                    run_id,
+                    cursor_json=json.dumps(last_cursor) if last_cursor else None,
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "partial",
+            ):
+                return report
+            report.generation_status = "partial"
+            _emit_progress("")
+            _finish_v119("partial")
+            return report
+
+        # Full metadata walk complete. Lease-fenced: if this write affects 0 rows we lost ownership after
+        # the final batch (stale-lease takeover) — do NOT proceed to reconcile/complete under a lease we no
+        # longer hold (finding 6); close the pass as a retryable conflict and let the new owner finish.
+        if (
+            genrepo.mark_metadata_walk_complete(
+                gid,
+                run_id,
+                files_observed=files_observed,
+                metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged,
+                errors_count=errors_count,
+            )
+            == 0
+        ):
+            report.conflict = True
+            report.generation_status = "conflict"
+            report.error_code = "lease_lost"
+            report.error_codes.append("lease_lost")
+            _finish_v119("interrupted")
+            return report
+
+    # Empty-root / lost-mount blast-radius sentinel (F-01): if this generation observed ZERO files yet the
+    # index still holds MORE THAN the configured threshold of active rows, the root most likely vanished
+    # (share unmounted / empty mountpoint that reads as an accessible-but-empty directory) — reconciling
+    # would MASS-delete valid records. Fail closed (no reconciliation) and require operator confirmation. A
+    # genuine emptying at/under the threshold still reconciles (bounded, low blast radius). Permission/I/O
+    # read errors are handled independently upstream (directory_read_error → suspend).
+    empty_guard = int(getattr(config, "source_index_empty_root_delete_threshold", 50))
+    if files_observed == 0 and repo.count_source_files(root.source_root_key) > empty_guard:
+        if not _transition_or_conflict(
+            genrepo.fail_generation(
+                gid,
+                run_id,
+                last_error_code="empty_root_guard",
+                files_observed=files_observed,
+                metadata_upserted=metadata_upserted,
+                files_unchanged=files_unchanged,
+                errors_count=errors_count,
+            ),
+            "failed",
+        ):
+            return report
+        report.error_code = "empty_root_guard"
+        report.error_codes.append("empty_root_guard")
+        report.generation_status = "failed"
+        _finish_v119("failed")
+        return report
+
+    # ---- Phase 2: generation-based deletion reconciliation (source_id keyset, 3-outcome probe) ----
+    # Each batch: probe every candidate (present survivor / confirmed-absent / indeterminate), then apply the
+    # resolvable PREFIX atomically (deletes + survivor refreshes + reconcile-cursor checkpoint in one txn).
+    # The FIRST indeterminate (permission/IO/symlink/non-regular) stops the batch and leaves the generation
+    # reconcile_pending — only a CONFIRMED absence is ever deleted, and completeness is never falsely certified.
+    # Reconciliation ALWAYS restarts its keyset sweep from the beginning (after_sid=None), never trusting a
+    # persisted `reconcile_cursor_json`. That checkpoint is not needed for correctness — the stale-candidate
+    # query is SELF-LIMITING: a resolved survivor is stamped with this generation and a confirmed-absent row
+    # is marked deleted, so both drop OUT of the candidate set immediately; a resume from None re-selects
+    # only the still-unresolved rows. Trusting a persisted `after` is exactly what a corrupted/forged value
+    # could exploit — a malformed payload could crash the pass, and a forged-high value could skip earlier
+    # stale rows yet let finish_completed certify reconciliation. Restarting is safe (idempotent) and cheap
+    # (index scan bounded by the shrinking candidate set); the keyset below is a within-phase optimization
+    # only. The persisted cursor is still written for diagnostics but never read back as a trust anchor.
+    after_sid: str | None = None
+    committed_after_sid: str | None = None
+    try:
+        while True:
+            cands = repo.stale_candidates_batch(
+                root.source_root_key, gid, gen_started, after_source_id=after_sid, limit=batch_size
+            )
+            if not cands:
+                break
+            # (sid, rel, action, preserve, restale_notes)
+            resolved: list[tuple[str, str, str, bool, bool]] = []
+            blocked = False
+            for sid, rel in cands:
+                abs_c = root_path / rel
+                verdict = _probe_candidate(abs_c, root_path)
+                if verdict == "indeterminate":
+                    blocked = True
+                    break
+                if verdict == "absent":
+                    resolved.append((sid, rel, "delete", False, False))
+                    continue
+                # A present file that is now EXCLUDED/ignored by CURRENT policy is a POLICY REMOVAL, not a
+                # survivor: a newly-added exclusion prunes it from the walk, so at reconcile it must be
+                # DEACTIVATED from the index (the source file itself is never touched) — otherwise its record
+                # stays active/searchable forever (finding: exclusion changes).
+                if should_ignore(rel, abs_c.name) or is_excluded_source_path(rel, config):
+                    resolved.append((sid, rel, "delete", False, False))
+                    continue
+                # present survivor: preserve valid content when the file is physically unchanged.
+                try:
+                    st = abs_c.stat()
+                except OSError:
+                    blocked = True
+                    break
+                ext = abs_c.suffix.lower().lstrip(".")
+                recomputed = extraction_disposition(ext, st.st_size, config)
+                p = repo.load_metadata_state_batch(root.source_root_key, [rel]).get(rel)
+                stat_match = (
+                    p is not None and p["mtime"] == st.st_mtime_ns and p["size"] == st.st_size
                 )
-                report.deleted += 1
+                disp_match = p is not None and p["disposition"] == recomputed
+                # A project re-route (key/number change) does NOT block preserve — preserve rebuilds the
+                # project relationship authoritatively — but it IS a MATERIAL derived-state change, so the
+                # generated card must be re-staled even under preserve (finding 3), same as the walk path.
+                cur_pk, cur_num, _conf = match_path_to_project(rel)
+                proj_match = (
+                    p is not None
+                    and p.get("project_key") == cur_pk
+                    and p.get("project_number") == cur_num
+                )
+                mode = p.get("content_mode") if p is not None else "none"
+                sensitive = bool(getattr(root, "sensitive", False))
+                sens_ok = not (
+                    (sensitive and mode == "plain") or ((not sensitive) and mode == "vault")
+                )
+                # A survivor keeps its content when the content is still valid; a project re-route or a
+                # fingerprint change is rebuilt authoritatively by preserve, and only an owed sensitivity
+                # re-secure or a disposition flip forces a content-clearing replace.
+                preserve = bool(stat_match and disp_match and sens_ok)
+                restale = (not preserve) or (not proj_match)
+                resolved.append((sid, rel, "refresh", preserve, restale))
+            if resolved:
+                with open_connection(repo.db_path) as c, transaction(c):
+                    for sid, rel, action, preserve, restale in resolved:
+                        if action == "delete":
+                            repo.mark_deleted_by_source_id(sid, conn=c, in_transaction=True)
+                            deleted_count += 1
+                            report.deleted += 1
+                        else:
+                            # A survivor refresh that FAILS raises out of this txn → caught below and the
+                            # generation is left reconcile_pending (never certified complete with an
+                            # unresolved survivor). A bare last-seen stamp is forbidden — a full upsert
+                            # (content preserved when unchanged) is the only thing that clears the candidate.
+                            # raise_on_error + a None-guard mean a second-stat race here never silently
+                            # advances the reconcile cursor past an unresolved survivor.
+                            out = _index_source_metadata(
+                                root_path / rel,
+                                root,
+                                repo,
+                                config,
+                                generation_id=gid,
+                                preserve_content=preserve,
+                                policy_fingerprint=fingerprint,
+                                raise_on_error=True,
+                                conn=c,
+                                in_transaction=True,
+                            )
+                            if out.source_id is None:
+                                raise RuntimeError("survivor_refresh_no_source_id")
+                            # Material derived-state change on a survivor (content replaced, or project
+                            # re-routed even under preserve) re-stales its generated card (finding 3).
+                            if restale:
+                                repo._mark_generated_notes_stale(c, out.source_id)
+                    affected = genrepo.advance_reconcile_cursor(
+                        gid,
+                        run_id,
+                        reconcile_cursor_json=json.dumps({"after": resolved[-1][0]}),
+                        conn=c,
+                        in_transaction=True,
+                        deleted_count=deleted_count,
+                    )
+                    if affected == 0:
+                        raise _LeaseLost()
+                after_sid = resolved[-1][0]
+                committed_after_sid = after_sid
+            if blocked:
+                if not _transition_or_conflict(
+                    genrepo.mark_reconcile_pending(
+                        gid,
+                        run_id,
+                        reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+                        last_error_code="reconcile_indeterminate",
+                        deleted_count=deleted_count,
+                    ),
+                    "reconcile_pending",
+                ):
+                    return report
+                report.error_code = "reconcile_indeterminate"
+                report.error_codes.append("reconcile_indeterminate")
+                report.generation_status = "reconcile_pending"
+                _finish_v119("partial")
+                return report
+    except _LeaseLost:
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "lease_lost"
+        report.error_codes.append("lease_lost")
+        _finish_v119("interrupted")
+        return report
+    except (
+        Exception
+    ) as exc:  # a survivor refresh failed → resolvable later; never a false completion
+        report.errors += 1
+        report.error_codes.append(type(exc).__name__)
+        report.error_code = "survivor_refresh_failed"
+        if not _transition_or_conflict(
+            genrepo.mark_reconcile_pending(
+                gid,
+                run_id,
+                reconcile_cursor_json=json.dumps({"after": committed_after_sid}),
+                last_error_code="survivor_refresh_failed",
+                deleted_count=deleted_count,
+            ),
+            "reconcile_pending",
+        ):
+            return report
+        report.generation_status = "reconcile_pending"
+        _finish_v119("partial")
+        return report
+
+    # Lease-fenced completion: 0 rows means the lease was lost after the final reconcile batch — the new
+    # owner is authoritative, so we must NOT report this pass as the completing one (finding 6).
+    if (
+        genrepo.finish_completed(
+            gid,
+            run_id,
+            files_observed=files_observed,
+            metadata_upserted=metadata_upserted,
+            files_unchanged=files_unchanged,
+            errors_count=errors_count,
+            deleted_count=deleted_count,
+        )
+        == 0
+    ):
+        report.conflict = True
+        report.generation_status = "conflict"
+        report.error_code = "lease_lost"
+        report.error_codes.append("lease_lost")
+        _finish_v119("interrupted")
+        return report
+    report.completed = True
+    report.generation_status = "completed"
+    _emit_progress("")
+    _finish_v119("completed")
     return report
 
 
@@ -696,8 +2116,10 @@ def _auto_generate(
             )
             cards = 1
         except Exception:  # noqa: BLE001 - card generation is best-effort; a failure is a skip
-            _logger.warning("source_index.auto_card_error", extra={"obsidian_mcp": {
-                "root": root.source_root_key}})
+            _logger.warning(
+                "source_index.auto_card_error",
+                extra={"obsidian_mcp": {"root": root.source_root_key}},
+            )
 
     want_summary = (
         summaries_remaining > 0
@@ -709,7 +2131,9 @@ def _auto_generate(
     )
     if want_summary:
         try:
-            out = source_notes.summarize_source(repo, config, source_id=source_id, principal_kind="local")
+            out = source_notes.summarize_source(
+                repo, config, source_id=source_id, principal_kind="local"
+            )
         except Exception:  # noqa: BLE001 - advisory summary is best-effort
             return cards, 0
         if out.get("summarized"):
@@ -718,7 +2142,9 @@ def _auto_generate(
 
 
 def _unsupported_exts(config: ObsidianMcpConfig) -> set[str]:
-    return {_ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])}
+    return {
+        _ext_norm(e) for e in (getattr(config, "source_index_unsupported_file_types", []) or [])
+    }
 
 
 def _order_eligible_sources(
@@ -790,7 +2216,10 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                             budget = max(0, card_cap - cards_done)
                             for sid, disp in eligible[:budget]:
                                 c, s = _auto_generate(
-                                    repo, config, sid, root,
+                                    repo,
+                                    config,
+                                    sid,
+                                    root,
                                     summaries_remaining=summary_cap - summaries_done,
                                     disposition=disp,
                                 )
@@ -802,7 +2231,8 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                                     detail = repo.get_source_detail(sid)
                                     if detail and detail.get("rel_path"):
                                         repo.enqueue_event(
-                                            event_type="reindex_requested", rel_path=detail["rel_path"],
+                                            event_type="reindex_requested",
+                                            rel_path=detail["rel_path"],
                                             source_root_key=root.source_root_key,
                                         )
                             if run.status == "partial":
@@ -816,25 +2246,71 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                                 rebuild_status, rebuild_code = "error", run.error_code
                 repo.complete_event(event["event_id"], rebuild_status, error_code=rebuild_code)
             elif event["event_type"] == "deleted":
-                if event["rel_path"]:
-                    repo.mark_deleted("external_file", event["rel_path"],
-                                      source_root_key=event.get("source_root_key"))
-                repo.complete_event(event["event_id"], "done")
-            elif (event["source_root_key"] == _VAULT_ROOT_KEY and event["rel_path"]
-                    and is_source_notes_path(event["rel_path"], config)):
+                rel_path = event["rel_path"]
+                src_key = event.get("source_root_key")
+                if not rel_path:
+                    repo.complete_event(event["event_id"], "done")
+                elif src_key == _VAULT_ROOT_KEY:
+                    # The vault is always local/mounted: a vault-file deletion is a real user action,
+                    # not a mount blip. Preserve existing behavior (no NAS-mount revalidation).
+                    repo.mark_deleted("external_file", rel_path, source_root_key=src_key)
+                    repo.complete_event(event["event_id"], "done")
+                else:
+                    # External (NAS) root: NEVER mark_deleted on an enqueued event alone. Between enqueue
+                    # and drain the whole mount can drop — every candidate would then probe "absent" and
+                    # mass-delete still-present rows. Revalidate: the root must be confirmed USABLE, then
+                    # the file itself confirmed ABSENT. Anything else is a distinct, retryable skip.
+                    root = roots.get(src_key)
+                    if root is None:
+                        repo.complete_event(
+                            event["event_id"], "skipped", error_code="unconfigured_root"
+                        )
+                    else:
+                        root_path = Path(root.path)
+                        root_state = _probe_root_dir(root_path)
+                        if root_state != "usable":
+                            # absent/indeterminate root → the deletion is unproven (retry next reconcile)
+                            repo.complete_event(
+                                event["event_id"], "skipped", error_code="root_unavailable"
+                            )
+                        else:
+                            probe = _probe_candidate(root_path / rel_path, root_path)
+                            if probe == "absent":
+                                repo.mark_deleted(
+                                    "external_file", rel_path, source_root_key=src_key
+                                )
+                                repo.complete_event(event["event_id"], "done")
+                            elif probe == "present":
+                                repo.complete_event(
+                                    event["event_id"], "skipped", error_code="still_present"
+                                )
+                            else:  # indeterminate → unproven, retry next reconcile
+                                repo.complete_event(
+                                    event["event_id"], "skipped", error_code="indeterminate"
+                                )
+            elif (
+                event["source_root_key"] == _VAULT_ROOT_KEY
+                and event["rel_path"]
+                and is_source_notes_path(event["rel_path"], config)
+            ):
                 # Self-index guard (drain backstop): a generated Source Notes card on the VAULT root
                 # must never re-enter source processing. Scoped strictly to the vault root + the
                 # configured source_notes_folder — an EXTERNAL root that merely contains a folder
                 # named "Source Notes" is NOT caught here and is indexed normally below.
-                repo.complete_event(event["event_id"], "skipped",
-                                    error_code=SOURCE_NOTES_SELF_INDEX_GUARD)
-            elif (event["source_root_key"] == _VAULT_ROOT_KEY and event["rel_path"]
-                    and is_email_archive_path(event["rel_path"])):
+                repo.complete_event(
+                    event["event_id"], "skipped", error_code=SOURCE_NOTES_SELF_INDEX_GUARD
+                )
+            elif (
+                event["source_root_key"] == _VAULT_ROOT_KEY
+                and event["rel_path"]
+                and is_email_archive_path(event["rel_path"])
+            ):
                 # Self-index guard (drain backstop): a Phase-10E full-email archive note on the VAULT
                 # root must never re-enter source processing (it holds full bodies/addresses). Scoped
                 # to the vault root + the Email Archive/ prefix, mirroring the Source Notes guard above.
-                repo.complete_event(event["event_id"], "skipped",
-                                    error_code=EMAIL_ARCHIVE_SELF_INDEX_GUARD)
+                repo.complete_event(
+                    event["event_id"], "skipped", error_code=EMAIL_ARCHIVE_SELF_INDEX_GUARD
+                )
             elif event["rel_path"] and is_excluded_source_path(event["rel_path"], config):
                 # Excluded dependency/build path: skip cleanly (not an error, not indexed, no card).
                 repo.complete_event(event["event_id"], "skipped", error_code=EXCLUDED_PATH)
@@ -846,7 +2322,9 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                     with suppress(Exception):
                         index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
                 repo.complete_event(event["event_id"], "skipped", error_code=DEFERRED_PATH)
-            elif event["rel_path"] and _ext_norm(Path(event["rel_path"]).suffix) in _unsupported_exts(config):
+            elif event["rel_path"] and _ext_norm(
+                Path(event["rel_path"]).suffix
+            ) in _unsupported_exts(config):
                 # Unsupported/placeholder type (.url/.aspx/screenshot/etc.): do NOT index (no fragile
                 # parsing, no garbage rows). A clean policy skip, NOT an error.
                 repo.complete_event(event["event_id"], "skipped", error_code=UNSUPPORTED_FILE_TYPE)
@@ -854,7 +2332,9 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 root = roots.get(event["source_root_key"])
                 event_status, event_code = "done", None
                 if root and event["rel_path"]:
-                    source_id = index_source_file(Path(root.path) / event["rel_path"], root, repo, config)
+                    source_id = index_source_file(
+                        Path(root.path) / event["rel_path"], root, repo, config
+                    )
                     if source_id is not None:
                         # PM-value gate (A1.11): card only auto_card-eligible sources. A metadata-only
                         # source that indexed cleanly is a successful policy skip (NOT an error).
@@ -864,7 +2344,10 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                             # One card per single-file event (naturally bounded by the claim batch);
                             # the card_cap bounds the rebuild scan-burst, not per-file events.
                             c, s = _auto_generate(
-                                repo, config, source_id, root,
+                                repo,
+                                config,
+                                source_id,
+                                root,
                                 summaries_remaining=summary_cap - summaries_done,
                                 disposition=disp,
                             )
@@ -877,8 +2360,10 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
         except Exception as exc:
             repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
     if cards_done or summaries_done:
-        _logger.info("source_index.drain_generated", extra={"obsidian_mcp": {
-            "cards": cards_done, "summaries": summaries_done}})
+        _logger.info(
+            "source_index.drain_generated",
+            extra={"obsidian_mcp": {"cards": cards_done, "summaries": summaries_done}},
+        )
         with suppress(Exception):
             repo.record_generation_result(cards=cards_done, summaries=summaries_done)
     with suppress(Exception):
@@ -905,5 +2390,9 @@ def request_rebuild(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> d
                 pass
 
     threading.Thread(target=_drain, name="source-rebuild-drain", daemon=True).start()
-    return {"accepted": True, "roots_queued": len(enabled) + 1, "mode": "queued",
-            "watch_enabled": bool(getattr(config, "external_source_watch_enabled", False))}
+    return {
+        "accepted": True,
+        "roots_queued": len(enabled) + 1,
+        "mode": "queued",
+        "watch_enabled": bool(getattr(config, "external_source_watch_enabled", False)),
+    }
