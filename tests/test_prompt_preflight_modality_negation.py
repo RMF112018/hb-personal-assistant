@@ -72,3 +72,47 @@ def test_promotion_receipt_contrast_clause_blocks_promotion() -> None:
     assert "promote" in auth["prohibitions"]
     assert auth["prompt_permission"]["promote"] is False
     assert plan["recommended_workflow"] != "apply_canonical_promotion"
+
+
+def test_unicode_quoted_promote_with_anaphora_prohibition_audit_row_21() -> None:
+    plan = route_prompt(
+        "The document says \u201cpromote the artifact,\u201d but do not perform that action."
+    )
+    auth = plan["authorization"]
+    assert plan["recommended_workflow"] not in ("apply_canonical_promotion", "inspect_promotion_receipt")
+    assert auth["prompt_permission"]["promote"] is False
+    assert "promote" in auth["prohibitions"]
+
+
+def test_quoted_promote_do_so_does_not_authorize() -> None:
+    plan = route_prompt('The operator said "promote the artifact". Do so.')
+    assert plan["recommended_workflow"] not in ("apply_canonical_promotion", "inspect_promotion_receipt")
+    assert plan["authorization"]["prompt_permission"]["promote"] is False
+
+
+def test_imperative_promote_do_so_authorizes() -> None:
+    plan = route_prompt("Promote the artifact. Do so.")
+    assert plan["recommended_workflow"] == "apply_canonical_promotion"
+    assert plan["authorization"]["prompt_permission"]["promote"] is True
+
+
+def test_stage_anaphora_prohibition_blocks_staging() -> None:
+    plan = route_prompt("Stage this for review. Do not do that action.")
+    auth = plan["authorization"]
+    assert "stage" in auth["prohibitions"]
+    assert auth["prompt_permission"]["stage"] is False
+    assert plan["recommended_workflow"] != "stage_artifact_proposals"
+
+
+def test_search_without_writing_audit_row_11() -> None:
+    plan = route_prompt("Search without writing anything.")
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert "write" in plan["authorization"]["prohibitions"]
+    assert plan["authorization"]["prompt_permission"]["read"] is True
+
+
+def test_do_not_promote_anything_audit_row_6() -> None:
+    plan = route_prompt("Do not promote anything.")
+    assert plan["recommended_workflow"] not in ("apply_canonical_promotion", "inspect_promotion_receipt")
+    assert "promote" in plan["authorization"]["prohibitions"]
+    assert plan["authorization"]["prompt_permission"]["promote"] is False

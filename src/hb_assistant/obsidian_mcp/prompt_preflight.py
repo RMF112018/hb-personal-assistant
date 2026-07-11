@@ -103,7 +103,15 @@ _MODALITY_HYPOTHETICAL = re.compile(
     r"\b(what if|suppose|imagine|would it|could we)\b",
     re.IGNORECASE,
 )
-_QUOTED_SPAN = re.compile(r'"([^"]*)"|\'([^\']*)\'')
+_QUOTED_SPAN = re.compile(
+    r'"([^"]*)"|\'([^\']*)\'|'
+    r"[\u201c]([^\u201d]*)[\u201d]|"
+    r"[\u2018]([^\u2019]*)[\u2019]",
+)
+_ANAPHORA_PHRASE = re.compile(
+    r"\b(that action|this action|do so|do that|perform that action|perform that)\b",
+    re.IGNORECASE,
+)
 _WRITE_CAPABILITY_WORD = re.compile(
     r"\b(promot\w*|stag\w*|writ\w*|archiv\w*|deploy\w*|commit\w*|mutat\w*|send\w*|email\w*)\b",
     re.IGNORECASE,
@@ -116,8 +124,18 @@ _ALLOW_READ_PHRASES = (
 )
 
 
+def _normalize_unicode_quotes(text: str) -> str:
+    return (
+        (text or "")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+    )
+
+
 def _norm(text: str) -> str:
-    return " ".join((text or "").lower().split())
+    return " ".join(_normalize_unicode_quotes(text).lower().split())
 
 
 def _is_destructive(prompt_l: str) -> bool:
@@ -136,6 +154,66 @@ def _split_clauses(prompt_l: str) -> list[str]:
 
 def _strip_quoted_spans(text: str) -> str:
     return _QUOTED_SPAN.sub(" ", text)
+
+
+def _is_prohibition_clause(clause: str) -> bool:
+    """True when a clause is a scoped negation (exclude from workflow trigger scoring)."""
+    c = clause.strip()
+    if not c:
+        return False
+    if re.match(r"^(do not|don't|never|no)\b", c, re.IGNORECASE):
+        return True
+    if re.search(r"\b(do not|don't|never|not perform|do not perform)\b", c, re.IGNORECASE):
+        if _ANAPHORA_PHRASE.search(c) or re.search(r"\bperform that action\b", c, re.IGNORECASE):
+            return True
+        if not re.match(
+            r"^(search|find|list|show|retrieve|read|audit|explain|inspect|get|open)\b",
+            c,
+            re.IGNORECASE,
+        ):
+            return bool(_WRITE_CAPABILITY_WORD.search(c))
+    return False
+
+
+def _clause_capability_referents(clauses: list[str]) -> list[tuple[set[str], bool]]:
+    """Per-clause capabilities: (caps, from_quoted). Imperative referents authorize anaphora; quoted do not."""
+    referents: list[tuple[set[str], bool]] = []
+    for clause in clauses:
+        quoted_caps: set[str] = set()
+        for match in _QUOTED_SPAN.finditer(clause):
+            inner = next((g for g in match.groups() if g), "") or ""
+            for cap in _CAPABILITY_TRIGGER_TOKENS:
+                if _capability_token_in_text(cap, inner):
+                    quoted_caps.add(cap)
+        if quoted_caps:
+            # Quoted payload is authoritative — ignore wrapper residue ("the document says …").
+            referents.append((quoted_caps, True))
+            continue
+        imperative_caps: set[str] = set()
+        stripped = _strip_quoted_spans(clause).strip()
+        if stripped and _classify_clause_modality(clause) == "imperative":
+            for cap in _CAPABILITY_TRIGGER_TOKENS:
+                if _capability_token_in_text(cap, stripped):
+                    imperative_caps.add(cap)
+        referents.append((imperative_caps, False))
+    return referents
+
+
+def _apply_anaphora_prohibitions(prompt_l: str, prohibitions: set[str]) -> None:
+    """Negated anaphora ('do not perform that action') inherits the nearest prior capability referent."""
+    clauses = _split_clauses(prompt_l)
+    referents = _clause_capability_referents(clauses)
+    for i, clause in enumerate(clauses):
+        prior: set[str] = set()
+        for j in range(i):
+            prior.update(referents[j][0])
+        if not prior:
+            continue
+        if re.search(r"\b(do not|don't|never|not perform|without)\b", clause, re.IGNORECASE):
+            if _ANAPHORA_PHRASE.search(clause) or re.search(
+                r"\bperform that action\b", clause, re.IGNORECASE
+            ):
+                prohibitions.update(prior)
 
 
 def _classify_clause_modality(clause: str) -> str:
@@ -196,6 +274,8 @@ def _scoring_text(prompt_l: str, *, write_policy: bool) -> str:
 
     chunks: list[str] = []
     for clause in clauses:
+        if _is_prohibition_clause(clause):
+            continue
         mod = _classify_clause_modality(clause)
         if mod in ("quoted", "hypothetical"):
             continue
@@ -216,6 +296,8 @@ def _scoring_text(prompt_l: str, *, write_policy: bool) -> str:
         # Minimal capture/generation trigger phrases (e.g. "remember this") without imperative verbs.
         fallback: list[str] = []
         for clause in clauses:
+            if _is_prohibition_clause(clause):
+                continue
             mod = _classify_clause_modality(clause)
             if mod in ("quoted", "hypothetical", "capability_inquiry"):
                 continue
@@ -241,8 +323,12 @@ def _has_imperative_capability_intent(prompt_l: str, capability: str) -> bool:
     cap_tokens = _CAPABILITY_TRIGGER_TOKENS.get(capability, ())
     if not cap_tokens:
         return False
-    for clause in _split_clauses(prompt_l):
+    clauses = _split_clauses(prompt_l)
+    referents = _clause_capability_referents(clauses)
+    for i, clause in enumerate(clauses):
         if _classify_clause_modality(clause) != "imperative":
+            continue
+        if re.search(r"\b(do not|don't|never)\b", clause, re.IGNORECASE):
             continue
         surface = _strip_quoted_spans(clause)
         if any(
@@ -250,6 +336,14 @@ def _has_imperative_capability_intent(prompt_l: str, capability: str) -> bool:
             for ct in cap_tokens
         ):
             return True
+        if _ANAPHORA_PHRASE.search(clause):
+            prior_imperative: set[str] = set()
+            for j in range(i):
+                caps, from_quoted = referents[j]
+                if not from_quoted:
+                    prior_imperative.update(caps)
+            if capability in prior_imperative:
+                return True
     return False
 
 
@@ -372,6 +466,8 @@ def _extract_prohibitions(prompt_l: str) -> set[str]:
         if beyond_read_only:
             prohibitions.add("execute_non_read")
             prohibitions.update({"write", "stage", "promote", "external_action"})
+
+    _apply_anaphora_prohibitions(prompt_l, prohibitions)
 
     return prohibitions
 
