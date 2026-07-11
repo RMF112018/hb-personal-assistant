@@ -21,6 +21,7 @@ echo "== prompt routing audit corpus (offline + broker) =="
 "$PY" -m pytest \
   tests/test_prompt_routing_audit_corpus.py \
   tests/test_prompt_preflight_semantic_equivalence.py \
+  tests/test_prompt_preflight_workflow_usability.py \
   "${MARKERS[@]}" \
   "$@"
 

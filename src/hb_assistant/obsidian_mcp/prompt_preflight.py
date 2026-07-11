@@ -849,9 +849,25 @@ _TOOL_REQUIRED_ARGS: dict[str, tuple[str, ...]] = {
     "pa_artifact_proposal_stage": ("session_id", "candidate_artifacts"),
     "pa_artifact_promotion_apply": ("promotion_bundle_id", "operator_approval_id"),
     "pa_output_commit": ("output_id", "operator_approval_id"),
-    "pa_output_stage": ("title", "content", "content_mode"),
+    "pa_output_stage": ("title", "file_type", "content_mode"),
+    "pa_output_metadata": ("output_id",),
     "pa_output_archive_plan": ("output_id",),
+    "pa_artifact_promotion_receipt_get": ("promotion_receipt_id",),
+    "assistant_get_feedback": ("feedback_id",),
+    "assistant_get_action_stage": ("stage_id",),
     "assistant_source_file_read": ("source_id",),
+}
+
+_WORKFLOW_OUTPUT_FORMAT: dict[str, tuple[str, str]] = {
+    "generate_csv_output": ("csv", "csv_text"),
+    "generate_json_output": ("json", "json_text"),
+    "generate_html_output": ("html", "html_text"),
+    "generate_markdown_output": ("md", "markdown_text"),
+    "generate_pdf_output": ("pdf", "pdf_from_html_or_markdown"),
+    "generate_pptx_output": ("pptx", "pptx_from_markdown_or_json"),
+    "generate_docx_output": ("docx", "docx_from_markdown_or_text"),
+    "generate_xlsx_output": ("xlsx", "xlsx_from_csv"),
+    "generate_zip_package": ("zip", "zip_base64"),
 }
 
 _QUERY_ARG_NAMES = frozenset({"query", "search_term"})
@@ -863,7 +879,11 @@ _GETTER_TOOLS = frozenset({
     "assistant_get_preference",
     "assistant_get_open_loop",
     "assistant_get_vault_note",
+    "assistant_get_feedback",
+    "assistant_get_action_stage",
     "assistant_source_file_read",
+    "pa_output_metadata",
+    "pa_artifact_promotion_receipt_get",
 })
 _TOPICAL_LIST_TOOLS = frozenset({
     "assistant_list_decisions",
@@ -875,15 +895,21 @@ _TYPED_RETRIEVAL_ROUTE: dict[str, tuple[str, str, str]] = {
     "DEC": ("decision_id", "assistant_get_decision", "canonical_decision_retrieval"),
     "PREF": ("preference_id", "assistant_get_preference", "canonical_preference_retrieval"),
     "LOOP": ("open_loop_id", "assistant_get_open_loop", "canonical_open_loop_retrieval"),
+    "OUTPUT": ("output_id", "pa_output_metadata", "inspect_generated_output_metadata"),
+    "PROMO": ("promotion_receipt_id", "pa_artifact_promotion_receipt_get", "inspect_promotion_receipt"),
 }
 _RETRIEVAL_VERB_RE = re.compile(
-    r"\b(show(?:\s+me)?(?:\s+the)?|retrieve|get|open|display)\b",
+    r"\b(show(?:\s+me)?(?:\s+the)?|retrieve|get|open|display|inspect|review|explain)\b",
     re.IGNORECASE,
 )
 _ARTIFACT_NOUN_CUES: tuple[tuple[str, str], ...] = (
     ("open loop", "LOOP"),
     ("preference", "PREF"),
     ("decision", "DEC"),
+    ("generated output", "OUTPUT"),
+    ("output file", "OUTPUT"),
+    ("output", "OUTPUT"),
+    ("promotion receipt", "PROMO"),
 )
 
 
@@ -984,6 +1010,45 @@ def _extract_search_query(prompt: str, prompt_l: str) -> str | None:
     return None
 
 
+def _extract_output_title(prompt: str, prompt_l: str) -> str | None:
+    """Bounded title extraction for generated-output staging (never invents approval/output ids)."""
+    quoted = _extract_quoted_fragment(prompt)
+    if quoted and len(quoted) <= 120:
+        return quoted
+    patterns = (
+        r"\b(?:titled|called|named)\s+(.+?)(?:\s+with\b|\s+containing\b|[.?!]|$)",
+        r"\breport\s+titled\s+(.+?)(?:[.?!]|$)",
+        r"\btitle\s*[:=]\s*(.+?)(?:[.?!]|$)",
+    )
+    for pat in patterns:
+        m = re.search(pat, prompt, re.IGNORECASE)
+        if m:
+            title = m.group(1).strip(" '\"")
+            if title:
+                return title[:120]
+    return None
+
+
+def _extract_output_content_text(prompt: str, prompt_l: str) -> str | None:
+    """Best-effort content snippet for output staging when the operator supplies inline body text."""
+    patterns = (
+        r"\bwith\s+(?:content|body|text)\s+(.+?)(?:[.?!]|$)",
+        r"\bcontaining\s+(.+?)(?:[.?!]|$)",
+        r"\bwith\s+columns?\s+(.+?)(?:[.?!]|$)",
+    )
+    for pat in patterns:
+        m = re.search(pat, prompt_l, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()[:2000]
+    return None
+
+
+def _output_format_for_workflow(workflow_id: str | None) -> tuple[str, str] | None:
+    if not workflow_id:
+        return None
+    return _WORKFLOW_OUTPUT_FORMAT.get(workflow_id)
+
+
 def _extract_session_fields(prompt: str, prompt_l: str) -> dict[str, str]:
     """Bounded session-capture fields for document_session (never invents approval/session ids)."""
     out: dict[str, str] = {}
@@ -1003,7 +1068,13 @@ def _extract_session_fields(prompt: str, prompt_l: str) -> dict[str, str]:
     return out
 
 
-def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[str, Any]:
+def _extract_tool_arguments(
+    prompt: str,
+    prompt_l: str,
+    tool_name: str,
+    *,
+    workflow_id: str | None = None,
+) -> dict[str, Any]:
     """Populate tool arguments from the prompt using schema arg names (never invents IDs)."""
     args: dict[str, Any] = {}
     for arg in required_args_for_tool(tool_name):
@@ -1029,6 +1100,17 @@ def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[
                 for k, v in _extract_session_fields(prompt, prompt_l).items():
                     if k == arg:
                         args[arg] = v
+    if tool_name == "pa_output_stage":
+        fmt = _output_format_for_workflow(workflow_id)
+        if fmt:
+            args.setdefault("file_type", fmt[0])
+            args.setdefault("content_mode", fmt[1])
+        title = _extract_output_title(prompt, prompt_l)
+        if title:
+            args.setdefault("title", title)
+        content = _extract_output_content_text(prompt, prompt_l)
+        if content:
+            args.setdefault("content_text", content)
     if tool_name in _TOPICAL_LIST_TOOLS:
         topic = _extract_topic_query(prompt_l)
         if topic and "query" not in args:
@@ -1047,27 +1129,37 @@ def _resolve_next_tool_step(
     tools: list[str],
     prompt: str,
     prompt_l: str,
+    *,
+    workflow_id: str | None = None,
 ) -> tuple[str | None, dict[str, Any], str | None]:
     """Pick the executable next tool and extracted args (exact-ID getter overrides discovery-first list)."""
     if not tools:
         return None, {}, None
 
+    output_id = _extract_validated_id(prompt, "output_id")
+
     # Exact-ID getter: skip list/discovery when a validated id is present.
     for tool in tools:
         if tool not in _GETTER_TOOLS:
             continue
-        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        args = _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id)
         id_args = [a for a in required_args_for_tool(tool) if a.endswith(_ID_ARG_SUFFIX)]
         if id_args and all(args.get(a) for a in id_args) and not _missing_required_args(tool, args):
             return tool, args, "exact_id_getter"
 
+    if output_id and "pa_output_metadata" in tools:
+        args = _extract_tool_arguments(prompt, prompt_l, "pa_output_metadata", workflow_id=workflow_id)
+        args.setdefault("output_id", output_id)
+        if not _missing_required_args("pa_output_metadata", args):
+            return "pa_output_metadata", args, "exact_id_getter"
+
     for tool in tools:
-        args = _extract_tool_arguments(prompt, prompt_l, tool)
+        args = _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id)
         if not _missing_required_args(tool, args):
             return tool, args, "extracted"
 
     tool = tools[0]
-    return tool, _extract_tool_arguments(prompt, prompt_l, tool), None
+    return tool, _extract_tool_arguments(prompt, prompt_l, tool, workflow_id=workflow_id), None
 
 
 def _argument_extraction_view(
@@ -1741,7 +1833,7 @@ def _route_workflow_plan(
         extraction_source = forced_extraction_source
     else:
         next_tool, next_args, extraction_source = _resolve_next_tool_step(
-            recommended_tools, prompt, prompt_l,
+            recommended_tools, prompt, prompt_l, workflow_id=best_wf["workflow_id"],
         )
     if topic and next_tool in _TOPICAL_LIST_TOOLS:
         next_args = dict(next_args)
@@ -1911,6 +2003,8 @@ def _try_typed_id_first_route(
         return None
 
     arg_name, getter_tool, workflow_id = route
+    if prefix == "OUTPUT" and re.search(r"\breceipt\b", prompt_l):
+        workflow_id = "retrieve_generated_output_receipt"
     artifact_label = next((n for n, p in _ARTIFACT_NOUN_CUES if p == prefix), prefix.lower())
 
     if len(tokens) > 1:

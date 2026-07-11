@@ -384,6 +384,8 @@ def extract_asserted_typed_ids(prompt: str) -> list[tuple[str, str]]:
         IdKind.DECISION: "DEC",
         IdKind.PREFERENCE: "PREF",
         IdKind.OPEN_LOOP: "LOOP",
+        IdKind.OUTPUT: "OUTPUT",
+        IdKind.PROMOTION_RECEIPT: "PROMO",
     }
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
@@ -395,7 +397,7 @@ def extract_asserted_typed_ids(prompt: str) -> list[tuple[str, str]]:
         if _is_illustrative_value(prompt, pid.value):
             continue
         token = pid.value.upper() if pid.value.upper().startswith(
-            ("DEC-", "PREF-", "LOOP-")
+            ("DEC-", "PREF-", "LOOP-", "OUTPUT-", "PROMO-")
         ) else pid.value
         if token in seen:
             continue
