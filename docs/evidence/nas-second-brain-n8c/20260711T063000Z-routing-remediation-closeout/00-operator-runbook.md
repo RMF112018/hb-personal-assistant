@@ -60,6 +60,8 @@ Pass criteria:
 
 Copy transcripts into this evidence folder and update `00-closeout.md` disposition to `DEPLOYED_AND_VALIDATED`.
 
+**PR-16..20 status (2026-07-11):** complete — see `09-pr16-20-operator-deploy-results.md`.
+
 ## Rollback
 
 ```bash

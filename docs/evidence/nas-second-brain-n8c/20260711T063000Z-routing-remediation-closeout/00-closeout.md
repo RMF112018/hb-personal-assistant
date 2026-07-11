@@ -1,7 +1,7 @@
-# Routing audit remediation closeout (PR-15)
+# Routing audit remediation closeout (PR-15 + PR-16..20)
 
 **Date:** 2026-07-11  
-**Disposition:** `DEPLOYED_AND_VALIDATED` — operator closeout complete (2026-07-11, verify r4)
+**Disposition:** `DEPLOYED_AND_VALIDATED` — PR-15 closeout + PR-16..20 wave live on NAS
 
 ## A. Repository identity
 
@@ -51,4 +51,18 @@ Target: **42/42 required** live corpus pass, **0 HIGH/blocker** regressions; doc
 |-------|--------|
 | PR-1..PR-13 routing fixes | Landed on `main` |
 | PR-14 versioned corpus | Landed (`01b9b00b`) |
-| PR-15 deploy + manifest + live replay | **COMPLETE** — deploy, manifest R4, 42/42 corpus, verify r4 all PASS |
+| PR-15 deploy + manifest + live replay | **COMPLETE** — `01b9b00b`, 42/42 corpus |
+| PR-16..PR-20 RT-03..06 + docs | Landed `931f69f0` |
+| PR-16..20 NAS deploy + live replay | **COMPLETE** — `931f69f0`, manifest promote, **47/47** required corpus |
+
+## F. PR-16..20 live runtime (`931f69f0`)
+
+```text
+deploy_sha=931f69f04c697c4082f65fbf90ab2b6ae6c81af9
+runtime_identity=exact_verified_commit
+live_required_corpus=47/47 pass (fail_count 0)
+manifest_version=7 workflow_count=15 surface_stale=false
+schema_live_ro=119 workspace_rw=121
+```
+
+Detail: `09-pr16-20-operator-deploy-results.md`

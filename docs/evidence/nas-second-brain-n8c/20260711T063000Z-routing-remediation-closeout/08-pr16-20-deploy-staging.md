@@ -1,6 +1,6 @@
 # PR-16..PR-20 deploy staging (2026-07-11)
 
-**Disposition:** `STAGED_ON_NAS` — image + scripts transferred; operator `sudo` required for load/restart.
+**Disposition:** `DEPLOYED_AND_VALIDATED` — operator closeout 2026-07-11 (see `09-pr16-20-operator-deploy-results.md`).
 
 ## Identity
 
@@ -26,11 +26,7 @@ Transferred 2026-07-11 to `hb-nas:/tmp/`:
 - `hb-nas-931f69f0.tar.gz` (SHA verified on NAS)
 - `01-deploy-pr15.sh` … `04-live-50-prompt-corpus.sh` (DEPLOY_SHA updated)
 
-## Blocker
-
-`sudo -n` denied for `bfetting` — deploy load/restart requires interactive sudo on NAS.
-
-## Operator sequence (one session)
+## Operator sequence (completed 2026-07-11)
 
 ```bash
 ssh -t hb-nas 'sudo sh /tmp/01-deploy-pr15.sh' | tee ~/deploy-pr16-20.txt
