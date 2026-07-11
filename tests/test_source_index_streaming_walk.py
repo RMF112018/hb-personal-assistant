@@ -13,10 +13,14 @@ import pytest
 
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
 from hb_assistant.obsidian_mcp.source_bootstrap import _file_plan_counts
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.obsidian_mcp.source_indexer import (
+    _VAULT_ROOT_KEY,
     effective_max_files,
+    scan_vault_notes,
     walk_source_tree,
 )
+from hb_assistant.store.migrator import SQLiteMigrator
 
 
 def _srcroot(tmp_path: Path) -> Path:
@@ -127,3 +131,34 @@ def test_file_plan_counts_missing_root(tmp_path: Path) -> None:
         "files_seen": 0,
         "would_index": 0,
     }
+
+
+def test_scan_vault_notes_streams_and_prunes_excluded_subtrees(tmp_path: Path) -> None:
+    """The vault index now streams via ``walk_source_tree`` instead of ``sorted(rglob("*.md"))``.
+
+    Guards that switching to the streaming walk preserves every exclusion that the old inline
+    ``should_ignore`` / ``is_excluded_source_path`` / symlink checks enforced: a note buried in a
+    hidden or excluded subtree is pruned (never descended, never indexed), while real notes index.
+    """
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    vault = tmp_path / "vault"
+    (vault / "Projects").mkdir(parents=True)
+    (vault / "Projects" / "Scope.md").write_text("# scope", encoding="utf-8")
+    # Excluded / hidden subtrees that the streaming walk must prune (not descend):
+    for pruned in (".git", "node_modules", "node_modules/deep"):
+        (vault / pruned).mkdir(parents=True, exist_ok=True)
+        (vault / pruned / "buried.md").write_text("# buried", encoding="utf-8")
+    # Self-generated cards + email archive stay excluded by the vault-specific checks.
+    (vault / "Source Notes" / "Work").mkdir(parents=True)
+    (vault / "Source Notes" / "Work" / "card__x.md").write_text("# card", encoding="utf-8")
+
+    cfg = ObsidianMcpConfig.model_validate({"enabled": True, "vault_root": str(vault)})
+    repo = SourceIndexRepository(db)
+    report = scan_vault_notes(repo, cfg)
+
+    active = repo.active_rel_paths(_VAULT_ROOT_KEY)
+    assert active == {"Projects/Scope.md"}
+    assert report.indexed == 1
+    assert not any(".git" in p or "node_modules" in p for p in active)
+    assert not any(p.startswith("Source Notes/") for p in active)

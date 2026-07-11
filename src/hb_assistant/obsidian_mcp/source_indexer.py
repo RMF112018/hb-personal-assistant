@@ -924,20 +924,16 @@ def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> 
         return report
     max_files = int(getattr(config, "external_source_scan_max_files", 5000))
     seen: set[str] = set()
-    for abs_path in sorted(vault_root.rglob("*.md")):
-        if not abs_path.is_file():
+    # Stream the vault the same way as external roots: walk_source_tree never materializes the
+    # whole tree (no `sorted(rglob(...))`) and already applies should_ignore / is_excluded_source_path
+    # / symlink-escape pruning, so a large vault cannot exhaust memory.
+    for _kind, abs_path, rel_path in walk_source_tree(vault_root, config):
+        if abs_path.suffix.lower() != ".md":
             continue
-        rel_path = str(abs_path.relative_to(vault_root))
         # Never re-index our own generated source cards (Source Notes/...) or full-email archive
         # notes (Email Archive/...) as vault notes — that would feed the watcher its own writes and,
         # for archives, leak full email bodies/addresses into the note FTS.
-        if (
-            should_ignore(rel_path, abs_path.name)
-            or is_excluded_source_path(rel_path, config)
-            or is_source_notes_path(rel_path, config)
-            or is_email_archive_path(rel_path)
-            or pathsafe.symlink_escapes(abs_path, vault_root)
-        ):
+        if is_source_notes_path(rel_path, config) or is_email_archive_path(rel_path):
             continue
         report.scanned += 1
         if report.scanned > max_files:
