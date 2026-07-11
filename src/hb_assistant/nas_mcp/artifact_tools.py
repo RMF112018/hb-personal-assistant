@@ -81,11 +81,11 @@ def current_tool_names(config: Any) -> set[str]:
     return tool_name_set(config)
 
 
-def _build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
+def _build_tool_index(config: Any, *, for_manifest: bool = False) -> dict[str, dict[str, Any]]:
     """Build manifest/help index from the live surface (includes routing tools + classifications)."""
     from .live_tool_surface import build_tool_index  # noqa: PLC0415
 
-    return build_tool_index(config)
+    return build_tool_index(config, for_manifest=for_manifest)
 
 
 def _runtime_manifest_build_kwargs() -> dict[str, Any]:
@@ -295,7 +295,11 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
             # surface, but label it honestly as ephemeral/unpersisted so it AGREES with
             # pa_tool_manifest_freshness_check and hb_mcp_status instead of claiming active/fresh
             # (that fabrication was the source of the cross-surface manifest contradiction).
-            ephemeral = build_manifest(_build_tool_index(config), runtime_commit=runtime_commit, now=_now())
+            ephemeral = build_manifest(
+                _build_tool_index(config, for_manifest=True),
+                runtime_commit=runtime_commit,
+                now=_now(),
+            )
             ephemeral.update({
                 "manifest_status": "ephemeral_live_surface",
                 "staleness_state": "no_persisted_manifest",
@@ -309,7 +313,7 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
         return active
     if tool_name == "pa_tool_manifest_tool_help":
         name = str(_require(a, "tool_name"))
-        idx = _build_tool_index(config)
+        idx = _build_tool_index(config, for_manifest=True)
         if name not in idx:
             raise ArtifactWorkspaceError(f"unknown_tool:{name}")
         m = build_manifest(idx, runtime_commit=runtime_commit, now=_now())
@@ -332,17 +336,29 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
                 "extra_tools": fr.get("tool_manifest_extra_tools", []),
                 "recommendation": "stage a manifest refresh, then operator-approve promotion", "writes": False}
     if tool_name == "pa_tool_manifest_refresh_stage":
+        from .live_tool_surface import manifest_schema_parity_check  # noqa: PLC0415
+
+        parity = manifest_schema_parity_check(config)
+        if not parity["ok"]:
+            raise ArtifactWorkspaceError(
+                f"manifest_schema_parity_failed:{parity.get('reason') or 'unknown'}"
+            )
         active = mrepo.get_active()
         version = (active["manifest_version"] + 1) if active else 1
         new_manifest = build_manifest(
-            _build_tool_index(config),
+            _build_tool_index(config, for_manifest=True),
             runtime_commit=runtime_commit,
             now=_now(),
             manifest_version=version,
             **_runtime_manifest_build_kwargs(),
         )
         fr = mrepo.freshness_check(current_tool_names(config))
-        return mrepo.stage_refresh(new_manifest, fr)
+        staged = mrepo.stage_refresh(new_manifest, fr)
+        staged["schema_parity"] = {
+            "ok": True,
+            "frozen_tool_count": parity.get("frozen_tool_count"),
+        }
+        return staged
     if tool_name == "pa_tool_manifest_refresh_promote":
         return _promote_manifest_refresh(config, mrepo, a, runtime_commit=runtime_commit)
 
@@ -363,7 +379,7 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
     # Rebuild the current manifest and confirm the surface still matches the staged checksum (no drift).
     version = int(proposal["proposed_manifest_version"])
     manifest = build_manifest(
-        _build_tool_index(config),
+        _build_tool_index(config, for_manifest=True),
         runtime_commit=runtime_commit,
         now=_now(),
         manifest_version=version,
@@ -437,7 +453,7 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
     active = mrepo.get_active()
     version = (active["manifest_version"] + 1) if active else 1
     built = build_manifest(
-        _build_tool_index(config),
+        _build_tool_index(config, for_manifest=True),
         runtime_commit=runtime_commit,
         now=_now(),
         manifest_version=version,

@@ -103,7 +103,7 @@ def tool_group_map(config: Any) -> dict[str, str | None]:
     return {name: tool_group_for(name, ag) for name in installed_tool_names(config)}
 
 
-def build_live_tool_surface(config: Any) -> dict[str, SurfaceToolState]:
+def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[str, SurfaceToolState]:
     """Surface-level state for every installed tool name. No request-level fields."""
     from .broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
     from .tool_registration import derive_tool_arg_meta, live_tool_schema_index  # noqa: PLC0415
@@ -117,6 +117,16 @@ def build_live_tool_surface(config: Any) -> dict[str, SurfaceToolState]:
         profile_on = _profile_group_enabled(group)
         spec = resolve_tool_spec(name, group)
         meta = derive_tool_arg_meta(name, schema_index)
+        if for_manifest:
+            purpose = str(meta.get("purpose") or "")
+            required_args = tuple(meta.get("required_args") or ())
+            optional_args = tuple(meta.get("optional_args") or ())
+            limits = dict(meta.get("limits") or {})
+        else:
+            purpose = meta.get("purpose") or spec.purpose or spec.use_when
+            required_args = tuple(meta.get("required_args") or spec.required_args)
+            optional_args = tuple(meta.get("optional_args") or spec.optional_args)
+            limits = dict(meta.get("limits") or spec.limits or {})
         gateway_ok = name in gateway
         # Direct exposure: registered when profile gate on (assistant groups) or always for helpers.
         direct = profile_on
@@ -141,17 +151,85 @@ def build_live_tool_surface(config: Any) -> dict[str, SurfaceToolState]:
             read_write_class=spec.read_write_class,
             safety_class=spec.safety_class,
             tool_class=spec.tool_class,
-            purpose=meta.get("purpose") or spec.purpose or spec.use_when,
-            required_args=tuple(meta.get("required_args") or spec.required_args),
-            optional_args=tuple(meta.get("optional_args") or spec.optional_args),
-            limits=dict(meta.get("limits") or spec.limits or {}),
+            purpose=purpose,
+            required_args=required_args,
+            optional_args=optional_args,
+            limits=limits,
         )
     return out
 
 
-def build_tool_index(config: Any) -> dict[str, dict[str, Any]]:
+def manifest_schema_parity_check(config: Any) -> dict[str, Any]:
+    """Compare manifest-facing arg metadata to the frozen registration schema index."""
+    from .tool_registration import (  # noqa: PLC0415
+        derive_tool_arg_meta,
+        live_tool_schema_index,
+        schema_index_frozen,
+    )
+
+    index = live_tool_schema_index()
+    if not schema_index_frozen():
+        return {
+            "ok": False,
+            "reason": "schema_index_not_frozen",
+            "diffs": [],
+            "missing_tools": [],
+            "frozen_tool_count": 0,
+        }
+
+    built = build_tool_index(config, for_manifest=True)
+    diffs: list[dict[str, Any]] = []
+    missing_tools: list[str] = []
+
+    def _index_name_for_manifest_tool(name: str) -> str | None:
+        if name in index:
+            return name
+        if name.startswith("pa_output_"):
+            alias = "assistant_output_" + name[len("pa_output_") :]
+            if alias in index:
+                return alias
+        return None
+
+    for name in sorted(installed_tool_names(config)):
+        index_name = _index_name_for_manifest_tool(name)
+        if index_name is None:
+            missing_tools.append(name)
+            continue
+        meta = derive_tool_arg_meta(index_name, index)
+        entry = built.get(name) or {}
+        for field in ("required_args", "optional_args"):
+            expected = sorted(meta.get(field) or [])
+            actual = sorted(entry.get(field) or [])
+            if expected != actual:
+                diffs.append({
+                    "tool_name": name,
+                    "field": field,
+                    "expected": expected,
+                    "actual": actual,
+                })
+        expected_purpose = str(meta.get("purpose") or "").strip()
+        actual_purpose = str(entry.get("purpose") or "").strip()
+        if expected_purpose and actual_purpose and expected_purpose != actual_purpose:
+            diffs.append({
+                "tool_name": name,
+                "field": "purpose",
+                "expected": expected_purpose,
+                "actual": actual_purpose,
+            })
+
+    ok = not diffs and not missing_tools
+    return {
+        "ok": ok,
+        "reason": None if ok else "schema_parity_mismatch",
+        "diffs": diffs,
+        "missing_tools": missing_tools,
+        "frozen_tool_count": len(index),
+    }
+
+
+def build_tool_index(config: Any, *, for_manifest: bool = False) -> dict[str, dict[str, Any]]:
     """Manifest/help tool index: name -> public entry dict with group + schema meta."""
-    surface = build_live_tool_surface(config)
+    surface = build_live_tool_surface(config, for_manifest=for_manifest)
     index: dict[str, dict[str, Any]] = {}
     for name, st in surface.items():
         entry = tool_spec_public_entry(

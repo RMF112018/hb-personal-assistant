@@ -63,7 +63,7 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
         live_gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
         build_kwargs = _runtime_manifest_build_kwargs()
         live_fps = build_live_surface_fingerprints(
-            _build_tool_index(config),
+            _build_tool_index(config, for_manifest=True),
             surface_profile=build_kwargs.get("surface_profile"),
             gate_state_snapshot=build_kwargs.get("gate_state_snapshot"),
             gateway_allowlist=build_kwargs.get("gateway_allowlist"),

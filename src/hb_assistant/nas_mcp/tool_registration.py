@@ -110,6 +110,28 @@ def live_tool_schema_index() -> dict[str, dict[str, Any]]:
     return _LIVE_TOOL_SCHEMA_INDEX
 
 
+def schema_index_frozen() -> bool:
+    """True when ``register_nas_mcp_tools`` has captured the FastMCP tool-schema index."""
+    return bool(_LIVE_TOOL_SCHEMA_INDEX)
+
+
+def freeze_registered_schema_index(mcp: Any) -> dict[str, dict[str, Any]]:
+    """Capture the live FastMCP tool schemas once registration is complete.
+
+    Manifest builds must read required_args / optional_args / purpose from this frozen index
+    only — never from speculative ToolSpec fallbacks.
+    """
+    global _LIVE_TOOL_SCHEMA_INDEX
+    _LIVE_TOOL_SCHEMA_INDEX = _extract_client_tool_index(mcp)
+    return _LIVE_TOOL_SCHEMA_INDEX
+
+
+def seed_frozen_schema_index(index: dict[str, dict[str, Any]]) -> None:
+    """Test hook: inject a frozen schema index without full MCP registration."""
+    global _LIVE_TOOL_SCHEMA_INDEX
+    _LIVE_TOOL_SCHEMA_INDEX = dict(index)
+
+
 def derive_tool_arg_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Purpose + required/optional args + result limits for one tool, derived from its live schema."""
     entry = index.get(name) or {}
@@ -1722,8 +1744,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
     # Capture the live tool-schema index once, now that the full surface is registered, so the persisted
     # manifest (built in a handler context without `mcp`) can carry the same purpose/args/limits.
-    global _LIVE_TOOL_SCHEMA_INDEX
-    _LIVE_TOOL_SCHEMA_INDEX = _extract_client_tool_index(mcp)
+    freeze_registered_schema_index(mcp)
 
     # NAS internet-facing profile: idempotently materialize the persisted client-tool manifest so
     # pa_tool_manifest_get returns a real active manifest out of the box (get/freshness/status agree).
