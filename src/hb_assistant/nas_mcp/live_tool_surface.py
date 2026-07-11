@@ -118,7 +118,11 @@ def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[
         spec = resolve_tool_spec(name, group)
         meta = derive_tool_arg_meta(name, schema_index)
         if for_manifest:
-            purpose = str(meta.get("purpose") or "")
+            from hb_assistant.obsidian_mcp.canonical_tool_specs import normalize_manifest_purpose  # noqa: PLC0415
+
+            purpose = normalize_manifest_purpose(
+                str(meta.get("purpose") or spec.purpose or spec.use_when or ""),
+            )
             required_args = tuple(meta.get("required_args") or ())
             optional_args = tuple(meta.get("optional_args") or ())
             limits = dict(meta.get("limits") or {})

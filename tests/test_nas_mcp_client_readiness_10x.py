@@ -114,7 +114,7 @@ def test_build_manifest_carries_purpose(tmp_path: Path) -> None:
                                         "required_args": [], "optional_args": ["limit"], "limits": {"limit": 25}}}
     m = build_manifest(idx, runtime_commit="vT", now="2026-07-08T00:00:00+00:00")
     entry = next(e for e in m["entries"] if e["tool_name"] == "assistant_list_decisions")
-    assert entry["purpose"] == "List decisions"
+    assert entry["purpose"] == "List decisions."
     assert entry["optional_args"] == ["limit"] and entry["limits"] == {"limit": 25}
 
 

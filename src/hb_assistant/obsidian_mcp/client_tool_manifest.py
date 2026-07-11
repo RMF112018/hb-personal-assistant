@@ -180,6 +180,8 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
         info = tool_index[name] or {}
         group = info.get("group") or info.get("tool_group")
         tool_class, safety_class, rw = classify_tool(name, group)
+        from .canonical_tool_specs import normalize_manifest_purpose  # noqa: PLC0415
+
         entries.append({
             "tool_name": name,
             "tool_group": group,
@@ -187,7 +189,7 @@ def build_manifest(tool_index: dict[str, dict[str, Any]], *, runtime_commit: str
             "tool_class": tool_class,
             "safety_class": safety_class,
             "read_write_class": rw,
-            "purpose": info.get("purpose", ""),
+            "purpose": normalize_manifest_purpose(str(info.get("purpose") or "")),
             "preferred_for": info.get("preferred_for", []),
             "avoid_when": info.get("avoid_when", []),
             "required_args": info.get("required_args", []),

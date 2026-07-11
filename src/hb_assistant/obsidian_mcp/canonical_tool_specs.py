@@ -218,6 +218,60 @@ POLICY_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "archive": ("read", "archive"),
 }
 
+MANIFEST_PURPOSE_MAX_LEN = 240
+
+# Tools the July 2026 routing audit exercised — must carry disambiguating help (F-017).
+AUDIT_HELP_TOOL_NAMES: frozenset[str] = frozenset({
+    "hb_mcp_status",
+    "hb_assistant_tool_help",
+    "hb_assistant_tool_query",
+    "assistant_source_file_search",
+    "assistant_source_file_metadata",
+    "assistant_search_sources",
+    "assistant_search_cards",
+    "assistant_get_vault_note",
+    "assistant_list_decisions",
+    "assistant_get_decision",
+    "assistant_list_preferences",
+    "assistant_get_preference",
+    "assistant_list_open_loops",
+    "assistant_get_open_loop",
+    "pa_session_capture_stage",
+    "pa_artifact_proposal_stage",
+    "pa_artifact_promotion_apply",
+})
+
+GENERIC_FAMILY_PURPOSES: frozenset[str] = frozenset({
+    "Read-only source/card/note navigation.",
+    "Indexed NAS source-file discovery.",
+    "Decisions / preferences / open loops.",
+})
+
+
+def normalize_manifest_purpose(text: str, *, max_len: int = MANIFEST_PURPOSE_MAX_LEN) -> str:
+    """Cap manifest-facing purpose text at a sentence boundary (no mid-sentence truncation)."""
+    s = " ".join(str(text or "").split())
+    if not s:
+        return ""
+    if len(s) <= max_len:
+        return s if s[-1] in ".!?" else f"{s}."
+    chunk = s[:max_len].rstrip()
+    if " " in chunk:
+        chunk = chunk.rsplit(" ", 1)[0].rstrip()
+    if chunk and chunk[-1] not in ".!?":
+        chunk = chunk.rstrip(",;:") + "."
+    return chunk
+
+
+def purpose_is_complete(text: str) -> bool:
+    """True when purpose is a bounded, complete sentence suitable for client help."""
+    s = str(text or "").strip()
+    if not s or len(s) > MANIFEST_PURPOSE_MAX_LEN:
+        return False
+    if "…" in s or "[truncated]" in s.lower():
+        return False
+    return s[-1] in ".!?"
+
 
 def replacement_map() -> dict[str, str]:
     return {
@@ -236,7 +290,6 @@ _LEGACY_LOW = frozenset({
     "hb_db_select", "hb_root_list", "hb_root_stat", "hb_root_search", "hb_root_read_file",
     "hb_root_read_excerpt", "search_vault",
 })
-
 
 def classify_tool(name: str, group: str | None = None) -> tuple[str, str, str]:
     """Return (tool_class, safety_class, read_write_class) — canonical classification."""
@@ -310,7 +363,7 @@ def resolve_tool_spec(name: str, group: str | None = None) -> ToolSpec:
         name=name,
         family=family_id,
         group=g,
-        purpose=seed.get("use_when", "") or fam.get("purpose", ""),
+        purpose=seed.get("purpose", "") or seed.get("use_when", "") or fam.get("purpose", ""),
         read_write_class=rw or fam.get("read_write_class", "read_only"),
         safety_class=safety or fam.get("safety_class", "bounded_read"),
         tool_class=tool_class,
@@ -319,6 +372,7 @@ def resolve_tool_spec(name: str, group: str | None = None) -> ToolSpec:
         use_when=seed.get("use_when", ""),
         do_not_use_when=seed.get("do_not_use_when", ""),
         examples=tuple(seed.get("examples", [])),
+        common_failure_modes=tuple(seed.get("common_failure_modes", [])),
     )
 
 
@@ -330,6 +384,10 @@ def tool_spec_public_entry(name: str, group: str | None = None, *,
     """Dict shape used by manifest entries / tool help."""
     spec = resolve_tool_spec(name, group)
     tc, sc, rw = classify_tool(name, group)
+    resolved_purpose = purpose if purpose is not None else (spec.purpose or spec.use_when)
+    examples = list(spec.examples)
+    if not examples and spec.use_when:
+        examples = [spec.use_when]
     return {
         "tool_name": name,
         "tool_group": group if group is not None else spec.group,
@@ -337,8 +395,8 @@ def tool_spec_public_entry(name: str, group: str | None = None, *,
         "tool_class": tc,
         "safety_class": sc,
         "read_write_class": rw,
-        "purpose": purpose if purpose is not None else (spec.purpose or spec.use_when),
-        "preferred_for": list(spec.examples),
+        "purpose": resolved_purpose,
+        "preferred_for": list(examples),
         "avoid_when": [spec.do_not_use_when] if spec.do_not_use_when else [],
         "required_args": list(required_args if required_args is not None else spec.required_args),
         "optional_args": list(optional_args if optional_args is not None else spec.optional_args),
@@ -346,7 +404,7 @@ def tool_spec_public_entry(name: str, group: str | None = None, *,
         "workflow_roles": list(spec.workflow_roles),
         "replacement_tools": list(spec.lifecycle.replaced_by),
         "common_failure_modes": list(spec.common_failure_modes),
-        "examples": list(spec.examples),
+        "examples": examples,
         "deprecated": spec.lifecycle.deprecated,
         "availability": spec.exposure.availability.value,
         "direct_exposure_by_design": spec.exposure.direct_by_design,

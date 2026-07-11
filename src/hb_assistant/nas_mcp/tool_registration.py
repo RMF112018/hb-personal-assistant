@@ -141,6 +141,13 @@ def derive_tool_arg_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[st
     optional = sorted(p for p in props if p not in required)
     desc = (entry.get("description") or "").strip()
     purpose = next((line.strip() for line in desc.splitlines() if line.strip()), "")
+    from hb_assistant.obsidian_mcp.canonical_tool_specs import (  # noqa: PLC0415
+        resolve_tool_spec,
+    )
+
+    spec = resolve_tool_spec(name, _TOOL_TO_GROUP.get(name))
+    if spec.purpose:
+        purpose = spec.purpose
     limits = {
         key: props[key].get("default")
         for key in ("limit", "max_chars", "max_results", "max_files", "max_nodes", "max_body_chars")
@@ -158,6 +165,12 @@ def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[st
     from hb_assistant.obsidian_mcp.client_tool_manifest import classify_tool  # noqa: PLC0415
 
     tool_class, safety_class, read_write_class = classify_tool(name, _TOOL_TO_GROUP.get(name))
+    from hb_assistant.obsidian_mcp.canonical_tool_specs import resolve_tool_spec  # noqa: PLC0415
+
+    spec = resolve_tool_spec(name, _TOOL_TO_GROUP.get(name))
+    examples = list(spec.examples)
+    if not examples and spec.use_when:
+        examples = [spec.use_when]
     return {
         "tool_name": name,
         "group": _TOOL_TO_GROUP.get(name),
@@ -169,6 +182,10 @@ def _assistant_tool_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[st
         "read_write_class": read_write_class,
         "safety_class": safety_class,
         "direct_exposure_available": name in index,
+        "use_when": spec.use_when,
+        "do_not_use_when": spec.do_not_use_when,
+        "examples": examples,
+        "common_failure_modes": list(spec.common_failure_modes),
     }
 
 
@@ -1320,6 +1337,8 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         meta["input_schema"] = entry.get("input_schema") or {}
         meta["usage"] = (entry.get("description") or "").strip()
         meta["gateway"] = "hb_assistant_tool_query"
+        if meta.get("examples"):
+            meta["example_prompts"] = meta["examples"]
         return meta
 
     @mcp.tool()
