@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextlib
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
@@ -47,9 +48,21 @@ def _freshness_state(
         return "blocked"
     if not last_indexed_at:
         return "never_succeeded"
-    # Future timestamp anomaly (ISO lexical compare against now prefix)
-    now = time.strftime("%Y-%m-%dT%H:%M:%S")
-    if str(last_indexed_at)[:19] > now:
+    # Future-timestamp anomaly. The stored timestamp is UTC (repository ``_now`` uses
+    # ``datetime.now(timezone.utc)``), so the comparison clock MUST be UTC too. The old
+    # ``time.strftime`` (LOCAL wall clock) compared a UTC timestamp against local time, marking every
+    # freshly-indexed root ``future_anomaly`` for the entire UTC-offset window (e.g. 4h on US-Eastern) and
+    # falsely closing ``safe_for_client_answering`` on the deployment machine. Parse + normalize to UTC at
+    # second granularity (a naive stored timestamp is treated as UTC, matching how the app writes it).
+    now_utc = datetime.now(timezone.utc).replace(microsecond=0)
+    try:
+        parsed = datetime.fromisoformat(str(last_indexed_at))
+        parsed = parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        is_future = parsed.astimezone(timezone.utc).replace(microsecond=0) > now_utc
+    except ValueError:
+        # Unparseable timestamp: best-effort lexical compare, still on a UTC basis (never local).
+        is_future = str(last_indexed_at)[:19] > now_utc.strftime("%Y-%m-%dT%H:%M:%S")
+    if is_future:
         return "future_anomaly"
     if open_errors:
         return "degraded"

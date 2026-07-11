@@ -1864,11 +1864,32 @@ def test_health_certified_when_latest_generation_is_current_completed(tmp_path):
     _run_to_completion(r, repo, cfg)
     w = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
     assert w["policy_verification"] == "current"
-    # Certification does not over-close: path-lookup trust (policy-gated, not freshness-gated) opens. The
-    # ``safe_for_client_answering`` boolean also folds in a freshness gate, which this test harness zeroes
-    # (a future-dated index clock reads as ``future_anomaly``), so it is not asserted here.
+    # Certification does not over-close: a just-completed current-policy scan is fresh (UTC-correct
+    # freshness) and both policy-gated path lookup AND full client answering open.
     assert w["safe_for_path_lookup"] is True
-    assert isinstance(w["safe_for_client_answering"], bool)
+    assert w["safe_for_client_answering"] is True
+    assert w["freshness_status"] == "fresh"
+
+
+def test_freshness_state_compares_in_utc_not_local_clock():
+    """Freshness must compare the UTC-stored ``indexed_at`` against a UTC clock. The old ``time.strftime``
+    (LOCAL) comparison marked a just-written UTC timestamp ``future_anomaly`` for the whole UTC-offset window
+    on any machine behind UTC (e.g. 4h on US-Eastern), falsely closing client answering. Timezone-robust:
+    uses the app's own ``_now()`` so it holds regardless of the runner's offset."""
+    from hb_assistant.obsidian_mcp.source_health_service import _freshness_state
+    from hb_assistant.obsidian_mcp.source_index_repository import _now
+
+    # A timestamp the app itself just generated (UTC) must read fresh — never future_anomaly.
+    assert _freshness_state(last_indexed_at=_now()) == "fresh"
+
+    # A genuinely future timestamp is still flagged.
+    from datetime import datetime, timedelta, timezone
+
+    future = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()
+    assert _freshness_state(last_indexed_at=future) == "future_anomaly"
+    # A clearly-past timestamp is fresh (not stale-gated here — operator-indexed, no hard SLA).
+    past = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    assert _freshness_state(last_indexed_at=past) == "fresh"
 
 
 def test_health_trust_closed_during_running_corrective_scan(tmp_path):
@@ -1947,11 +1968,10 @@ def test_health_configless_reports_unavailable_but_serving_preserved(tmp_path):
     assert work["safe_for_client_answering"] is False
     assert work["safe_for_content_answering"] == "none"
     assert work["safe_for_path_lookup"] is False
-    # ...but a SEPARATE advisory availability field exists so serving is not conflated with verification
-    # (available ≠ verified-safe). It tracks index layers + freshness, independent of policy (this harness's
-    # future-dated clock zeroes the freshness gate, so we assert the field's presence/shape, not True).
-    assert "index_only_available" in work
-    assert isinstance(work["index_only_available"], bool)
+    # ...but a SEPARATE advisory availability field keeps serving from being conflated with verification
+    # (available ≠ verified-safe): a fresh, populated index remains advisorily available for an authorized
+    # index-only client even though policy is unverifiable.
+    assert work["index_only_available"] is True
 
 
 # ----- Blocker 3: filesystem-uncertainty classification + lease-loss on give-up transitions ----------
@@ -1987,7 +2007,7 @@ def test_missing_root_records_failed_generation_and_closes_health(tmp_path):
     cfg = _cfg(root_dir)
     _run_to_completion(r, repo, cfg)
     w0 = next(x for x in source_index_health(repo, cfg)["roots"] if x["root_key"] == "work")
-    assert w0["policy_verification"] == "current" and w0["safe_for_path_lookup"] is True
+    assert w0["policy_verification"] == "current" and w0["safe_for_client_answering"] is True
 
     shutil.rmtree(root_dir)  # the mount vanishes (confirmed-missing)
     rep = si.scan_source_root(r, repo, cfg)
