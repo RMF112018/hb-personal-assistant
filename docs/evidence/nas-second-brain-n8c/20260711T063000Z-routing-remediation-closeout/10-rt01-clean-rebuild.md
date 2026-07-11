@@ -1,7 +1,7 @@
 # RT-01 clean-context rebuild (PR-21/22/23)
 
 **Date:** 2026-07-11  
-**Disposition:** `STAGED_FOR_OPERATOR_DEPLOY` — Tier B image built; NAS redeploy pending operator sudo
+**Disposition:** `STAGED_ON_NAS` — Tier B image + scripts on `/tmp/`; operator sudo deploy pending
 
 ## A. Land commit
 
@@ -43,7 +43,7 @@ Compared to Tier A dirty build (`931f69f0`): tarball **105 MB** vs **193 MB** (~
 
 ## D. NAS staging artifacts
 
-Transfer to `hb-nas:/tmp/`:
+Transferred to `hb-nas:/tmp/` (2026-07-11):
 
 | Artifact | Path |
 |----------|------|
@@ -53,6 +53,10 @@ Transfer to `hb-nas:/tmp/`:
 | Manifest refresh | `/tmp/02-manifest-refresh-pr15.sh` |
 | Verify-only | `/tmp/03-manifest-verify-pr15.sh` |
 | Live corpus | `/tmp/04-live-50-prompt-corpus.sh` |
+
+NAS tarball size verified: **105791674** bytes (matches local SHA-256).
+
+Automated `sudo` deploy blocked: NAS requires interactive password (`sudo -n` denied).
 
 ## E. Operator sequence
 
