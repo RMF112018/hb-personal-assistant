@@ -1,4 +1,4 @@
-"""Audit regression matrix (40 prompts) and semantic equivalence groups."""
+"""Audit regression matrix (50 prompts) and semantic equivalence groups."""
 
 from __future__ import annotations
 
@@ -52,8 +52,8 @@ EQUIVALENCE_GROUPS: list[dict] = [
 ]
 
 
-def test_audit_matrix_has_forty_nine_cases() -> None:
-    assert len(_AUDIT_CASES) == 49
+def test_audit_matrix_has_fifty_cases() -> None:
+    assert len(_AUDIT_CASES) == 50
 
 
 @pytest.mark.parametrize("case", _AUDIT_CASES, ids=[c["id"] for c in _AUDIT_CASES])

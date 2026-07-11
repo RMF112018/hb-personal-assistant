@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the 40-case audit routing regression matrix offline or against a broker dispatch hook."""
+"""Run the audit routing regression matrix offline or against a broker dispatch hook."""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ from route_proof_lib import evaluate_route_expectations, route_actual  # noqa: E
 from hb_assistant.obsidian_mcp.prompt_preflight import route_prompt  # noqa: E402
 
 
-def _offline_route(prompt: str) -> dict[str, Any]:
-    return route_prompt(prompt)
+def _offline_route(prompt: str, route_kwargs: dict[str, Any] | None = None) -> dict[str, Any]:
+    return route_prompt(prompt, **(route_kwargs or {}))
 
 
-def _broker_route(broker: Any) -> Callable[[str], dict[str, Any]]:
-    def route(prompt: str) -> dict[str, Any]:
-        payload = broker.dispatch("pa_prompt_route", {"prompt": prompt})
+def _broker_route(broker: Any) -> Callable[..., dict[str, Any]]:
+    def route(prompt: str, route_kwargs: dict[str, Any] | None = None) -> dict[str, Any]:
+        payload = broker.dispatch("pa_prompt_route", {"prompt": prompt, **(route_kwargs or {})})
         if not payload.get("ok"):
             raise RuntimeError(payload.get("error") or payload.get("safe_message") or "route failed")
         return payload["result"]
@@ -33,15 +33,25 @@ def _broker_route(broker: Any) -> Callable[[str], dict[str, Any]]:
     return route
 
 
+def load_matrix_cases(path: Path) -> list[dict[str, Any]]:
+    """Load case rows from a bare array or a versioned corpus wrapper."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("cases"), list):
+        return payload["cases"]
+    raise ValueError(f"unsupported matrix shape in {path}")
+
+
 def run_matrix(
     cases: list[dict[str, Any]],
-    route_fn: Callable[[str], dict[str, Any]],
+    route_fn: Callable[..., dict[str, Any]],
 ) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     failures = 0
     for case in cases:
         prompt = case["prompt"]
-        plan = route_fn(prompt)
+        plan = route_fn(prompt, case.get("route_kwargs") or {})
         actual = route_actual(plan)
         mismatches = evaluate_route_expectations(case.get("expected") or {}, actual)
         ok = not mismatches
@@ -96,7 +106,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    cases = json.loads(Path(args.matrix).read_text(encoding="utf-8"))
+    cases = load_matrix_cases(Path(args.matrix))
     if args.from_env:
         from hb_assistant.nas_mcp.broker import NasMcpBroker
         from hb_assistant.nas_mcp.config import NasMcpConfig

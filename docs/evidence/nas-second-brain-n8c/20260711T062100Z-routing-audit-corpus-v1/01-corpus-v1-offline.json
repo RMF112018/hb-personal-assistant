@@ -1,0 +1,751 @@
+{
+  "pass": true,
+  "pass_count": 50,
+  "fail_count": 0,
+  "total": 50,
+  "cases": [
+    {
+      "id": "audit_row_01",
+      "prompt": "Attached read-only audit objective",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "read_only_surface_audit",
+        "next_step_tool": "hb_mcp_status",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_02",
+      "prompt": "Do not promote anything.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_03",
+      "prompt": "Explain how promotion works, but do not promote anything.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_04",
+      "prompt": "Review the promotion receipt. Do not create a promotion.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_05",
+      "prompt": "This is not a promotion receipt.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_06",
+      "prompt": "Do not stage this; only summarize it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_07",
+      "prompt": "Do not promote, but stage this for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_08",
+      "prompt": "Stage this for review, but do not promote it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_09",
+      "prompt": "Do not execute tools beyond read-only analysis.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "no_recommended_tool",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_10",
+      "prompt": "Do not write anything. Search my work files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "work files"
+        }
+      }
+    },
+    {
+      "id": "audit_row_11",
+      "prompt": "Do not modify files; tell me which files are relevant.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_12",
+      "prompt": "Do not delete anything named \"promotion receipt.\"",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_13",
+      "prompt": "Search my Work source files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "work source files"
+        }
+      }
+    },
+    {
+      "id": "audit_row_14",
+      "prompt": "Look through the files in Work.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files in work"
+        }
+      }
+    },
+    {
+      "id": "audit_row_15",
+      "prompt": "Find documents stored under my Work source root.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "documents stored under my work source root"
+        }
+      }
+    },
+    {
+      "id": "audit_row_16",
+      "prompt": "Search the NAS Work folder.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "the nas work folder"
+        }
+      }
+    },
+    {
+      "id": "audit_row_17",
+      "prompt": "Search the vault for a promotion receipt.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "a promotion receipt"
+        }
+      }
+    },
+    {
+      "id": "audit_row_18",
+      "prompt": "Promote the approved artifact.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_19",
+      "prompt": "Explain what a promotion receipt is.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_20",
+      "prompt": "Do not promote the receipt.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_21",
+      "prompt": "The document says \"promote the artifact,\" but do not perform that action.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_22",
+      "prompt": "What would happen if I promoted this?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_23",
+      "prompt": "Can you promote artifacts?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "capability_inquiry",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_24",
+      "prompt": "What did we decide about source indexing?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "query": "source indexing"
+        }
+      }
+    },
+    {
+      "id": "audit_row_25",
+      "prompt": "Show me decision `DEC-20260708-7847F4`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_get_decision",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "decision_id": "DEC-20260708-7847F4"
+        }
+      }
+    },
+    {
+      "id": "audit_row_26",
+      "prompt": "Retrieve the decision `DEC-20260708-7847F4`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_get_decision",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "decision_id": "DEC-20260708-7847F4"
+        }
+      }
+    },
+    {
+      "id": "audit_row_27",
+      "prompt": "Retrieve the decision.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_28",
+      "prompt": "Retrieve the preference `PREF-20260708-2D3D8D`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_preference_retrieval",
+        "next_step_tool": "assistant_get_preference",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "preference_id": "PREF-20260708-2D3D8D"
+        }
+      }
+    },
+    {
+      "id": "audit_row_29",
+      "prompt": "Which open loops relate to the NAS deployment?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_open_loop_retrieval",
+        "next_step_tool": "assistant_list_open_loops",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_30",
+      "prompt": "Retrieve the open loop `LOOP-20260708-B21D38`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_open_loop_retrieval",
+        "next_step_tool": "assistant_get_open_loop",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "open_loop_id": "LOOP-20260708-B21D38"
+        }
+      }
+    },
+    {
+      "id": "audit_row_31",
+      "prompt": "Search my home files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "home files"
+        }
+      }
+    },
+    {
+      "id": "audit_row_32",
+      "prompt": "Search the vault for meeting notes.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "meeting notes"
+        }
+      }
+    },
+    {
+      "id": "audit_row_33",
+      "prompt": "Find the original PDF contract.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "original pdf contract"
+        }
+      }
+    },
+    {
+      "id": "audit_row_34",
+      "prompt": "Search for `23-435-01`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "`23-435-01`"
+        }
+      }
+    },
+    {
+      "id": "audit_row_35",
+      "prompt": "Find references to `23-435-01` in my notes.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_36",
+      "prompt": "Find files and notes related to `23-435-01`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "mixed_private_retrieval",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files and notes related to `23-435-01`"
+        }
+      }
+    },
+    {
+      "id": "audit_row_37",
+      "prompt": "Where is the project folder?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_project_map",
+        "next_step_tool": "assistant_source_query_plan",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "prompt": "Where is the project folder?"
+        }
+      }
+    },
+    {
+      "id": "audit_row_38",
+      "prompt": "What does my source map say about Work?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_root_map",
+        "next_step_tool": "assistant_source_roots_list",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_39",
+      "prompt": "Stage this for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_40",
+      "prompt": "Create a proposal but do not promote it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_41",
+      "prompt": "Apply promotion bundle `PROMOB-ABCDEF12`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {
+          "promotion_bundle_id": "PROMOB-ABCDEF12"
+        }
+      }
+    },
+    {
+      "id": "audit_row_42",
+      "prompt": "Promote bundle `PROMOB-ABCDEF12` using approval `APPR-12345678`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "approval_required",
+        "operation_modality": "imperative",
+        "arguments": {
+          "promotion_bundle_id": "PROMOB-ABCDEF12",
+          "operator_approval_id": "APPR-12345678"
+        }
+      }
+    },
+    {
+      "id": "audit_row_43",
+      "prompt": "I approve this; promote it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_44",
+      "prompt": "The operator approved it yesterday.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_45",
+      "prompt": "Retrieve the decision `PREF-20260708-2D3D8D`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_46",
+      "prompt": "Retrieve the decision `DEC-1`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_47",
+      "prompt": "Retrieve the decision `DEC-20260708-7847F4` and `DEC-20260708-A08367`.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_48",
+      "prompt": "For example, `\"DEC-20260708-7847F4\"` is a decision ID. Explain the format.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_49",
+      "prompt": "Retrieve the decision `DEC-` plus 80 `A` characters.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "audit_row_50",
+      "prompt": "The report mentions `DEC-20260708-7847F4`, but search my work files for the contract.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "the contract"
+        }
+      }
+    }
+  ],
+  "mode": "offline_route_prompt",
+  "matrix_path": "tests/fixtures/prompt_routing_audit_corpus_v1.json"
+}

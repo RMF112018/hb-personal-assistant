@@ -1,0 +1,767 @@
+{
+  "pass": true,
+  "pass_count": 50,
+  "fail_count": 0,
+  "total": 50,
+  "cases": [
+    {
+      "id": "project_notes",
+      "prompt": "Find my project notes.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "my project notes"
+        }
+      }
+    },
+    {
+      "id": "identify_source_roots_plan_only",
+      "prompt": "Read-only: identify which tool should be used to list configured source roots.\nDo not execute any action.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_root_map",
+        "next_step_tool": "assistant_source_roots_list",
+        "currently_executable": false,
+        "execution_blocked_reason": "plan_only",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "nas_file_search_explain",
+      "prompt": "Explain which read-only Personal Assistant tool searches indexed NAS files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_metadata",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "read_only_repo_truth_audit",
+      "prompt": "Conduct a read-only repo-truth audit.\nDo not write, stage, promote, refresh, index, deploy, or mutate anything.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "read_only_surface_audit",
+        "next_step_tool": "hb_mcp_status",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "search_work_files",
+      "prompt": "Search my work files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "work files"
+        }
+      }
+    },
+    {
+      "id": "do_not_promote",
+      "prompt": "Do not promote anything.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "vault_meeting_notes",
+      "prompt": "Search the vault for meeting notes.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "meeting notes"
+        }
+      }
+    },
+    {
+      "id": "decision_retrieval",
+      "prompt": "What did we decide about X?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_list_decisions",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "query": "x"
+        }
+      }
+    },
+    {
+      "id": "you_may_use_read_only",
+      "prompt": "You may use read-only tools. Search my work files.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "work files"
+        }
+      }
+    },
+    {
+      "id": "plan_only_no_execute",
+      "prompt": "Plan only; do not execute.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "search_without_writing",
+      "prompt": "Search without writing anything.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "without writing anything"
+        }
+      }
+    },
+    {
+      "id": "beyond_read_only_analysis",
+      "prompt": "Do not execute tools beyond read-only analysis.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "no_recommended_tool",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "find_file_without_opening",
+      "prompt": "Find the file without opening it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "file without opening it"
+        }
+      }
+    },
+    {
+      "id": "not_a_promotion_receipt",
+      "prompt": "This is not a promotion receipt.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "preference_retrieval",
+      "prompt": "What preferences do I have for X?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_preference_retrieval",
+        "next_step_tool": "assistant_list_preferences",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "query": "x"
+        }
+      }
+    },
+    {
+      "id": "open_loops",
+      "prompt": "What open loops remain?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_open_loop_retrieval",
+        "next_step_tool": "assistant_list_open_loops",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "stage_for_review",
+      "prompt": "Stage this for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "promote_approved",
+      "prompt": "Promote the approved artifact.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "apply_canonical_promotion",
+        "next_step_tool": "pa_artifact_promotion_apply",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "go_ahead_send",
+      "prompt": "Go ahead and send it.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "source_root_groups",
+      "prompt": "list configured source roots",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_root_map",
+        "next_step_tool": "assistant_source_roots_list",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "search_but_no_promote",
+      "prompt": "Search files but do not promote",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files but do not promote"
+        }
+      }
+    },
+    {
+      "id": "quoted_promote_advisory",
+      "prompt": "The operator said \"promote the artifact\"",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "capability_promote_inquiry",
+      "prompt": "Can you promote decisions?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "capability_inquiry",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "hypothetical_promote",
+      "prompt": "What if we promoted this?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "hypothetical",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "work_files_budget_query",
+      "prompt": "Search my work files for budget",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "budget"
+        }
+      }
+    },
+    {
+      "id": "decision_exact_id",
+      "prompt": "Get decision decision_abc12345",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_get_decision",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "decision_id": "decision_abc12345"
+        }
+      }
+    },
+    {
+      "id": "typed_decision_show_me",
+      "prompt": "Show me decision `DEC-20260708-7847F4`",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_get_decision",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {
+          "decision_id": "DEC-20260708-7847F4"
+        }
+      }
+    },
+    {
+      "id": "typed_preference_retrieval",
+      "prompt": "Retrieve the preference `PREF-20260708-2D3D8D`",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_preference_retrieval",
+        "next_step_tool": "assistant_get_preference",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "preference_id": "PREF-20260708-2D3D8D"
+        }
+      }
+    },
+    {
+      "id": "typed_open_loop_retrieval",
+      "prompt": "Retrieve the open loop `LOOP-20260708-B21D38`",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_open_loop_retrieval",
+        "next_step_tool": "assistant_get_open_loop",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "open_loop_id": "LOOP-20260708-B21D38"
+        }
+      }
+    },
+    {
+      "id": "typed_decision_id_ambiguity",
+      "prompt": "Retrieve the decision `DEC-20260708-7847F4` and `DEC-20260708-A08367`",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "look_through_work_files",
+      "prompt": "Look through the files in Work.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files in work"
+        }
+      }
+    },
+    {
+      "id": "documents_under_work_root",
+      "prompt": "Find documents stored under my Work source root.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "documents stored under my work source root"
+        }
+      }
+    },
+    {
+      "id": "original_pdf_contract",
+      "prompt": "Find the original PDF contract.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "original pdf contract"
+        }
+      }
+    },
+    {
+      "id": "source_map_about_work",
+      "prompt": "What does my source map say about Work?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_root_map",
+        "next_step_tool": "assistant_source_roots_list",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "promotion_receipt_noun_prohibition",
+      "prompt": "Do not delete anything named \"promotion receipt.\"",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "submit_for_review",
+      "prompt": "Submit for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "queue_for_review",
+      "prompt": "Queue for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "put_up_for_review",
+      "prompt": "Put this up for review.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "stage_artifact_proposals",
+        "next_step_tool": "pa_artifact_proposal_stage",
+        "currently_executable": false,
+        "execution_blocked_reason": "missing_arguments",
+        "operation_modality": "imperative",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "look_in_nas_for_contract",
+      "prompt": "Look in the nas for contract",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "contract"
+        }
+      }
+    },
+    {
+      "id": "find_files_on_nas",
+      "prompt": "Find files on the nas",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files on the nas"
+        }
+      }
+    },
+    {
+      "id": "search_original_source_files",
+      "prompt": "Search original files for specs",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "specs"
+        }
+      }
+    },
+    {
+      "id": "find_notes_in_obsidian",
+      "prompt": "Find notes in obsidian",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "notes in obsidian"
+        }
+      }
+    },
+    {
+      "id": "search_obsidian_for_notes",
+      "prompt": "Search obsidian for meeting notes",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "meeting notes"
+        }
+      }
+    },
+    {
+      "id": "retrieve_canonical_decision_id",
+      "prompt": "Retrieve the canonical decision decision_abc12345 from memory.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "canonical_decision_retrieval",
+        "next_step_tool": "assistant_get_decision",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "decision_id": "decision_abc12345"
+        }
+      }
+    },
+    {
+      "id": "vault_not_nas_work_files",
+      "prompt": "Search the vault for work files",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "vault_note_search",
+        "next_step_tool": "assistant_search_sources",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "work files"
+        }
+      }
+    },
+    {
+      "id": "nas_not_vault_project_file",
+      "prompt": "Find the project file on the nas",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "source_file_search",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "project file on the nas"
+        }
+      }
+    },
+    {
+      "id": "status_check",
+      "prompt": "Is the server up?",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "status_check",
+        "next_step_tool": "hb_mcp_status",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "document_session_capture",
+      "prompt": "Document this session as decisions and open loops",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "document_session",
+        "next_step_tool": "pa_session_capture_stage",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "source_client": "connected_client",
+          "session_title": "Document this session as decisions and open loops",
+          "capture_trigger": "operator_request",
+          "session_summary": "Document this session as decisions and open loops"
+        }
+      }
+    },
+    {
+      "id": "context_preflight_unknown",
+      "prompt": "xyzzy plugh frobnicate",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "context_preflight",
+        "next_step_tool": null,
+        "currently_executable": false,
+        "execution_blocked_reason": "not_authorized",
+        "operation_modality": "advisory",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "mixed_files_and_notes",
+      "prompt": "Find files and notes related to 23-435-01.",
+      "pass": true,
+      "mismatches": [],
+      "actual": {
+        "workflow": "mixed_private_retrieval",
+        "next_step_tool": "assistant_source_file_search",
+        "currently_executable": true,
+        "execution_blocked_reason": null,
+        "operation_modality": "imperative",
+        "arguments": {
+          "query": "files and notes related to 23-435-01"
+        }
+      }
+    }
+  ],
+  "mode": "offline_route_prompt",
+  "matrix_path": "scripts/audit-route-regression-matrix.json"
+}
