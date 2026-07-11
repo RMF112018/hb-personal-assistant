@@ -60,3 +60,66 @@ def test_stage_for_review_still_missing_session_bundle_args() -> None:
     assert plan["recommended_workflow"] == "stage_artifact_proposals"
     assert plan["authorization"]["currently_executable"] is False
     assert plan["authorization"]["execution_blocked_reason"] == "missing_arguments"
+
+
+def test_typed_decision_id_show_me_routes_to_getter() -> None:
+    """Audit row 25: typed DEC- ID with show-me phrasing must not fall through to context_preflight."""
+    plan = route_prompt("Show me decision `DEC-20260708-7847F4`")
+    assert plan["recommended_workflow"] == "canonical_decision_retrieval"
+    assert plan["next_step"]["tool"] == "assistant_get_decision"
+    assert plan["next_step"]["arguments"]["decision_id"] == "DEC-20260708-7847F4"
+    assert plan["authorization"]["currently_executable"] is True
+    assert any("exact_id_getter" in c for c in plan.get("constraints") or [])
+
+
+def test_typed_preference_id_routes_to_getter() -> None:
+    """Audit row 28."""
+    plan = route_prompt("Retrieve the preference `PREF-20260708-2D3D8D`")
+    assert plan["recommended_workflow"] == "canonical_preference_retrieval"
+    assert plan["next_step"]["tool"] == "assistant_get_preference"
+    assert plan["next_step"]["arguments"]["preference_id"] == "PREF-20260708-2D3D8D"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_typed_open_loop_id_routes_to_getter() -> None:
+    """Audit row 30."""
+    plan = route_prompt("Retrieve the open loop `LOOP-20260708-B21D38`")
+    assert plan["recommended_workflow"] == "canonical_open_loop_retrieval"
+    assert plan["next_step"]["tool"] == "assistant_get_open_loop"
+    assert plan["next_step"]["arguments"]["open_loop_id"] == "LOOP-20260708-B21D38"
+    assert plan["authorization"]["currently_executable"] is True
+
+
+def test_multiple_typed_decision_ids_produce_ambiguity_not_silent_pick() -> None:
+    """Audit row 47: never silently pick the first of multiple DEC- IDs."""
+    plan = route_prompt(
+        "Retrieve the decision `DEC-20260708-7847F4` and `DEC-20260708-A08367`"
+    )
+    assert plan["recommended_workflow"] == "context_preflight"
+    assert plan["next_step"] is None
+    assert plan.get("conflicting_ids") == [
+        "DEC-20260708-7847F4",
+        "DEC-20260708-A08367",
+    ]
+    assert plan["clarifying_question"] is not None
+    assert plan["authorization"]["currently_executable"] is False
+
+
+def test_example_typed_id_is_not_retrieval_target() -> None:
+    """Audit row 48: quoted for-example IDs must not route to a getter."""
+    plan = route_prompt(
+        'For example, "DEC-20260708-7847F4" is a decision ID. Explain the format.'
+    )
+    assert plan["recommended_workflow"] == "context_preflight"
+    assert plan["next_step"] is None
+    assert "conflicting_ids" not in plan
+
+
+def test_search_intent_wins_over_incidental_typed_id_mention() -> None:
+    """Audit row 50: file search must not be overridden by an unrelated ID mention."""
+    plan = route_prompt(
+        "The report mentions `DEC-20260708-7847F4`, but search my work files for the contract."
+    )
+    assert plan["recommended_workflow"] == "source_file_search"
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert plan["next_step"]["arguments"]["query"] == "the contract"

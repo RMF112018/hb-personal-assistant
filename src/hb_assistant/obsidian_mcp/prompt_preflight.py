@@ -615,6 +615,27 @@ _GETTER_TOOLS = frozenset({
     "assistant_source_file_read",
 })
 
+# Typed canonical artifact IDs: {PREFIX}-{YYYYMMDD}-{hash6} (obsidian card materialization).
+_TYPED_CANONICAL_ID_RE = re.compile(
+    r"\b(DEC|PREF|LOOP)-(\d{8}-[A-F0-9]{6})\b",
+    re.IGNORECASE,
+)
+_TYPED_CANONICAL_MAX_LEN = 48
+_TYPED_RETRIEVAL_ROUTE: dict[str, tuple[str, str, str]] = {
+    "DEC": ("decision_id", "assistant_get_decision", "canonical_decision_retrieval"),
+    "PREF": ("preference_id", "assistant_get_preference", "canonical_preference_retrieval"),
+    "LOOP": ("open_loop_id", "assistant_get_open_loop", "canonical_open_loop_retrieval"),
+}
+_RETRIEVAL_VERB_RE = re.compile(
+    r"\b(show(?:\s+me)?(?:\s+the)?|retrieve|get|open|display)\b",
+    re.IGNORECASE,
+)
+_ARTIFACT_NOUN_CUES: tuple[tuple[str, str], ...] = (
+    ("open loop", "LOOP"),
+    ("preference", "PREF"),
+    ("decision", "DEC"),
+)
+
 
 def required_args_for_tool(tool_name: str) -> list[str]:
     """Return required argument names (live schema when available; static fallback)."""
@@ -644,22 +665,92 @@ def _extract_topic_query(prompt_l: str) -> str | None:
     return None
 
 
+def _typed_canonical_id_valid(token: str) -> bool:
+    if len(token) > _TYPED_CANONICAL_MAX_LEN:
+        return False
+    return bool(_TYPED_CANONICAL_ID_RE.fullmatch(token))
+
+
+def _is_non_target_id_mention(prompt: str, start: int, end: int) -> bool:
+    """True when a typed ID is illustrative (quoted example, mention-only), not the retrieval target."""
+    before = prompt[max(0, start - 80):start]
+    if re.search(r"\b(for example|e\.g\.|such as)\b", before, re.IGNORECASE):
+        return True
+    if re.search(r"\bmentions?\b", before, re.IGNORECASE):
+        return True
+    # Double/single-quoted spans are examples unless the clause also carries a retrieval verb.
+    left = prompt.rfind('"', 0, start)
+    right = prompt.find('"', end)
+    if left != -1 and right != -1 and left < start and right >= end:
+        clause = prompt[left:right + 1]
+        if not _RETRIEVAL_VERB_RE.search(clause):
+            return True
+    left = prompt.rfind("'", 0, start)
+    right = prompt.find("'", end)
+    if left != -1 and right != -1 and left < start and right >= end:
+        clause = prompt[left:right + 1]
+        if not _RETRIEVAL_VERB_RE.search(clause):
+            return True
+    return False
+
+
+def _extract_asserted_typed_ids(prompt: str) -> list[tuple[str, str]]:
+    """Return (prefix, canonical_id) pairs that are asserted retrieval targets (not examples)."""
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for match in _TYPED_CANONICAL_ID_RE.finditer(prompt):
+        token = match.group(0).upper()
+        if not _typed_canonical_id_valid(token) or token in seen:
+            continue
+        if _is_non_target_id_mention(prompt, match.start(), match.end()):
+            continue
+        seen.add(token)
+        out.append((match.group(1).upper(), token))
+    return out
+
+
+def _infer_typed_retrieval_prefix(prompt_l: str) -> str | None:
+    for noun, prefix in _ARTIFACT_NOUN_CUES:
+        if noun in prompt_l:
+            return prefix
+    return None
+
+
+def _has_dominant_search_intent(prompt_l: str) -> bool:
+    """True when file/vault search is the primary imperative (ID mentions must not override)."""
+    for clause in _split_clauses(prompt_l):
+        if _is_prohibition_clause(clause):
+            continue
+        if not re.search(r"\b(?:search|find|look\s+(?:in|through|for))\b", clause, re.IGNORECASE):
+            continue
+        if re.search(
+            r"\b(?:work\s+files?|nas|vault|obsidian|indexed|original|project\s+files?|files?|notes?)\b",
+            clause,
+            re.IGNORECASE,
+        ):
+            return True
+    return False
+
+
 def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
     """Extract a workflow-specific ID only when pattern matches repo contracts. Never invent."""
     # Require delimiter or suffix so bare nouns (e.g. "decision" in "canonical decision") do not match.
     patterns = {
         "decision_id": (
-            r"\b((?:dec|decision)[_-][a-z0-9][a-z0-9_\-]{3,64}|decision_[a-z0-9][a-z0-9_\-]{3,64})\b"
+            r"\b(DEC-\d{8}-[A-F0-9]{6}|(?:dec|decision)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
+            r"decision_[a-z0-9][a-z0-9_\-]{3,64})\b"
         ),
         "preference_id": (
-            r"\b((?:pref|preference)[_-][a-z0-9][a-z0-9_\-]{3,64}|preference_[a-z0-9][a-z0-9_\-]{3,64})\b"
+            r"\b(PREF-\d{8}-[A-F0-9]{6}|(?:pref|preference)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
+            r"preference_[a-z0-9][a-z0-9_\-]{3,64})\b"
         ),
         "open_loop_id": (
-            r"\b((?:ol|open[_-]?loop)[_-][a-z0-9][a-z0-9_\-]{3,64}|open[_-]?loop_[a-z0-9][a-z0-9_\-]{3,64})\b"
+            r"\b(LOOP-\d{8}-[A-F0-9]{6}|(?:ol|open[_-]?loop)[_-][a-z0-9][a-z0-9_\-]{3,64}|"
+            r"open[_-]?loop_[a-z0-9][a-z0-9_\-]{3,64})\b"
         ),
         "operator_approval_id": r"\b((?:appr|approval)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
         "promotion_bundle_id": (
-            r"\b((?:promob|promotion[_-]?bundle)[_-][a-z0-9][a-z0-9_\-]{6,64})\b"
+            r"\b(PROMOB-[A-Z0-9]{6,16}|(?:promob|promotion[_-]?bundle)[_-][a-z0-9][a-z0-9_\-]{6,64})\b"
         ),
         "session_id": r"\b((?:sess|session)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
         "source_id": r"\b((?:src|source)[_-][a-z0-9][a-z0-9_\-]{6,64})\b",
@@ -670,7 +761,14 @@ def _extract_validated_id(prompt: str, arg_name: str) -> str | None:
     matches = [m.group(1) for m in re.finditer(pat, prompt, flags=re.I)]
     if not matches:
         return None
-    return max(matches, key=len)
+    normalized = {m.upper() if m.upper().startswith(("DEC-", "PREF-", "LOOP-", "PROMOB-")) else m
+                  for m in matches}
+    if len(normalized) > 1:
+        return None
+    chosen = max(matches, key=len)
+    if chosen.upper().startswith(("DEC-", "PREF-", "LOOP-")) and not _typed_canonical_id_valid(chosen.upper()):
+        return None
+    return chosen
 
 
 def _extract_quoted_fragment(prompt: str) -> str | None:
@@ -1210,51 +1308,60 @@ def _freshness_view(freshness: dict[str, Any] | None, is_write: bool) -> dict[st
     }
 
 
-def route_prompt(
+def _typed_id_ambiguity_route(
     prompt: str,
+    prompt_l: str,
     *,
-    available_tools: frozenset[str] | set[str] | None = None,
+    conflicting_ids: list[str],
+    artifact_label: str,
+    freshness: dict[str, Any] | None,
+    prohibitions: set[str],
+) -> dict[str, Any]:
+    base = _unknown_route(prompt, prompt_l, freshness, prohibitions)
+    base["intent"] = {
+        "primary_class": "typed_id_ambiguity",
+        "classes": ["typed_id_ambiguity", "retrieval"],
+    }
+    base["clarifying_question"] = (
+        f"Multiple {artifact_label} IDs were mentioned ({', '.join(conflicting_ids)}). "
+        f"Which one should I retrieve?"
+    )
+    base["routing_rationale"] = (
+        f"Multiple conflicting typed {artifact_label} IDs detected; "
+        "do not silently pick the first ID."
+    )
+    base["route_confidence"] = "medium"
+    base["conflicting_ids"] = list(conflicting_ids)
+    base["route"] = {
+        "intent": "typed_id_ambiguity",
+        "source_of_truth": "canonical decision/preference/open-loop records",
+        "family": "assistant_decision_memory",
+        "workflow": "context_preflight",
+        "confidence": "medium",
+    }
+    return base
+
+
+def _route_workflow_plan(
+    prompt: str,
+    prompt_l: str,
+    *,
+    best_wf: dict[str, Any],
+    best_score: int,
+    ranked: list[tuple[int, dict[str, Any]]],
+    prohibitions: set[str],
     has_exact_id: bool = False,
+    available_tools: frozenset[str] | set[str] | None = None,
     freshness: dict[str, Any] | None = None,
     tool_groups: dict[str, str | None] | None = None,
     runtime_policy: dict[str, Any] | None = None,
+    forced_next_tool: str | None = None,
+    forced_next_args: dict[str, Any] | None = None,
+    forced_extraction_source: str | None = None,
+    forced_confidence: str | None = None,
+    forced_rationale: str | None = None,
 ) -> dict[str, Any]:
-    """Return a read-only route plan for ``prompt`` (schema v2, additive). Never writes or reads content."""
-    prompt_l = _norm(prompt)
-    prohibitions = _extract_prohibitions(prompt_l)
-
-    if _is_destructive(prompt_l):
-        return _destructive_route(prompt, prompt_l, freshness, prohibitions)
-
-    if any(c in prompt_l for c in ("show me secrets", "show tokens", "dump credentials", "api keys",
-                                   "extract password")):
-        return _safety_refusal_route(
-            prompt, prompt_l, freshness, prohibitions,
-            intent="secret_extraction_refusal",
-            rationale="Refuse secret/token extraction.",
-        )
-    if any(c in prompt_l for c in ("write a file to /tmp", "write to /tmp", "/tmp/anything",
-                                   "save to /etc/")):
-        return _safety_refusal_route(
-            prompt, prompt_l, freshness, prohibitions,
-            intent="arbitrary_path_write_refusal",
-            rationale="Refuse arbitrary host path writes; use generated-output workspace only.",
-        )
-
-    # Negated noun assertions ("this is not a promotion receipt") are not retrieval intents.
-    if _is_negated_noun_assertion(prompt_l):
-        return _negated_assertion_route(prompt, prompt_l, freshness, prohibitions)
-
-    # Ambiguous bare "notes" without vault/source/project cue → clarify once.
-    if _is_ambiguous_notes(prompt_l):
-        return _ambiguous_notes_route(prompt, prompt_l, freshness, prohibitions)
-
-    ranked = _rank_workflows(prompt_l, prohibitions)
-
-    if not ranked:
-        return _unknown_route(prompt, prompt_l, freshness, prohibitions)
-
-    best_score, best_wf = ranked[0]
+    """Build a route plan from a selected workflow (shared by trigger scoring and typed-ID pre-pass)."""
     candidate_families: list[str] = []
     alt_workflows: list[str] = []
     for s, wf in ranked:
@@ -1266,7 +1373,9 @@ def route_prompt(
 
     primary_family = best_wf["family_id"]
     runner_up = ranked[1][0] if len(ranked) > 1 else 0
-    if best_score >= 3 or (best_score >= 2 and best_score - runner_up >= 2):
+    if forced_confidence:
+        confidence = forced_confidence
+    elif best_score >= 3 or (best_score >= 2 and best_score - runner_up >= 2):
         confidence = "high"
     elif best_score >= 2 or (best_score == 1 and len(candidate_families) == 1):
         confidence = "medium"
@@ -1284,8 +1393,14 @@ def route_prompt(
     workflow_available = not unavailable
 
     topic = _extract_topic_query(prompt_l)
-    next_tool, next_args, extraction_source = _resolve_next_tool_step(recommended_tools, prompt, prompt_l)
-    # has_exact_id never invents: if set without extractable ID, args stay empty.
+    if forced_next_tool is not None:
+        next_tool = forced_next_tool
+        next_args = dict(forced_next_args or {})
+        extraction_source = forced_extraction_source
+    else:
+        next_tool, next_args, extraction_source = _resolve_next_tool_step(
+            recommended_tools, prompt, prompt_l,
+        )
 
     action_class = best_wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
@@ -1333,7 +1448,6 @@ def route_prompt(
     must_not = list(best_wf["must_not_use"]) + list(fam.get("family_level_negative_instructions", []))
     if prohibitions:
         must_not = must_not + [f"prompt prohibits: {', '.join(sorted(prohibitions))}"]
-    # Topical discovery limitation for list tools without a query arg.
     if topic and next_tool and next_tool.startswith("assistant_list_"):
         constraints.append(
             f"topic_query={topic}; list tools filter by type/status only — "
@@ -1357,13 +1471,13 @@ def route_prompt(
         "workflow_available": workflow_available,
         "unavailable_tools": unavailable,
         "authorization": authorization,
-        "retrieval_budget": _retrieval_budget(best_wf, has_exact_id),
+        "retrieval_budget": _retrieval_budget(best_wf, has_exact_id or bool(forced_next_tool)),
         "provenance_required": list(best_wf["required_provenance"]),
         "memory_opportunity": _memory_opportunity(prompt_l, primary_family),
         "must_not_use": must_not,
         "fallback_plan": _fallback_plan(best_wf, is_write),
         "route_confidence": confidence,
-        "routing_rationale": (
+        "routing_rationale": forced_rationale or (
             f"Matched workflow '{best_wf['workflow_id']}' (score {best_score}) in family '{primary_family}'; "
             f"source of truth = {_SOURCE_OF_TRUTH.get(primary_family, 'unclassified')}."
         ),
@@ -1392,19 +1506,162 @@ def route_prompt(
         plan["next_step"] = None
         plan["additional_steps"] = []
 
-    # "Go ahead and send it" without external tool → do not invent.
     if re.search(r"\b(go ahead and send|send it|email this)\b", prompt_l):
         plan["warnings"] = list(plan.get("warnings") or []) + [
             "No external-action tool is available; do not invent send/email execution.",
         ]
         plan["authorization"]["external_action_authorized"] = False
         plan["authorization"]["currently_executable"] = False
-        if best_wf["workflow_id"].startswith("generate_") or "send" in prompt_l:
-            # Keep advisory only.
-            pass
 
     plan["freshness"] = _freshness_view(freshness, is_write)
     return plan
+
+
+def _try_typed_id_first_route(
+    prompt: str,
+    prompt_l: str,
+    *,
+    prohibitions: set[str],
+    available_tools: frozenset[str] | set[str] | None = None,
+    freshness: dict[str, Any] | None = None,
+    tool_groups: dict[str, str | None] | None = None,
+    runtime_policy: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Route typed canonical IDs to direct getters before trigger-phrase scoring."""
+    if _has_dominant_search_intent(prompt_l):
+        return None
+    if not _RETRIEVAL_VERB_RE.search(prompt_l):
+        return None
+
+    asserted = _extract_asserted_typed_ids(prompt)
+    if not asserted:
+        return None
+
+    noun_prefix = _infer_typed_retrieval_prefix(prompt_l)
+    if noun_prefix:
+        asserted = [(pfx, tok) for pfx, tok in asserted if pfx == noun_prefix]
+        if not asserted:
+            return None
+
+    by_prefix: dict[str, list[str]] = {}
+    for pfx, tok in asserted:
+        by_prefix.setdefault(pfx, []).append(tok)
+
+    if len(by_prefix) > 1:
+        return None
+
+    prefix, tokens = next(iter(by_prefix.items()))
+    route = _TYPED_RETRIEVAL_ROUTE.get(prefix)
+    if not route:
+        return None
+
+    arg_name, getter_tool, workflow_id = route
+    artifact_label = next((n for n, p in _ARTIFACT_NOUN_CUES if p == prefix), prefix.lower())
+
+    if len(tokens) > 1:
+        return _typed_id_ambiguity_route(
+            prompt, prompt_l,
+            conflicting_ids=tokens,
+            artifact_label=artifact_label,
+            freshness=freshness,
+            prohibitions=prohibitions,
+        )
+
+    best_wf = workflow_record(workflow_id)
+    if not best_wf:
+        return None
+
+    token = tokens[0]
+    return _route_workflow_plan(
+        prompt, prompt_l,
+        best_wf=best_wf,
+        best_score=10,
+        ranked=[(10, best_wf)],
+        prohibitions=prohibitions,
+        has_exact_id=True,
+        available_tools=available_tools,
+        freshness=freshness,
+        tool_groups=tool_groups,
+        runtime_policy=runtime_policy,
+        forced_next_tool=getter_tool,
+        forced_next_args={arg_name: token},
+        forced_extraction_source="exact_id_getter",
+        forced_confidence="high",
+        forced_rationale=(
+            f"Typed canonical ID '{token}' with retrieval verb → direct getter '{getter_tool}' "
+            f"(workflow '{workflow_id}')."
+        ),
+    )
+
+
+def route_prompt(
+    prompt: str,
+    *,
+    available_tools: frozenset[str] | set[str] | None = None,
+    has_exact_id: bool = False,
+    freshness: dict[str, Any] | None = None,
+    tool_groups: dict[str, str | None] | None = None,
+    runtime_policy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Return a read-only route plan for ``prompt`` (schema v2, additive). Never writes or reads content."""
+    prompt_l = _norm(prompt)
+    prohibitions = _extract_prohibitions(prompt_l)
+
+    if _is_destructive(prompt_l):
+        return _destructive_route(prompt, prompt_l, freshness, prohibitions)
+
+    if any(c in prompt_l for c in ("show me secrets", "show tokens", "dump credentials", "api keys",
+                                   "extract password")):
+        return _safety_refusal_route(
+            prompt, prompt_l, freshness, prohibitions,
+            intent="secret_extraction_refusal",
+            rationale="Refuse secret/token extraction.",
+        )
+    if any(c in prompt_l for c in ("write a file to /tmp", "write to /tmp", "/tmp/anything",
+                                   "save to /etc/")):
+        return _safety_refusal_route(
+            prompt, prompt_l, freshness, prohibitions,
+            intent="arbitrary_path_write_refusal",
+            rationale="Refuse arbitrary host path writes; use generated-output workspace only.",
+        )
+
+    # Negated noun assertions ("this is not a promotion receipt") are not retrieval intents.
+    if _is_negated_noun_assertion(prompt_l):
+        return _negated_assertion_route(prompt, prompt_l, freshness, prohibitions)
+
+    # Ambiguous bare "notes" without vault/source/project cue → clarify once.
+    if _is_ambiguous_notes(prompt_l):
+        return _ambiguous_notes_route(prompt, prompt_l, freshness, prohibitions)
+
+    typed_plan = _try_typed_id_first_route(
+        prompt, prompt_l,
+        prohibitions=prohibitions,
+        available_tools=available_tools,
+        freshness=freshness,
+        tool_groups=tool_groups,
+        runtime_policy=runtime_policy,
+    )
+    if typed_plan is not None:
+        return typed_plan
+
+    ranked = _rank_workflows(prompt_l, prohibitions)
+
+    if not ranked:
+        return _unknown_route(prompt, prompt_l, freshness, prohibitions)
+
+    best_score, best_wf = ranked[0]
+    return _route_workflow_plan(
+        prompt, prompt_l,
+        best_wf=best_wf,
+        best_score=best_score,
+        ranked=ranked,
+        prohibitions=prohibitions,
+        has_exact_id=has_exact_id,
+        available_tools=available_tools,
+        freshness=freshness,
+        tool_groups=tool_groups,
+        runtime_policy=runtime_policy,
+    )
 
 
 def _is_negated_noun_assertion(prompt_l: str) -> bool:

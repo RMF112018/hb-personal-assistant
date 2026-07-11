@@ -50,8 +50,8 @@ EQUIVALENCE_GROUPS: list[dict] = [
 ]
 
 
-def test_audit_matrix_has_forty_cases() -> None:
-    assert len(_AUDIT_CASES) == 40
+def test_audit_matrix_has_forty_four_cases() -> None:
+    assert len(_AUDIT_CASES) == 44
 
 
 @pytest.mark.parametrize("case", _AUDIT_CASES, ids=[c["id"] for c in _AUDIT_CASES])
