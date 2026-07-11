@@ -701,6 +701,11 @@ _GETTER_TOOLS = frozenset({
     "assistant_get_vault_note",
     "assistant_source_file_read",
 })
+_TOPICAL_LIST_TOOLS = frozenset({
+    "assistant_list_decisions",
+    "assistant_list_preferences",
+    "assistant_list_open_loops",
+})
 
 # Typed canonical artifact IDs: {PREFIX}-{YYYYMMDD}-{hash6} (obsidian card materialization).
 _TYPED_CANONICAL_ID_RE = re.compile(
@@ -942,6 +947,10 @@ def _extract_tool_arguments(prompt: str, prompt_l: str, tool_name: str) -> dict[
                 for k, v in _extract_session_fields(prompt, prompt_l).items():
                     if k == arg:
                         args[arg] = v
+    if tool_name in _TOPICAL_LIST_TOOLS:
+        topic = _extract_topic_query(prompt_l)
+        if topic and "query" not in args:
+            args["query"] = topic[:200]
     return args
 
 
@@ -1466,7 +1475,9 @@ def _enrich_tool_steps(
         args: dict[str, Any] = {}
         if t == next_tool and next_arguments:
             args = dict(next_arguments)
-        # List/discovery tools: do not inject unsupported query args; surface topic separately.
+        if topic_query and t in _TOPICAL_LIST_TOOLS and "query" not in args:
+            args = dict(args)
+            args["query"] = topic_query
         req = required_args_for_tool(t)
         missing = [a for a in req if args.get(a) in (None, "", [], {})]
         is_next = t == next_tool
@@ -1511,7 +1522,13 @@ def _enrich_tool_steps(
             "execution_blocked_reason": blocked,
             "missing_required_arguments": missing,
         }
-        if topic_query and t.startswith("assistant_list_"):
+        if topic_query and t in _TOPICAL_LIST_TOOLS:
+            step["topic_query"] = topic_query
+            step["topical_discovery_supported"] = True
+            step["topic_guidance"] = (
+                f"Bounded topical query '{topic_query}' wired to the list filter."
+            )
+        elif topic_query and t.startswith("assistant_list_"):
             step["topic_query"] = topic_query
             step["topical_discovery_supported"] = False
             step["topic_guidance"] = (
@@ -1635,6 +1652,9 @@ def _route_workflow_plan(
         next_tool, next_args, extraction_source = _resolve_next_tool_step(
             recommended_tools, prompt, prompt_l,
         )
+    if topic and next_tool in _TOPICAL_LIST_TOOLS:
+        next_args = dict(next_args)
+        next_args.setdefault("query", topic)
 
     action_class = best_wf["operator_authorization_policy"]
     is_write = action_class in _WRITE_CLASSES
@@ -1683,7 +1703,11 @@ def _route_workflow_plan(
     must_not = list(best_wf["must_not_use"]) + list(fam.get("family_level_negative_instructions", []))
     if prohibitions:
         must_not = must_not + [f"prompt prohibits: {', '.join(sorted(prohibitions))}"]
-    if topic and next_tool and next_tool.startswith("assistant_list_"):
+    if topic and next_tool in _TOPICAL_LIST_TOOLS:
+        constraints.append(
+            f"topic_query={topic}; bounded query wired to {next_tool}."
+        )
+    elif topic and next_tool and next_tool.startswith("assistant_list_"):
         constraints.append(
             f"topic_query={topic}; list tools filter by type/status only — "
             f"apply topic '{topic}' when selecting from the bounded list "

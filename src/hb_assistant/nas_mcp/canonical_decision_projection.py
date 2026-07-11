@@ -18,6 +18,8 @@ import json
 import sqlite3
 from typing import Any
 
+from hb_assistant.obsidian_mcp.decision_memory_repository import record_matches_list_query
+
 # kind -> (pk column, type column, text column, normalized column) on the record shape.
 _KIND_FIELDS: dict[str, tuple[str, str, str, str]] = {
     "decision": ("decision_id", "decision_type", "decision_text", "normalized_decision"),
@@ -115,6 +117,12 @@ def project_canonical_record(cfg: Any, kind: str, record_id: str) -> dict[str, A
         if rec.get("canonical_id") == record_id:
             return rec
     return None
+
+
+def filter_records_by_query(records: list[dict[str, Any]], kind: str,
+                            query: str | None) -> list[dict[str, Any]]:
+    """Apply the same bounded topical filter used by decision-memory list tools."""
+    return [r for r in records if record_matches_list_query(kind, r, query)]
 
 
 def merge_records(native: list[dict[str, Any]], projected: list[dict[str, Any]], *, pk: str,

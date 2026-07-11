@@ -107,3 +107,12 @@ def test_created_event_logged(repo) -> None:
     events = repo.list_events(row["decision_id"])
     assert [e["event_type"] for e in events] == ["created"]
     assert events[0]["record_kind"] == "decision"
+
+
+def test_list_decisions_filters_by_bounded_query(repo) -> None:
+    repo.upsert_decision(_decision(subject="budget", decision="freeze scope"))
+    repo.upsert_decision(_decision(subject="scheduling", decision="send update", source_id="s2", claim_id="c2"))
+    matches = repo.list_decisions(query="budget")
+    assert len(matches) == 1
+    assert matches[0]["normalized_subject"] == "budget"
+    assert repo.list_decisions(query="missing-topic") == []

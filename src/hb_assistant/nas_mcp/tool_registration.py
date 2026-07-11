@@ -475,9 +475,10 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
         @mcp.tool()
         def assistant_list_decisions(decision_type: str | None = None, status: str | None = None,
-                                     limit: int = 25) -> dict[str, Any]:
+                                     query: str | None = None, limit: int = 25) -> dict[str, Any]:
             return _assistant_result("assistant_list_decisions",
-                                     {"decision_type": decision_type, "status": status, "limit": limit})
+                                     {"decision_type": decision_type, "status": status,
+                                      "query": query, "limit": limit})
 
         @mcp.tool()
         def assistant_get_decision(decision_id: str) -> dict[str, Any]:
@@ -485,10 +486,10 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
         @mcp.tool()
         def assistant_list_preferences(preference_type: str | None = None, status: str | None = None,
-                                       limit: int = 25) -> dict[str, Any]:
+                                       query: str | None = None, limit: int = 25) -> dict[str, Any]:
             return _assistant_result("assistant_list_preferences",
                                      {"preference_type": preference_type, "status": status,
-                                      "limit": limit})
+                                      "query": query, "limit": limit})
 
         @mcp.tool()
         def assistant_get_preference(preference_id: str) -> dict[str, Any]:
@@ -496,10 +497,10 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
         @mcp.tool()
         def assistant_list_open_loops(open_loop_type: str | None = None, status: str | None = None,
-                                      limit: int = 25) -> dict[str, Any]:
+                                      query: str | None = None, limit: int = 25) -> dict[str, Any]:
             return _assistant_result("assistant_list_open_loops",
                                      {"open_loop_type": open_loop_type, "status": status,
-                                      "limit": limit})
+                                      "query": query, "limit": limit})
 
         @mcp.tool()
         def assistant_get_open_loop(open_loop_id: str) -> dict[str, Any]:

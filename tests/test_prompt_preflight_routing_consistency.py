@@ -109,10 +109,19 @@ def test_decision_discovery_first_without_id() -> None:
     assert get_step["currently_executable"] is False
     assert get_step["arguments"] == {}
     assert "decision_id" in (get_step.get("missing_required_arguments") or ["decision_id"])
-    # Topic preserved as guidance (list tool has no query arg).
-    assert plan["next_step"].get("topic_query") == "x" or any(
-        "topic_query=x" in c for c in plan.get("constraints") or []
-    )
+    # F-013: topical discovery wires bounded query into the list tool.
+    assert plan["next_step"].get("topic_query") == "x"
+    assert plan["next_step"].get("topical_discovery_supported") is True
+    assert plan["next_step"]["arguments"].get("query") == "x"
+    assert any("bounded query wired" in c for c in plan.get("constraints") or [])
+
+
+def test_preference_discovery_wires_topical_query() -> None:
+    plan = route_prompt("What preferences do I have for budgeting?")
+    assert plan["recommended_workflow"] == "canonical_preference_retrieval"
+    assert plan["next_step"]["tool"] == "assistant_list_preferences"
+    assert plan["next_step"]["arguments"].get("query") == "budgeting"
+    assert plan["next_step"].get("topical_discovery_supported") is True
 
 
 def test_decision_exact_id_populates_args() -> None:

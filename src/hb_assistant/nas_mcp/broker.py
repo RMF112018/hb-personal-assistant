@@ -1124,9 +1124,12 @@ class NasMcpBroker:
             # extracted V104 records so a client sees what it just promoted. Projection is read-only.
             if tool_name == "assistant_list_decisions":
                 lim, status = _limit(), arguments.get("status")
+                query = arguments.get("query")
                 recs = repo.list_decisions(decision_type=arguments.get("decision_type"),
-                                           status=status, limit=lim, conn=conn)
-                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "decision", limit=lim),
+                                           status=status, query=query, limit=lim, conn=conn)
+                projected = proj.project_canonical_records(cfg, "decision", limit=lim)
+                projected = proj.filter_records_by_query(projected, "decision", query)
+                recs = proj.merge_records(recs, projected,
                                           pk="decision_id", status=status, limit=lim)
                 return {"decisions": recs, "count": len(recs)}
             if tool_name == "assistant_get_decision":
@@ -1138,9 +1141,12 @@ class NasMcpBroker:
                 return {"decision": rec}
             if tool_name == "assistant_list_preferences":
                 lim, status = _limit(), arguments.get("status")
+                query = arguments.get("query")
                 recs = repo.list_preferences(preference_type=arguments.get("preference_type"),
-                                             status=status, limit=lim, conn=conn)
-                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "preference", limit=lim),
+                                             status=status, query=query, limit=lim, conn=conn)
+                projected = proj.project_canonical_records(cfg, "preference", limit=lim)
+                projected = proj.filter_records_by_query(projected, "preference", query)
+                recs = proj.merge_records(recs, projected,
                                           pk="preference_id", status=status, limit=lim)
                 return {"preferences": recs, "count": len(recs)}
             if tool_name == "assistant_get_preference":
@@ -1152,9 +1158,12 @@ class NasMcpBroker:
                 return {"preference": rec}
             if tool_name == "assistant_list_open_loops":
                 lim, status = _limit(), arguments.get("status")
+                query = arguments.get("query")
                 recs = repo.list_open_loops(open_loop_type=arguments.get("open_loop_type"),
-                                            status=status, limit=lim, conn=conn)
-                recs = proj.merge_records(recs, proj.project_canonical_records(cfg, "open_loop", limit=lim),
+                                            status=status, query=query, limit=lim, conn=conn)
+                projected = proj.project_canonical_records(cfg, "open_loop", limit=lim)
+                projected = proj.filter_records_by_query(projected, "open_loop", query)
+                recs = proj.merge_records(recs, projected,
                                           pk="open_loop_id", status=status, limit=lim)
                 return {"open_loops": recs, "count": len(recs)}
             if tool_name == "assistant_get_open_loop":

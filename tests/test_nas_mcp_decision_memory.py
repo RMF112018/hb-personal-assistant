@@ -97,6 +97,17 @@ def _ok(broker, name, args):
     return p["result"]
 
 
+def test_list_decisions_accepts_bounded_query_filter(mcp_env) -> None:
+    b = mcp_env["broker"]
+    all_recs = _ok(b, "assistant_list_decisions", {})["decisions"]
+    assert all_recs
+    subject = all_recs[0]["normalized_subject"]
+    filtered = _ok(b, "assistant_list_decisions", {"query": subject})["decisions"]
+    assert filtered
+    assert all(subject in (r["normalized_subject"] or "") for r in filtered)
+    assert _ok(b, "assistant_list_decisions", {"query": "zzzz-no-match-topic"})["count"] == 0
+
+
 def test_tools_return_data(mcp_env) -> None:
     b, did, oid = mcp_env["broker"], mcp_env["decision_id"], mcp_env["open_loop_id"]
     assert _ok(b, "assistant_list_decisions", {})["count"] >= 1

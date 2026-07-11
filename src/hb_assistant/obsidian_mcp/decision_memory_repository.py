@@ -17,6 +17,7 @@ reopen operator-disposition workflow.
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,32 @@ from .decision_memory_models import (
 
 _MAX_LIMIT = 200
 _DEFAULT_LIMIT = 50
+_QUERY_MAX_LEN = 200
+
+_KIND_QUERY_COLUMNS: dict[str, tuple[str, ...]] = {
+    KIND_DECISION: ("decision_text", "normalized_subject", "normalized_decision", "domain"),
+    KIND_PREFERENCE: ("preference_text", "normalized_subject", "normalized_preference", "domain"),
+    KIND_OPEN_LOOP: ("open_loop_text", "normalized_subject", "normalized_action", "domain"),
+}
+
+
+def sanitize_list_query(query: str | None) -> str | None:
+    """Bounded topical filter token for list tools (no SQL wildcards)."""
+    if query is None:
+        return None
+    q = re.sub(r"[%_]", " ", str(query).strip())[:_QUERY_MAX_LEN]
+    q = " ".join(q.split())
+    return q or None
+
+
+def record_matches_list_query(kind: str, record: dict[str, Any], query: str | None) -> bool:
+    """Case-insensitive topical match across the primary text columns for ``kind``."""
+    token = sanitize_list_query(query)
+    if not token:
+        return True
+    cols = _KIND_QUERY_COLUMNS.get(kind, ())
+    needle = token.lower()
+    return any(needle in str(record.get(col) or "").lower() for col in cols)
 
 _DECISION_COLUMNS = (
     "decision_id", "identity_key", "decision_type", "decision_text", "normalized_subject",
@@ -209,24 +236,24 @@ class DecisionMemoryRepository:
         return dict(zip(columns, row, strict=True)) if row else None
 
     def list_decisions(self, *, decision_type: str | None = None, status: str | None = None,
-                       limit: int = _DEFAULT_LIMIT,
+                       query: str | None = None, limit: int = _DEFAULT_LIMIT,
                        conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         return self._list(KIND_DECISION, {"decision_type": decision_type, "status": status},
-                          limit=limit, conn=conn)
+                          query=query, limit=limit, conn=conn)
 
     def list_preferences(self, *, preference_type: str | None = None, status: str | None = None,
-                         limit: int = _DEFAULT_LIMIT,
+                         query: str | None = None, limit: int = _DEFAULT_LIMIT,
                          conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         return self._list(KIND_PREFERENCE, {"preference_type": preference_type, "status": status},
-                          limit=limit, conn=conn)
+                          query=query, limit=limit, conn=conn)
 
     def list_open_loops(self, *, open_loop_type: str | None = None, status: str | None = None,
-                        limit: int = _DEFAULT_LIMIT,
+                        query: str | None = None, limit: int = _DEFAULT_LIMIT,
                         conn: sqlite3.Connection | None = None) -> list[dict[str, Any]]:
         return self._list(KIND_OPEN_LOOP, {"open_loop_type": open_loop_type, "status": status},
-                         limit=limit, conn=conn)
+                          query=query, limit=limit, conn=conn)
 
-    def _list(self, kind: str, filters: dict[str, str | None], *, limit: int,
+    def _list(self, kind: str, filters: dict[str, str | None], *, query: str | None, limit: int,
               conn: sqlite3.Connection | None) -> list[dict[str, Any]]:
         table, pk, columns = _SPEC[kind]
         clauses: list[str] = []
@@ -235,6 +262,13 @@ class DecisionMemoryRepository:
             if val:
                 clauses.append(f"{col}=?")
                 params.append(val)
+        token = sanitize_list_query(query)
+        if token:
+            text_cols = _KIND_QUERY_COLUMNS[kind]
+            like_parts = [f"LOWER({col}) LIKE ?" for col in text_cols]
+            clauses.append(f"({' OR '.join(like_parts)})")
+            pattern = f"%{token.lower()}%"
+            params.extend([pattern] * len(text_cols))
         where = f"WHERE {' AND '.join(clauses)} " if clauses else ""
         params.append(_clamp_limit(limit))
         with borrow_connection(conn, self.db_path) as c:
