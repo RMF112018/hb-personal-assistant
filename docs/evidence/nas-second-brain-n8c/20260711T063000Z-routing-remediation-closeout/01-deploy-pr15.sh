@@ -5,8 +5,8 @@ set -eu
 
 DOCKER=/usr/local/bin/docker
 IMAGE=hb-personal-assistant:nas
-DEPLOY_SHA=931f69f04c697c4082f65fbf90ab2b6ae6c81af9
-TARBALL=/tmp/hb-nas-931f69f0.tar.gz
+DEPLOY_SHA=542307fc6fc87b7a5713b8917e861a576a03c96c
+TARBALL=/tmp/hb-nas-542307fc.tar.gz
 UIDGID=1028:100
 
 BASE=/volume2/personal-assistant
@@ -140,9 +140,12 @@ sh "$BASE/deploy/nas/mcp/check-mcp-compose.sh" || die "compose guard failed"
 sleep 60
 "$RUNNER" health || die "health check failed"
 
-say "6. Runtime identity"
+say "6. Runtime identity (RT-01 Tier B)"
 "$DOCKER" exec "$CONTAINER" python3 -c \
-  "from hb_assistant.nas_mcp.broker import runtime_commit; rc=runtime_commit(); assert rc == '$DEPLOY_SHA', f'mismatch: {rc}'; print('runtime commit ok:', rc)"
+  "from hb_assistant.nas_mcp.broker import runtime_commit, runtime_identity; from hb_assistant.obsidian_mcp.tool_metadata_types import RuntimeIdentityKind; ri=runtime_identity(); rc=runtime_commit(); assert rc == '$DEPLOY_SHA', f'commit mismatch: {rc}'; assert ri.runtime_identity_kind == RuntimeIdentityKind.EXACT_UNVERIFIED_STAMP, ri.runtime_identity_kind; assert ri.runtime_identity_verified is False, ri.runtime_identity_verified; assert ri.runtime_image_digest and ri.runtime_image_digest.startswith('sha256:'), ri.runtime_image_digest; print('runtime commit ok:', rc); print('identity kind:', ri.runtime_identity_kind.value); print('image digest:', ri.runtime_image_digest)"
+"$DOCKER" exec "$CONTAINER" test ! -e /app/.claude
+"$DOCKER" exec "$CONTAINER" test ! -e /app/local_audit_outputs
+echo "forbidden-path scan ok"
 
 say "7. Freshness parity smoke (expected stale until manifest refresh)"
 "$DOCKER" exec "$CONTAINER" python3 -c \

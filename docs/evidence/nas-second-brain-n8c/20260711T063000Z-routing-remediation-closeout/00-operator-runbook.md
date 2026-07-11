@@ -1,20 +1,21 @@
 # PR-15 operator runbook — deploy + manifest + live corpus
 
-**Land commit:** `931f69f04c697c4082f65fbf90ab2b6ae6c81af9` (PR-16..PR-20)  
-**Previous NAS runtime:** `01b9b00bb2e79a6523397073152b56fe14c01527` (PR-15)  
+**Land commit:** `542307fc6fc87b7a5713b8917e861a576a03c96c` (RT-01 Tier B clean rebuild)  
+**Previous NAS runtime:** `931f69f04c697c4082f65fbf90ab2b6ae6c81af9` (PR-16..20, Tier A)  
 **Schema:** 119 (code-only deploy — no migration)
 
-Artifacts are **already staged on the NAS** under `/tmp/` (2026-07-11, PR-16..20 wave).
+Artifacts staged under `/tmp/` (2026-07-11, RT-01 wave). See `10-rt01-clean-rebuild.md`.
 
 | Artifact | Path | Size |
 |----------|------|------|
-| Image tarball | `/tmp/hb-nas-931f69f0.tar.gz` | 193164199 bytes |
+| Image tarball | `/tmp/hb-nas-542307fc.tar.gz` | 105791674 bytes |
+| Build manifest | `/tmp/hb-nas-542307fc.build-manifest.json` | |
 | Deploy | `/tmp/01-deploy-pr15.sh` | |
 | Manifest refresh | `/tmp/02-manifest-refresh-pr15.sh` | |
 | Verify-only | `/tmp/03-manifest-verify-pr15.sh` | |
 | Live 50-prompt corpus | `/tmp/04-live-50-prompt-corpus.sh` | |
 
-Local tarball SHA-256: `566be8bcea3d3ffecbc0b15f729cd054d3990cc44b8dc2f58d34cf298d675ced`
+Local tarball SHA-256: `f39e44dee8d75d8bfd3e5a93874f2e6ff501345e3a7b77068a26eb56ddbed014`
 
 ## 1. Deploy (sudo on NAS)
 
@@ -22,7 +23,7 @@ Local tarball SHA-256: `566be8bcea3d3ffecbc0b15f729cd054d3990cc44b8dc2f58d34cf29
 ssh -t hb-nas 'sudo sh /tmp/01-deploy-pr15.sh' | tee ~/deploy-pr15.txt
 ```
 
-Pass criteria: step **6** runtime commit `931f69f0…`; step **7** may print `stale True` (expected until manifest refresh — proceed).
+Pass criteria: step **6** runtime commit `542307fc…`, identity `exact_unverified_stamp`, digest populated, forbidden-path scan pass; step **7** may print `stale True` (expected until manifest refresh — proceed).
 
 ## 2. Manifest refresh (stage → promote)
 

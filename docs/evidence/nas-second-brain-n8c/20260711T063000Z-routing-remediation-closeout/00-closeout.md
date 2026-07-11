@@ -66,3 +66,15 @@ schema_live_ro=119 workspace_rw=121
 ```
 
 Detail: `09-pr16-20-operator-deploy-results.md`
+
+## G. RT-01 Tier B clean rebuild (`542307fc`)
+
+```text
+deploy_sha=542307fc6fc87b7a5713b8917e861a576a03c96c
+attestation_tier=CODE_VERIFIED_CLEAN_CONTEXT (Tier B)
+runtime_identity_kind=exact_unverified_stamp (expected)
+image_digest=sha256:2af0fd38265a8f592afcb9f08d0b4cf0083a3add1d1f051544bd95104ff0009b
+tarball_bytes=105791674 (vs 193164199 Tier A dirty build)
+```
+
+Detail: `10-rt01-clean-rebuild.md` — operator deploy status updated after live replay.

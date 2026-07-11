@@ -5,7 +5,7 @@ set -eu
 
 DOCKER=/usr/local/bin/docker
 CONTAINER=hb-personal-assistant-mcp
-DEPLOY_SHA=931f69f04c697c4082f65fbf90ab2b6ae6c81af9
+DEPLOY_SHA=542307fc6fc87b7a5713b8917e861a576a03c96c
 CORPUS=/app/tests/fixtures/prompt_routing_audit_corpus_v1.json
 REPORT=/tmp/live-corpus-v1-report.json
 REPORT_REQUIRED=/tmp/live-corpus-v1-required-report.json
@@ -16,12 +16,14 @@ die() { printf '\nFATAL: %s\n' "$1" >&2; exit 1; }
 [ "$(id -u)" = "0" ] || die "must run as root (sudo)"
 [ -x "$DOCKER" ] || die "docker not found"
 
-say "Runtime identity"
+say "Runtime identity (RT-01 Tier B)"
 "$DOCKER" exec "$CONTAINER" python3 -c \
-  'from hb_assistant.nas_mcp.broker import runtime_commit, runtime_identity; print("runtime_commit=", runtime_commit()); print("runtime_identity=", runtime_identity())'
+  'from hb_assistant.nas_mcp.broker import runtime_commit, runtime_identity; from hb_assistant.obsidian_mcp.tool_metadata_types import RuntimeIdentityKind; ri=runtime_identity(); print("runtime_commit=", runtime_commit()); print("runtime_identity=", ri); assert ri.runtime_identity_kind == RuntimeIdentityKind.EXACT_UNVERIFIED_STAMP; assert ri.runtime_identity_verified is False; assert ri.runtime_image_digest and ri.runtime_image_digest.startswith("sha256:")'
 RC=$("$DOCKER" exec "$CONTAINER" python3 -c \
   "from hb_assistant.nas_mcp.broker import runtime_commit; rc=runtime_commit(); print(rc); assert rc == '$DEPLOY_SHA', rc" 2>&1) || die "runtime commit mismatch: $RC"
 echo "runtime commit ok: $RC"
+"$DOCKER" exec "$CONTAINER" test ! -e /app/.claude
+echo "forbidden-path scan ok"
 
 say "Required corpus rows (47) — must pass"
 set +e
