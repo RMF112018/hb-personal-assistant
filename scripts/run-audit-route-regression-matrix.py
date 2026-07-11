@@ -104,9 +104,18 @@ def main() -> int:
         action="store_true",
         help="Route through NasMcpBroker(NasMcpConfig.from_env()) — use inside live MCP container",
     )
+    parser.add_argument(
+        "--enforcement",
+        default="",
+        help="Filter versioned corpus cases by enforcement (e.g. required, accepted_partial)",
+    )
     args = parser.parse_args()
 
     cases = load_matrix_cases(Path(args.matrix))
+    if args.enforcement:
+        cases = [c for c in cases if c.get("enforcement") == args.enforcement]
+        if not cases:
+            raise SystemExit(f"no cases matched enforcement={args.enforcement!r}")
     if args.from_env:
         from hb_assistant.nas_mcp.broker import NasMcpBroker
         from hb_assistant.nas_mcp.config import NasMcpConfig
