@@ -24,7 +24,7 @@ def _w(**kw: Any) -> dict[str, Any]:
         "fallback_rules": [], "failure_recovery": "",
         # Client vault operating-manifest projection (default off — routing-only unless published).
         "publish_to_client_manifest": False,
-        "client_capability_category": "",  # session_capture|source_search|source_map|generation|decision|manifest|vault_read|preference|open_loop|staging|promotion|surface_audit
+        "client_capability_category": "",  # session_capture|source_search|source_map|generation|decision|manifest|vault_read|preference|open_loop|staging|promotion|surface_audit|mixed_retrieval
     }
     base.update(kw)
     return base
@@ -125,6 +125,22 @@ WORKFLOWS: list[dict[str, Any]] = [
        expected_outputs=["vault/card candidates (bounded)"],
        source_of_truth="Obsidian vault notes and generated cards",
        must_not_use=["treating vault notes as NAS source files"]),
+    _w(workflow_id="mixed_private_retrieval", family_id="assistant_navigation",
+       publish_to_client_manifest=True, client_capability_category="mixed_retrieval",
+       trigger_phrases=["files and notes", "files and vault", "files and obsidian",
+                        "find files and notes", "search files and notes",
+                        "source files and notes", "nas files and notes",
+                        "indexed files and notes", "notes and files",
+                        "work files and notes", "project files and notes"],
+       intent_classes=["retrieval", "discovery"],
+       when_to_use="Explicit dual-intent: search indexed NAS source files AND vault notes together.",
+       when_not_to_use="Single-surface search (NAS-only or vault-only); canonical memory lookups.",
+       tool_sequence=["assistant_source_file_search", "assistant_search_sources"],
+       required_inputs=["query"], default_retrieval_layer="metadata_discovery",
+       expected_outputs=["bounded NAS file candidates + bounded vault note candidates"],
+       source_of_truth="indexed NAS source files + Obsidian vault notes",
+       must_not_use=["silently choosing only vault or only NAS when both were requested",
+                     "treating mixed retrieval as ambiguous notes without clarification"]),
     _w(workflow_id="source_query_plan", family_id="assistant_source_connector",
        trigger_phrases=["plan source search", "how should I search the nas", "source query plan",
                         "where should i look for"],

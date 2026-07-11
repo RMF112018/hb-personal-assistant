@@ -47,5 +47,6 @@
   {"id": "nas_not_vault_project_file", "prompt": "Find the project file on the nas", "expected": {"workflow": "source_file_search", "workflow_not": "vault_note_search"}},
   {"id": "status_check", "prompt": "Is the server up?", "expected": {"workflow": "status_check", "tools_include": ["hb_mcp_status"]}},
   {"id": "document_session_capture", "prompt": "Document this session as decisions and open loops", "expected": {"workflow": "document_session", "operation_requested": "staged_write", "tools_include": ["pa_session_capture_stage"]}},
-  {"id": "context_preflight_unknown", "prompt": "xyzzy plugh frobnicate", "expected": {"workflow": "context_preflight", "tools_empty": true, "confidence_in": ["low"]}}
+  {"id": "context_preflight_unknown", "prompt": "xyzzy plugh frobnicate", "expected": {"workflow": "context_preflight", "tools_empty": true, "confidence_in": ["low"]}},
+  {"id": "mixed_files_and_notes", "prompt": "Find files and notes related to 23-435-01.", "expected": {"workflow": "mixed_private_retrieval", "tools_include": ["assistant_source_file_search", "assistant_search_sources"], "next_step_tool": "assistant_source_file_search", "currently_executable": true, "workflow_not": "context_preflight"}}
 ]

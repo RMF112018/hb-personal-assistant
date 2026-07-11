@@ -116,6 +116,24 @@ def test_decision_discovery_first_without_id() -> None:
     assert any("bounded query wired" in c for c in plan.get("constraints") or [])
 
 
+def test_mixed_files_and_notes_routes_to_dual_surface_workflow() -> None:
+    """F-014 audit row 36: explicit files+notes must not fall through to ambiguous notes clarify."""
+    plan = route_prompt("Find files and notes related to `23-435-01`.")
+    assert plan["recommended_workflow"] == "mixed_private_retrieval"
+    assert plan["recommended_tools"] == [
+        "assistant_source_file_search",
+        "assistant_search_sources",
+    ]
+    assert plan["next_step"]["tool"] == "assistant_source_file_search"
+    assert plan["next_step"]["arguments"].get("query")
+    assert plan["route_confidence"] in ("high", "medium")
+    vault_step = next(
+        s for s in plan["additional_steps"] if s["tool"] == "assistant_search_sources"
+    )
+    assert vault_step["arguments"].get("query") == plan["next_step"]["arguments"]["query"]
+    assert plan.get("clarifying_question") is None
+
+
 def test_preference_discovery_wires_topical_query() -> None:
     plan = route_prompt("What preferences do I have for budgeting?")
     assert plan["recommended_workflow"] == "canonical_preference_retrieval"

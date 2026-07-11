@@ -47,9 +47,10 @@ def test_workflow_recipes_are_projection_of_published_workflows() -> None:
         "staging",
         "promotion",
         "surface_audit",
+        "mixed_retrieval",
     ):
         assert needed in cats, needed
-    assert len(names) >= 14
+    assert len(names) >= 15
 
 
 def test_every_workflow_tool_has_family() -> None:

@@ -283,6 +283,10 @@ _RECEIPT_INSPECTION_VERBS = re.compile(
     r"\b(?:inspect|explain|retrieve|search|review|what\s+(?:is|does)|show|open|display|read|was\s+it)\b",
     re.IGNORECASE,
 )
+_MIXED_FILES_NOTES_INTENT = re.compile(
+    r"\bfiles?\s+and\s+notes?\b|\bnotes?\s+and\s+files?\b",
+    re.IGNORECASE,
+)
 _OBJECT_TYPE_WORKFLOW_BOOSTS: dict[str, tuple[re.Pattern[str], int]] = {
     "source_file_search": (_SOURCE_FILE_OBJECT, 3),
     "vault_note_search": (_VAULT_OBJECT, 3),
@@ -303,10 +307,24 @@ def _normalize_retrieval_verbs(prompt_l: str) -> str:
     return text
 
 
+def _is_mixed_private_retrieval_intent(prompt_l: str) -> bool:
+    """True when the prompt explicitly requests both NAS/source files and vault notes (F-014)."""
+    normalized = _normalize_retrieval_verbs(prompt_l)
+    if _MIXED_FILES_NOTES_INTENT.search(normalized):
+        return True
+    if not re.search(r"\bnotes?\b", normalized):
+        return False
+    if not re.search(r"\bfiles?\b", normalized):
+        return False
+    return bool(re.search(r"\b(?:find|search|look for|related to)\b", normalized, re.IGNORECASE))
+
+
 def _object_type_workflow_boost(prompt_l: str, workflow_id: str) -> int:
     """Boost workflows whose object-type cues match the prompt (F-007 / F-015)."""
     normalized = _normalize_retrieval_verbs(prompt_l)
     boost = 0
+    if workflow_id == "mixed_private_retrieval" and _is_mixed_private_retrieval_intent(normalized):
+        boost += 8
     spec = _OBJECT_TYPE_WORKFLOW_BOOSTS.get(workflow_id)
     if spec is not None:
         pattern, points = spec
@@ -1475,6 +1493,10 @@ def _enrich_tool_steps(
         args: dict[str, Any] = {}
         if t == next_tool and next_arguments:
             args = dict(next_arguments)
+        shared_query = (next_arguments or {}).get("query") or topic_query
+        if shared_query and "query" in required_args_for_tool(t) and "query" not in args:
+            args = dict(args)
+            args["query"] = shared_query
         if topic_query and t in _TOPICAL_LIST_TOOLS and "query" not in args:
             args = dict(args)
             args["query"] = topic_query
@@ -1968,6 +1990,8 @@ def _negated_assertion_route(
 
 def _is_ambiguous_notes(prompt_l: str) -> bool:
     """Bare 'notes' without vault/source/project cue → one clarification."""
+    if _is_mixed_private_retrieval_intent(prompt_l):
+        return False
     if "notes" not in prompt_l:
         return False
     if any(k in prompt_l for k in (
