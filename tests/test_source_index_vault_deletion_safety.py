@@ -428,3 +428,32 @@ def test_vault_reconcile_cli_recovers_empty_vault_and_writes_receipt(
     # an audit receipt was written locally
     receipts = list((Path(db).parent / "vault_reconcile_receipts").glob("*.json"))
     assert len(receipts) == 1
+
+
+def test_vault_reconcile_cli_lease_is_os_backed_and_exclusive(tmp_path: Path, monkeypatch) -> None:
+    # The recovery lease must be an OS-backed file lock shared across independent open descriptors
+    # (fcntl.flock), not an in-memory mutex: a lock held on the same path via a DIFFERENT fd blocks the
+    # command's non-blocking acquisition and it must fail closed.
+    import fcntl
+    import os
+
+    from typer.testing import CliRunner
+
+    import hb_assistant.cli.source_watch as cli_sw
+    from hb_assistant.cli.source_watch import app
+
+    db, vault, cfg, repo = _setup(tmp_path)
+    monkeypatch.setattr(cli_sw, "_obsidian_config", lambda: cfg)
+    op_dir = Path(db).parent
+    op_dir.mkdir(parents=True, exist_ok=True)
+    held_fd = os.open(str(op_dir / "vault_reconcile.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+    fcntl.flock(held_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    try:
+        res = CliRunner().invoke(
+            app, ["vault-reconcile", "--allow-confirmed-empty", "--confirm", "--db", db]
+        )
+        assert res.exit_code == 2
+        assert "holds the local lease" in res.stdout
+    finally:
+        fcntl.flock(held_fd, fcntl.LOCK_UN)
+        os.close(held_fd)

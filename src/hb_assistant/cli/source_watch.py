@@ -397,7 +397,7 @@ def vault_reconcile_cmd(
 
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            os.close(lock_fd)
+            # Lease held by another process (OS-backed flock). Fail closed; the finally clause closes the fd.
             _emit(
                 {"ok": False, "error": "another vault-reconcile operation holds the local lease"},
                 json_out=json_out, exit_code=2)
