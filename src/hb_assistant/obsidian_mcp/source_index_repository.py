@@ -790,6 +790,54 @@ class SourceIndexRepository:
             )
             self._mark_generated_notes_stale(c, source_id)
 
+    def mark_deleted_batch(
+        self,
+        source_kind: str,
+        rel_paths: list[str],
+        *,
+        source_root_key: str | None = None,
+        conn: sqlite3.Connection | None = None,
+    ) -> int:
+        """Mark a whole CONFIRMED-GONE batch deleted in ONE transaction (A1 vault deletion safety).
+
+        For each ``rel_path`` the source row is deactivated (``deleted=1, active=0``), its FTS row is
+        removed, and any generated card is staled — atomically ACROSS the batch so a crash can never
+        leave a certified reconciliation half-applied. Never touches a source FILE (index state only).
+        Returns the number of rows actually deactivated (missing rel_paths are skipped)."""
+        if not rel_paths:
+            return 0
+        fts_table = (
+            "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
+        )
+        base_sql = (
+            "SELECT s.source_id, m.fts_rowid FROM source_intelligence_sources s "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
+            "WHERE s.source_kind=? AND s.rel_path=?"
+        )
+        deleted = 0
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            fts_ok = self._fts_available(c)
+            for rel_path in rel_paths:
+                sql = base_sql
+                params: list[Any] = [source_kind, rel_path]
+                if source_root_key is not None:
+                    sql += " AND s.source_root_key=?"
+                    params.append(source_root_key)
+                row = c.execute(sql, tuple(params)).fetchone()
+                if row is None:
+                    continue
+                source_id, fts_rowid = row[0], row[1]
+                if fts_rowid is not None and fts_ok:
+                    c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
+                c.execute(
+                    "UPDATE source_intelligence_sources "
+                    "SET deleted=1, active=0, updated_at=? WHERE source_id=?",
+                    (_now(), source_id),
+                )
+                self._mark_generated_notes_stale(c, source_id)
+                deleted += 1
+        return deleted
+
     def _mark_generated_notes_stale(self, c: sqlite3.Connection, source_id: str) -> None:
         c.execute(
             "UPDATE source_intelligence_generated_notes SET generation_status='stale', updated_at=? "

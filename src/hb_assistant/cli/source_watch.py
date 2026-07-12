@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 import typer
@@ -347,6 +348,91 @@ def reconcile_cmd(
     ]
     _emit({"ok": all(r.get("ok") for r in results), "scan_type": scan_type, "results": results},
           json_out=json_out)
+
+
+@app.command("vault-reconcile")
+def vault_reconcile_cmd(
+    allow_confirmed_empty: bool = typer.Option(
+        False, "--allow-confirmed-empty",
+        help="One-shot override for the empty-root blast-radius guard (still requires a certified scan)."),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Explicit operator confirmation (required to mutate index state)."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator-only, LOCAL recovery for a vault that legitimately emptied.
+
+    A normal vault scan fail-closes its deletion reconciliation whenever a certified-complete scan
+    observes zero eligible notes while the index still holds active rows (the empty-root blast-radius
+    guard) — so an established vault that scans empty stays protected indefinitely. This command is the
+    only escape: it acquires a LOCAL operation lease, performs its OWN fresh certified-complete vault
+    scan (never trusting a caller-supplied scan result), and only then reconciles confirmed-gone rows,
+    writing a redacted audit receipt. It mutates index state only (never a source file) and is not
+    exposed to any remote MCP client.
+    """
+    import os
+    import uuid
+
+    if not allow_confirmed_empty or not confirm:
+        _emit(
+            {"ok": False, "error": "vault-reconcile requires BOTH --allow-confirmed-empty and --confirm "
+                                   "(operator-only, mutates index state)."},
+            json_out=json_out, exit_code=2)
+
+    from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+    from hb_assistant.obsidian_mcp.source_indexer import scan_vault_notes
+
+    dbp = _db_path(db)
+    ocfg = _obsidian_config()
+    op_dir = Path(dbp).parent
+    op_dir.mkdir(parents=True, exist_ok=True)
+
+    # Local operation ownership: a non-blocking advisory lock so two recovery runs cannot race. No durable
+    # DB/generation/cursor state is introduced for the vault (A1 constraint) — the lease is process-local.
+    lock_path = op_dir / "vault_reconcile.lock"
+    lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            import fcntl
+
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            os.close(lock_fd)
+            _emit(
+                {"ok": False, "error": "another vault-reconcile operation holds the local lease"},
+                json_out=json_out, exit_code=2)
+
+        repo = SourceIndexRepository(dbp)
+        # Perform our OWN fresh, certified-complete scan; the override only lifts the empty-root guard.
+        report = scan_vault_notes(repo, ocfg, allow_confirmed_empty_recovery=True)
+        reconciled = report.completeness == "complete"
+        receipt = {
+            "receipt_id": uuid.uuid4().hex,
+            "operation": "vault_reconcile_confirmed_empty",
+            "completeness": report.completeness,
+            "deletion_reconciliation_allowed": report.deletion_reconciliation_allowed,
+            "eligible_files_seen": report.eligible_files_seen,
+            "active_rows_before_scan": report.active_rows_before_scan,
+            "deleted": report.deleted,
+            "walk_error_count": report.walk_error_count,
+            "per_file_error_count": report.per_file_error_count,
+            "truncated": report.truncated,
+            "interrupted": report.interrupted,
+            "error_codes": sorted(set(report.error_codes)),
+        }
+        receipts_dir = op_dir / "vault_reconcile_receipts"
+        receipts_dir.mkdir(parents=True, exist_ok=True)
+        receipt_path = receipts_dir / f"vault-reconcile-{receipt['receipt_id']}.json"
+        receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    finally:
+        os.close(lock_fd)
+
+    payload = {"ok": reconciled, "reconciled": reconciled,
+               "receipt_path": str(receipt_path), "receipt": receipt}
+    if not reconciled:
+        payload["note"] = ("no deletion performed — the fresh scan was not certified-complete "
+                           f"(completeness={report.completeness})")
+    _emit(payload, json_out=json_out)
 
 
 @app.command("prune-generations")

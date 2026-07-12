@@ -1,0 +1,28 @@
+..........................................................F............. [ 23%]
+..........................................................F.F........... [ 46%]
+........................................................................ [ 69%]
+........................................................................ [ 92%]
+........................                                                 [100%]
+=================================== FAILURES ===================================
+__________________ test_v122_fresh_and_incremental_migration ___________________
+tests/test_source_index_generation_hardening.py:977: in test_v122_fresh_and_incremental_migration
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 123
+E   assert 124 == 123
+_________________ test_v119_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_first_bootstrap.py:503: in test_v119_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_________________ test_v120_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_generation.py:56: in test_v120_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+=============================== warnings summary ===============================
+../../../../../../..<REPO>/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  <REPO>/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration
+FAILED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+FAILED tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
