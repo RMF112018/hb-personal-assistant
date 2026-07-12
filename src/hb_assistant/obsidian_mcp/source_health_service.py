@@ -31,14 +31,15 @@ def _watchdog_available() -> bool:
 
 
 def _run_state(config: ObsidianMcpConfig, ready: bool, backend: bool) -> str:
-    """Path-safe per-root watcher run-state projection (mirrors source_bootstrap.resolve_run_state)."""
-    if not bool(getattr(config, "external_source_watch_enabled", False)):
-        return "disabled_by_config"
-    if not ready:
-        return "not_bootstrapped"
-    if not backend:
-        return "backend_unavailable"
-    return "running"
+    """Path-safe per-root watcher run-state projection — delegates to the SHARED authority
+    (``source_bootstrap.project_run_state``) so health and the CLI can never disagree (A3)."""
+    from .source_bootstrap import project_run_state
+
+    return project_run_state(
+        enabled=bool(getattr(config, "external_source_watch_enabled", False)),
+        ready=ready,
+        backend=backend,
+    )
 
 
 def _freshness_state(
@@ -81,6 +82,7 @@ def source_index_health(
     repo: SourceIndexRepository,
     config: ObsidianMcpConfig,
     *,
+    app_config: Any = None,
     structure_repo: SourceStructureRepository | None = None,
     conn: Any = None,
     limit_errors: int = 5,
@@ -91,12 +93,17 @@ def source_index_health(
     reads MUST reuse the caller-supplied read-only ``conn`` (or open readonly). Opening a
     write connection against the snapshot fails with StoreReadinessError and must not
     surface as a raw gateway exception for an advertised health tool.
+
+    ``app_config`` supplies the canonical A3 structure-root mapping (``source_structure.scan_roots`` +
+    ``structure_root_map``). When omitted it is loaded internally (fail-open to empty on error), and the
+    exact-match namespace falls back to the ingested structure roots so identity mappings still resolve.
     """
     t0 = time.perf_counter()
     try:
         return _source_index_health_body(
             repo,
             config,
+            app_config=app_config,
             structure_repo=structure_repo,
             conn=conn,
             limit_errors=limit_errors,
@@ -121,6 +128,7 @@ def _source_index_health_body(
     repo: SourceIndexRepository,
     config: ObsidianMcpConfig,
     *,
+    app_config: Any = None,
     structure_repo: SourceStructureRepository | None = None,
     conn: Any = None,
     limit_errors: int = 5,
@@ -133,6 +141,18 @@ def _source_index_health_body(
     srepo = structure_repo or SourceStructureRepository(str(repo.db_path))
     structure_status = srepo.status(conn=conn)
     structure_roots = {r["root_key"]: r for r in srepo.list_roots(limit=100, conn=conn)}
+    # A3 canonical structure-root mapping inputs. Load app config if not injected (fail-open to empty).
+    if app_config is None:
+        with contextlib.suppress(Exception):
+            from hb_assistant.config.loader import load_config as _load_app_config
+
+            app_config = _load_app_config()
+    _app_ss = getattr(app_config, "source_structure", None)
+    structure_scan_roots = dict(getattr(_app_ss, "scan_roots", {}) or {})
+    structure_root_map = dict(getattr(_app_ss, "structure_root_map", {}) or {})
+    # Exact-match namespace: prefer the declared config scan_roots; fall back to ingested structure roots
+    # so identity mappings still resolve when app config was not threaded in.
+    structure_namespace = list(structure_scan_roots.keys()) or list(structure_roots.keys())
 
     # Bootstrap readiness + watcher/queue/reconciliation state (V117). All path-safe: bootstrap_state
     # and reconciliation rows carry only root_key; queue_health carries counts; the watcher-owner blob
@@ -180,15 +200,19 @@ def _source_index_health_body(
     skipped_by_code = dict(file_status.get("skipped_by_code") or {})
 
     per_root: list[dict[str, Any]] = []
+    from .source_root_mapping import resolve_structure_mapping
+
     for root in roots_env.get("roots") or []:
         key = root["source_root_key"]
-        sroot = structure_roots.get(key) or structure_roots.get(key.replace("syn-", ""))
-        # Map common keys
-        if sroot is None:
-            for sk, sr in structure_roots.items():
-                if sk in key or key in sk:
-                    sroot = sr
-                    break
+        # A3: the ONE canonical exact/explicit resolver (no fuzzy substring / `syn-` strip / first-row).
+        struct_mapping = resolve_structure_mapping(
+            key, structure_namespace, config_map=structure_root_map
+        )
+        sroot = (
+            structure_roots.get(struct_mapping.structure_key)
+            if struct_mapping.structure_key is not None
+            else None
+        )
         folder_count = int((sroot or {}).get("folder_count") or 0)
         struct_files = int((sroot or {}).get("file_count") or 0)
         file_count = int(root.get("file_count") or 0)
@@ -388,6 +412,10 @@ def _source_index_health_body(
                 "scan_status": (structure_status.get("last_run") or {}).get("status"),
                 "indexing_watermark": last_indexed,
                 "total_folders_indexed": folder_count,
+                "folder_count": folder_count,
+                # A3 canonical structure-root mapping provenance for this file root (never fuzzy).
+                "structure_mapping_reason": struct_mapping.reason,
+                "structure_key": struct_mapping.structure_key,
                 "total_files_indexed": file_count or struct_files,
                 # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
                 "content_indexed_file_count": counts["content_searchable"],

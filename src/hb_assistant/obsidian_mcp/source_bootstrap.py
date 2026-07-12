@@ -36,6 +36,22 @@ RUN_STATE_DISABLED = "disabled_by_config"
 RUN_STATE_NOT_BOOTSTRAPPED = "not_bootstrapped"
 RUN_STATE_BACKEND_UNAVAILABLE = "backend_unavailable"
 RUN_STATE_RUNNING = "running"
+# A3: an ephemeral CLI structure-root override that diverges from canonical config must NOT certify durable
+# watcher readiness (it may validate/dry-run only). Fail closed until it equals or is persisted into config.
+RUN_STATE_MAPPING_OVERRIDE_NOT_PERSISTED = "mapping_override_not_persisted"
+
+
+def project_run_state(*, enabled: bool, ready: bool, backend: bool) -> str:
+    """Shared run-state projection (the single tail authority used by both ``resolve_run_state`` and the
+    health projection) so the CLI/health can never disagree on the DISABLED/NOT_BOOTSTRAPPED/
+    BACKEND_UNAVAILABLE/RUNNING label for the same (enabled, ready, backend) inputs."""
+    if not enabled:
+        return RUN_STATE_DISABLED
+    if not ready:
+        return RUN_STATE_NOT_BOOTSTRAPPED
+    if not backend:
+        return RUN_STATE_BACKEND_UNAVAILABLE
+    return RUN_STATE_RUNNING
 
 
 def _now() -> str:
@@ -48,15 +64,15 @@ def resolve_structure_key(
 ) -> str | None:
     """Resolve a file-index root_key to its structure ``scan_roots`` key, deterministically.
 
-    Order: explicit operator map -> exact key match -> None (structure not configured for this root).
-    No fuzzy/substring matching — an unmapped root is honestly reported, not silently paired.
+    Thin wrapper over the canonical A3 authority (``source_root_mapping.resolve_structure_mapping``):
+    explicit operator map -> exact NORMALIZED key match -> None. No fuzzy/substring matching. The legacy
+    ``explicit_map`` argument is the one-operation operative map (highest precedence).
     """
-    if explicit_map and file_key in explicit_map:
-        mapped = explicit_map[file_key]
-        return mapped if mapped in scan_roots else None
-    if file_key in scan_roots:
-        return file_key
-    return None
+    from .source_root_mapping import resolve_structure_mapping
+
+    return resolve_structure_mapping(
+        file_key, scan_roots.keys(), cli_override=explicit_map
+    ).structure_key
 
 
 def map_roots(
@@ -620,10 +636,26 @@ def resolve_run_state(
     )
 
     from .source_indexer import _root_fingerprint, derive_watcher_ready
+    from .source_root_mapping import resolve_structure_mapping
     from .source_structure_repository import SourceStructureRepository
 
     if not bool(getattr(obsidian_config, "external_source_watch_enabled", False)):
         return RUN_STATE_DISABLED
+
+    # A3 durability guard: durable readiness resolves the CANONICAL configured mapping only. A one-operation
+    # CLI override may validate/dry-run but must NOT certify readiness unless it agrees with canonical
+    # config — otherwise fail closed (mapping_override_not_persisted).
+    _app_ss = getattr(app_config, "source_structure", None)
+    _scan_roots = dict(getattr(_app_ss, "scan_roots", {}) or {})
+    _config_map = dict(getattr(_app_ss, "structure_root_map", {}) or {})
+    _canonical = resolve_structure_mapping(file_key, _scan_roots.keys(), config_map=_config_map)
+    if explicit_map:
+        _overridden = resolve_structure_mapping(
+            file_key, _scan_roots.keys(), config_map=_config_map, cli_override=explicit_map
+        )
+        if _overridden.structure_key != _canonical.structure_key:
+            return RUN_STATE_MAPPING_OVERRIDE_NOT_PERSISTED
+
     state = SourceIndexBootstrapRepository(db_path).get_bootstrap_state(file_key) or {}
     legacy_ready = bool(state.get("watcher_ready"))
 
@@ -646,16 +678,12 @@ def resolve_run_state(
         except Exception:
             current_fp = None
 
-    # Structure folder_count via the CANONICAL exact/explicit mapping (never fuzzy). Any read failure →
-    # folder_count 0 (fail closed).
+    # Structure folder_count via the CANONICAL exact/explicit mapping computed above (never fuzzy). Any
+    # read failure → folder_count 0 (fail closed).
     folder_count = 0
     try:
-        scan_roots = dict(
-            getattr(getattr(app_config, "source_structure", None), "scan_roots", {}) or {}
-        )
-        skey = resolve_structure_key(file_key, scan_roots, explicit_map)
-        if skey is not None:
-            row = _structure_root_row(SourceStructureRepository(db_path), skey)
+        if _canonical.structure_key is not None:
+            row = _structure_root_row(SourceStructureRepository(db_path), _canonical.structure_key)
             folder_count = int((row or {}).get("folder_count") or 0)
     except Exception:
         folder_count = 0
@@ -666,8 +694,4 @@ def resolve_run_state(
         folder_count=folder_count,
         legacy_ready=legacy_ready,
     )
-    if not ready:
-        return RUN_STATE_NOT_BOOTSTRAPPED
-    if not backend_available:
-        return RUN_STATE_BACKEND_UNAVAILABLE
-    return RUN_STATE_RUNNING
+    return project_run_state(enabled=True, ready=ready, backend=backend_available)

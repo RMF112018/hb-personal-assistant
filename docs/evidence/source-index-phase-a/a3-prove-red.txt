@@ -1,0 +1,112 @@
+# A3 PROVE-RED — new A3 tests run against the A1 PARENT commit (before any A3 implementation),
+# demonstrating the tests genuinely fail for the intended reasons prior to the fix.
+#
+# Command (from worktree root, with A3 src NOT yet present):
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider -q tests/test_source_root_mapping.py
+#
+# Absolute paths redacted: <REPO> = worktree root, <VENV> = interpreter venv.
+# Expected red causes (all correct pre-implementation failures, NOT environment errors):
+#   - ImportError: module `source_root_mapping` does not exist yet (the new canonical resolver).
+#   - TypeError: `source_index_health()` has no `app_config` kwarg yet (health not yet wired to the resolver).
+#   - ValueError: `SourceStructureConfig` has no `structure_root_map` field yet (config authority not yet added).
+# After A3 implementation these all pass GREEN — see a3-validation.txt.
+# ----------------------------------------------------------------------------------------------------------
+FFFFFFFFFFFF.FFFFF                                                       [100%]
+=================================== FAILURES ===================================
+___________________ test_exact_normalized_key_match_succeeds ___________________
+tests/test_source_root_mapping.py:61: in test_exact_normalized_key_match_succeeds
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+____________ test_configured_explicit_map_succeeds_with_provenance _____________
+tests/test_source_root_mapping.py:69: in test_configured_explicit_map_succeeds_with_provenance
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+________________ test_invalid_explicit_map_target_fails_closed _________________
+tests/test_source_root_mapping.py:77: in test_invalid_explicit_map_target_fails_closed
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+______________________ test_work_does_not_match_syn_work _______________________
+tests/test_source_root_mapping.py:85: in test_work_does_not_match_syn_work
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_____________________ test_work_does_not_match_work_backup _____________________
+tests/test_source_root_mapping.py:92: in test_work_does_not_match_work_backup
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+______________________ test_home_does_not_match_home_work ______________________
+tests/test_source_root_mapping.py:98: in test_home_does_not_match_home_work
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+___________ test_full_corpus_no_cross_collision_without_explicit_map ___________
+tests/test_source_root_mapping.py:104: in test_full_corpus_no_cross_collision_without_explicit_map
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_________________ test_cli_override_precedence_and_provenance __________________
+tests/test_source_root_mapping.py:117: in test_cli_override_precedence_and_provenance
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_______________________ test_many_to_one_mapping_allowed _______________________
+tests/test_source_root_mapping.py:128: in test_many_to_one_mapping_allowed
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+___________ test_duplicate_source_keys_after_normalization_rejected ____________
+tests/test_source_root_mapping.py:136: in test_duplicate_source_keys_after_normalization_rejected
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_________________ test_normalizer_is_shared_and_deterministic __________________
+tests/test_source_root_mapping.py:147: in test_normalizer_is_shared_and_deterministic
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_______________ test_resolver_never_raises_on_degenerate_inputs ________________
+tests/test_source_root_mapping.py:156: in test_resolver_never_raises_on_degenerate_inputs
+    from hb_assistant.obsidian_mcp import source_root_mapping as srm
+E   ImportError: cannot import name 'source_root_mapping' from 'hb_assistant.obsidian_mcp' (<REPO>/src/hb_assistant/obsidian_mcp/__init__.py)
+_____________ test_health_does_not_fuzzy_match_work_to_work_backup _____________
+tests/test_source_root_mapping.py:193: in test_health_does_not_fuzzy_match_work_to_work_backup
+    h = source_index_health(SourceIndexRepository(db), ocfg, app_config=acfg)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: source_index_health() got an unexpected keyword argument 'app_config'
+_____________ test_health_explicit_map_resolves_syn_prefixed_root ______________
+tests/test_source_root_mapping.py:201: in test_health_explicit_map_resolves_syn_prefixed_root
+    acfg.source_structure.structure_root_map = {"syn-work": "work"}
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<VENV>/lib/python3.14/site-packages/pydantic/main.py:1048: in __setattr__
+    elif (setattr_handler := self._setattr_handler(name, value)) is not None:
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<VENV>/lib/python3.14/site-packages/pydantic/main.py:1095: in _setattr_handler
+    raise ValueError(f'"{cls.__name__}" object has no field "{name}"')
+E   ValueError: "SourceStructureConfig" object has no field "structure_root_map"
+______________ test_health_and_watcher_readiness_agree_on_mapping ______________
+tests/test_source_root_mapping.py:211: in test_health_and_watcher_readiness_agree_on_mapping
+    h = source_index_health(SourceIndexRepository(db), ocfg, app_config=acfg)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: source_index_health() got an unexpected keyword argument 'app_config'
+_________ test_ephemeral_cli_override_cannot_certify_durable_readiness _________
+tests/test_source_root_mapping.py:228: in test_ephemeral_cli_override_cannot_certify_durable_readiness
+    assert state == sb.RUN_STATE_MAPPING_OVERRIDE_NOT_PERSISTED
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'hb_assistant.obsidian_mcp.source_bootstrap' has no attribute 'RUN_STATE_MAPPING_OVERRIDE_NOT_PERSISTED'
+_________________ test_no_absolute_paths_in_serialized_health __________________
+tests/test_source_root_mapping.py:235: in test_no_absolute_paths_in_serialized_health
+    h = source_index_health(SourceIndexRepository(db), ocfg, app_config=acfg)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: source_index_health() got an unexpected keyword argument 'app_config'
+=========================== short test summary info ============================
+FAILED tests/test_source_root_mapping.py::test_exact_normalized_key_match_succeeds
+FAILED tests/test_source_root_mapping.py::test_configured_explicit_map_succeeds_with_provenance
+FAILED tests/test_source_root_mapping.py::test_invalid_explicit_map_target_fails_closed
+FAILED tests/test_source_root_mapping.py::test_work_does_not_match_syn_work
+FAILED tests/test_source_root_mapping.py::test_work_does_not_match_work_backup
+FAILED tests/test_source_root_mapping.py::test_home_does_not_match_home_work
+FAILED tests/test_source_root_mapping.py::test_full_corpus_no_cross_collision_without_explicit_map
+FAILED tests/test_source_root_mapping.py::test_cli_override_precedence_and_provenance
+FAILED tests/test_source_root_mapping.py::test_many_to_one_mapping_allowed - ...
+FAILED tests/test_source_root_mapping.py::test_duplicate_source_keys_after_normalization_rejected
+FAILED tests/test_source_root_mapping.py::test_normalizer_is_shared_and_deterministic
+FAILED tests/test_source_root_mapping.py::test_resolver_never_raises_on_degenerate_inputs
+FAILED tests/test_source_root_mapping.py::test_health_does_not_fuzzy_match_work_to_work_backup
+FAILED tests/test_source_root_mapping.py::test_health_explicit_map_resolves_syn_prefixed_root
+FAILED tests/test_source_root_mapping.py::test_health_and_watcher_readiness_agree_on_mapping
+FAILED tests/test_source_root_mapping.py::test_ephemeral_cli_override_cannot_certify_durable_readiness
+FAILED tests/test_source_root_mapping.py::test_no_absolute_paths_in_serialized_health

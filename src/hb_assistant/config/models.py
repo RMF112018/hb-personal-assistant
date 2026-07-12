@@ -177,8 +177,30 @@ class SourceStructureConfig(BaseModel):
     enabled: bool = True
     root_key_map: dict[str, str] = Field(default_factory=dict)
     scan_roots: dict[str, str] = Field(default_factory=dict)
+    # A3 canonical file-index-root -> structure-root explicit map (the SOLE durable mapping authority for
+    # non-identity mappings; the CLI --structure-root-map-json flag is only a one-operation override).
+    # Maps a file source_root_key -> a structure scan_roots key. Many-to-one is allowed.
+    structure_root_map: dict[str, str] = Field(default_factory=dict)
     scan: SourceStructureScanConfig = Field(default_factory=SourceStructureScanConfig)
     schedule: SourceStructureScheduleConfig = Field(default_factory=SourceStructureScheduleConfig)
+
+    @field_validator("structure_root_map")
+    @classmethod
+    def _no_normalized_key_collisions(cls, value: dict[str, str]) -> dict[str, str]:
+        """Reject two source keys that collapse to one under the shared normalizer with conflicting
+        targets (a genuinely ambiguous configuration). Many-to-one mapping stays valid."""
+        from hb_assistant.obsidian_mcp.source_root_mapping import normalize_root_key
+
+        seen: dict[str, str] = {}
+        for k, v in (value or {}).items():
+            nk = normalize_root_key(k)
+            nv = normalize_root_key(v)
+            if nk in seen and seen[nk] != nv:
+                raise ValueError(
+                    f"structure_root_map has ambiguous source key {nk!r} with conflicting targets"
+                )
+            seen[nk] = nv
+        return value
 
 
 class AppConfig(BaseModel):

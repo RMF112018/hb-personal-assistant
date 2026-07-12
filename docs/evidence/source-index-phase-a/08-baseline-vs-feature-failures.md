@@ -25,6 +25,26 @@ modify them. Note for A4: A4 bumps `LATEST_SCHEMA_VERSION=125`; these three will
 and remain classified as pre-existing baseline failures. A4's own migration evidence uses fresh, correct
 assertions. (If the maintainers wish, a separate trivial PR can refresh these `== 123` literals to `LATEST_SCHEMA_VERSION`.)
 
+## Known baseline failure #4 (discovered during A3 validation; PRE-EXISTING; NOT Phase A)
+The A3 validation set includes `tests/test_source_structure_cli.py`, which was **not** part of the A0 18-suite
+source-index baseline set above, so this failure surfaced for the first time during A3. It is another **stale
+test assertion**, not a runtime defect:
+
+| Node ID | Assertion | Cause |
+|---|---|---|
+| `tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots` | `gate_off["summary"]["expected_exposed"] == 78` (line 106) | stale hard-coded MCP tool-surface count; actual exposed count is `80` |
+
+**Proof it is pre-existing, not caused by Phase A:**
+1. Phase A (A1+A3) adds **zero** MCP tools — it touches vault-deletion safety and root-mapping resolution only,
+   no `tool_registration`/manifest surface.
+2. Reverting all Phase A `src` edits to `origin/main` state still reproduces `assert 80 == 78`.
+3. **Definitive:** the test was run on a throwaway, fully pristine `git worktree` detached at `origin/main`
+   (`9c27839b`) with no Phase A code present — it fails identically with `assert 80 == 78`.
+
+This is exactly analogous to the stale `== 123` schema-version trio: a hard-coded expected count (`78`) that was
+not updated when the tool surface grew to `80` upstream. It is disclosed here and **never absorbed into the A3
+prove-red set**. Phase A does not modify it. (A separate trivial PR can refresh the `78`/`85` literals.)
+
 ## Phase A new failures
 None at A0 (A0 commits green; no executable failing tests committed). Per-subphase prove-red node IDs are
 enumerated in `07-test-matrix.md` and captured, run, and reported at each sub-phase checkpoint.
