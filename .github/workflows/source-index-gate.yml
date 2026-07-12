@@ -65,7 +65,10 @@ jobs:
           cache: pip
 
       - name: Install package and dev dependencies
-        run: pip install -e ".[dev]"
+        # [mcp] provides the MCP SDK used by the nas_mcp tool-surface / manifest-parity suites;
+        # [analytics-ui] provides fastapi used by the watcher-lifecycle suite. [dev] alone is insufficient
+        # for the source-index gate (unlike the forecasting gate, which touches neither surface).
+        run: pip install -e ".[dev,mcp,analytics-ui]"
 
       - name: Run source-index correctness & trust gate
         run: bash scripts/ci_source_index_gate.sh

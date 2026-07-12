@@ -49,6 +49,16 @@ source health (`test_source_index_health_readonly_conn`), and manifest freshness
 modules + the four new/updated test files. Format-check is deliberately excluded because several source-index
 modules pre-date the repo's formatter adoption and must not be reformatted by the gate.
 
+## Dependency extras (required)
+
+`pip install -e ".[dev,mcp,analytics-ui]"` — **not** `.[dev]` alone. The gate exercises the MCP tool surface
+(`[mcp]` → the `mcp` SDK, used by the connector / manifest-parity / freshness suites) and the watcher HTTP
+surface (`[analytics-ui]` → `fastapi`, used by `test_obsidian_source_watch_lifecycle`). `[dev]` alone caused a
+`ModuleNotFoundError: No module named 'mcp'` collection failure on the first CI run; verified fixed by a clean
+`python3 -m venv` + `pip install -e ".[dev,mcp,analytics-ui]"` + collect-only (all 22 suites collect) and a
+runtime run of the mcp/fastapi suites (47/0). `watchdog` (`[watch]`) is intentionally **not** installed — the
+watcher suites use the polling fallback / `importorskip`, matching the local validation environment.
+
 ## Validity + runtime
 
 - Workflow YAML parses (`yaml.safe_load` OK); script passes `bash -n`.
