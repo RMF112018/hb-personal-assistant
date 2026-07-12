@@ -1,0 +1,2 @@
+$ .venv/bin/ruff check <6 touched modules>
+All checks passed!

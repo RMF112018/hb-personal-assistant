@@ -17,6 +17,8 @@ import sqlite3
 import types
 from pathlib import Path
 
+import pytest
+
 from hb_assistant.obsidian_mcp import source_indexer as si
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
@@ -238,7 +240,21 @@ def test_reindex_exhaustion_is_error_not_done(tmp_path, monkeypatch) -> None:
     assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
 
 
-# ---------------- pre/post-transaction identity drift ----------------
+# ---------------- pre/post-transaction resolved-path/identity drift ----------------
+
+def _drift_resolver(seq):
+    """Return a resolve_destination stub yielding 'contained' with a per-call identity from ``seq``
+    (resolved_path fixed) so only identity drives the drift decision."""
+    calls = {"n": 0}
+
+    def _res(root_path, new_rel):
+        i = min(calls["n"], len(seq) - 1)
+        calls["n"] += 1
+        return si.DestinationResolution("contained", resolved_path=Path("/x"),
+                                        identity=(0, 0, int(seq[i]), 0))
+
+    return _res
+
 
 def test_pre_transaction_drift_keeps_old_current(tmp_path, monkeypatch) -> None:
     db, root, config, repo = _env(tmp_path)
@@ -246,7 +262,8 @@ def test_pre_transaction_drift_keeps_old_current(tmp_path, monkeypatch) -> None:
     old = _index_file(root, "old.txt", "x", repo, config)
     (root / "new.txt").write_text("x moved")
     _enqueue_move(repo, "old.txt", "new.txt")
-    monkeypatch.setattr(si, "_same_identity", lambda a, b: False)  # drift detected pre-mutation
+    # call 1 (resolve) vs call 2 (pre-txn) differ → drift BEFORE the move → no mutation.
+    monkeypatch.setattr(si, "resolve_destination", _drift_resolver([1, 2]))
     drain_queue(repo, config)
     st, code, _ = _event(db)
     assert st == "queued" and code == "dest_changed_before_move"
@@ -260,14 +277,8 @@ def test_post_transaction_drift_leaves_old_superseded(tmp_path, monkeypatch) -> 
     (root / "new.txt").write_text("x moved")
     new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
     _enqueue_move(repo, "old.txt", "new.txt")
-    # pass the pre-move identity check, fail the post-move one (drift AFTER the transaction).
-    calls = {"n": 0}
-
-    def _ident(a, b):
-        calls["n"] += 1
-        return calls["n"] == 1
-
-    monkeypatch.setattr(si, "_same_identity", _ident)
+    # calls 1 (resolve) & 2 (pre-txn) match → move proceeds; call 3 (post-txn) differs → drift AFTER move.
+    monkeypatch.setattr(si, "resolve_destination", _drift_resolver([7, 7, 8]))
     drain_queue(repo, config)
     st, code, _ = _event(db)
     assert st == "queued" and code == "dest_changed_during_move"
@@ -285,7 +296,7 @@ def test_defer_conflict_when_event_not_processing(tmp_path) -> None:
     eid = repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="b.txt",
                              source_root_key="work")
     # event is 'queued', not 'processing' -> defer must fail closed
-    assert repo.defer_event(eid, error_code="x", attempts=1) == "conflict"
+    assert repo.defer_event(eid, error_code="x", expected_attempt=1) == "conflict"
 
 
 def test_moved_invalid_payload_is_terminal(tmp_path, monkeypatch) -> None:
@@ -295,3 +306,180 @@ def test_moved_invalid_payload_is_terminal(tmp_path, monkeypatch) -> None:
                        source_root_key="work")  # old == new
     drain_queue(repo, config)
     assert _event(db)[:2] == ("skipped", "moved_invalid")
+
+
+# ---------------- PB-006: canonical validation of BOTH paths + resolved containment ----------------
+
+@pytest.mark.parametrize("old_rel,new_rel", [
+    ("/abs/old.txt", "new.txt"),        # absolute predecessor
+    ("../old.txt", "new.txt"),          # traversal predecessor
+    ("a\\old.txt", "new.txt"),          # backslash predecessor
+    ("a//old.txt", "new.txt"),          # duplicate separators
+    (".hidden/old.txt", "new.txt"),     # protected/hidden predecessor
+    ("old.txt", "/abs/new.txt"),        # absolute destination (must NEVER be probed)
+    ("old.txt", "../new.txt"),          # traversal destination
+])
+def test_invalid_paths_are_terminal_no_mutation(tmp_path, monkeypatch, old_rel, new_rel) -> None:
+    db, root, config, repo = _env(tmp_path)
+    _patch_trust(monkeypatch, safe=True)
+    # index a predecessor at the *canonical* old path so we can prove it is never mutated
+    canon_old = _index_file(root, "old.txt", "x", repo, config)
+    # resolve_destination is the ONLY destination filesystem probe; lexical validation rejects an
+    # absolute/traversal path first, so it must never be reached (no FS probe of an escape).
+    monkeypatch.setattr(si, "resolve_destination",
+                        lambda *a, **k: pytest.fail("filesystem probed for an invalid path"))
+    repo.enqueue_event(event_type="moved", rel_path=old_rel, dest_rel_path=new_rel,
+                       source_root_key="work")
+    drain_queue(repo, config)
+    assert _event(db)[:2] == ("skipped", "moved_invalid")
+    assert _row(db, canon_old)[0] == 0  # canonical predecessor untouched
+
+
+def test_parent_symlink_escape_rejected_before_mutation(tmp_path, monkeypatch) -> None:
+    db, root, config, repo = _env(tmp_path)
+    _patch_trust(monkeypatch, safe=True)
+    old = _index_file(root, "old.txt", "x", repo, config)
+    # a regular file OUTSIDE the root, reached via a symlinked PARENT dir inside the root
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "f.txt").write_text("SECRET OUTSIDE CONTENT")
+    os.symlink(outside, root / "linked")           # root/linked -> /outside (parent symlink)
+    _enqueue_move(repo, "old.txt", "linked/f.txt")  # lstat sees a regular file (parent traversed)
+    drain_queue(repo, config)
+    st, code, _ = _event(db)
+    assert st == "skipped" and code == "dest_escapes_root"  # resolved-path containment catches it
+    assert _row(db, old)[0] == 0                    # old NOT superseded
+    # outside content was never indexed under this root
+    outside_sid = source_id_for("external_file", source_root_key="work", rel_path="linked/f.txt")
+    assert _row(db, outside_sid) is None
+
+
+# ---------------- PB-010: stale claim generation cannot mutate / index / complete ----------------
+
+def test_stale_claim_cannot_complete_or_defer(tmp_path) -> None:
+    db, root, config, repo = _env(tmp_path)
+    eid = repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="b.txt",
+                             source_root_key="work")
+    repo.claim_queued(50)                      # attempt 1 (status=processing, attempts=1)
+    # simulate stuck-reclaim: back to queued, then a second claim → attempt 2
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET status='queued' WHERE event_id=?", (eid,))
+        c.commit()
+    repo.claim_queued(50)                      # attempt 2 now owns it
+    # stale worker A (expected_attempt=1) cannot defer or complete the reclaimed event
+    assert repo.defer_event(eid, error_code="x", expected_attempt=1) == "conflict"
+    assert repo.complete_owned_event(eid, "done", expected_attempt=1) is False
+    assert repo.event_is_owned(eid, 1) is False and repo.event_is_owned(eid, 2) is True
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT status, attempts FROM source_intelligence_events "
+                         "WHERE event_id=?", (eid,)).fetchone() == ("processing", 2)  # attempt 2 intact
+
+
+def test_stale_claim_move_is_claim_conflict_no_mutation(tmp_path) -> None:
+    db, root, config, repo = _env(tmp_path)
+    old = _index_file(root, "old.txt", "x", repo, config)
+    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+                             source_root_key="work")
+    repo.claim_queued(50)  # attempt 1
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET status='queued' WHERE event_id=?", (eid,))
+        c.commit()
+    repo.claim_queued(50)  # attempt 2 owns it
+    # a stale attempt-1 move must NOT mutate source/lineage
+    res = repo.apply_owned_confirmed_same_root_move(
+        event_id=eid, expected_attempt=1, root_key="work",
+        old_relative_path="old.txt", new_relative_path="new.txt",
+        destination_metadata={"file_ext": "txt", "size_bytes": 1, "mtime_ns": 1})
+    assert res["result"] == "claim_conflict"
+    assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None  # untouched
+
+
+# ---------------- PB-007: two-stage FTS + public-search invalidation through the drain ----------------
+
+OLD_TOKEN = "zqxoldtoken7141"   # unique tokens that cannot match a path / filename / project metadata
+NEW_TOKEN = "zqxnewtoken9273"
+
+
+def _seed_indexed_destination(db: str, rel: str, token: str) -> str:
+    """Give ``rel`` a REAL pre-existing indexed content representation (sources+metadata+text+FTS row)
+    whose excerpt contains ``token``, so it is discoverable via public search before a move overwrites it."""
+    sid = source_id_for("external_file", source_root_key="work", rel_path=rel)
+    with sqlite3.connect(db) as c:
+        c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
+                  "VALUES('fts_available','1','t')")
+        c.execute("INSERT INTO source_intelligence_fts(text_excerpt, rel_path, aux) VALUES(?,?,?)",
+                  (token, rel, ""))
+        rowid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,rel_path,"
+                  "active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
+                  (sid, "external_file", "work", rel))
+        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
+                  "content_sha256,extraction_status,fts_rowid,indexed_at,extraction_disposition,"
+                  "content_indexed_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                  (sid, "txt", 5, 5, "OLDH", "ok", rowid, "t", "content", "t"))
+        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
+                  "excerpt_truncated,full_text_sha256,raw_body_persisted,redaction_applied,updated_at) "
+                  "VALUES(?,?,?,?,?,0,1,'t')", (sid, token, len(token), 0, "fsha"))
+        c.commit()
+    return sid
+
+
+def test_move_invalidates_fts_and_public_search_two_stage(tmp_path, monkeypatch) -> None:
+    db, root, config, repo = _env(tmp_path)
+    _patch_trust(monkeypatch, safe=True)
+    old = _index_file(root, "old.txt", "x", repo, config)
+    # destination pre-indexed with OLD_TOKEN; on disk it now holds NEW_TOKEN (a move overwrite).
+    dest_rel = "dest.txt"
+    dest_sid = _seed_indexed_destination(db, dest_rel, OLD_TOKEN)
+    (root / dest_rel).write_text(f"{NEW_TOKEN} replacement body")
+    assert [r["source_id"] for r in repo.search_source_files(OLD_TOKEN)] == [dest_sid]  # searchable before
+
+    _enqueue_move(repo, "old.txt", dest_rel)
+    # --- pass 1: reindex fails → move committed, OLD FTS gone, dest pending, event deferred ---
+    monkeypatch.setattr(si, "index_source_file", lambda *a, **k: None)
+    drain_queue(repo, config)
+    assert repo.search_source_files(OLD_TOKEN) == []        # old token no longer publicly searchable
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
+                         (dest_sid,)).fetchone()[0] == "pending"   # not advertised complete
+    assert _event(db)[:2] == ("queued", "dest_reindex_pending")
+    assert _row(db, old)[0] == 1 and _row(db, dest_sid)[2] == old  # move committed + lineage
+
+    # --- pass 2: reindex recovers → move_already_applied → only NEW_TOKEN searchable ---
+    monkeypatch.undo()
+    _patch_trust(monkeypatch, safe=True)
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
+        c.commit()
+    drain_queue(repo, config)
+    assert _event(db)[0] == "done"
+    assert repo.search_source_files(OLD_TOKEN) == []               # stale token still absent
+    assert [r["source_id"] for r in repo.search_source_files(NEW_TOKEN)] == [dest_sid]  # only new content
+    assert _row(db, dest_sid)[2] == old                            # lineage not duplicated/altered
+
+
+def test_unexpected_moved_exception_cannot_overwrite_current_claim(tmp_path, monkeypatch) -> None:
+    db, root, config, repo = _env(tmp_path)
+    _patch_trust(monkeypatch, safe=True)
+    _index_file(root, "old.txt", "x", repo, config)
+    (root / "new.txt").write_text("x moved")
+    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+                             source_root_key="work")
+
+    # force an unexpected error inside the moved handler AFTER claim; the guarded except must complete
+    # via the OWNED path (expected_attempt), never the drain's generic unguarded complete_event.
+    def _boom(*a, **k):
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(si, "resolve_destination", _boom)
+    # reclaim as a different generation first so the stale expected_attempt cannot win
+    repo.claim_queued(50)
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET status='queued' WHERE event_id=?", (eid,))
+        c.commit()
+    # drain claims attempt 2 and hits the exception → guarded error completion on attempt 2
+    drain_queue(repo, config)
+    with sqlite3.connect(db) as c:
+        st, code, att = c.execute("SELECT status, error_code, attempts FROM source_intelligence_events "
+                                  "WHERE event_id=?", (eid,)).fetchone()
+    assert st == "error" and code == "RuntimeError" and att == 2

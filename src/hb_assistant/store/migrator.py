@@ -9265,70 +9265,31 @@ class SQLiteMigrator:
             # (b) add two nullable columns: ``dest_rel_path`` (a move's destination rel_path) and
             # ``next_attempt_at`` (bounded-backoff deferral timestamp). SQLite cannot ALTER a CHECK, so the
             # widening requires a full table rebuild. The whole apply() runs in ONE transaction (see top),
-            # so this CREATE/INSERT/DROP/RENAME is atomic: a crash rolls the entire migration back and
-            # CANNOT lose queued rows. Parity-guarded + idempotent: the rebuild runs only when the events
-            # table is not already at the V127 shape, and version 127 is recorded ONLY after parity is
-            # re-proven (a table with the columns but an OLD CHECK, or missing an index, is rebuilt — never
-            # marked applied on column presence alone). Immutable historical DDL: the V93 CREATE +
-            # EVENT_TYPE_VALUES are untouched; V127 owns the new shape via the version-pinned
-            # EVENT_TYPE_VALUES_V127. Recovery: a txn failure rolls the rebuild back; a parity-incomplete
-            # table is detected + rebuilt on the next apply. Code-rollback caveat: after V127, OLD
-            # application code cannot read/insert 'moved' rows — so do NOT deploy or migrate production in
-            # Phase B (Phase C owns the prod schema-copy + backup/restore proof).
-            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 127")
-            if cur.fetchone() is None:
-                from hb_assistant.store.source_intelligence_tables import (
-                    EVENT_STATUS_VALUES,
-                    EVENT_TYPE_VALUES_V127,
-                )
+            # so the CREATE/INSERT/DROP/RENAME is atomic: a crash rolls the entire migration back and CANNOT
+            # lose queued rows. ALWAYS-REVALIDATE (PLAN-C2R2-003): ``_events_schema_current`` checks the
+            # EXACT structural contract (column types/nullability/defaults, index column composition,
+            # FK/trigger absence, live CHECK probe) on EVERY apply — a v127-recorded-but-malformed table is
+            # detected + rebuilt fail-closed, not trusted on version-record alone. The repair copy is
+            # ADAPTIVE (built from the old table's inspected columns) and lossless; a row with an invalid
+            # event_type/status or NULL event_id raises v127_events_invalid_existing_rows so the whole
+            # migration rolls back (queued work is never silently coerced/discarded). Immutable historical
+            # DDL: the V93 CREATE + EVENT_TYPE_VALUES are untouched; V127 owns the new shape via the
+            # version-pinned EVENT_TYPE_VALUES_V127. Code-rollback caveat: after V127, OLD application code
+            # cannot read/insert 'moved' rows — so do NOT deploy or migrate production in Phase B (Phase C
+            # owns the prod schema-copy + backup/restore proof).
+            from hb_assistant.store.source_intelligence_tables import (
+                EVENT_STATUS_VALUES,
+                EVENT_TYPE_VALUES_V127,
+            )
 
-                if not self._events_schema_current(conn):
-                    et_csv = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES_V127)
-                    st_csv = ", ".join(f"'{v}'" for v in EVENT_STATUS_VALUES)
-                    conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
-                    conn.execute(
-                        "CREATE TABLE source_intelligence_events_v127 ("
-                        " event_id TEXT PRIMARY KEY,"
-                        " source_id TEXT,"
-                        " rel_path TEXT,"
-                        " source_root_key TEXT,"
-                        " dest_rel_path TEXT,"
-                        " next_attempt_at TEXT,"
-                        f" event_type TEXT NOT NULL CHECK(event_type IN ({et_csv})),"
-                        f" status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ({st_csv})),"
-                        " error_code TEXT,"
-                        " attempts INTEGER NOT NULL DEFAULT 0,"
-                        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-                        " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
-                        ")"
-                    )
-                    # Faithful copy of every existing row + event_id; the two new columns default NULL.
-                    # (event_id is a client uuid TEXT PK — no AUTOINCREMENT/sequence; no triggers, no FKs
-                    # to recreate.)
-                    conn.execute(
-                        "INSERT INTO source_intelligence_events_v127 "
-                        "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
-                        " event_type, status, error_code, attempts, created_at, updated_at) "
-                        "SELECT event_id, source_id, rel_path, source_root_key, NULL, NULL, "
-                        " event_type, status, error_code, attempts, created_at, updated_at "
-                        "FROM source_intelligence_events"
-                    )
-                    conn.execute("DROP TABLE source_intelligence_events")
-                    conn.execute(
-                        "ALTER TABLE source_intelligence_events_v127 "
-                        "RENAME TO source_intelligence_events"
-                    )
-                    conn.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_si_events_status "
-                        "ON source_intelligence_events(status, created_at)"
-                    )
-                    conn.execute(
-                        "CREATE INDEX IF NOT EXISTS idx_si_events_source "
-                        "ON source_intelligence_events(source_id)"
-                    )
+            if not self._events_schema_current(conn):
+                self._rebuild_v127_events(conn, EVENT_TYPE_VALUES_V127, EVENT_STATUS_VALUES)
                 if not self._events_schema_current(conn):
                     # The whole apply() transaction rolls back — the old events table is preserved intact.
                     raise RuntimeError("v127_events_rebuild_parity_failed")
+            if conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = 127"
+            ).fetchone() is None:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) "
                     "VALUES (127, 'v127_events_moved_dest_backoff', ?)",
@@ -9348,37 +9309,177 @@ class SQLiteMigrator:
 
     @staticmethod
     def _events_schema_current(conn: sqlite3.Connection) -> bool:
-        """True only if ``source_intelligence_events`` is at the FULL V127 shape (Phase B / B4 corrective):
-        both ``dest_rel_path`` + ``next_attempt_at`` columns present, both indexes present, AND the
-        ``event_type`` CHECK accepts ``'moved'`` (proven by a scratch INSERT rolled back in a savepoint).
+        """True only when ``source_intelligence_events`` matches the EXACT V127 structural contract
+        (Phase B / B4 corrective, PLAN-C2R2-003): the complete column set with declared type / NOT NULL /
+        default / pk (semantically normalized), both named indexes with the correct ordered columns +
+        uniqueness (an extra PK autoindex is allowed), no foreign keys, no triggers, AND a live probe
+        proving the CHECKs accept ``moved`` + a legacy type while rejecting an invalid event_type and an
+        invalid status. Runs on every ``apply()`` — so a v127-recorded-but-malformed table (columns
+        present but wrong CHECK / nullability / default / index columns) is detected and rebuilt
+        fail-closed, never trusted on version-record alone. Detection ≠ repair — the adaptive copy lives in
+        :meth:`_rebuild_v127_events`."""
+        import uuid as _uuid
 
-        A table that merely HAS the columns but retains the old CHECK — or is missing an index — returns
-        False, so V127 rebuilds rather than being falsely recorded on column presence alone."""
-        cols = {
+        def _norm_type(t: Any) -> str:
+            return (t or "").strip().upper()
+
+        def _norm_default(v: Any) -> str | None:
+            if v is None:
+                return None
+            s = str(v).strip()
+            if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
+                s = s[1:-1]
+            up = s.upper()
+            return up if up in ("CURRENT_TIMESTAMP", "CURRENT_DATE", "CURRENT_TIME") else s
+
+        # (name, normalized type, notnull, normalized default, pk) — the exact runtime-required shape.
+        expected = [
+            ("event_id", "TEXT", 0, None, 1),
+            ("source_id", "TEXT", 0, None, 0),
+            ("rel_path", "TEXT", 0, None, 0),
+            ("source_root_key", "TEXT", 0, None, 0),
+            ("dest_rel_path", "TEXT", 0, None, 0),
+            ("next_attempt_at", "TEXT", 0, None, 0),
+            ("event_type", "TEXT", 1, None, 0),
+            ("status", "TEXT", 1, "queued", 0),
+            ("error_code", "TEXT", 0, None, 0),
+            ("attempts", "INTEGER", 1, "0", 0),
+            ("created_at", "TEXT", 1, "CURRENT_TIMESTAMP", 0),
+            ("updated_at", "TEXT", 1, "CURRENT_TIMESTAMP", 0),
+        ]
+        info = conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
+        actual = {r[1]: (_norm_type(r[2]), int(r[3]), _norm_default(r[4]), int(r[5])) for r in info}
+        if len(actual) != len(expected):
+            return False
+        for name, typ, nn, dflt, pk in expected:
+            if actual.get(name) != (typ, nn, dflt, pk):
+                return False
+        # Required indexes: correct ordered columns + non-unique (an extra PK autoindex is allowed).
+        idx_unique = {
+            r[1]: int(r[2])
+            for r in conn.execute("PRAGMA index_list(source_intelligence_events)").fetchall()
+        }
+        want_idx = {
+            "idx_si_events_status": (["status", "created_at"], 0),
+            "idx_si_events_source": (["source_id"], 0),
+        }
+        for iname, (want_cols, want_unique) in want_idx.items():
+            if idx_unique.get(iname) != want_unique:
+                return False
+            actual_cols = [r[2] for r in conn.execute(f"PRAGMA index_info({iname})").fetchall()]
+            if actual_cols != want_cols:
+                return False
+        if conn.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall():
+            return False
+        if conn.execute(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' "
+            "AND tbl_name='source_intelligence_events'"
+        ).fetchone()[0]:
+            return False
+
+        def _probe(event_type: str, status: str) -> bool:
+            # Unique probe id (never collides with a real row); rolled back either way.
+            pid = "__v127_probe_" + _uuid.uuid4().hex
+            conn.execute("SAVEPOINT v127_probe")
+            try:
+                conn.execute(
+                    "INSERT INTO source_intelligence_events (event_id, event_type, status) VALUES (?,?,?)",
+                    (pid, event_type, status),
+                )
+                ok = True
+            except sqlite3.IntegrityError:
+                ok = False
+            finally:
+                conn.execute("ROLLBACK TO v127_probe")
+                conn.execute("RELEASE v127_probe")
+            return ok
+
+        return (
+            _probe("moved", "queued")
+            and _probe("created", "queued")
+            and not _probe("__invalid_type__", "queued")
+            and not _probe("created", "__invalid_status__")
+        )
+
+    @staticmethod
+    def _rebuild_v127_events(
+        conn: sqlite3.Connection, event_types: tuple[str, ...], statuses: tuple[str, ...]
+    ) -> None:
+        """Adaptively rebuild ``source_intelligence_events`` to the exact V127 shape (PLAN-C2R2-003). The
+        copy projection is built from the OLD table's INSPECTED columns, so a malformed source (e.g. a
+        table missing ``attempts``) is repaired LOSSLESSLY rather than crashing a static SELECT. Existing
+        rows with an invalid ``event_type``/``status`` or NULL ``event_id`` raise
+        ``v127_events_invalid_existing_rows`` so the whole apply() transaction rolls back — queued work is
+        never silently coerced or discarded. Runs inside the apply() transaction (atomic)."""
+        old_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         }
-        if not {"dest_rel_path", "next_attempt_at"}.issubset(cols):
-            return False
-        idx = {
-            r[1] for r in conn.execute("PRAGMA index_list(source_intelligence_events)").fetchall()
-        }
-        if not {"idx_si_events_status", "idx_si_events_source"}.issubset(idx):
-            return False
-        # Prove the CHECK permits 'moved' without committing a probe row: INSERT then ROLLBACK TO the
-        # savepoint unconditionally (whether the INSERT succeeded or raised the CHECK IntegrityError).
-        conn.execute("SAVEPOINT v127_probe")
-        try:
-            conn.execute(
-                "INSERT INTO source_intelligence_events (event_id, event_type, status) "
-                "VALUES ('__v127_probe__', 'moved', 'queued')"
-            )
-            ok = True
-        except sqlite3.IntegrityError:
-            ok = False
-        finally:
-            conn.execute("ROLLBACK TO v127_probe")
-            conn.execute("RELEASE v127_probe")
-        return ok
+        if "event_id" not in old_cols:
+            raise RuntimeError("v127_events_invalid_existing_rows")
+        et_set = "(" + ",".join(f"'{v}'" for v in event_types) + ")"
+        st_set = "(" + ",".join(f"'{v}'" for v in statuses) + ")"
+        row_count = conn.execute("SELECT COUNT(*) FROM source_intelligence_events").fetchone()[0]
+        if row_count:
+            # Non-empty copy requires valid, preservable required values (no synthesis of event_type/status).
+            if "event_type" not in old_cols or "status" not in old_cols:
+                raise RuntimeError("v127_events_invalid_existing_rows")
+            bad = conn.execute(
+                "SELECT COUNT(*) FROM source_intelligence_events "
+                f"WHERE event_id IS NULL OR event_type IS NULL OR event_type NOT IN {et_set} "
+                f"OR status IS NULL OR status NOT IN {st_set}"
+            ).fetchone()[0]
+            if bad:
+                raise RuntimeError("v127_events_invalid_existing_rows")
+
+        def _src(name: str, fallback: str) -> str:
+            return name if name in old_cols else fallback
+
+        projection = ", ".join([
+            "event_id",
+            _src("source_id", "NULL"),
+            _src("rel_path", "NULL"),
+            _src("source_root_key", "NULL"),
+            _src("dest_rel_path", "NULL"),
+            _src("next_attempt_at", "NULL"),
+            _src("event_type", "NULL"),  # validated non-null above when rows exist
+            _src("status", "'queued'"),
+            _src("error_code", "NULL"),
+            "COALESCE(attempts, 0)" if "attempts" in old_cols else "0",
+            "COALESCE(created_at, CURRENT_TIMESTAMP)" if "created_at" in old_cols else "CURRENT_TIMESTAMP",
+            "COALESCE(updated_at, CURRENT_TIMESTAMP)" if "updated_at" in old_cols else "CURRENT_TIMESTAMP",
+        ])
+        et_csv = ", ".join(f"'{v}'" for v in event_types)
+        st_csv = ", ".join(f"'{v}'" for v in statuses)
+        conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
+        conn.execute(
+            "CREATE TABLE source_intelligence_events_v127 ("
+            " event_id TEXT PRIMARY KEY, source_id TEXT, rel_path TEXT, source_root_key TEXT,"
+            " dest_rel_path TEXT, next_attempt_at TEXT,"
+            f" event_type TEXT NOT NULL CHECK(event_type IN ({et_csv})),"
+            f" status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ({st_csv})),"
+            " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_events_v127 "
+            "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
+            " event_type, status, error_code, attempts, created_at, updated_at) "
+            f"SELECT {projection} FROM source_intelligence_events"
+        )
+        conn.execute("DROP TABLE source_intelligence_events")
+        conn.execute(
+            "ALTER TABLE source_intelligence_events_v127 RENAME TO source_intelligence_events"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_si_events_status "
+            "ON source_intelligence_events(status, created_at)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_si_events_source "
+            "ON source_intelligence_events(source_id)"
+        )
 
     @staticmethod
     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:

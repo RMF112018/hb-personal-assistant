@@ -16,7 +16,7 @@ import unicodedata
 from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
@@ -1388,14 +1388,73 @@ def _probe_root_dir(root_path: Path) -> str:
     return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
 
 
-def _same_identity(a: os.stat_result, b: os.stat_result) -> bool:
-    """True when two ``lstat`` results denote the SAME inode (dev/ino) with unchanged size + mtime — used
-    to detect a destination replaced between probe and mutation/indexing (PB-006 TOCTOU)."""
-    return (
-        a.st_dev == b.st_dev
-        and a.st_ino == b.st_ino
-        and a.st_size == b.st_size
-        and a.st_mtime_ns == b.st_mtime_ns
+def normalize_moved_rel_path(rel: str | None) -> str | None:
+    """Lexically validate + canonicalize a moved event's relative path WITHOUT touching the filesystem
+    (PB-006 / PLAN-C2R2-001). BOTH the old and new paths cross the queue trust boundary and must pass this
+    before any lookup, source-id derivation, filesystem probe, or mutation. Returns the canonical posix
+    relative path, or ``None`` when it is unsafe: empty, absolute, containing ``..``/``.``/empty segments,
+    a backslash/alternate separator or NUL, a non-canonical form (duplicate separators / trailing slash),
+    or a protected/hidden segment (``path_blocked``)."""
+    if not rel or not isinstance(rel, str):
+        return None
+    if "\\" in rel or "\x00" in rel:
+        return None
+    p = PurePosixPath(rel)
+    if p.is_absolute():
+        return None
+    parts = p.parts
+    if not parts or any(seg in ("", ".", "..") for seg in parts):
+        return None
+    canonical = "/".join(parts)
+    if canonical != rel:  # duplicate separators, trailing slash, './' etc. → reject rather than coerce
+        return None
+    if pathsafe.path_blocked(canonical, include_hidden=False):
+        return None
+    return canonical
+
+
+@dataclass(frozen=True)
+class DestinationResolution:
+    """Structured verdict of a moved-event destination check (PB-006). ``identity`` is
+    ``(st_dev, st_ino, st_size, st_mtime_ns)`` of the non-following ``lstat``; ``resolved_path`` is the
+    symlink-resolved absolute path proven inside the resolved root."""
+
+    state: str  # contained | absent | indeterminate | outside_root | not_regular
+    resolved_path: Path | None = None
+    identity: tuple[int, int, int, int] | None = None
+
+
+def resolve_destination(root_path: Path, new_rel: str) -> DestinationResolution:
+    """Classify a normalized destination rel-path against the root (PB-006). ``new_rel`` MUST already be
+    lexically validated by :func:`normalize_moved_rel_path` (so no absolute/traversal path is ever probed).
+    ``os.lstat`` is non-following → a symlink final component is ``not_regular``; ``resolve()`` +
+    ``relative_to`` catches a symlinked PARENT escaping the root (``outside_root``); transient I/O →
+    ``indeterminate`` (recoverable). A parent-symlink escape may be lstat/resolve-probed here, but the
+    caller rejects ``outside_root`` BEFORE any source mutation or content indexing."""
+    import stat as _sm
+
+    dest_abs = root_path / new_rel
+    try:
+        lst = os.lstat(dest_abs)
+    except FileNotFoundError:
+        return DestinationResolution("absent")
+    except OSError:
+        return DestinationResolution("indeterminate")
+    if not _sm.S_ISREG(lst.st_mode):
+        return DestinationResolution("not_regular")
+    try:
+        resolved_root = root_path.resolve(strict=True)
+        resolved_dest = dest_abs.resolve(strict=True)
+    except OSError:
+        return DestinationResolution("indeterminate")
+    try:
+        resolved_dest.relative_to(resolved_root)
+    except ValueError:
+        return DestinationResolution("outside_root")
+    return DestinationResolution(
+        "contained",
+        resolved_path=resolved_dest,
+        identity=(lst.st_dev, lst.st_ino, lst.st_size, lst.st_mtime_ns),
     )
 
 
@@ -1408,125 +1467,132 @@ def _apply_moved_event(
     old_rel: str,
     new_rel: str,
     src_key: str,
-    attempts: int,
+    expected_attempt: int,
 ) -> None:
-    """Governed same-root rename/move (Phase B / B4 corrective — PB-005/006/007), off the observer thread.
+    """Governed same-root rename/move (Phase B / B4 corrective — PB-005/006/007/010), off the observer
+    thread. GUARDED EXCEPTION WRAP: any unexpected error completes via the ownership-guarded path, so a
+    moved event can NEVER reach the drain's generic unguarded ``complete_event``."""
+    event_id = event["event_id"]
+    try:
+        _apply_moved_event_inner(
+            repo, config, root, event_id=event_id, old_rel=old_rel, new_rel=new_rel,
+            src_key=src_key, expected_attempt=expected_attempt,
+        )
+    except Exception as exc:  # noqa: BLE001 - never let a moved event fall through to the generic handler
+        repo.complete_owned_event(
+            event_id, "error", expected_attempt=expected_attempt, error_code=type(exc).__name__
+        )
 
-    Readiness-gated (``safe_for_watcher_activation``), symlink- and identity-safe, transactional lineage
-    move + destination re-extraction. Every RECOVERABLE condition (lost/flaky mount, not-yet-ready root,
-    dest not yet visible, transient I/O, pre/post-mutation drift, pending re-extraction) DEFERS with
-    bounded backoff — a move is never terminally consumed while it could still succeed, and the old row is
-    left current until the move is proven safe. A provably-invalid destination (symlink/non-regular,
-    escapes-root, protected path) is a fail-closed TERMINAL skip that never deletes the old row."""
-    import stat as _sm
 
+def _apply_moved_event_inner(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    root: ExternalSourceRoot,
+    *,
+    event_id: str,
+    old_rel: str,
+    new_rel: str,
+    src_key: str,
+    expected_attempt: int,
+) -> None:
+    """Readiness-gated, resolved/identity-safe, ownership-guarded move + destination re-extraction. Every
+    RECOVERABLE condition (lost mount, not-ready root, dest not yet visible, transient I/O, pre/post-mutation
+    drift, pending re-extraction) DEFERS under the CLAIM GENERATION (never terminally consumed while it could
+    still succeed; old row left current until the move is proven safe). A provably-invalid destination
+    (non-regular, escapes-root) is a fail-closed TERMINAL skip that never deletes the old row. Both rel-paths
+    are already canonically validated by ``normalize_moved_rel_path`` (caller)."""
     from .source_root_trust import load_root_trust
 
-    event_id = event["event_id"]
-
     def _defer(code: str) -> None:
-        outcome = repo.defer_event(event_id, error_code=code, attempts=attempts)
-        if outcome == "exhausted":
-            # A recoverable condition that never cleared within the retry budget. NEVER delete the old row
-            # (the false-deletion hazard); leave lineage untouched and let reconciliation own it —
-            # a terminal, NON-mutating skip.
-            repo.complete_event(event_id, "skipped", error_code=f"{code}_unresolved")
-        # "deferred" / "conflict" → nothing more this drain.
+        if repo.defer_event(event_id, error_code=code, expected_attempt=expected_attempt) == "exhausted":
+            # Recoverable condition that never cleared within the retry budget. NEVER delete the old row;
+            # a guarded terminal, NON-mutating skip.
+            repo.complete_owned_event(
+                event_id, "skipped", expected_attempt=expected_attempt, error_code=f"{code}_unresolved"
+            )
+
+    def _terminal(status: str, code: str) -> None:
+        repo.complete_owned_event(event_id, status, expected_attempt=expected_attempt, error_code=code)
 
     root_path = Path(root.path)
     # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
     if _probe_root_dir(root_path) != "usable":
         _defer("root_unavailable")
         return
-    # 2. Root readiness — the SAME strict bar the watcher activates on. A not-yet-ready root defers,
-    #    leaving the old row current until the move can be proven safe.
+    # 2. Root readiness — the SAME strict bar the watcher activates on.
     try:
         ready = bool(load_root_trust(repo, config, None, src_key).safe_for_watcher_activation)
-    except Exception:
+    except Exception:  # noqa: BLE001
         _defer("root_trust_unevaluable")
         return
     if not ready:
         _defer("root_not_ready")
         return
-    # 3. Destination confirmation via os.lstat (does NOT follow symlinks): a symlink/non-regular dest is
-    #    terminal-denied, ENOENT defers (not yet visible), other OSError defers (transient).
-    dest_abs = root_path / new_rel
-    if pathsafe.path_blocked(new_rel, include_hidden=False):
-        repo.complete_event(event_id, "skipped", error_code="dest_denied")
-        return
-    try:
-        lst0 = os.lstat(dest_abs)
-    except FileNotFoundError:
+    # 3. Structured destination resolution (resolved-path containment catches a symlinked PARENT).
+    res = resolve_destination(root_path, new_rel)
+    if res.state == "absent":
         _defer("dest_absent")
         return
-    except OSError:
+    if res.state == "indeterminate":
         _defer("dest_indeterminate")
         return
-    if not _sm.S_ISREG(lst0.st_mode):
-        repo.complete_event(event_id, "skipped", error_code="dest_not_regular")
+    if res.state == "outside_root":
+        _terminal("skipped", "dest_escapes_root")
         return
-    try:
-        if pathsafe.symlink_escapes(dest_abs, root_path):
-            repo.complete_event(event_id, "skipped", error_code="dest_escapes_root")
-            return
-    except OSError:
-        _defer("dest_indeterminate")
+    if res.state == "not_regular":
+        _terminal("skipped", "dest_not_regular")
         return
-    # 4. Immediate pre-transaction identity re-check (narrows the probe→mutate window). Drift here is
-    #    PRE-mutation → no mutation, old row stays current, deferred.
-    try:
-        lst1 = os.lstat(dest_abs)
-    except OSError:
-        _defer("dest_indeterminate")
-        return
-    if not (_sm.S_ISREG(lst1.st_mode) and _same_identity(lst0, lst1)):
+    resolved0, identity0 = res.resolved_path, res.identity
+    # 4. Immediate pre-transaction re-resolution (drift here is PRE-mutation → NO move, old stays current).
+    pre = resolve_destination(root_path, new_rel)
+    if pre.state != "contained" or pre.resolved_path != resolved0 or pre.identity != identity0:
         _defer("dest_changed_before_move")
         return
+    assert identity0 is not None
     dest_metadata = {
-        "file_ext": Path(new_rel).suffix.lower().lstrip("."),
-        "size_bytes": lst1.st_size,
-        "mtime_ns": lst1.st_mtime_ns,
+        "file_ext": PurePosixPath(new_rel).suffix.lower().lstrip("."),
+        "size_bytes": identity0[2],
+        "mtime_ns": identity0[3],
     }
-    # 5. Transactional lineage move. move_txn failure is recoverable (nothing was superseded — the txn
-    #    rolled back). conflicting_successor is a fail-closed terminal skip (no mutation happened).
-    try:
-        move = repo.apply_confirmed_same_root_move(src_key, old_rel, new_rel, dest_metadata)
-    except Exception:
-        _defer("move_txn_error")
+    # 5. Ownership-guarded lineage move (ownership SELECT + mutation atomic in one txn). claim_conflict →
+    #    a stale worker whose event was reclaimed: NO mutation happened, and we must NOT complete/defer
+    #    (the current owner is authoritative).
+    move = repo.apply_owned_confirmed_same_root_move(
+        event_id=event_id, expected_attempt=expected_attempt, root_key=src_key,
+        old_relative_path=old_rel, new_relative_path=new_rel, destination_metadata=dest_metadata,
+    )
+    result = move.get("result")
+    if result == "claim_conflict":
         return
-    if move.get("result") == "conflicting_successor":
-        repo.complete_event(event_id, "skipped", error_code="conflicting_successor")
+    if result == "conflicting_successor":
+        _terminal("skipped", "conflicting_successor")
         return
-    # move_applied / move_already_applied / source_missing all proceed to (re)index the destination
-    # (source_missing indexes it as an ordinary current source — the move op wrote no lineage).
-    # 6. Post-transaction identity re-check: drift AFTER the move leaves the old row SUPERSEDED (not
-    #    restored). The dest is already content-invalidated + pending, so just defer re-extraction; no
-    #    stale content is ever advertised complete.
-    try:
-        lst2 = os.lstat(dest_abs)
-        drifted = not (_sm.S_ISREG(lst2.st_mode) and _same_identity(lst1, lst2))
-    except OSError:
-        drifted = True
-    if drifted:
+    # move_applied / move_already_applied / source_missing → (re)index the destination.
+    # 6. Post-transaction re-resolution: drift AFTER the move leaves the old row SUPERSEDED (not restored);
+    #    dest is content-invalidated + pending, so just defer re-extraction — never advertise complete.
+    post = resolve_destination(root_path, new_rel)
+    if post.state != "contained" or post.resolved_path != resolved0 or post.identity != identity0:
         _defer("dest_changed_during_move")
         return
-    # 7. Re-extract the destination. index_source_file returns str|None: None (or an exception) is a
-    #    RETRYABLE indexing failure — never complete on a bare no-throw. The move stays committed; retry
-    #    recognizes move_already_applied and re-attempts indexing.
+    # 7. Re-check ownership before EXPENSIVE indexing. If lost, do not index under a stale claim — leave the
+    #    dest pending+invalidated for the current owner to recover.
+    if not repo.event_is_owned(event_id, expected_attempt):
+        return
+    dest_abs = root_path / new_rel
     try:
         sid = index_source_file(dest_abs, root, repo, config)
-    except Exception:
+    except Exception:  # noqa: BLE001
         sid = None
     if sid is None:
-        outcome = repo.defer_event(event_id, error_code="dest_reindex_pending", attempts=attempts)
-        if outcome == "exhausted":
+        # None (or an exception) is a RETRYABLE indexing failure — never complete on a bare no-throw.
+        if repo.defer_event(
+            event_id, error_code="dest_reindex_pending", expected_attempt=expected_attempt
+        ) == "exhausted":
             # The safe move committed; only the content refresh did not complete. Terminal ERROR (not
-            # 'done') accurately reports "move committed, content pending" with lineage + supersede +
-            # invalidation intact; reconciliation / an explicit reindex recovers. Client trust stays safe
-            # because pending content is never advertised complete.
-            repo.complete_event(event_id, "error", error_code="dest_reindex_exhausted")
+            # 'done') — "move committed, content pending", lineage + supersede + invalidation intact.
+            _terminal("error", "dest_reindex_exhausted")
         return
-    repo.complete_event(event_id, "done")
+    _terminal("done", None)
 
 
 class _LeaseLost(Exception):
@@ -2644,24 +2710,31 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
             elif event["event_type"] == "moved":
                 # Governed same-root rename/move (Phase B / B4 corrective). Placed BEFORE the path-policy
                 # branches below (which key on the OLD rel_path) so a move is never mis-routed as an
-                # excluded/deferred/unsupported skip. Terminal-invalid payloads never mutate; everything
-                # else is dispatched to the readiness-gated, symlink/identity-safe drain move.
-                old_rel = event["rel_path"]
-                new_rel = event.get("dest_rel_path")
+                # excluded/deferred/unsupported skip. BOTH paths cross the queue trust boundary and are
+                # canonically validated (no FS access) before any lookup/probe/mutation; terminal-invalid
+                # payloads never mutate. All terminal completions are ownership-guarded (claim generation).
+                expected_attempt = int(event.get("attempts") or 1)
+                old_norm = normalize_moved_rel_path(event["rel_path"])
+                new_norm = normalize_moved_rel_path(event.get("dest_rel_path"))
                 src_key = event.get("source_root_key")
-                if not old_rel or not new_rel or old_rel == new_rel or src_key == _VAULT_ROOT_KEY:
-                    repo.complete_event(event["event_id"], "skipped", error_code="moved_invalid")
+                if (old_norm is None or new_norm is None or old_norm == new_norm
+                        or src_key == _VAULT_ROOT_KEY):
+                    repo.complete_owned_event(
+                        event["event_id"], "skipped",
+                        expected_attempt=expected_attempt, error_code="moved_invalid",
+                    )
                 else:
                     root = roots.get(src_key)
                     if root is None or not getattr(root, "enabled", True):
-                        repo.complete_event(
-                            event["event_id"], "skipped", error_code="unconfigured_root"
+                        repo.complete_owned_event(
+                            event["event_id"], "skipped",
+                            expected_attempt=expected_attempt, error_code="unconfigured_root",
                         )
                     else:
                         _apply_moved_event(
                             repo, config, event, root,
-                            old_rel=old_rel, new_rel=new_rel, src_key=src_key,
-                            attempts=int(event.get("attempts") or 1),
+                            old_rel=old_norm, new_rel=new_norm, src_key=src_key,
+                            expected_attempt=expected_attempt,
                         )
             elif (
                 event["source_root_key"] == _VAULT_ROOT_KEY

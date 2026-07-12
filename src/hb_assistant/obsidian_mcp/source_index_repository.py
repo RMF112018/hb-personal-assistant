@@ -1070,6 +1070,88 @@ class SourceIndexRepository:
         )
         self._mark_generated_notes_stale(c, source_id)
 
+    def _confirmed_move_locked(
+        self,
+        c: sqlite3.Connection,
+        root_key: str,
+        old_rel_path: str,
+        new_rel_path: str,
+        dest_metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Core same-root rename/move on an OPEN transaction (Phase B / B4). Callers own the txn.
+
+        Invariant: the old row cannot become non-current unless the destination row + lineage are persisted
+        in the SAME transaction. Content trust is NOT carried (a filesystem move does not prove byte
+        identity): the destination's content representation is fully invalidated and extraction set to
+        ``pending``. Returns ``{old_source_id, new_source_id, linked, result}`` where ``result`` is
+        ``move_applied`` / ``move_already_applied`` (both mutate) / ``source_missing`` /
+        ``conflicting_successor`` (both leave the store untouched)."""
+        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
+        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
+        now = _now()
+        old_present = c.execute(
+            "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
+            (old_sid,),
+        ).fetchone() is not None
+        if old_present:
+            result = "move_applied"
+        else:
+            # No current predecessor — distinguish idempotent-retry / conflict / genuinely-missing so a
+            # retried or racing move never fabricates lineage or re-deletes.
+            succ = c.execute(
+                "SELECT source_id FROM source_intelligence_sources "
+                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
+                (old_sid,),
+            ).fetchone()
+            if succ is not None and succ[0] == new_sid:
+                result = "move_already_applied"
+            elif succ is not None:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "conflicting_successor"}
+            else:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "source_missing"}
+
+        lineage = old_sid  # both move_applied and move_already_applied carry lineage
+        # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
+        # COALESCE-preserve lineage on a retry so re-running never nulls an existing predecessor link.
+        c.execute(
+            "INSERT INTO source_intelligence_sources"
+            "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
+            " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
+            "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
+            " renamed_from_source_id=COALESCE(excluded.renamed_from_source_id, "
+            "  source_intelligence_sources.renamed_from_source_id), updated_at=excluded.updated_at",
+            (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
+        )
+        # FULL content invalidation of the destination (drops a pre-existing dest's FTS row via its
+        # CURRENT fts_rowid, text, chunks, content metadata cols, and stales the dest's own card) —
+        # BEFORE the metadata upsert nulls fts_rowid. Fresh dest → no-op.
+        self._invalidate_content_locked(c, new_sid, "external_file")
+        # Destination metadata = current dest stat; content trust invalidated (extraction pending).
+        c.execute(
+            "INSERT INTO source_intelligence_metadata"
+            "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
+            " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
+            "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
+            " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, content_sha256='', "
+            " fts_rowid=NULL, extraction_status='pending', indexed_at=excluded.indexed_at",
+            (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
+             dest_metadata.get("mtime_ns"), "", now),
+        )
+        if old_present:
+            # Inherited-but-unverified: relink the old row's generated notes to the new row as 'stale'
+            # (an explicit status, not an implied null) so they are not advertised as current content.
+            c.execute(
+                "UPDATE OR IGNORE source_intelligence_generated_notes "
+                "SET source_id=?, generation_status='stale', updated_at=? WHERE source_id=?",
+                (new_sid, now, old_sid),
+            )
+            # Old row becomes non-current only now that the destination + lineage are persisted.
+            self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
+        return {"old_source_id": old_sid, "new_source_id": new_sid,
+                "linked": old_present, "result": result}
+
     def apply_confirmed_same_root_move(
         self,
         root_key: str,
@@ -1079,95 +1161,40 @@ class SourceIndexRepository:
         *,
         conn: sqlite3.Connection | None = None,
     ) -> dict[str, Any]:
-        """Transactionally record a CONFIRMED same-root file rename/move (Phase B / B4).
-
-        Invariant: the old row cannot become non-current unless the destination row + lineage are durably
-        persisted in the SAME transaction — on any failure the whole move rolls back and the old row stays
-        current. The move carries ONLY lineage (``renamed_from_source_id``): extraction/content trust is
-        NOT carried forward (a filesystem move does not prove byte identity), so the destination's content
-        representation is FULLY invalidated (``_invalidate_content_locked``) and ``extraction_status`` set
-        to ``pending``. The caller confirms the destination present/regular first and (re)extracts
-        ``new_rel_path`` afterward.
-
-        Returns ``{old_source_id, new_source_id, linked, result}`` where ``result`` distinguishes:
-          * ``move_applied`` — a current predecessor existed → superseded this call (``linked`` True);
-          * ``move_already_applied`` — no current predecessor, but a lineage successor == new_sid already
-            exists (an idempotent retry) → dest content re-invalidated, lineage untouched;
-          * ``source_missing`` — no current predecessor and no successor → NO mutation here; the caller
-            indexes the destination as an ordinary current source (``renamed_from_source_id=null``);
-          * ``conflicting_successor`` — the predecessor is already superseded by a DIFFERENT successor →
-            NO mutation (fail closed).
-        Only ``move_applied``/``move_already_applied`` mutate; ``source_missing``/``conflicting_successor``
-        leave the store untouched."""
-        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
-        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
-        now = _now()
+        """Open a transaction and run :meth:`_confirmed_move_locked` (unguarded — direct/test use)."""
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            old_present = c.execute(
-                "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
-                (old_sid,),
-            ).fetchone() is not None
-            if old_present:
-                result = "move_applied"
-            else:
-                # No current predecessor — distinguish idempotent-retry / conflict / genuinely-missing so a
-                # retried or racing move never fabricates lineage or re-deletes.
-                succ = c.execute(
-                    "SELECT source_id FROM source_intelligence_sources "
-                    "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
-                    (old_sid,),
-                ).fetchone()
-                if succ is not None and succ[0] == new_sid:
-                    result = "move_already_applied"
-                elif succ is not None:
-                    # Superseded by a DIFFERENT successor → do not mutate (fail closed).
-                    return {"old_source_id": old_sid, "new_source_id": new_sid,
-                            "linked": False, "result": "conflicting_successor"}
-                else:
-                    # Predecessor genuinely gone with no tracked successor → nothing to move here; the
-                    # caller indexes the destination as an ordinary current source (no invented lineage).
-                    return {"old_source_id": old_sid, "new_source_id": new_sid,
-                            "linked": False, "result": "source_missing"}
+            return self._confirmed_move_locked(c, root_key, old_rel_path, new_rel_path, dest_metadata)
 
-            lineage = old_sid  # both move_applied and move_already_applied carry lineage
-            # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
-            # COALESCE-preserve lineage on a retry so re-running never nulls an existing predecessor link.
-            c.execute(
-                "INSERT INTO source_intelligence_sources"
-                "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
-                " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
-                " renamed_from_source_id=COALESCE(excluded.renamed_from_source_id, "
-                "  source_intelligence_sources.renamed_from_source_id), updated_at=excluded.updated_at",
-                (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
+    def apply_owned_confirmed_same_root_move(
+        self,
+        *,
+        event_id: str,
+        expected_attempt: int,
+        root_key: str,
+        old_relative_path: str,
+        new_relative_path: str,
+        destination_metadata: dict[str, Any],
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any]:
+        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C2R2-002). In ONE transaction, first prove
+        this drain still owns the claim (``status='processing'`` AND ``attempts=expected_attempt``); if not,
+        return ``result='claim_conflict'`` with **no source/lineage mutation** (a stale worker whose event
+        was reclaimed can never mutate). Otherwise run the same core move. The ownership check and the
+        mutation are atomic — a concurrent reclaim between them is impossible within the single txn."""
+        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_relative_path)
+        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_relative_path)
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            owned = c.execute(
+                "SELECT 1 FROM source_intelligence_events "
+                "WHERE event_id=? AND status='processing' AND attempts=?",
+                (event_id, int(expected_attempt)),
+            ).fetchone()
+            if owned is None:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "claim_conflict"}
+            return self._confirmed_move_locked(
+                c, root_key, old_relative_path, new_relative_path, destination_metadata
             )
-            # FULL content invalidation of the destination (drops a pre-existing dest's FTS row via its
-            # CURRENT fts_rowid, text, chunks, content metadata cols, and stales the dest's own card) —
-            # BEFORE the metadata upsert nulls fts_rowid. Fresh dest → no-op.
-            self._invalidate_content_locked(c, new_sid, "external_file")
-            # Destination metadata = current dest stat; content trust invalidated (extraction pending).
-            c.execute(
-                "INSERT INTO source_intelligence_metadata"
-                "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
-                " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
-                "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
-                " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, content_sha256='', "
-                " fts_rowid=NULL, extraction_status='pending', indexed_at=excluded.indexed_at",
-                (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
-                 dest_metadata.get("mtime_ns"), "", now),
-            )
-            if old_present:
-                # Inherited-but-unverified: relink the old row's generated notes to the new row as 'stale'
-                # (an explicit status, not an implied null) so they are not advertised as current content.
-                c.execute(
-                    "UPDATE OR IGNORE source_intelligence_generated_notes "
-                    "SET source_id=?, generation_status='stale', updated_at=? WHERE source_id=?",
-                    (new_sid, now, old_sid),
-                )
-                # Old row becomes non-current only now that the destination + lineage are persisted.
-                self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
-        return {"old_source_id": old_sid, "new_source_id": new_sid,
-                "linked": old_present, "result": result}
 
     def find_successor_source_id(
         self, source_id: str, *, conn: sqlite3.Connection | None = None
@@ -1616,35 +1643,71 @@ class SourceIndexRepository:
         event_id: str,
         *,
         error_code: str,
-        attempts: int,
+        expected_attempt: int,
         conn: sqlite3.Connection | None = None,
     ) -> str:
-        """Bounded, backoff-based retry for a CLAIMED ('processing') event (Phase B / B4 corrective).
+        """Bounded, backoff-based retry for a CLAIMED event (Phase B / B4 corrective), guarded by the
+        **claim generation**.
 
-        Returns:
+        ``expected_attempt`` is the ``attempts`` value ``claim_queued`` returned to THIS drain. The guard
+        requires both ``status='processing'`` AND ``attempts=expected_attempt`` so a stale worker whose
+        event was reclaimed (``requeue_stuck`` → another claim bumps ``attempts``) can never re-queue an
+        event it no longer owns. Returns:
           * ``"deferred"`` — re-queued with a future ``next_attempt_at`` (retryable on a later drain);
-          * ``"exhausted"`` — ``attempts >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
-            terminal disposition (a move never loops forever);
-          * ``"conflict"`` — the guarded ``WHERE ... status='processing'`` matched 0 rows (the event is no
-            longer owned by this drain, e.g. requeue_stuck reclaimed it) → **fail closed**, never claim a
-            false deferral.
-
-        The exponential backoff (base/cap from the named module constants) spaces retries so a stale root
-        is not hammered every drain cycle; ``next_attempt_at`` uses ``_iso_after`` (identical ISO format to
-        every other queue timestamp)."""
-        if attempts >= MOVED_MAX_ATTEMPTS:
+          * ``"exhausted"`` — ``expected_attempt >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
+            guarded terminal disposition (a move never loops forever);
+          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed.
+        """
+        if expected_attempt >= MOVED_MAX_ATTEMPTS:
             return "exhausted"
-        delay = min(MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, attempts - 1)))
+        delay = min(
+            MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, expected_attempt - 1))
+        )
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             cur = c.execute(
                 "UPDATE source_intelligence_events "
                 "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
-                "WHERE event_id=? AND status='processing'",
-                (error_code, _iso_after(delay), _now(), event_id),
+                "WHERE event_id=? AND status='processing' AND attempts=?",
+                (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
             )
             if (cur.rowcount or 0) == 0:
                 return "conflict"
         return "deferred"
+
+    def complete_owned_event(
+        self,
+        event_id: str,
+        status: str,
+        *,
+        expected_attempt: int,
+        error_code: str | None = None,
+        conn: sqlite3.Connection | None = None,
+    ) -> bool:
+        """Terminal completion guarded by the claim generation (Phase B / B4 corrective). Only the drain
+        that currently owns the claim (``status='processing'`` AND ``attempts=expected_attempt``) may
+        finish it — a stale worker's completion is a no-op. Returns True iff the row was updated."""
+        if status == "skipped":
+            error_code = normalize_skip_code(error_code)
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            cur = c.execute(
+                "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
+                "WHERE event_id=? AND status='processing' AND attempts=?",
+                (status, error_code, _now(), event_id, int(expected_attempt)),
+            )
+            return (cur.rowcount or 0) > 0
+
+    def event_is_owned(
+        self, event_id: str, expected_attempt: int, *, conn: sqlite3.Connection | None = None
+    ) -> bool:
+        """True iff the event is still owned by this claim generation (processing + attempts match). Used
+        to re-check ownership after the move commits but BEFORE expensive re-indexing."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT 1 FROM source_intelligence_events "
+                "WHERE event_id=? AND status='processing' AND attempts=?",
+                (event_id, int(expected_attempt)),
+            ).fetchone()
+        return row is not None
 
     def requeue_stuck(
         self, ttl_seconds: int = 900, *, conn: sqlite3.Connection | None = None
