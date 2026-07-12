@@ -71,3 +71,44 @@ prove-red output lives in the evidence package (`a1-prove-red.txt`, `a3-prove-re
 - **294 tests: 291 passed, 3 failed, 0 errors, 0 skipped** across 18 source-index suites (~206s).
 - The 3 failures are exactly the stale-assertion trio above; every other source-index test is green on the
   unmodified `origin/main` worktree.
+
+---
+
+## FINAL checkpoint update — disposition of every pre-existing failure
+
+The FINAL checkpoint adds a source-index CI gate that must be green. The pre-existing failures above were
+re-examined; each was re-confirmed on a **pristine `origin/main` (`9c27839b`) worktree** (`scratchpad/origin-baseline`).
+
+### (a) The three stale `== 123` schema assertions — CORRECTED (isolated, justified)
+The FINAL plan explicitly permits updating these "unless the final audit determines their update is necessary
+for the new CI gate; any such change must be isolated and explicitly justified." The gate must include the
+generation-hardening and migration suites, which contain these three tests, so their update **is** necessary
+for a green gate. They were changed from a hard-coded `== 123` to `== LATEST_SCHEMA_VERSION` (drift-proof — the
+number can never go stale again). This is the **only** change to these three files.
+
+| Node ID | Before | After |
+|---|---|---|
+| `…test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration` | `== LATEST_SCHEMA_VERSION == 123`, two `== 123` | `== LATEST_SCHEMA_VERSION` (×3) |
+| `…test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive` | `v1 == v2 == 123` | `v1 == v2 == LATEST_SCHEMA_VERSION` |
+| `…test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive` | `v1 == v2 == 123` | `v1 == v2 == LATEST_SCHEMA_VERSION` |
+
+Confirmed failing on pristine `origin/main` beforehand (`124 == 123`, ×3) — see `final-runs/` baseline capture.
+All three now pass on HEAD. No production code touched.
+
+### (b) Baseline failures #4, #5, #6 — remain PRE-EXISTING debt, NOT modified
+These are stale hard-coded *count / wording* assertions unrelated to any Phase A change; fixing them would be an
+out-of-scope tool-surface change (and, for #4/#5, a manifest re-freeze). They are **left as-is**:
+
+| Node ID | Reproduces on origin/main | Handling in the CI gate |
+|---|---|---|
+| `tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots` | `80 == 78` | not in the gate suite (structure-CLI, not a source-index-serving/trust suite) |
+| `tests/test_source_index_client_performance_hardening.py::test_output_aliases_defined` | `11 == 10` | not in the gate suite |
+| `tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions` | `assistant_source_index_health` desc lacks "vault"/"card" | **`--deselect`**-ed (the rest of `test_source_connector_eval.py` runs in the gate); documented in `10-ci-gate.md` |
+
+None of #4/#5/#6 is Phase-A-authored, and none was ever absorbed into a prove-red set. They are the only
+source-index failures that survive on HEAD, and all reproduce identically on pristine `origin/main`.
+
+### Net result on HEAD
+Zero Phase-A-authored test failures. The three schema-assertion tests now pass (drift-proof). The only
+remaining failures anywhere in the source-index surface are #4/#5/#6, all pre-existing and reproducing on
+pristine `origin/main`.

@@ -173,18 +173,33 @@ def test_record_failure_holds_below_threshold_then_quarantines(tmp_path):
     db = _db(tmp_path)
     repo = SourceIndexScanQuarantineRepository(db)
     r1 = repo.record_failure(
-        root_key="work", rel_path="a/f.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=3,
+        root_key="work",
+        rel_path="a/f.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=3,
     )
     assert r1["action"] == "hold" and r1["attempt_count"] == 1
     r2 = repo.record_failure(
-        root_key="work", rel_path="a/f.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=3,
+        root_key="work",
+        rel_path="a/f.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=3,
     )
     assert r2["action"] == "hold" and r2["attempt_count"] == 2
     r3 = repo.record_failure(
-        root_key="work", rel_path="a/f.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=3,
+        root_key="work",
+        rel_path="a/f.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=3,
     )
     assert r3["action"] == "quarantine" and r3["attempt_count"] == 3
     assert repo.blocking_count("work") == 1
@@ -195,8 +210,13 @@ def test_record_failure_keeps_single_active_row_no_duplicates(tmp_path):
     repo = SourceIndexScanQuarantineRepository(db)
     for _ in range(5):
         repo.record_failure(
-            root_key="work", rel_path="f.txt", source_id=None, generation_id="g1",
-            failure_stage="metadata_stat", error_code="stat_failed", threshold=2,
+            root_key="work",
+            rel_path="f.txt",
+            source_id=None,
+            generation_id="g1",
+            failure_stage="metadata_stat",
+            error_code="stat_failed",
+            threshold=2,
         )
     conn = sqlite3.connect(db)
     try:
@@ -215,8 +235,12 @@ def test_record_failure_normalizes_unknown_error_code(tmp_path):
     db = _db(tmp_path)
     repo = SourceIndexScanQuarantineRepository(db)
     repo.record_failure(
-        root_key="work", rel_path="f.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="RuntimeError: /Users/secret/path boom",
+        root_key="work",
+        rel_path="f.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="RuntimeError: /Users/secret/path boom",
         threshold=1,
     )
     rec = repo.list_quarantine("work")[0]
@@ -229,8 +253,13 @@ def test_resolve_observed_clears_below_threshold_retry(tmp_path):
     db = _db(tmp_path)
     repo = SourceIndexScanQuarantineRepository(db)
     repo.record_failure(
-        root_key="work", rel_path="f.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=5,
+        root_key="work",
+        rel_path="f.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=5,
     )
     assert repo.troubled_paths("work") == {"f.txt"}
     assert repo.resolve_observed(root_key="work", rel_path="f.txt") is True
@@ -403,8 +432,13 @@ def test_unresolved_quarantine_blocks_root_trust(tmp_path):
     cfg = _cfg(root_dir, threshold=1)
     # Record a blocking quarantine directly (independent of a scan).
     SourceIndexScanQuarantineRepository(db).record_failure(
-        root_key="work", rel_path="f0.txt", source_id=None, generation_id="g1",
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+        root_key="work",
+        rel_path="f0.txt",
+        source_id=None,
+        generation_id="g1",
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=1,
     )
     inp = gather_root_inputs(repo, cfg, cfg, "work")
     assert inp.unresolved_quarantine_count >= 1
@@ -424,13 +458,20 @@ def test_generation_retention_preserves_unresolved_quarantine(tmp_path):
     # Create several failed(quarantine_unresolved) generations, the latest holding the live blocker.
     last_gid = None
     for i in range(5):
-        g = gr.begin_generation_pass("work", f"run{i}", policy_fingerprint="fp", root_path_hash="rph")
+        g = gr.begin_generation_pass(
+            "work", f"run{i}", policy_fingerprint="fp", root_path_hash="rph"
+        )
         gid = g["generation_id"]
         gr.fail_generation(gid, f"run{i}", last_error_code="quarantine_unresolved")
         last_gid = gid
     qrepo.record_failure(
-        root_key="work", rel_path="f.txt", source_id=None, generation_id=last_gid,
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+        root_key="work",
+        rel_path="f.txt",
+        source_id=None,
+        generation_id=last_gid,
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=1,
     )
     assert qrepo.has_blocking("work") is True
     gr.prune_generations("work", keep=1)
@@ -449,8 +490,13 @@ def test_pruned_origin_generation_does_not_clear_root_blocker(tmp_path):
     old_gid = g_old["generation_id"]
     gr.fail_generation(old_gid, "old", last_error_code="metadata_walk_error")
     qrepo.record_failure(
-        root_key="work", rel_path="f.txt", source_id=None, generation_id=old_gid,
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+        root_key="work",
+        rel_path="f.txt",
+        source_id=None,
+        generation_id=old_gid,
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=1,
     )
     for i in range(3):
         g = gr.begin_generation_pass("work", f"n{i}", policy_fingerprint="fp", root_path_hash="rph")
@@ -488,19 +534,29 @@ def test_resolved_quarantine_retention_is_bounded_but_keeps_blockers(tmp_path):
     gr.fail_generation(gid, "r0", last_error_code="quarantine_unresolved")
     # One resolved (history) + one unresolved (live blocker) for the same root.
     res = qrepo.record_failure(
-        root_key="work", rel_path="resolved.txt", source_id=None, generation_id=gid,
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+        root_key="work",
+        rel_path="resolved.txt",
+        source_id=None,
+        generation_id=gid,
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=1,
     )
     qrepo.resolve(quarantine_id=res["quarantine_id"], resolution_state=RESOLUTION_RESOLVED)
     qrepo.record_failure(
-        root_key="work", rel_path="blocker.txt", source_id=None, generation_id=gid,
-        failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+        root_key="work",
+        rel_path="blocker.txt",
+        source_id=None,
+        generation_id=gid,
+        failure_stage="metadata_stat",
+        error_code="stat_failed",
+        threshold=1,
     )
     gr.prune_generations("work", keep=1)
     assert qrepo.has_blocking("work") is True
-    assert {r["rel_path"] for r in qrepo.list_quarantine("work", resolution_state=RESOLUTION_UNRESOLVED)} == {
-        "blocker.txt"
-    }
+    assert {
+        r["rel_path"] for r in qrepo.list_quarantine("work", resolution_state=RESOLUTION_UNRESOLVED)
+    } == {"blocker.txt"}
 
 
 # ===================================================================================================
@@ -555,7 +611,9 @@ def test_operator_retry_retains_when_root_unavailable(tmp_path, monkeypatch):
     _mkfiles(root_dir, 3)
     db = _db(tmp_path)
     qid = _quarantine_one(db, root_dir, "f2.txt", monkeypatch)
-    shutil.rmtree(root_dir)  # the entire root is gone (mount loss) — indeterminate, not confirmed-absent
+    shutil.rmtree(
+        root_dir
+    )  # the entire root is gone (mount loss) — indeterminate, not confirmed-absent
     cfg = _cfg(root_dir, threshold=1)
     out = retry_quarantine(db, cfg, root_key="work", quarantine_id=qid, max_items=1)
     assert out["retained"] == 1
@@ -572,8 +630,13 @@ def test_operator_retry_is_bounded_by_max_items(tmp_path, monkeypatch):
     qrepo = SourceIndexScanQuarantineRepository(db)
     for i in range(5):
         qrepo.record_failure(
-            root_key="work", rel_path=f"f{i}.txt", source_id=None, generation_id="g1",
-            failure_stage="metadata_stat", error_code="stat_failed", threshold=1,
+            root_key="work",
+            rel_path=f"f{i}.txt",
+            source_id=None,
+            generation_id="g1",
+            failure_stage="metadata_stat",
+            error_code="stat_failed",
+            threshold=1,
         )
     cfg = _cfg(root_dir, threshold=1)
     out = retry_quarantine(db, cfg, root_key="work", max_items=2)

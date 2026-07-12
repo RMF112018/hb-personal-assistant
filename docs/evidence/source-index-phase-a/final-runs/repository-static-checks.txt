@@ -1,0 +1,23 @@
+=== repository-static-checks ===
+branch HEAD: 73e4e2fb3067f66d5d5d0823a6b347db3a786d8d
+runner: .venv/bin/python 3.14.5 ; ruff 0.15.14
+
+COMMAND (ruff): python -m ruff check <Phase-A authored + substantially-changed source-index modules + new tests>
+--- ruff check (gate's clean file set) ---
+All checks passed!
+
+COMMAND (ruff format --check): python -m ruff format --check <new formatted modules only>
+--- ruff format --check (new formatted modules) ---
+Would reformat: tests/test_source_index_quarantine.py
+1 file would be reformatted, 4 files already formatted
+
+COMMAND (mypy): python -m mypy <new A4 + A2/A3 modules>
+--- mypy ---
+Success: no issues found in 5 source files
+
+NOTE (baseline comparison): 'ruff check .' over the WHOLE repo reports 572 pre-existing findings on
+both origin/main and HEAD (the repo's strict ruff scope is partial, per pyproject extend-exclude /
+per-file-ignores). Two of those touch files this branch edited but on lines it did NOT change:
+  - obsidian_mcp/tool_entry_manifest.py: unused 'fam' (pre-existing; A2 only added a dict-literal entry)
+  - nas_mcp/tool_registration.py: pre-existing finding on an unchanged line
+These are pre-existing debt, excluded from the gate's ruff list; the Phase-A-authored/changed lines are clean.

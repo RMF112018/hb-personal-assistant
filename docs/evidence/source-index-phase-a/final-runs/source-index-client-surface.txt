@@ -1,0 +1,14 @@
+=== source-index-client-surface ===
+branch HEAD: 73e4e2fb3067f66d5d5d0823a6b347db3a786d8d
+runner: .venv/bin/python 3.14.5 | PYTHONPATH=src:subrepos/construction-financial-review/src
+
+COMMAND:
+python -m pytest tests/test_source_connector_service.py tests/test_nas_mcp_source_connector.py tests/test_source_connector_eval.py tests/test_source_root_trust.py tests/test_source_index_health_readonly_conn.py tests/test_tool_manifest_freshness_guard.py tests/test_n8c23_client_tool_manifest.py tests/test_manifest_schema_parity.py --deselect tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+
+JUnit totals: tests=103 failures=0 errors=0 skipped=0
+failing node IDs: NONE
+
+BASELINE: test_all_source_tools_have_disambiguating_descriptions is a PRE-EXISTING failure on origin/main
+(deselected, see 08). All serving/trust/manifest-parity behavior is green on both origin/main and HEAD.
+
+suites: test_source_connector_service, test_nas_mcp_source_connector, test_source_connector_eval, test_source_root_trust, test_source_index_health_readonly_conn, test_tool_manifest_freshness_guard, test_n8c23_client_tool_manifest, test_manifest_schema_parity

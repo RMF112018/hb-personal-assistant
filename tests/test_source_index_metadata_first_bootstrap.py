@@ -24,7 +24,7 @@ from hb_assistant.obsidian_mcp import source_scan_runner as runner
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
 from hb_assistant.obsidian_mcp.source_health_service import source_index_health
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
 
 _TEMPLATE_DB: str | None = None
@@ -500,7 +500,7 @@ def test_v119_migration_idempotent_and_additive(tmp_path):
     db = str(tmp_path / "m.db")
     v1 = SQLiteMigrator(db_path=db).apply()
     v2 = SQLiteMigrator(db_path=db).apply()  # re-run
-    assert v1 == v2 == 123
+    assert v1 == v2 == LATEST_SCHEMA_VERSION
     import sqlite3
 
     conn = sqlite3.connect(db)

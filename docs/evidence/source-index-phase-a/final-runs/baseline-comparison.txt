@@ -1,0 +1,16 @@
+=== BASELINE COMPARISON: pristine origin/main (9c27839b) ===
+worktree: scratchpad/origin-baseline (detached at 9c27839b); LATEST_SCHEMA_VERSION=124 on origin/main
+
+The three schema-version tests fail on pristine origin/main BEFORE any Phase A code (proving pre-existing):
+  command: python -m pytest <the 3 schema-version tests>
+  result: tests=3 failures=3 errors=0
+    FAIL test_v122_fresh_and_incremental_migration :: assert 124 == 123
+    FAIL test_v119_migration_idempotent_and_additive :: assert 124 == 123
+    FAIL test_v120_migration_idempotent_and_additive :: assert 124 == 123
+
+On HEAD these three are corrected to == LATEST_SCHEMA_VERSION and pass (see 08).
+
+Also confirmed pre-existing on origin/main (documented in 08, left unmodified):
+  - test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots (80 == 78)
+  - test_source_index_client_performance_hardening.py::test_output_aliases_defined (11 == 10)
+  - test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions (health desc lacks vault/card)

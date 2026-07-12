@@ -1,0 +1,37 @@
+=== source-index-broad-regression (the CI gate's pytest target set) ===
+branch HEAD: 73e4e2fb3067f66d5d5d0823a6b347db3a786d8d
+runner: .venv/bin/python 3.14.5 | PYTHONPATH=src:subrepos/construction-financial-review/src
+
+COMMAND:
+bash scripts/ci_source_index_gate.sh  (locally: python -m pytest <22 source-index suites> --deselect tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions)
+
+JUnit totals: tests=384 failures=0 errors=0 skipped=0
+failing node IDs: NONE
+
+BASELINE: the one deselected test (test_all_source_tools_have_disambiguating_descriptions) is a PRE-EXISTING
+failure reproducing on pristine origin/main (see 08). All other suites are green on both origin/main and HEAD;
+the 3 schema-version tests were corrected to ==LATEST_SCHEMA_VERSION (see 08).
+
+suite files (all pass):
+  test_source_index_vault_deletion_safety
+  test_source_root_mapping
+  test_source_root_trust
+  test_source_index_quarantine
+  test_source_index_quarantine_lifecycle
+  test_source_index_generation_hardening
+  test_source_index_metadata_first_bootstrap
+  test_source_index_metadata_generation
+  test_migrator_v117_source_index_bootstrap
+  test_migrator_v123_relpath_index
+  test_obsidian_source_watch
+  test_obsidian_source_watch_lifecycle
+  test_obsidian_source_watch_ownership
+  test_obsidian_source_watch_reliability
+  test_source_index_watcher_automated_refresh
+  test_source_connector_service
+  test_nas_mcp_source_connector
+  test_source_connector_eval
+  test_source_index_health_readonly_conn
+  test_tool_manifest_freshness_guard
+  test_n8c23_client_tool_manifest
+  test_manifest_schema_parity

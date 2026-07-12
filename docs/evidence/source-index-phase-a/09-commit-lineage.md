@@ -12,7 +12,9 @@ All commits are local on branch `fix/source-index-phase-a-correctness-trust`, br
 | 5 | `073a3a71a8a338b2bc1c55d7943a32e3dda5566a` | A3 corrective — fail-closed config loading + evidence split (GREEN) |
 | 6 | `554c4b905a947e7660d2e98fbbd64c9b55b61451` | A2 — root-specific client trust, fail-closed only (GREEN) |
 | 7 | `351c7e4c…` | A2 corrective #1 — evidence correction + 1 non-circularity regression test (GREEN) |
-| 8 | *(branch HEAD — this A2-corrective-#2 commit)* | A2 corrective #2 — watcher trust enforcement + client read contract (GREEN) |
+| 8 | `3c5d7738e0fa15a0ed3074acfe0929e98bb88af1` | A2 corrective #2 — watcher trust enforcement + client read contract (GREEN) |
+| 9 | `73e4e2fb3067f66d5d5d0823a6b347db3a786d8d` | A4 — durable poison-file quarantine + bounded forward progress (V125) (GREEN) |
+| 10 | *(branch HEAD — this FINAL checkpoint commit)* | FINAL — cumulative validation + source-index CI gate + evidence package (GREEN) |
 
 ## A2 corrective #2 (commit 8) — scope
 Two implementation-contract fixes on the HOLD-A4 disposition (see `14-a2-corrective2-watcher-and-read-contract.md`):

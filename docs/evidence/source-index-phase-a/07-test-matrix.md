@@ -102,6 +102,19 @@ Adversarial corpus: `work, syn-work, work-backup, backup-work, home, home-work, 
 | `test_pruned_origin_generation_does_not_clear_root_blocker` | Root blocker survives pruning |
 | `test_per_file_error_holds_cursor_then_retries` (UPDATED) | Retry-to-threshold, then quarantine+advance |
 
-## FINAL — cumulative + CI
-Cumulative source-index / client-trust / watcher-recovery / migration groups + failure injection + static
-checks; new `.github/workflows/source-index-gate.yml`. See plan FINAL.
+> **Note on A4 node IDs:** the A4 rows above use the *planned* names from the A0 design matrix. The
+> **authoritative implemented node IDs** (26 in `tests/test_source_index_quarantine.py`) are captured verbatim
+> in `a4-node-ids.txt`; the mapping is 1:1 by behavior (e.g. planned `test_migration_v125_fresh_safe` →
+> implemented `test_migration_fresh_creates_quarantine_table`). FINAL additionally adds
+> `tests/test_source_index_quarantine_lifecycle.py` (3 end-to-end trust-integration tests).
+
+## FINAL — cumulative validation + CI gate
+Seven separately-named validation runs (each with exact command, branch HEAD, JUnit totals, failing node IDs,
+and baseline comparison) are captured under `final-runs/` and summarized in `15-final-cumulative-validation.md`:
+`phase-a-authored-tests`, `phase-a-cross-checkpoint`, `source-index-client-surface`,
+`source-index-generation-and-recovery`, `source-index-migrations`, `source-index-broad-regression`,
+`repository-static-checks`. New CI gate: `.github/workflows/source-index-gate.yml` → `scripts/ci_source_index_gate.sh`
+(see `10-ci-gate.md`). A4 trust-integration lifecycle: `test_source_index_quarantine_lifecycle.py`
+(`test_quarantine_lifecycle_blocks_serving_and_reconcile_then_recovers`,
+`test_quarantine_toggles_watcher_activation_via_shared_authority`,
+`test_quarantined_root_fails_watcher_start_closed`).

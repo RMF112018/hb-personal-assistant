@@ -1,0 +1,16 @@
+BEFORE prune: generations=2  quarantine={'generation_id': '1648fb518e6548809b1d4a8bb1d547f6', 'origin_generation_id': '1648fb518e6548809b1d4a8bb1d547f6', 'resolution_state': 'unresolved', 'status': 'quarantined'}  has_blocking=True
+
+prune_generations(keep=1) -> {'keep': 1, 'dry_run': False, 'pruned_by_root': {'work': 1}, 'total_pruned': 1}
+
+AFTER prune:
+  [a] unresolved quarantine SURVIVES generation pruning: True
+  [b] origin generation pruned -> generation_id NULLed (nullable behaves as designed): True
+  [c] origin_generation_id retained for audit: True
+      (origin generation row actually removed: True )
+  [d] root blocking does NOT depend on a retained generation row: True
+
+  [e] cleanup can never remove an UNRESOLVED record: still blocking after adding+resolving a sibling: True
+      unresolved set is exactly the live blocker: True
+  [f] retention cannot flip an unsafe root to safe: has_blocking after another prune: True
+
+ALL RETENTION SAFETY CHECKS PASSED
