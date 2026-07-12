@@ -10,7 +10,24 @@ All commits are local on branch `fix/source-index-phase-a-correctness-trust`, br
 | 3 | `1d58d123a3b58463eecb270609d6afba69ed4609` | A1 follow-up (GREEN) — see below |
 | 4 | `80d089eea96a07016babaab852d67a3fc2355991` | A3 — canonical structure-root mapping (GREEN) |
 | 5 | `073a3a71a8a338b2bc1c55d7943a32e3dda5566a` | A3 corrective — fail-closed config loading + evidence split (GREEN) |
-| 6 | *(this commit)* | A2 — root-specific client trust, fail-closed only (GREEN) |
+| 6 | `554c4b905a947e7660d2e98fbbd64c9b55b61451` | A2 — root-specific client trust, fail-closed only (GREEN) |
+| 7 | *(branch HEAD — this A2-corrective commit)* | A2 corrective — evidence correction + 1 bootstrap↔watcher non-circularity regression test (GREEN) |
+
+## A2 corrective follow-up (commit 7) — scope
+
+Authorized narrow evidence correction on the HOLD-A4 disposition. Changes:
+- **Renamed/replaced** the internally-inconsistent `a2-validation-{focused,superset}.txt` with three
+  correctly-scoped artifacts: `a2-validation-cross-checkpoint.txt` (114/114), `a2-validation-client-surface.txt`
+  (153, 152 pass / 1 baseline), `a2-validation-broad-source-index.txt` (261, 256 pass / 5 baseline), each with
+  exact command, base SHA, JUnit totals, failing node IDs, and A0 comparison.
+- **Added** `10-baseline-reconciliation-matrix.md` (6 baseline nodes × A0/pristine/HEAD/run/signature/class),
+  `11-manifest-semantic-diff.md` (identical regenerated checksum + no `purpose` drift + probe artifacts),
+  `12-phase-a-regression-evidence.md` (explicit A1 19 / A3 25 / A2 36 / cross 114 counts),
+  `13-watcher-bootstrap-noncircular.md` (call flow + real-`bootstrap()` regression test).
+- **Added one test** `tests/test_source_root_trust.py::test_bootstrap_to_watcher_start_is_non_circular`
+  (drives the real `source_bootstrap.bootstrap()`; proves the non-circular bootstrap→watcher sequence). This is
+  the only source-of-truth/test change; all other changes are evidence-only. Branch stays GREEN.
+- No push / PR / merge / force. No production mutation. No new tool/write surface.
 
 ## Intervening commit `1d58d123` — full disclosure
 

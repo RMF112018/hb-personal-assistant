@@ -93,7 +93,10 @@ health but was reporting-only.
    `pa_tool_manifest_refresh_promote`, or the registration-time `bootstrap_persisted_manifest`) — **no stored
    checksum was hand-edited**. The freshness-guard + parity + exposure-bridge tests rebuild the surface live
    and pass, proving direct/gateway parity holds. `semantic_surface_checksum` is derived from each tool's
-   first-line `purpose` (unchanged here), so the edit does not churn the checksum.
+   canonical `purpose` (unchanged here), so the edit does not churn the checksum. **Confirmed by regeneration:**
+   the checksum is byte-identical on pristine origin/main and A2 HEAD
+   (`sha256:3eb81b4d…c4bf09fc`) — see `11-manifest-semantic-diff.md` and the probe artifacts
+   (`manifest_probe.py`, `manifest-checksum-{originmain,a2head}.txt`).
 
 ## Files changed
 
@@ -106,10 +109,10 @@ health but was reporting-only.
 | `obsidian_mcp/source_health_service.py` | consumes shared authority; non-vacuous aggregate + new aggregate/per-root trust fields |
 | `obsidian_mcp/source_watch.py` | +51 — independent watcher-startup trust enforcement |
 | `nas_mcp/tool_registration.py` | +3/−2 — corrected `assistant_get_source` help (docstring-only) |
-| `tests/test_source_root_trust.py` | **new** — 35 A2 tests |
+| `tests/test_source_root_trust.py` | **new** — 36 A2 tests (35 at the A2 checkpoint + 1 bootstrap↔watcher non-circularity regression added by the A2 corrective) |
 | `tests/test_source_connector_service.py`, `tests/test_nas_mcp_source_connector.py` | positive paths now seed a certified-safe root; unknown-root tests assert the new envelopes |
 | `tests/test_source_root_mapping.py` | 2 A3 assertions updated to `structure_mapping_resolved` (A2 semantics) |
-| `docs/evidence/source-index-phase-a/` | `04-…`, `08-…`, `09-…`, `a2-prove-red.txt`, `a2-validation-{focused,superset}.txt` |
+| `docs/evidence/source-index-phase-a/` | `04-…`, `08-…`, `09-…`, `10-baseline-reconciliation-matrix.md`, `11-manifest-semantic-diff.md`, `12-phase-a-regression-evidence.md`, `13-watcher-bootstrap-noncircular.md`, `a2-prove-red.txt`, `a2-validation-{client-surface,cross-checkpoint,broad-source-index}.txt` |
 
 `source_connector_service.py`/`source_content_provider.py`/`source_project_number.py`/`source_watch.py` are
 NOT ruff-formatted on origin/main; their diffs are additive with no reformat churn. `source_root_trust.py`
@@ -119,12 +122,18 @@ NOT ruff-formatted on origin/main; their diffs are additive with no reformat chu
 - **Prove-red** (`a2-prove-red.txt`): with A2 src reverted to the parent, `tests/test_source_root_trust.py`
   fails to import (`No module named source_root_trust`); the modified existing suites encode the new envelope
   contract and fail against parent code.
-- **Prove-green** — two artifacts:
-  - **Focused** (`a2-validation-focused.txt`): **275 tests, 274 passed, 1 failed** — the failure is the
-    pre-existing `test_output_aliases_defined` baseline defect. All 35 A2 tests + connector + NAS + watcher +
-    manifest/parity guards pass.
-  - **Superset** (`a2-validation-superset.txt`): **182 tests, 177 passed, 5 failed** — all five are disclosed
-    pre-existing baseline defects (v119/v120/v122, structure-cli, disambiguating-descriptions).
+- **Prove-green** — three correctly-scoped artifacts (superseding the withdrawn, mislabeled
+  `a2-validation-{focused,superset}.txt`; see the A2 corrective follow-up in `09-commit-lineage.md`). Totals
+  below include this corrective's +1 non-circularity regression test:
+  - **Cross-checkpoint** (`a2-validation-cross-checkpoint.txt`): **114 tests, 114 passed, 0 failed** — every
+    test Phase A introduced through A2 (A1 19 + A3 25 + A2 36 + serving/parity). This is the authoritative
+    "all Phase A tests introduced through A2 pass" run.
+  - **Client-surface** (`a2-validation-client-surface.txt`): **153 tests, 152 passed, 1 failed** — the sole
+    failure is the pre-existing `test_output_aliases_defined` baseline defect (`11 vs 10`).
+  - **Broad source-index** (`a2-validation-broad-source-index.txt`): **261 tests, 256 passed, 5 failed** — all
+    five are disclosed pre-existing baseline defects (v119/v120/v122, structure-cli, disambiguating-descriptions).
+  - All 6 baseline failures are reconciled in `10-baseline-reconciliation-matrix.md` and reproduce on pristine
+    origin/main (`a2-baseline-recon-originmain.txt`).
 
 ## Required-invariant coverage (selected A2 tests)
 - Explicit unsafe root → `blocked_root_unready` (`items:[]`, `authoritative:false`, `root_readiness`):
@@ -137,6 +146,8 @@ NOT ruff-formatted on origin/main; their diffs are additive with no reformat chu
   `test_read_sensitive_root_never_live`.
 - Watcher startup fail-closed: `test_watcher_degrades_when_all_roots_disabled`,
   `test_watcher_degrades_on_unevaluable_trust`, `test_watcher_allows_uncertified_root_to_bootstrap`.
+- Bootstrap↔watcher non-circularity (real `bootstrap()`): `test_bootstrap_to_watcher_start_is_non_circular`
+  (A2 corrective) — see `13-watcher-bootstrap-noncircular.md`.
 - No absolute-path leak: `test_health_no_absolute_path_leak`, `test_unscoped_search_..._discloses_excluded`.
 - Running corrective gen doesn't reopen trust: `test_running_corrective_generation_does_not_reopen_trust`.
 - Direct == gateway: `test_direct_and_gateway_trust_agree` (single connector-service authority behind both).

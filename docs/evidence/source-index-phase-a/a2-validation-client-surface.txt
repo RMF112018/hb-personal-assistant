@@ -1,0 +1,45 @@
+# A2 PROVE-GREEN — CLIENT-SURFACE regression (the client-facing trust/serving/manifest surface)
+#
+# SCOPE: the A2-touched CLIENT surface end to end — the shared trust authority, the serving service,
+#        the NAS MCP connector (direct + gateway parity), the client-performance/preflight routing
+#        suite, the read-only health-conn wiring, and the manifest parity + freshness guards. This is
+#        the run that proves the A2 client contract holds AND the frozen tool manifest is still fresh.
+#
+# Tree under test: A2 checkpoint 554c4b90… + the A2-corrective non-circularity regression test.
+# Base branch: fix/source-index-phase-a-correctness-trust off origin/main 9c27839b (schema V124).
+# Python: <repo>/.venv (CPython 3.14.5). Run from worktree root.
+#
+# EXACT COMMAND:
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider --junit-xml=<scratch>/client_surface.xml \
+#     tests/test_source_root_trust.py \
+#     tests/test_source_connector_service.py \
+#     tests/test_nas_mcp_source_connector.py \
+#     tests/test_source_index_client_performance_hardening.py \
+#     tests/test_source_index_health_readonly_conn.py \
+#     tests/test_manifest_schema_parity.py \
+#     tests/test_n8c_client_exposure_bridge.py \
+#     tests/test_tool_manifest_freshness_guard.py
+#
+# TERMINAL SUMMARY LINE:
+#   1 failed, 152 passed in 247.69s (0:04:07)
+#
+# JUnit XML totals (authoritative): tests="153" failures="1" errors="0" skipped="0".
+#
+# FAILING NODE IDs (1) — PRE-EXISTING baseline defect, NOT an A2 regression, never absorbed into the
+# A2 prove-red set (see 08-baseline-vs-feature-failures.md #5 and the reconciliation matrix
+# 10-baseline-reconciliation-matrix.md):
+#   tests/test_source_index_client_performance_hardening.py::test_output_aliases_defined
+#     assert len(ASSISTANT_OUTPUT_ALIASES) == len(ALL_PA_OUTPUT_TOOLS) == 10   ->  assert 11 == 10
+#     Stale hard-coded output-alias count (11 actual vs 10 asserted). A2 adds no output tools.
+#     Reproduces IDENTICALLY on a pristine origin/main (9c27839b) worktree with zero Phase A code.
+#
+# A0 BASELINE COMPARISON: exactly ONE failure, and it is the pre-existing output-alias count defect.
+# Every A2-authored test (36 in test_source_root_trust.py, including the freshness/parity guards in
+# test_manifest_schema_parity.py / test_tool_manifest_freshness_guard.py that rebuild the live tool
+# surface) is GREEN — confirming the docstring correction did NOT churn the frozen manifest checksum
+# (see 11-manifest-semantic-diff.md).
+#
+# NOTE ON COUNTS: this run is 153 tests. The A2 CHECKPOINT commit (554c4b90, before this corrective)
+# reported 152 here; the +1 is exactly the new non-circularity regression test added to
+# test_source_root_trust.py by this corrective follow-up. No other count moved.

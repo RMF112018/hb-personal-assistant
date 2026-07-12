@@ -1,0 +1,41 @@
+# A2 PROVE-GREEN — CROSS-CHECKPOINT regression (all Phase A tests introduced through A2)
+#
+# SCOPE: the union of every test suite Phase A introduced or modified across A1 + A3 + A2 — i.e. the
+#        cumulative Phase-A-authored surface. This is the run that answers "do all Phase A tests
+#        introduced through A2 pass?". Answer: YES (0 failures).
+#
+# Tree under test: A2 checkpoint 554c4b905a947e7660d2e98fbbd64c9b55b61451
+#                  + the A2-corrective bootstrap↔watcher non-circularity regression test
+#                  (tests/test_source_root_trust.py::test_bootstrap_to_watcher_start_is_non_circular).
+# Base branch: fix/source-index-phase-a-correctness-trust off origin/main 9c27839b (schema V124).
+# Python: <repo>/.venv (CPython 3.14.5). Run from worktree root.
+#
+# EXACT COMMAND:
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider --junit-xml=<scratch>/cross_checkpoint.xml \
+#     tests/test_source_index_vault_deletion_safety.py \
+#     tests/test_source_root_mapping.py \
+#     tests/test_source_root_trust.py \
+#     tests/test_source_connector_service.py \
+#     tests/test_nas_mcp_source_connector.py
+#
+# TERMINAL SUMMARY LINE (the repo's custom reporter suppresses the per-test tally; the final summary
+# line and any FAILED lines are still emitted):
+#   114 passed in 179.47s (0:02:59)
+#
+# JUnit XML totals (authoritative): tests="114" failures="0" errors="0" skipped="0".
+#
+# FAILING NODE IDs: none.
+#
+# Per-suite contribution (JUnit-derived):
+#   tests/test_source_index_vault_deletion_safety.py .... 19  (A1 deletion-safety)
+#   tests/test_source_root_mapping.py ................... 25  (A3 canonical mapping)
+#   tests/test_source_root_trust.py .................... 36  (A2 root trust, incl. the new non-circular test)
+#   tests/test_source_connector_service.py ..............<remainder> (A2 serving wiring)
+#   tests/test_nas_mcp_source_connector.py ..............<remainder> (A2 direct/gateway parity)
+#   ---------------------------------------------------------------
+#   TOTAL 114 passed, 0 failed.
+#
+# A0 BASELINE COMPARISON: none of these suites carries a pre-existing baseline failure at A0 — every
+# node here is Phase-A-authored or A2-seeded and is GREEN. (The pre-existing baseline defects live in
+# OTHER suites; see a2-validation-broad-source-index.txt and 08-baseline-vs-feature-failures.md.)

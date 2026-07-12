@@ -1,0 +1,57 @@
+# A2 PROVE-GREEN — BROAD SOURCE-INDEX regression (the wide source-index blast radius)
+#
+# SCOPE: the broad source-index regression picture beyond the A2 client surface — vault index/reconcile,
+#        the full watcher trio (lifecycle / ownership / automated-refresh), generation hardening,
+#        metadata-first bootstrap + metadata generation, streaming walk, the source-index repository,
+#        the structure CLI + structure repository service, and the source-connector eval suite. This is
+#        the run that surfaces the wider pre-existing baseline defects and proves A2 introduces no NEW
+#        source-index regression anywhere in that radius.
+#
+# Tree under test: A2 checkpoint 554c4b90… (this set does NOT include test_source_root_trust.py, so its
+#                  count is unaffected by the corrective non-circularity test; 261 at checkpoint and at
+#                  this corrective).
+# Base branch: fix/source-index-phase-a-correctness-trust off origin/main 9c27839b (schema V124).
+# Python: <repo>/.venv (CPython 3.14.5). Run from worktree root.
+#
+# EXACT COMMAND:
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider --junit-xml=<scratch>/broad_source_index.xml \
+#     tests/test_obsidian_source_index.py \
+#     tests/test_obsidian_source_watch.py \
+#     tests/test_obsidian_source_watch_lifecycle.py \
+#     tests/test_obsidian_source_watch_ownership.py \
+#     tests/test_obsidian_vault_db_reconcile.py \
+#     tests/test_source_connector_eval.py \
+#     tests/test_source_index_generation_hardening.py \
+#     tests/test_source_index_metadata_first_bootstrap.py \
+#     tests/test_source_index_metadata_generation.py \
+#     tests/test_source_index_repository.py \
+#     tests/test_source_index_streaming_walk.py \
+#     tests/test_source_index_watcher_automated_refresh.py \
+#     tests/test_source_structure_cli.py \
+#     tests/test_source_structure_repository_service.py
+#
+# JUnit XML totals (authoritative): tests="261" failures="5" errors="0" skipped="0"  ->  256 passed, 5 failed.
+#
+# FAILING NODE IDs (5) — ALL PRE-EXISTING baseline defects, NOT A2 regressions, never absorbed into the
+# A2 prove-red set. Each reproduces IDENTICALLY on a pristine origin/main (9c27839b) worktree
+# (see baseline_recon_originmain.txt and 10-baseline-reconciliation-matrix.md):
+#   1. tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+#         assert v1 == v2 == 123  ->  assert 124 == 123   (stale schema-version literal)
+#   2. tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
+#         assert v1 == v2 == 123  ->  assert 124 == 123   (stale schema-version literal)
+#   3. tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration
+#         assert apply() == LATEST_SCHEMA_VERSION == 123  ->  assert 124 == 123  (stale schema-version literal)
+#   4. tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+#         assert expected_exposed == 78  ->  assert 80 == 78   (stale MCP tool-surface count)
+#   5. tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+#         assistant_source_index_health description contains neither "vault" nor "card"
+#         (HEALTH tool's description — NOT the assistant_get_source docstring A2 corrected).
+#
+# A0 BASELINE COMPARISON: the A0 18-suite source-index baseline (baseline-source-index.txt) captured
+# failures #1–#3 (the == 123 trio). Failures #4 and #5 sit in suites OUTSIDE the A0 18-suite set
+# (structure CLI and connector-eval), so they first surfaced during A3/A2 validation; both were then
+# proven pre-existing on pristine origin/main. No NEW Phase A failure appears in this radius.
+#
+# Full terminal FAILURES section + short summary for this run is preserved verbatim in
+# broad_source_index.txt (scratch capture).
