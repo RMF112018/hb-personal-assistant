@@ -80,6 +80,48 @@ def test_archive_moves_never_deletes(tmp_path: Path) -> None:
     assert (env["outputs"] / ac["archive_relative_path"]).exists()  # file still present, just moved
 
 
+def test_cancel_staged_output_is_terminal(tmp_path: Path) -> None:
+    _, repo = _repo(tmp_path)
+    s = repo.stage_output_file({"title": "x", "file_type": "md", "content_mode": "markdown_text",
+                                "content_text": "hi"})
+    oid = s["output_id"]
+    c = repo.cancel_output_file(output_id=oid, operator_approval_id=s["operator_approval_id"])
+    assert c["status"] == "cancelled" and c["idempotent_reuse"] is False and c["deletes"] is False
+    # no longer stuck in staged (terminal), and the staged payload is dropped
+    rec = repo.get_output_file(oid)
+    assert rec["status"] == "superseded"
+    import sqlite3
+    raw = sqlite3.connect(str(repo.db_path)).execute(
+        "SELECT staged_content_b64 FROM assistant_output_files WHERE output_id=?", (oid,)
+    ).fetchone()
+    assert raw[0] is None
+
+
+def test_cancel_is_idempotent(tmp_path: Path) -> None:
+    _, repo = _repo(tmp_path)
+    s = repo.stage_output_file({"title": "x", "file_type": "md", "content_mode": "markdown_text",
+                                "content_text": "hi"})
+    a = repo.cancel_output_file(output_id=s["output_id"], operator_approval_id=s["operator_approval_id"])
+    b = repo.cancel_output_file(output_id=s["output_id"], operator_approval_id=s["operator_approval_id"])
+    assert a["idempotent_reuse"] is False and b["idempotent_reuse"] is True
+
+
+def test_cancel_forged_approval_rejected(tmp_path: Path) -> None:
+    _, repo = _repo(tmp_path)
+    s = repo.stage_output_file({"title": "x", "file_type": "md", "content_mode": "markdown_text",
+                                "content_text": "hi"})
+    with pytest.raises(ClientOutputError, match="operator_approval_mismatch"):
+        repo.cancel_output_file(output_id=s["output_id"], operator_approval_id="FORGED")
+
+
+def test_cancel_rejects_committed_output(tmp_path: Path) -> None:
+    _, repo = _repo(tmp_path)
+    out = stage_and_commit(repo)
+    with pytest.raises(ClientOutputError, match="only_staged_can_cancel"):
+        repo.cancel_output_file(output_id=out["stage"]["output_id"],
+                                operator_approval_id=out["stage"]["operator_approval_id"])
+
+
 def test_read_excerpt_bounds_binary_and_text(tmp_path: Path) -> None:
     _, repo = _repo(tmp_path)
     md = stage_and_commit(repo, file_type="md", content_mode="markdown_text", content="hello world")

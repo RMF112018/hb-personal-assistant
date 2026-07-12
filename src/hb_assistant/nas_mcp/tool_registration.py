@@ -1689,6 +1689,14 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             return _assistant_result("pa_output_archive_commit", {
                 "output_id": output_id, "operator_approval_id": operator_approval_id})
 
+        @mcp.tool()
+        def pa_output_cancel(output_id: str, operator_approval_id: str) -> dict[str, Any]:
+            """Terminally cancel a STAGED (never-committed) output so it is not stuck in `staged`.
+            Requires the server-minted operator_approval_id from staging. Idempotent; DB-only (no file);
+            never deletes. Committed/archived outputs cannot be cancelled (they move forward)."""
+            return _assistant_result("pa_output_cancel", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id})
+
 
     # assistant_output_* aliases — same handlers as pa_output_* (client-facing naming).
     @mcp.tool()
@@ -1756,6 +1764,12 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         def assistant_output_archive_commit(output_id: str, operator_approval_id: str) -> dict[str, Any]:
             """Alias of pa_output_archive_commit."""
             return _assistant_result("assistant_output_archive_commit", {
+                "output_id": output_id, "operator_approval_id": operator_approval_id})
+
+        @mcp.tool()
+        def assistant_output_cancel(output_id: str, operator_approval_id: str) -> dict[str, Any]:
+            """Alias of pa_output_cancel."""
+            return _assistant_result("assistant_output_cancel", {
                 "output_id": output_id, "operator_approval_id": operator_approval_id})
 
     # Prompt Preflight & Tool Routing. Five READ-ONLY routing tools that expose the deterministic route

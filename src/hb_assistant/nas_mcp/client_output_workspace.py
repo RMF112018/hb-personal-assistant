@@ -292,6 +292,35 @@ class ClientOutputWorkspaceRepository:
         return {"output_id": output_id, "status": "archived", "idempotent_reuse": False,
                 "archive_relative_path": target_rel, "receipt_id": receipt_id, "deletes": False}
 
+    def cancel_output_file(self, *, output_id: str, operator_approval_id: str) -> dict[str, Any]:
+        """Terminally cancel a staged (never-committed) output so it is not stuck in ``staged``.
+
+        Mirrors commit_archive_output: reuses the staging-minted ``operator_approval_id`` (never a
+        client-invented one), is idempotent, and touches DB state only — a staged output has no file
+        on disk. Terminal state is ``superseded`` (already permitted by the status CHECK; no schema
+        migration), reported to the client as ``cancelled``. Only pre-commit states can be cancelled;
+        committed/archived outputs move forward, never back.
+        """
+        self._guard_writable()
+        rec = self.get_output_file(output_id)
+        if not rec:
+            raise ClientOutputError("output_not_found")
+        if str(operator_approval_id) != str(rec["operator_approval_id"]):
+            raise ClientOutputError("operator_approval_mismatch")
+        if rec["status"] == "superseded":
+            return {"output_id": output_id, "status": "cancelled", "idempotent_reuse": True,
+                    "deletes": False}
+        if rec["status"] not in ("staged", "ready_to_commit", "validation_failed", "commit_failed"):
+            raise ClientOutputError(f"only_staged_can_cancel:{rec['status']}")
+        now = _now()
+        with borrow_connection(None, self.db_path) as c, transaction(c):
+            # Drop the staged payload and flip to the terminal state. No file to remove (never committed);
+            # no manifest entry to touch (staged rows were never published to the manifest).
+            c.execute("UPDATE assistant_output_files SET status='superseded', destination_state='cancelled', "
+                      "staged_content_b64=NULL, updated_at=? WHERE output_id=?", (now, output_id))
+        return {"output_id": output_id, "status": "cancelled", "idempotent_reuse": False,
+                "internal_status": "superseded", "deletes": False}
+
     # ---------- reads ----------
     def list_output_files(self, *, status: str | None = None, file_type: str | None = None,
                           source_session_id: str | None = None, limit: int = 50) -> dict[str, Any]:

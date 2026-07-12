@@ -29,6 +29,11 @@ TOOL_ENTRY_OVERRIDES: dict[str, dict[str, Any]] = {
         "use_when": "Move a committed output to 90 Archive using the plan's approval id (never deletes).",
         "do_not_use_when": "Deleting a file (deletion is not offered).",
     },
+    "pa_output_cancel": {
+        "use_when": "Terminally cancel a staged (never-committed) output using its staging approval id.",
+        "do_not_use_when": "Cancelling a committed/archived output (those move forward, never back).",
+        "examples": ["Discard the staged draft I no longer need"],
+    },
     "hb_output_write_file": {
         "use_when": "Legacy/internal scratch only; hard-denied remotely.",
         "do_not_use_when": "Any connected-client generated file — use pa_output_stage/commit instead.",

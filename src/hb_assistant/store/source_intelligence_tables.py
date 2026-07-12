@@ -137,6 +137,10 @@ V93_STATEMENTS: list[str] = [
     );
     """,
     "CREATE INDEX IF NOT EXISTS idx_si_metadata_sha ON source_intelligence_metadata(content_sha256);",
+    # Hot FTS-search join key: search JOINs source_intelligence_metadata m ON m.fts_rowid = f.rowid
+    # (FTS5 rowid). Without this index SQLite builds a transient automatic index over the whole
+    # ~883k-row metadata table on every query (observed ~24s). Additive/index-only.
+    "CREATE INDEX IF NOT EXISTS idx_si_metadata_fts_rowid ON source_intelligence_metadata(fts_rowid);",
     # 3. text — bounded excerpt + sha + optional Text Vault ref. NEVER a raw body.
     """
     CREATE TABLE IF NOT EXISTS source_intelligence_text (

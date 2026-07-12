@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 123
+LATEST_SCHEMA_VERSION = 124
 
 
 class StaffingMigrationError(RuntimeError):
@@ -9183,6 +9183,24 @@ class SQLiteMigrator:
                 )
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (123, 'v123_drop_narrow_relpath_index', ?)",
+                    (now,),
+                )
+
+            # --- V124: index the hot FTS-search join key ------------------------------------------
+            # The source-file search joins source_intelligence_metadata m ON m.fts_rowid = f.rowid
+            # (the FTS5 rowid). ``fts_rowid`` was unindexed, so SQLite built a transient automatic
+            # index over the whole ~883k-row metadata table on every query (observed ~24s for a
+            # 2-result search). Add the covering secondary index. Additive/index-only — no data
+            # touched. On the read-only snapshot this must exist in the PRIMARY DB before the
+            # snapshot is cut (search runs against the immutable snapshot copy).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 124")
+            if cur.fetchone() is None:
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_si_metadata_fts_rowid "
+                    "ON source_intelligence_metadata(fts_rowid)"
+                )
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (124, 'v124_index_metadata_fts_rowid', ?)",
                     (now,),
                 )
 

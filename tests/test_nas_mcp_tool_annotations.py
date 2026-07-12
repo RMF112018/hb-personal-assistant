@@ -60,6 +60,7 @@ def test_all_known_write_tools_are_marked_destructive(surface: dict[str, object]
     expected_writes = {
         "ai_outputs_card_upsert",
         "assistant_output_archive_commit",
+        "assistant_output_cancel",
         "assistant_output_commit",
         "assistant_output_stage",
         "hb_assistant_tool_query",
@@ -70,6 +71,7 @@ def test_all_known_write_tools_are_marked_destructive(surface: dict[str, object]
         "pa_artifact_proposal_revise",
         "pa_artifact_proposal_stage",
         "pa_output_archive_commit",
+        "pa_output_cancel",
         "pa_output_commit",
         "pa_output_stage",
         "pa_session_capture_stage",
