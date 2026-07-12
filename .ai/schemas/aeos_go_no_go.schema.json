@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Go/No-Go Decision",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "readiness_category",
+    "decision",
+    "evidence_reviewed"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string"
+    },
+    "readiness_category": {
+      "enum": [
+        "merge",
+        "deployment",
+        "production",
+        "operational"
+      ]
+    },
+    "decision": {
+      "enum": [
+        "GO",
+        "CONDITIONAL_GO",
+        "NO_GO",
+        "INSUFFICIENT_EVIDENCE"
+      ]
+    },
+    "evidence_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "accepted_risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
