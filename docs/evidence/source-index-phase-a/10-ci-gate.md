@@ -51,13 +51,20 @@ modules pre-date the repo's formatter adoption and must not be reformatted by th
 
 ## Dependency extras (required)
 
-`pip install -e ".[dev,mcp,analytics-ui]"` — **not** `.[dev]` alone. The gate exercises the MCP tool surface
-(`[mcp]` → the `mcp` SDK, used by the connector / manifest-parity / freshness suites) and the watcher HTTP
-surface (`[analytics-ui]` → `fastapi`, used by `test_obsidian_source_watch_lifecycle`). `[dev]` alone caused a
-`ModuleNotFoundError: No module named 'mcp'` collection failure on the first CI run; verified fixed by a clean
-`python3 -m venv` + `pip install -e ".[dev,mcp,analytics-ui]"` + collect-only (all 22 suites collect) and a
-runtime run of the mcp/fastapi suites (47/0). `watchdog` (`[watch]`) is intentionally **not** installed — the
-watcher suites use the polling fallback / `importorskip`, matching the local validation environment.
+`pip install -e ".[dev,mcp,analytics-ui,watch]"` — **not** `.[dev]` alone. The gate exercises three surfaces
+`[dev]` does not cover:
+- `[mcp]` → the `mcp` SDK — the connector / manifest-parity / freshness suites (`from mcp.types import …`).
+- `[analytics-ui]` → `fastapi` — `test_obsidian_source_watch_lifecycle`.
+- `[watch]` → `watchdog` — the watcher-activation / ownership / `cli run` suites. Without watchdog,
+  `_watchdog_available()` is False → `safe_for_watcher_activation` is False and the watcher fails closed
+  (`backend_unavailable` / `degraded`), so those tests fail.
+
+Two CI iterations found these empirically: run 1 failed at collection (`ModuleNotFoundError: mcp`), run 2 failed
+the watcher suites (`degraded`/`backend_unavailable`). Root cause of the local/CI divergence: the local dev
+`.venv` happened to have `watchdog` installed (so `_watchdog_available()` was True and the watcher suites
+passed), while a fresh `.[dev,mcp,analytics-ui]` CI install did not. The final install was verified in a clean
+`python3 -m venv` running the **full** gate suite (no PYTHONPATH, editable install only) with zero failures
+before the workflow was finalized.
 
 ## Validity + runtime
 
