@@ -1,0 +1,33 @@
+{
+  "context": "Deploy 2 (quality follow-ons) live verification — PR #303 merge commit 9c27839b on hb-personal-assistant-mcp. Schema migration V124 (search index) on the primary DB + snapshot re-cut + new pa_output_cancel tool.",
+  "deploy": {
+    "runtime_commit": "9c27839b48fdab0e882fa475a6ace81dc93762fd",
+    "build_image_digest": "sha256:27a6f9a9a0cef3ddd46a7a8a84b2220d3effb6a46f432f1fe0ce6c8eab0a9b93",
+    "primary_schema_head": 124,
+    "primary_backup": "app-support/db/hb-personal-assistant.pre-v124.20260712T063527Z.sqlite",
+    "snapshot_recut": {"head": 124, "index_present": true, "query_plan_uses_index": true, "bytes": 5696286720},
+    "rollback_anchor_image": "hb-personal-assistant:prev-20260712T063527Z",
+    "note": "First migration/snapshot attempt was a no-op (docker run lacked -i, so python3 read empty stdin); corrected with -i + a WAL checkpoint and a :rw source mount (WAL-mode ro-open needs to create -shm, which a :ro mount blocks)."
+  },
+  "dual_freshness": {
+    "manifest_version": 12,
+    "manifest_tool_count": 147,
+    "manifest_generated_from": "9c27839b48fdab0e882fa475a6ace81dc93762fd",
+    "manifest_stale": false, "surface_stale": false,
+    "surface_deployment_runtime_drift": false, "surface_warnings": []
+  },
+  "search_latency_3b": {
+    "status": "RESOLVED",
+    "before_ms": 24216,
+    "after_ms": [237.4, 37.8, 87.4],
+    "note": "idx_si_metadata_fts_rowid; EXPLAIN QUERY PLAN uses the index instead of a full scan over ~883k metadata rows. ~100x faster."
+  },
+  "cancel_lifecycle_3c": {
+    "status": "RESOLVED",
+    "staged_output": "OUTPUT-20260712-001",
+    "cancel_status": "cancelled",
+    "note": "pa_output_cancel stages -> cancels a disposable output to a terminal state (reuses `superseded`); previously staged outputs had no terminal path."
+  },
+  "execution_attestation": {"attestation_ok": true, "passed_count": 147, "failed_count": 0},
+  "disposition": "Deploy 2 complete. Search latency ~24s -> <0.3s; staged-output cancellation live; manifest v12/tool_count 147; dual freshness + execution attestation green at 9c27839b."
+}
