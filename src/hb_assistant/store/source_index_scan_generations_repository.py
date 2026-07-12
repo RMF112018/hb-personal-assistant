@@ -51,8 +51,23 @@ _GEN_COUNTER_COLUMNS: frozenset[str] = frozenset(
 # not spawn a fresh failed generation every scheduled scan — recovery is an explicit restart (or a real
 # policy change). Any OTHER failure code auto-retries normally.
 _NO_PROGRESS_ERROR_CODES: frozenset[str] = frozenset(
-    {"directory_fanout_limit", "generation_ceiling", "empty_root_guard"}
+    {"directory_fanout_limit", "generation_ceiling", "empty_root_guard", "quarantine_unresolved"}
 )
+
+
+def _root_has_blocking_quarantine(conn: sqlite3.Connection, root_key: str) -> bool:
+    """True if the root holds an unresolved BLOCKING quarantine (status=quarantined). Fail-open on a missing
+    table (a pre-V125 DB has no quarantine) so the generation is not wrongly blocked. Defensively scoped: the
+    quarantine table lives in the same source-index DB, so a direct read is the cheapest cross-check."""
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM source_index_scan_quarantine "
+            "WHERE source_root_key=? AND status='quarantined' AND resolution_state='unresolved' LIMIT 1",
+            (root_key,),
+        ).fetchone()
+        return row is not None
+    except sqlite3.OperationalError:
+        return False
 
 
 def _now() -> str:
@@ -208,8 +223,25 @@ class SourceIndexScanGenerationsRepository:
                     if r["status"] == "completed":
                         keep_ids.add(r["generation_id"])
                         break
+                # A4 retention invariant: while the root holds a BLOCKING quarantine, ALWAYS retain the latest
+                # failed(quarantine_unresolved) generation so pruning can never lift the no-auto-retry block.
+                if _root_has_blocking_quarantine(c, rk):
+                    latest_q = c.execute(
+                        "SELECT generation_id FROM source_index_scan_generations WHERE root_key=? "
+                        "AND status='failed' AND last_error_code='quarantine_unresolved' "
+                        "ORDER BY started_at DESC, rowid DESC LIMIT 1",
+                        (rk,),
+                    ).fetchone()
+                    if latest_q is not None:
+                        keep_ids.add(latest_q["generation_id"])
                 delete_ids = [r["generation_id"] for r in rows if r["generation_id"] not in keep_ids]
                 if delete_ids and not dry_run:
+                    # NULL the (now-pruned) generation_id on quarantine records, retaining origin_generation_id
+                    # for audit — an unresolved quarantine survives as a root-level blocker (no cascade delete).
+                    c.executemany(
+                        "UPDATE source_index_scan_quarantine SET generation_id=NULL WHERE generation_id=?",
+                        [(g,) for g in delete_ids],
+                    )
                     c.executemany(
                         "DELETE FROM source_index_scan_generations WHERE generation_id=?",
                         [(g,) for g in delete_ids],
@@ -325,12 +357,21 @@ class SourceIndexScanGenerationsRepository:
                             and latest["root_path_hash"] == root_path_hash
                         )
                         if same_policy and latest["last_error_code"] in _NO_PROGRESS_ERROR_CODES:
-                            return {
-                                "blocked": True,
-                                "generation_id": latest["generation_id"],
-                                "status": "failed",
-                                "last_error_code": latest["last_error_code"],
-                            }
+                            # ``quarantine_unresolved`` is a CONDITIONAL block: it suspends auto-restart only
+                            # while the root still holds an unresolved quarantine. A successful operator retry
+                            # that resolves the last quarantine must let the next scheduled pass proceed (a
+                            # policy change / explicit restart also lift it, like the other no-progress codes).
+                            if latest["last_error_code"] == "quarantine_unresolved" and not _root_has_blocking_quarantine(
+                                c, root_key
+                            ):
+                                pass  # quarantine cleared → do NOT block; fall through to a fresh generation
+                            else:
+                                return {
+                                    "blocked": True,
+                                    "generation_id": latest["generation_id"],
+                                    "status": "failed",
+                                    "last_error_code": latest["last_error_code"],
+                                }
                 generation_id = uuid.uuid4().hex
                 c.execute(
                     "INSERT INTO source_index_scan_generations "

@@ -1,0 +1,78 @@
+
+$ hb-assistant source-watch quarantine-list
+{
+  "ok": true,
+  "count": 1,
+  "items": [
+    {
+      "quarantine_id": "3a7ba25d57df489ebe45c316609c90e1",
+      "source_root_key": "work",
+      "rel_path": "f2.txt",
+      "error_code": "metadata_upsert_failed",
+      "failure_stage": "metadata_upsert",
+      "attempt_count": 1,
+      "status": "quarantined",
+      "resolution_state": "unresolved",
+      "first_seen_at": "2026-07-12T14:43:42.949497+00:00",
+      "last_seen_at": "2026-07-12T14:43:42.949497+00:00",
+      "last_attempt_at": "2026-07-12T14:43:42.949497+00:00",
+      "resolved_at": null,
+      "generation_id": "f9ea333070f94d57a44b3cfd6ccdce43",
+      "origin_generation_id": "f9ea333070f94d57a44b3cfd6ccdce43",
+      "last_successful_observation_at": null
+    }
+  ]
+}
+
+$ hb-assistant source-watch quarantine-inspect 3a7ba25d...
+{
+  "ok": true,
+  "quarantine": {
+    "quarantine_id": "3a7ba25d57df489ebe45c316609c90e1",
+    "source_root_key": "work",
+    "rel_path": "f2.txt",
+    "error_code": "metadata_upsert_failed",
+    "failure_stage": "metadata_upsert",
+    "attempt_count": 1,
+    "status": "quarantined",
+    "resolution_state": "unresolved",
+    "first_seen_at": "2026-07-12T14:43:42.949497+00:00",
+    "last_seen_at": "2026-07-12T14:43:42.949497+00:00",
+    "last_attempt_at": "2026-07-12T14:43:42.949497+00:00",
+    "resolved_at": null,
+    "generation_id": "f9ea333070f94d57a44b3cfd6ccdce43",
+    "origin_generation_id": "f9ea333070f94d57a44b3cfd6ccdce43",
+    "last_successful_observation_at": null
+  }
+}
+
+$ hb-assistant source-watch quarantine-retry --root-key work --quarantine-id <id>   (WITHOUT --confirm)
+  -> {"ok": false, "error": "quarantine-retry requires --confirm (operator-only, mutates index state)."}  [CLI guard]
+
+$ hb-assistant source-watch quarantine-retry --root-key work --quarantine-id <id> --confirm
+{
+  "ok": true,
+  "root_key": "work",
+  "attempted": 1,
+  "resolved": 1,
+  "confirmed_absent": 0,
+  "retained": 0,
+  "remaining_blocking": 0,
+  "outcomes": [
+    {
+      "quarantine_id": "3a7ba25d57df489ebe45c316609c90e1",
+      "rel_path": "f2.txt",
+      "outcome": "resolved",
+      "retain_reason": null
+    }
+  ]
+}
+
+$ hb-assistant source-watch quarantine-list   (after retry: empty)
+{
+  "ok": true,
+  "count": 0,
+  "items": []
+}
+
+NOTE: rel_path is root-relative; no absolute host path appears anywhere above.

@@ -62,6 +62,7 @@ RC_SENSITIVE_ROOT = "sensitive_root"
 RC_STRUCTURE_DATA_UNREADY = "structure_data_unready"
 RC_STRUCTURE_MAPPING_UNAVAILABLE = "structure_mapping_unavailable"
 RC_UNKNOWN_ROOT = "unknown_root"
+RC_QUARANTINE_UNRESOLVED = "quarantine_unresolved"
 
 # Watcher-startup fail-closed reason codes (sanitized, path-free). The watcher may activate a root ONLY
 # when it is fully ready (bootstrapped + certified + reconciled + structure-data-ready); every other state
@@ -93,6 +94,7 @@ class RootTrustInputs:
     legacy_watcher_ready: bool
     struct_mapping: StructureRootMapping
     mapping_config_available: bool
+    unresolved_quarantine_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -120,6 +122,7 @@ class RootTrustDecision:
     metadata_completeness_state: str
     content_completeness_state: str
     watcher_ready: bool
+    unresolved_quarantine_count: int = 0
     reason_codes: list[str] = field(default_factory=list)
 
     @property
@@ -182,6 +185,7 @@ class RootTrustDecision:
             "safe_for_watcher_activation": self.safe_for_watcher_activation,
             "structure_ready": self.structure_ready,
             "structure_mapping_resolved": self.structure_mapping_resolved,
+            "unresolved_quarantine_count": self.unresolved_quarantine_count,
             "trust_reason_codes": list(self.reason_codes),
         }
 
@@ -312,6 +316,11 @@ def evaluate_root_trust(inp: RootTrustInputs) -> RootTrustDecision:
         if not index_layers_ready:
             trust_state = TRUST_BLOCKED
             reason_codes.append(RC_INDEX_LAYERS_UNREADY)
+        if inp.unresolved_quarantine_count > 0:
+            # A poison file reached the retry threshold and is quarantined: the metadata walk is
+            # incomplete for this root, so it is NOT authoritative until an operator resolves it.
+            trust_state = TRUST_BLOCKED
+            reason_codes.append(RC_QUARANTINE_UNRESOLVED)
 
     is_safe = trust_state == TRUST_SAFE
     # Path lookup requires whole-root safety AND the health path-lookup base signal.
@@ -349,6 +358,7 @@ def evaluate_root_trust(inp: RootTrustInputs) -> RootTrustDecision:
         metadata_completeness_state=metadata_completeness_state,
         content_completeness_state=content_completeness_state,
         watcher_ready=watcher_ready,
+        unresolved_quarantine_count=int(inp.unresolved_quarantine_count),
         reason_codes=reason_codes,
     )
 
@@ -461,6 +471,18 @@ def gather_root_inputs(
         )
     except Exception:
         bstate = {}
+    try:
+        from hb_assistant.store.source_index_scan_quarantine_repository import (
+            SourceIndexScanQuarantineRepository,
+        )
+
+        unresolved_quarantine = SourceIndexScanQuarantineRepository(
+            str(repo.db_path)
+        ).blocking_count(root_key, conn=conn)
+    except Exception:
+        # Fail CLOSED: if the quarantine count is unreadable, treat the root as blocked (non-zero) so an
+        # unverifiable quarantine state never presents as safe.
+        unresolved_quarantine = 1
 
     return RootTrustInputs(
         root_key=root_key,
@@ -478,6 +500,7 @@ def gather_root_inputs(
         legacy_watcher_ready=bool(bstate.get("watcher_ready")),
         struct_mapping=struct_mapping,
         mapping_config_available=mapping_config_available,
+        unresolved_quarantine_count=int(unresolved_quarantine),
     )
 
 
@@ -518,6 +541,7 @@ def load_root_trust(
             metadata_completeness_state="none",
             content_completeness_state="none",
             watcher_ready=False,
+            unresolved_quarantine_count=1,
             reason_codes=[RC_INDEX_LAYERS_UNREADY],
         )
 
@@ -535,5 +559,6 @@ def root_readiness_envelope(decision: RootTrustDecision) -> dict[str, Any]:
         "safe_for_watcher_activation": decision.safe_for_watcher_activation,
         "structure_ready": decision.structure_ready,
         "structure_mapping_resolved": decision.structure_mapping_resolved,
+        "unresolved_quarantine_count": decision.unresolved_quarantine_count,
         "reason_codes": list(decision.reason_codes),
     }

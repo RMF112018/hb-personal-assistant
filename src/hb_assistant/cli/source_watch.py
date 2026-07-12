@@ -466,3 +466,69 @@ def prune_generations_cmd(
         None if all_roots else root_key, keep=keep_n, dry_run=dry_run
     )
     _emit({"ok": True, **result}, json_out=json_out)
+
+
+@app.command("quarantine-list")
+def quarantine_list_cmd(
+    root_key: Optional[str] = typer.Option(None, "--root-key", help="Filter to one root."),
+    state: str = typer.Option(
+        "unresolved", "--state", help="unresolved | resolved | confirmed_absent | all."),
+    limit: int = typer.Option(100, "--limit"),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """READ-ONLY: list poison-file quarantine records (rel_path only; no absolute paths). Not a mutation."""
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import list_quarantine
+
+    _emit(
+        list_quarantine(
+            _db_path(db), root_key=root_key,
+            resolution_state=None if state == "all" else state, limit=limit,
+        ),
+        json_out=json_out,
+    )
+
+
+@app.command("quarantine-inspect")
+def quarantine_inspect_cmd(
+    quarantine_id: str = typer.Argument(..., help="The quarantine_id to inspect."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """READ-ONLY: show one quarantine record's sanitized detail. Not a mutation."""
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import inspect_quarantine
+
+    res = inspect_quarantine(_db_path(db), quarantine_id)
+    _emit(res, json_out=json_out, exit_code=0 if res.get("ok") else 2)
+
+
+@app.command("quarantine-retry")
+def quarantine_retry_cmd(
+    root_key: str = typer.Option(..., "--root-key", help="Root whose quarantine(s) to retry."),
+    quarantine_id: Optional[str] = typer.Option(
+        None, "--quarantine-id", help="Retry ONE record; omit to retry a bounded batch for the root."),
+    max_items: int = typer.Option(
+        1, "--max-items", help="Bounded cap on records retried this invocation (batch mode)."),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Explicit operator confirmation (required — this mutates index state)."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator-only, LOCAL bounded retry of poison-file quarantine(s).
+
+    Re-observes each targeted path and resolves it ONLY on a trustworthy observation (readable → resolved;
+    trustworthily absent → confirmed_absent); otherwise the unresolved quarantine is RETAINED. Never writes a
+    source file, has no remote MCP surface, and offers NO blanket "ignore"/waiver. Resolving the last
+    quarantine does not itself complete a generation — a fresh scan must verify + reconcile first."""
+    if not confirm:
+        _emit(
+            {"ok": False, "error": "quarantine-retry requires --confirm (operator-only, mutates index state)."},
+            json_out=json_out, exit_code=2,
+        )
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import retry_quarantine
+
+    res = retry_quarantine(
+        _db_path(db), _obsidian_config(), root_key=root_key,
+        quarantine_id=quarantine_id, max_items=max(1, int(max_items)),
+    )
+    _emit(res, json_out=json_out, exit_code=0 if res.get("ok") else 2)

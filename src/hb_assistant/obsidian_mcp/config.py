@@ -221,6 +221,11 @@ class ObsidianMcpConfig(BaseModel):
     # generation (health/watcher trust them), regardless of this count. Floors at 1. Prevents the
     # source_index_scan_generations table from growing unbounded across repeated bounded passes.
     source_index_generation_retention_count: int = 20
+    # Poison-file quarantine (V125): a per-file observation/upsert failure is retried (holding the cursor) up
+    # to this many times; at the threshold the path is QUARANTINED (a durable root-level blocker) and the
+    # walk advances past it. Conservative default so a genuinely transient blip is never quarantined. Folded
+    # into the generation policy_fingerprint (changing it lifts a quarantine block via a fresh generation).
+    source_index_quarantine_retry_threshold: int = 3
     schema_version: int = 9
 
     model_config = {"extra": "forbid"}
@@ -232,6 +237,14 @@ class ObsidianMcpConfig(BaseModel):
         if host not in {"127.0.0.1", "localhost"}:
             raise ValueError("host_must_be_localhost")
         return host
+
+    @field_validator("source_index_quarantine_retry_threshold")
+    @classmethod
+    def validate_quarantine_retry_threshold(cls, value: int) -> int:
+        # A bounded, positive retry budget. 0/negative would quarantine (or never quarantine) nonsensically.
+        if value < 1:
+            raise ValueError("source_index_quarantine_retry_threshold_must_be_at_least_1")
+        return value
 
     @field_validator("public_base_url")
     @classmethod

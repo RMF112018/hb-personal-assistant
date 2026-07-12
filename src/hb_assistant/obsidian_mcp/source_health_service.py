@@ -186,6 +186,17 @@ def _source_index_health_body(
         latest_generation_by_root = genrepo.latest_generations(conn=conn)
     except Exception:  # noqa: BLE001 — health must never fail on the generation read
         latest_generation_by_root = {}
+    # A4: unresolved BLOCKING poison-file quarantine per root (a root-level blocker on trust).
+    from hb_assistant.store.source_index_scan_quarantine_repository import (
+        SourceIndexScanQuarantineRepository,
+    )
+
+    try:
+        quarantine_by_root = SourceIndexScanQuarantineRepository(
+            str(repo.db_path)
+        ).blocking_counts_by_root(conn=conn)
+    except Exception:  # noqa: BLE001 — health must never fail on the quarantine read
+        quarantine_by_root = {}
     # Configured roots by key + the current policy fingerprint per root, so completeness can be checked
     # against CURRENT policy: a completed generation whose stored fingerprint no longer matches the
     # configured root (a sensitivity / exclusion / root-path / matcher change) must NOT read as complete or
@@ -308,6 +319,7 @@ def _source_index_health_body(
                 legacy_watcher_ready=legacy_watcher_ready,
                 struct_mapping=struct_mapping,
                 mapping_config_available=mapping_config_available,
+                unresolved_quarantine_count=int(quarantine_by_root.get(key, 0)),
             )
         )
         policy_verification = _dec.policy_verification
