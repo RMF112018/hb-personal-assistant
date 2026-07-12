@@ -1388,6 +1388,147 @@ def _probe_root_dir(root_path: Path) -> str:
     return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
 
 
+def _same_identity(a: os.stat_result, b: os.stat_result) -> bool:
+    """True when two ``lstat`` results denote the SAME inode (dev/ino) with unchanged size + mtime — used
+    to detect a destination replaced between probe and mutation/indexing (PB-006 TOCTOU)."""
+    return (
+        a.st_dev == b.st_dev
+        and a.st_ino == b.st_ino
+        and a.st_size == b.st_size
+        and a.st_mtime_ns == b.st_mtime_ns
+    )
+
+
+def _apply_moved_event(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    event: dict[str, Any],
+    root: ExternalSourceRoot,
+    *,
+    old_rel: str,
+    new_rel: str,
+    src_key: str,
+    attempts: int,
+) -> None:
+    """Governed same-root rename/move (Phase B / B4 corrective — PB-005/006/007), off the observer thread.
+
+    Readiness-gated (``safe_for_watcher_activation``), symlink- and identity-safe, transactional lineage
+    move + destination re-extraction. Every RECOVERABLE condition (lost/flaky mount, not-yet-ready root,
+    dest not yet visible, transient I/O, pre/post-mutation drift, pending re-extraction) DEFERS with
+    bounded backoff — a move is never terminally consumed while it could still succeed, and the old row is
+    left current until the move is proven safe. A provably-invalid destination (symlink/non-regular,
+    escapes-root, protected path) is a fail-closed TERMINAL skip that never deletes the old row."""
+    import stat as _sm
+
+    from .source_root_trust import load_root_trust
+
+    event_id = event["event_id"]
+
+    def _defer(code: str) -> None:
+        outcome = repo.defer_event(event_id, error_code=code, attempts=attempts)
+        if outcome == "exhausted":
+            # A recoverable condition that never cleared within the retry budget. NEVER delete the old row
+            # (the false-deletion hazard); leave lineage untouched and let reconciliation own it —
+            # a terminal, NON-mutating skip.
+            repo.complete_event(event_id, "skipped", error_code=f"{code}_unresolved")
+        # "deferred" / "conflict" → nothing more this drain.
+
+    root_path = Path(root.path)
+    # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
+    if _probe_root_dir(root_path) != "usable":
+        _defer("root_unavailable")
+        return
+    # 2. Root readiness — the SAME strict bar the watcher activates on. A not-yet-ready root defers,
+    #    leaving the old row current until the move can be proven safe.
+    try:
+        ready = bool(load_root_trust(repo, config, None, src_key).safe_for_watcher_activation)
+    except Exception:
+        _defer("root_trust_unevaluable")
+        return
+    if not ready:
+        _defer("root_not_ready")
+        return
+    # 3. Destination confirmation via os.lstat (does NOT follow symlinks): a symlink/non-regular dest is
+    #    terminal-denied, ENOENT defers (not yet visible), other OSError defers (transient).
+    dest_abs = root_path / new_rel
+    if pathsafe.path_blocked(new_rel, include_hidden=False):
+        repo.complete_event(event_id, "skipped", error_code="dest_denied")
+        return
+    try:
+        lst0 = os.lstat(dest_abs)
+    except FileNotFoundError:
+        _defer("dest_absent")
+        return
+    except OSError:
+        _defer("dest_indeterminate")
+        return
+    if not _sm.S_ISREG(lst0.st_mode):
+        repo.complete_event(event_id, "skipped", error_code="dest_not_regular")
+        return
+    try:
+        if pathsafe.symlink_escapes(dest_abs, root_path):
+            repo.complete_event(event_id, "skipped", error_code="dest_escapes_root")
+            return
+    except OSError:
+        _defer("dest_indeterminate")
+        return
+    # 4. Immediate pre-transaction identity re-check (narrows the probe→mutate window). Drift here is
+    #    PRE-mutation → no mutation, old row stays current, deferred.
+    try:
+        lst1 = os.lstat(dest_abs)
+    except OSError:
+        _defer("dest_indeterminate")
+        return
+    if not (_sm.S_ISREG(lst1.st_mode) and _same_identity(lst0, lst1)):
+        _defer("dest_changed_before_move")
+        return
+    dest_metadata = {
+        "file_ext": Path(new_rel).suffix.lower().lstrip("."),
+        "size_bytes": lst1.st_size,
+        "mtime_ns": lst1.st_mtime_ns,
+    }
+    # 5. Transactional lineage move. move_txn failure is recoverable (nothing was superseded — the txn
+    #    rolled back). conflicting_successor is a fail-closed terminal skip (no mutation happened).
+    try:
+        move = repo.apply_confirmed_same_root_move(src_key, old_rel, new_rel, dest_metadata)
+    except Exception:
+        _defer("move_txn_error")
+        return
+    if move.get("result") == "conflicting_successor":
+        repo.complete_event(event_id, "skipped", error_code="conflicting_successor")
+        return
+    # move_applied / move_already_applied / source_missing all proceed to (re)index the destination
+    # (source_missing indexes it as an ordinary current source — the move op wrote no lineage).
+    # 6. Post-transaction identity re-check: drift AFTER the move leaves the old row SUPERSEDED (not
+    #    restored). The dest is already content-invalidated + pending, so just defer re-extraction; no
+    #    stale content is ever advertised complete.
+    try:
+        lst2 = os.lstat(dest_abs)
+        drifted = not (_sm.S_ISREG(lst2.st_mode) and _same_identity(lst1, lst2))
+    except OSError:
+        drifted = True
+    if drifted:
+        _defer("dest_changed_during_move")
+        return
+    # 7. Re-extract the destination. index_source_file returns str|None: None (or an exception) is a
+    #    RETRYABLE indexing failure — never complete on a bare no-throw. The move stays committed; retry
+    #    recognizes move_already_applied and re-attempts indexing.
+    try:
+        sid = index_source_file(dest_abs, root, repo, config)
+    except Exception:
+        sid = None
+    if sid is None:
+        outcome = repo.defer_event(event_id, error_code="dest_reindex_pending", attempts=attempts)
+        if outcome == "exhausted":
+            # The safe move committed; only the content refresh did not complete. Terminal ERROR (not
+            # 'done') accurately reports "move committed, content pending" with lineage + supersede +
+            # invalidation intact; reconciliation / an explicit reindex recovers. Client trust stays safe
+            # because pending content is never advertised complete.
+            repo.complete_event(event_id, "error", error_code="dest_reindex_exhausted")
+        return
+    repo.complete_event(event_id, "done")
+
+
 class _LeaseLost(Exception):
     """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
     ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
@@ -2500,6 +2641,28 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                                 repo.complete_event(
                                     event["event_id"], "skipped", error_code="indeterminate"
                                 )
+            elif event["event_type"] == "moved":
+                # Governed same-root rename/move (Phase B / B4 corrective). Placed BEFORE the path-policy
+                # branches below (which key on the OLD rel_path) so a move is never mis-routed as an
+                # excluded/deferred/unsupported skip. Terminal-invalid payloads never mutate; everything
+                # else is dispatched to the readiness-gated, symlink/identity-safe drain move.
+                old_rel = event["rel_path"]
+                new_rel = event.get("dest_rel_path")
+                src_key = event.get("source_root_key")
+                if not old_rel or not new_rel or old_rel == new_rel or src_key == _VAULT_ROOT_KEY:
+                    repo.complete_event(event["event_id"], "skipped", error_code="moved_invalid")
+                else:
+                    root = roots.get(src_key)
+                    if root is None or not getattr(root, "enabled", True):
+                        repo.complete_event(
+                            event["event_id"], "skipped", error_code="unconfigured_root"
+                        )
+                    else:
+                        _apply_moved_event(
+                            repo, config, event, root,
+                            old_rel=old_rel, new_rel=new_rel, src_key=src_key,
+                            attempts=int(event.get("attempts") or 1),
+                        )
             elif (
                 event["source_root_key"] == _VAULT_ROOT_KEY
                 and event["rel_path"]

@@ -75,7 +75,17 @@ class IsolatedResult:
 # Child process
 # --------------------------------------------------------------------------------------------------
 
-def _apply_child_limits(max_memory_mb: int) -> None:
+def _cpu_limits(timeout_s: float) -> tuple[int, int]:
+    """Derive the child's ``RLIMIT_CPU`` (soft, hard) from the parent's wall-clock ``timeout_s`` so the
+    CPU backstop tracks the actual budget instead of a fixed constant (PB-008). The soft limit sits a
+    couple of seconds ABOVE the wall timeout — the parent's timeout→terminate→kill is the primary bound;
+    RLIMIT_CPU (SIGXCPU → parser_resource_exceeded) is a coarse secondary ceiling for a child that pegs a
+    core without tripping the wall poll."""
+    soft = max(1, int(timeout_s) + 2)
+    return (soft, soft + 3)
+
+
+def _apply_child_limits(max_memory_mb: int, timeout_s: float) -> None:
     """Apply address-space + CPU rlimits BEFORE any parser import. Best-effort; never raises."""
     try:
         import resource
@@ -90,9 +100,9 @@ def _apply_child_limits(max_memory_mb: int) -> None:
         except (ValueError, OSError):  # pragma: no cover - platform refused the limit
             pass
     if hasattr(resource, "RLIMIT_CPU"):
-        # A coarse CPU backstop below the wall-clock timeout; SIGXCPU -> classified resource_exceeded.
+        # Coarse CPU backstop DERIVED from the wall timeout; SIGXCPU -> classified resource_exceeded.
         try:
-            resource.setrlimit(resource.RLIMIT_CPU, (60, 90))
+            resource.setrlimit(resource.RLIMIT_CPU, _cpu_limits(timeout_s))
         except (ValueError, OSError):  # pragma: no cover
             pass
 
@@ -143,13 +153,14 @@ def _run_parser(path: Path, ext: str, max_output_bytes: int) -> dict[str, Any]:
     return {"status": STATUS_OK, "text": text, "char_count": len(text), "output_bytes": encoded_len}
 
 
-def _worker_main(path_str: str, ext: str, max_output_bytes: int, max_memory_mb: int, send: Any) -> None:
+def _worker_main(path_str: str, ext: str, max_output_bytes: int, max_memory_mb: int,
+                 timeout_s: float, send: Any) -> None:
     """Child entry point (module-level so ``spawn`` can pickle it). Sends exactly one result dict."""
     try:
         os.setsid()  # own session/process group -> parent can killpg the whole subtree on timeout
     except OSError:  # pragma: no cover - already a session leader
         pass
-    _apply_child_limits(max_memory_mb)
+    _apply_child_limits(max_memory_mb, timeout_s)
     try:
         result = _run_parser(Path(path_str), ext, max_output_bytes)
     except MemoryError:
@@ -215,9 +226,12 @@ def _classify_dead_child(exitcode: int | None) -> IsolatedResult:
     """Child died without sending a payload. Map exit/signal to a resource/crash classification."""
     if exitcode is not None and exitcode < 0:
         sig = -exitcode
-        # SIGKILL here is NOT our own timeout kill (that path returns parser_timeout before reaching
-        # here) -> an external OOM/limit kill; SIGXCPU is the CPU rlimit. Both are resource exhaustion.
-        if sig in (getattr(signal, "SIGKILL", 9), getattr(signal, "SIGXCPU", 24)):
+        # SIGXCPU is unambiguously our CPU rlimit → resource exhaustion. SIGKILL is AMBIGUOUS (PB-009):
+        # our own timeout kill returns parser_timeout before reaching here, but an unsolicited SIGKILL
+        # could be the OOM killer OR an operator/administrative kill — not provably resource exhaustion —
+        # so it is classified as a generic parser_failed, not parser_resource_exceeded. The child's own
+        # catchable MemoryError (RLIMIT_AS) still maps to parser_resource_exceeded inside _worker_main.
+        if sig == getattr(signal, "SIGXCPU", 24):
             return IsolatedResult(status=STATUS_RESOURCE_EXCEEDED, failure_code=f"signal_{sig}")
         return IsolatedResult(status=STATUS_FAILED, failure_code=f"signal_{sig}")
     return IsolatedResult(status=STATUS_FAILED, failure_code="no_payload")
@@ -276,7 +290,7 @@ def extract_for_complete_read(
     target = _worker if _worker is not None else _worker_main
     proc = ctx.Process(
         target=target,
-        args=(str(path), ext, int(max_output_bytes), int(max_memory_mb), send),
+        args=(str(path), ext, int(max_output_bytes), int(max_memory_mb), float(timeout_s), send),
         daemon=True,
     )
     proc.start()

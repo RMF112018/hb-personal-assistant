@@ -23,8 +23,9 @@ def _versions(db: str) -> set[int]:
         return {r[0] for r in c.execute("SELECT version FROM schema_migrations").fetchall()}
 
 
-def test_latest_version_is_126() -> None:
-    assert LATEST_SCHEMA_VERSION == 126
+def test_latest_version_at_least_126() -> None:
+    # V126 lands the rename-lineage column; later corrective migrations (V127) may bump the head further.
+    assert LATEST_SCHEMA_VERSION >= 126
 
 
 def test_column_and_index_added(tmp_path: Path) -> None:

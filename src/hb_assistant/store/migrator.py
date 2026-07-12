@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 126
+LATEST_SCHEMA_VERSION = 127
 
 
 class StaffingMigrationError(RuntimeError):
@@ -9260,6 +9260,81 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # --- V127: durable-queue support for governed 'moved' events (Phase B / B4 corrective) ---
+            # Rebuild source_intelligence_events to (a) widen the event_type CHECK to accept 'moved' and
+            # (b) add two nullable columns: ``dest_rel_path`` (a move's destination rel_path) and
+            # ``next_attempt_at`` (bounded-backoff deferral timestamp). SQLite cannot ALTER a CHECK, so the
+            # widening requires a full table rebuild. The whole apply() runs in ONE transaction (see top),
+            # so this CREATE/INSERT/DROP/RENAME is atomic: a crash rolls the entire migration back and
+            # CANNOT lose queued rows. Parity-guarded + idempotent: the rebuild runs only when the events
+            # table is not already at the V127 shape, and version 127 is recorded ONLY after parity is
+            # re-proven (a table with the columns but an OLD CHECK, or missing an index, is rebuilt — never
+            # marked applied on column presence alone). Immutable historical DDL: the V93 CREATE +
+            # EVENT_TYPE_VALUES are untouched; V127 owns the new shape via the version-pinned
+            # EVENT_TYPE_VALUES_V127. Recovery: a txn failure rolls the rebuild back; a parity-incomplete
+            # table is detected + rebuilt on the next apply. Code-rollback caveat: after V127, OLD
+            # application code cannot read/insert 'moved' rows — so do NOT deploy or migrate production in
+            # Phase B (Phase C owns the prod schema-copy + backup/restore proof).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 127")
+            if cur.fetchone() is None:
+                from hb_assistant.store.source_intelligence_tables import (
+                    EVENT_STATUS_VALUES,
+                    EVENT_TYPE_VALUES_V127,
+                )
+
+                if not self._events_schema_current(conn):
+                    et_csv = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES_V127)
+                    st_csv = ", ".join(f"'{v}'" for v in EVENT_STATUS_VALUES)
+                    conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
+                    conn.execute(
+                        "CREATE TABLE source_intelligence_events_v127 ("
+                        " event_id TEXT PRIMARY KEY,"
+                        " source_id TEXT,"
+                        " rel_path TEXT,"
+                        " source_root_key TEXT,"
+                        " dest_rel_path TEXT,"
+                        " next_attempt_at TEXT,"
+                        f" event_type TEXT NOT NULL CHECK(event_type IN ({et_csv})),"
+                        f" status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ({st_csv})),"
+                        " error_code TEXT,"
+                        " attempts INTEGER NOT NULL DEFAULT 0,"
+                        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                        " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                        ")"
+                    )
+                    # Faithful copy of every existing row + event_id; the two new columns default NULL.
+                    # (event_id is a client uuid TEXT PK — no AUTOINCREMENT/sequence; no triggers, no FKs
+                    # to recreate.)
+                    conn.execute(
+                        "INSERT INTO source_intelligence_events_v127 "
+                        "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
+                        " event_type, status, error_code, attempts, created_at, updated_at) "
+                        "SELECT event_id, source_id, rel_path, source_root_key, NULL, NULL, "
+                        " event_type, status, error_code, attempts, created_at, updated_at "
+                        "FROM source_intelligence_events"
+                    )
+                    conn.execute("DROP TABLE source_intelligence_events")
+                    conn.execute(
+                        "ALTER TABLE source_intelligence_events_v127 "
+                        "RENAME TO source_intelligence_events"
+                    )
+                    conn.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_si_events_status "
+                        "ON source_intelligence_events(status, created_at)"
+                    )
+                    conn.execute(
+                        "CREATE INDEX IF NOT EXISTS idx_si_events_source "
+                        "ON source_intelligence_events(source_id)"
+                    )
+                if not self._events_schema_current(conn):
+                    # The whole apply() transaction rolls back — the old events table is preserved intact.
+                    raise RuntimeError("v127_events_rebuild_parity_failed")
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) "
+                    "VALUES (127, 'v127_events_moved_dest_backoff', ?)",
+                    (now,),
+                )
+
 
         # Return latest version, then release the migration connection. get_connection's
         # contract is that the caller closes it; left open, this WAL connection is only
@@ -9270,6 +9345,40 @@ class SQLiteMigrator:
         version = int(row[0]) if row and row[0] is not None else 0
         conn.close()
         return version
+
+    @staticmethod
+    def _events_schema_current(conn: sqlite3.Connection) -> bool:
+        """True only if ``source_intelligence_events`` is at the FULL V127 shape (Phase B / B4 corrective):
+        both ``dest_rel_path`` + ``next_attempt_at`` columns present, both indexes present, AND the
+        ``event_type`` CHECK accepts ``'moved'`` (proven by a scratch INSERT rolled back in a savepoint).
+
+        A table that merely HAS the columns but retains the old CHECK — or is missing an index — returns
+        False, so V127 rebuilds rather than being falsely recorded on column presence alone."""
+        cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
+        }
+        if not {"dest_rel_path", "next_attempt_at"}.issubset(cols):
+            return False
+        idx = {
+            r[1] for r in conn.execute("PRAGMA index_list(source_intelligence_events)").fetchall()
+        }
+        if not {"idx_si_events_status", "idx_si_events_source"}.issubset(idx):
+            return False
+        # Prove the CHECK permits 'moved' without committing a probe row: INSERT then ROLLBACK TO the
+        # savepoint unconditionally (whether the INSERT succeeded or raised the CHECK IntegrityError).
+        conn.execute("SAVEPOINT v127_probe")
+        try:
+            conn.execute(
+                "INSERT INTO source_intelligence_events (event_id, event_type, status) "
+                "VALUES ('__v127_probe__', 'moved', 'queued')"
+            )
+            ok = True
+        except sqlite3.IntegrityError:
+            ok = False
+        finally:
+            conn.execute("ROLLBACK TO v127_probe")
+            conn.execute("RELEASE v127_probe")
+        return ok
 
     @staticmethod
     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:

@@ -61,6 +61,11 @@ EVENT_TYPE_VALUES: tuple[str, ...] = (
     "reindex_requested",
     "rebuild",
 )
+# CURRENT event-type authority (Phase B / B4 corrective). The historical ``EVENT_TYPE_VALUES`` above is
+# frozen — it is baked into the immutable V93 CREATE and MUST NOT change. Runtime enqueue/drain code and
+# the V127 events-table rebuild reference ``EVENT_TYPE_VALUES_V127`` so a governed ``moved`` event is
+# accepted; no current path may reject ``moved`` by importing the historical constant.
+EVENT_TYPE_VALUES_V127: tuple[str, ...] = (*EVENT_TYPE_VALUES, "moved")
 EVENT_STATUS_VALUES: tuple[str, ...] = ("queued", "processing", "done", "error", "skipped")
 
 V93_TABLES: tuple[str, ...] = (

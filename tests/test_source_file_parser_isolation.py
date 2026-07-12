@@ -84,28 +84,33 @@ def _make_eml(p: Path) -> Path:
 
 # ---------- module-level test workers (must be top-level for spawn pickling) ----------
 
-def _worker_sleep(path_str, ext, mob, mmb, send):
+def _worker_sleep(path_str, ext, mob, mmb, timeout_s, send):
     os.setsid()
     time.sleep(300)
 
 
-def _worker_segfault(path_str, ext, mob, mmb, send):
+def _worker_segfault(path_str, ext, mob, mmb, timeout_s, send):
     os.setsid()
     os.kill(os.getpid(), signal.SIGSEGV)
 
 
-def _worker_nonzero(path_str, ext, mob, mmb, send):
+def _worker_nonzero(path_str, ext, mob, mmb, timeout_s, send):
     os.setsid()
     os._exit(7)
 
 
-def _worker_malformed(path_str, ext, mob, mmb, send):
+def _worker_malformed(path_str, ext, mob, mmb, timeout_s, send):
     os.setsid()
     send.send("not-a-dict")
     send.close()
 
 
-def _worker_fork_grandchild(path_str, ext, mob, mmb, send):
+def _worker_sigkill(path_str, ext, mob, mmb, timeout_s, send):
+    os.setsid()
+    os.kill(os.getpid(), signal.SIGKILL)  # unsolicited SIGKILL (NOT our timeout path)
+
+
+def _worker_fork_grandchild(path_str, ext, mob, mmb, timeout_s, send):
     os.setsid()  # become group leader so a killpg reaches the grandchild too
     pid = os.fork()
     if pid == 0:  # grandchild
@@ -231,6 +236,35 @@ def test_unsupported_ext_no_spawn(tmp_path) -> None:
     p.write_text("dummy")
     r = iso.extract_for_complete_read(p, "xer", **_LIMITS)
     assert r.status == "unsupported_format"
+
+
+# ---------- PB-008: CPU rlimit derived from the wall timeout ----------
+
+def test_cpu_limits_derived_from_timeout() -> None:
+    # The soft CPU limit tracks timeout_s (sits a couple seconds above it), not a fixed 60/90 constant.
+    assert iso._cpu_limits(20.0) == (22, 25)
+    assert iso._cpu_limits(5.0) == (7, 10)
+    soft, hard = iso._cpu_limits(0.0)  # floored, still valid + ordered
+    assert soft >= 1 and hard > soft
+
+
+# ---------- PB-009: SIGKILL is ambiguous -> parser_failed; SIGXCPU -> resource_exceeded ----------
+
+def test_sigkill_classified_parser_failed(tmp_path) -> None:
+    # An UNSOLICITED SIGKILL (OOM killer / operator kill — not our timeout path) is not provably resource
+    # exhaustion, so it classifies as parser_failed, never parser_resource_exceeded.
+    p = _make_docx(tmp_path / "t.docx")
+    r = iso.extract_for_complete_read(p, "docx", max_input_bytes=25_000_000, max_output_bytes=1_000_000,
+                                      timeout_s=5.0, max_memory_mb=512, _worker=_worker_sigkill)
+    assert r.status == "parser_failed"
+    assert r.failure_code == f"signal_{int(signal.SIGKILL)}"
+
+
+def test_sigxcpu_classified_resource_exceeded() -> None:
+    # The CPU rlimit backstop (SIGXCPU) IS provable resource exhaustion.
+    r = iso._classify_dead_child(-int(signal.SIGXCPU))
+    assert r.status == "parser_resource_exceeded"
+    assert r.failure_code == f"signal_{int(signal.SIGXCPU)}"
 
 
 # ---------- provider-level complete reads of each real format ----------
