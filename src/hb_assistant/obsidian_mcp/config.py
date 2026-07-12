@@ -185,6 +185,17 @@ class ObsidianMcpConfig(BaseModel):
     # existing config deserializes to False and is persisted False), pdf/docx/xlsx/eml files are indexed
     # metadata-only during a scan, so a hung/pathological parser cannot stall or OOM the bootstrap.
     source_index_enable_synchronous_parser_extraction: bool = False
+    # Phase B on-demand complete-read parser isolation (files/parsers/isolated.py). These bound a
+    # per-request, subprocess-isolated PDF/DOCX/XLSX/EML extraction for a client complete read; they are
+    # SEPARATE from the index-time posture above (which stays metadata-only). Input and output limits are
+    # deliberately distinct: a compressed office file has a small input but a potentially large expanded
+    # text, so the input gate (pre-spawn) and the output budget (extracted text, enforced in the child
+    # before pipe serialization) are tuned independently. Exceeding the input limit -> too_large;
+    # exceeding the output budget -> parser_output_too_large (never a truncated "ok").
+    source_parser_isolation_timeout_seconds: float = 20.0
+    source_parser_max_memory_mb: int = 512
+    source_complete_read_max_input_bytes: int = 25 * 1024 * 1024
+    source_complete_read_max_output_bytes: int = 2 * 1024 * 1024
     # Bounded defaults applied at the scan chokepoint for EVERY caller when a bound is not supplied. A
     # value of None reaches scan_source_root only via an explicit operator --unbounded.
     source_index_bootstrap_max_files_per_pass: int = 25000

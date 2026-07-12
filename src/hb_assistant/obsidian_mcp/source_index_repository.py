@@ -1016,6 +1016,83 @@ class SourceIndexRepository:
         )
         self._mark_generated_notes_stale(c, source_id)
 
+    def apply_confirmed_same_root_move(
+        self,
+        root_key: str,
+        old_rel_path: str,
+        new_rel_path: str,
+        dest_metadata: dict[str, Any],
+        *,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any]:
+        """Transactionally record a CONFIRMED same-root file rename/move (Phase B / B4).
+
+        Invariant: the old row cannot become non-current unless the destination row + lineage are durably
+        persisted in the SAME transaction — on any failure the whole move rolls back and the old row stays
+        current. The move carries ONLY lineage (``renamed_from_source_id``): extraction/content trust is
+        NOT carried forward (a filesystem move does not prove byte identity), so the destination row is
+        (re)written with the current dest metadata and ``extraction_status='pending'`` and its inherited
+        generated-note links are marked ``stale`` (inherited-but-unverified) pending re-extraction. The
+        caller is responsible for confirming the destination is present first and for enqueuing
+        re-extraction of ``new_rel_path``.
+
+        Returns ``{old_source_id, new_source_id, linked}`` — ``linked`` is False when no current old row
+        existed (then this is a plain create with no predecessor)."""
+        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
+        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
+        now = _now()
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            old_present = c.execute(
+                "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
+                (old_sid,),
+            ).fetchone() is not None
+            lineage = old_sid if old_present else None
+            # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
+            c.execute(
+                "INSERT INTO source_intelligence_sources"
+                "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
+                " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
+                "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
+                " renamed_from_source_id=excluded.renamed_from_source_id, updated_at=excluded.updated_at",
+                (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
+            )
+            # Destination metadata = current dest stat; content trust invalidated (extraction pending).
+            c.execute(
+                "INSERT INTO source_intelligence_metadata"
+                "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
+                " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
+                "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
+                " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, "
+                " extraction_status='pending', indexed_at=excluded.indexed_at",
+                (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
+                 dest_metadata.get("mtime_ns"), "", now),
+            )
+            if old_present:
+                # Inherited-but-unverified: relink the old row's generated notes to the new row as 'stale'
+                # (an explicit status, not an implied null) so they are not advertised as current content.
+                c.execute(
+                    "UPDATE OR IGNORE source_intelligence_generated_notes "
+                    "SET source_id=?, generation_status='stale', updated_at=? WHERE source_id=?",
+                    (new_sid, now, old_sid),
+                )
+                # Old row becomes non-current only now that the destination + lineage are persisted.
+                self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
+        return {"old_source_id": old_sid, "new_source_id": new_sid, "linked": old_present}
+
+    def find_successor_source_id(
+        self, source_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> str | None:
+        """Return the current successor of a renamed/moved source (the active row whose
+        ``renamed_from_source_id`` is ``source_id``), or None. Used to answer an old source_ref as
+        ``moved`` rather than a bare deleted/unavailable."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT source_id FROM source_intelligence_sources "
+                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
+                (source_id,),
+            ).fetchone()
+        return row[0] if row else None
+
     # ----- source detail + generated-note tracking (source cards) ----------------------------
     def get_source_detail(
         self, source_id: str, *, conn: sqlite3.Connection | None = None

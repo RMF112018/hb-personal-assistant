@@ -1,0 +1,10 @@
+# Manual round-trip proof: search -> path-free source_ref -> complete read.
+# Scratch SQLite + temp files. Text (whole), DOCX (isolated parser), XER (explicit unsupported).
+
+SEARCH source_ref path-free: True
+COMPLETE txt : complete raw_text complete | whole: True
+COMPLETE docx: complete extracted_content | content: 'Change Order 7 approved.'
+COMPLETE xer : unsupported_format | File found. Complete interpretation of schedul
+PROVENANCE keys: ['completeness_state', 'content_state', 'extension', 'filename', 'generation_status', 'indexed_at', 'mime_type', 'modified_at_ns', 'relative_path', 'retrieval_state', 'root_key', 'size_bytes', 'source_id', 'source_ref']
+NO ABS PATH  : True
+EXIT: 0

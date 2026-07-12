@@ -103,7 +103,7 @@ def _active_count(db: str, root_key: str = "work") -> int:
 # ===================================================================================================
 def test_migration_fresh_creates_quarantine_table(tmp_path):
     db = str(tmp_path / "fresh.db")
-    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 125
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     try:
         got = conn.execute(
@@ -127,9 +127,9 @@ def test_migration_fresh_creates_quarantine_table(tmp_path):
 
 def test_migration_is_idempotent(tmp_path):
     db = str(tmp_path / "idem.db")
-    assert SQLiteMigrator(db_path=db).apply() == 125
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     # A second unconditional apply is a no-op (parity-guarded), not an error.
-    assert SQLiteMigrator(db_path=db).apply() == 125
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     try:
         n = conn.execute(
@@ -155,7 +155,7 @@ def test_migration_upgrade_recreates_quarantine_table(tmp_path):
     ).fetchone()
     conn.close()
     assert got is None  # pre-upgrade shape has no quarantine table
-    assert SQLiteMigrator(db_path=db).apply() == 125
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     try:
         got = conn.execute(

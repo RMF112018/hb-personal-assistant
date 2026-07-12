@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 125
+LATEST_SCHEMA_VERSION = 126
 
 
 class StaffingMigrationError(RuntimeError):
@@ -9226,6 +9226,37 @@ class SQLiteMigrator:
                     conn.execute(stmt)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (125, 'v125_source_index_scan_quarantine', ?)",
+                    (now,),
+                )
+
+            # --- V126: rename/move lineage on source rows (Phase B / B4) --------------------------
+            # One additive, nullable column ``renamed_from_source_id`` on source_intelligence_sources.
+            # A confirmed same-root rename persists the new row with this set to the prior source_id and
+            # marks the old row deleted in the SAME transaction (see
+            # SourceIndexRepository.apply_confirmed_same_root_move). It carries ONLY lineage — never
+            # extraction/content trust. Additive/nullable; NO row-wide backfill (legacy rows stay NULL,
+            # meaning "no known predecessor"). Parity-guarded ADD COLUMN so an unconditional re-run is
+            # idempotent. Recovery: a code rollback may leave the unused nullable column in place; no
+            # destructive down-migration is required in Phase B.
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 126")
+            if cur.fetchone() is None:
+                existing = {
+                    r[1] for r in conn.execute(
+                        "PRAGMA table_info(source_intelligence_sources)"
+                    ).fetchall()
+                }
+                if "renamed_from_source_id" not in existing:
+                    conn.execute(
+                        "ALTER TABLE source_intelligence_sources "
+                        "ADD COLUMN renamed_from_source_id TEXT"
+                    )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_si_sources_renamed_from "
+                    "ON source_intelligence_sources(renamed_from_source_id) "
+                    "WHERE renamed_from_source_id IS NOT NULL"
+                )
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (126, 'v126_source_rename_lineage', ?)",
                     (now,),
                 )
 

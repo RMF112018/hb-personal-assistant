@@ -59,6 +59,45 @@ def _roots_hash(config: ObsidianMcpConfig, db_path: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+def apply_same_root_move(repo: Any, root_key: str, root_path: Path, src_path: str,
+                         dest_path: str | None) -> bool:
+    """Correlate a same-root file move into a transactional lineage update (Phase B / B4).
+
+    Returns True when the move was handled as a lineage-preserving rename (caller must NOT emit a
+    delete+create), or False to fall back to the conservative delete+create path. Only external (NAS)
+    roots are correlated; the vault root keeps its own semantics. The destination must be a confirmed
+    regular file — an unconfirmed/indeterminate destination falls back so the source deletion still obeys
+    the drain's confirmed-absence rules. Content trust is NOT carried: the transactional op invalidates
+    extraction and we enqueue a ``created`` event to re-extract the destination."""
+    if not dest_path or root_key == _VAULT_ROOT_KEY:
+        return False
+    try:
+        old_rel = str(Path(src_path).relative_to(root_path))
+        new_rel = str(Path(dest_path).relative_to(root_path))
+    except ValueError:
+        return False  # a path outside this root -> not a same-root move
+    if should_ignore(new_rel, Path(dest_path).name):
+        return False
+    dest_file = Path(dest_path)
+    try:
+        if not dest_file.is_file():
+            return False  # destination not confirmed present -> conservative fallback
+        st = dest_file.stat()
+    except OSError:
+        return False
+    dest_metadata = {
+        "file_ext": dest_file.suffix.lower().lstrip("."),
+        "size_bytes": st.st_size,
+        "mtime_ns": st.st_mtime_ns,
+    }
+    try:
+        repo.apply_confirmed_same_root_move(root_key, old_rel, new_rel, dest_metadata)
+        repo.enqueue_event(event_type="created", rel_path=new_rel, source_root_key=root_key)
+        return True
+    except Exception:  # noqa: BLE001 - any failure -> conservative delete+create fallback
+        return False
+
+
 class SourceWatcher:
     """Owns a daemon worker thread (watchdog observer or polling). Idempotent start/stop."""
 
@@ -296,9 +335,18 @@ class SourceWatcher:
                     self._enqueue(event.src_path, "deleted")
 
             def on_moved(self, event: Any) -> None:
-                if not event.is_directory:
-                    self._enqueue(event.src_path, "deleted")
-                    self._enqueue(getattr(event, "dest_path", event.src_path), "created")
+                if event.is_directory:
+                    return
+                dest_path = getattr(event, "dest_path", None)
+                # Same-root external move -> transactional lineage rename (no delete+create burst).
+                if apply_same_root_move(repo, self._root_key, self._root_path, event.src_path,
+                                        dest_path):
+                    watcher._last_event_at = _now()
+                    return
+                # Conservative fallback (cross-root / unconfirmed dest / vault / op failure): the deleted
+                # event obeys the NAS confirmed-absence rules in the drain — never an immediate delete.
+                self._enqueue(event.src_path, "deleted")
+                self._enqueue(dest_path or event.src_path, "created")
 
         observer = Observer()
         for root in _enabled_roots(config):

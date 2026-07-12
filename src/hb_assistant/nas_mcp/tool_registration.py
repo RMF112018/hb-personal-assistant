@@ -711,28 +711,40 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
 
         @mcp.tool()
         def assistant_source_file_read(source_id: str | None = None, source_ref: str | None = None,
-                                       max_chars: int = 4000,
+                                       mode: str = "excerpt", max_chars: int = 4000,
+                                       max_bytes: int | None = None,
                                        prefer_live: bool = True) -> dict[str, Any]:
-            """Bounded, extension-gated read of one NAS source FILE by source_id/source_ref. Returns a
-            live bounded extract when permitted, else the indexed excerpt (labelled
-            ``indexed_excerpt_fallback``). Use to read an original source file's content — not a vault
-            note or source card. Never returns a full raw file or an absolute path."""
+            """Read the contents of one NAS original source FILE (not a vault note or source card) by
+            ``source_ref`` (preferred, from a search/list result) or ``source_id``. Never accepts or
+            returns an absolute path.
+
+            ``mode='excerpt'`` (default): a bounded extract (live when permitted, else the indexed
+            ``indexed_excerpt_fallback``). ``mode='complete'``: a complete-or-explicit-failure read of a
+            supported format (txt/md/csv/json/xml/html/log read whole; pdf/docx/xlsx/eml extracted in an
+            isolated bounded worker). A complete read never truncates-and-claims-complete; the response
+            carries ``retrieval_state`` (complete | partial | too_large | unsupported_format |
+            archive_not_expanded | unavailable | denied | stale | moved | parser_timeout | parser_failed
+            | parser_resource_exceeded | parser_output_too_large), ``content_state``, and
+            ``completeness_state``. XER/P6 and archives return an explicit unsupported/not-expanded state
+            (no invented content). ``max_bytes`` may only lower the complete-read output budget."""
             return _assistant_result("assistant_source_file_read",
                                      {"source_id": source_id, "source_ref": source_ref,
-                                      "max_chars": max_chars, "prefer_live": prefer_live})
+                                      "mode": mode, "max_chars": max_chars, "max_bytes": max_bytes,
+                                      "prefer_live": prefer_live})
 
         @mcp.tool()
         def assistant_source_index_health() -> dict[str, Any]:
-            """Per-root source index health (file index + folder map layers): freshness, counts,
-            skipped/unsupported, whether safe for client answering. No absolute paths. Use before
-            trusting broad NAS answers."""
+            """Per-root source index health for NAS source FILES (not vault notes or cards): file index +
+            folder map layers, freshness, counts, skipped/unsupported, whether safe for client answering.
+            No absolute paths. Use before trusting broad NAS answers."""
             return _assistant_result("assistant_source_index_health", {})
 
         @mcp.tool()
         def assistant_source_query_plan(prompt: str, query: str | None = None) -> dict[str, Any]:
-            """Deterministic planner for NAS source prompts: classifies intent (map vs search vs health
-            vs unsupported), normalizes project numbers, and recommends a tool sequence. Does not search
-            or read files. Prefer this before generic file search for map/folder/project questions."""
+            """Deterministic planner for NAS source FILE prompts (not vault notes or cards): classifies
+            intent (map vs search vs health vs unsupported), normalizes project numbers, and recommends a
+            source-tool sequence. Does not search or read files. Prefer this before generic file search
+            for map/folder/project questions."""
             return _assistant_result("assistant_source_query_plan",
                                      {"prompt": prompt or query or "", "query": query})
 

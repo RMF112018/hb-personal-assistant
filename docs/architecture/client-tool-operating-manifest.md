@@ -74,10 +74,21 @@ Two distinct file-access tiers exist; use the right one:
 - **Content search** — `assistant_source_file_search` over the indexed source corpus (FTS). This is the
   primary search path; the legacy `hb_root_search` is a low-level fallback only (weak/no content index) and
   must **not** be the first choice.
-- **Bounded reads** — `assistant_source_file_read` for indexed source files (binary/office files return a
-  bounded indexed excerpt); the legacy `hb_root_read_excerpt` denies binary content.
+- **Reads** — `assistant_source_file_read` for indexed source files, by `source_ref` (preferred; taken
+  from a search/list result) or `source_id` — **never an absolute path**. Two modes:
+  - `mode="excerpt"` (default): a bounded extract (live when the root is trusted, else the indexed
+    `indexed_excerpt_fallback`). Binary/office files return a bounded excerpt.
+  - `mode="complete"`: a **complete-or-explicit-failure** read of a supported format —
+    txt/md/csv/json/xml/html/log read whole; pdf/docx/xlsx/eml extracted in a bounded, subprocess-isolated
+    worker. It never truncates and calls the result complete. Read the response's `retrieval_state`
+    (`complete` | `partial` | `too_large` | `unsupported_format` | `archive_not_expanded` | `unavailable`
+    | `denied` | `stale` | `moved` | `parser_timeout` | `parser_failed` | `parser_resource_exceeded` |
+    `parser_output_too_large`), `content_state`, and `completeness_state` — only `complete` carries whole
+    trusted content. **XER/P6 and archives are explicitly unsupported/not-expanded** (never invent their
+    content). An old `source_ref` for a renamed file returns `moved` with a `successor_source_ref`.
+  The legacy `hb_root_read_excerpt` denies binary content and takes no `source_ref`.
 
-Rule of thumb: **map with `assistant_source_*_map` / folder tools, search and read with `assistant_source_file_*`, traverse low-level with `hb_root_*` only as fallback.**
+Rule of thumb: **map with `assistant_source_*_map` / folder tools, search and read with `assistant_source_file_*` (hand off the `source_ref` from a search hit to `assistant_source_file_read`), traverse low-level with `hb_root_*` only as fallback.**
 
 ## Three-tier file access (updated)
 

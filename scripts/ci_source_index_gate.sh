@@ -37,11 +37,17 @@ pytest -p no:cacheprovider -q \
   tests/test_tool_manifest_freshness_guard.py \
   tests/test_n8c23_client_tool_manifest.py \
   tests/test_manifest_schema_parity.py \
-  --deselect tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
-  # ^ deselected: a PRE-EXISTING failure that reproduces on pristine origin/main (9c27839b) — the
-  #   `assistant_source_index_health` tool description lacks a "vault"/"card" contrast word. It is unrelated
-  #   to Phase A (that tool's description was never touched here); fixing it is an out-of-scope tool-surface
-  #   change. Tracked as pre-existing debt in docs/evidence/source-index-phase-a/08-baseline-vs-feature-failures.md.
+  tests/test_source_index_search_latency_index.py \
+  tests/test_migrator_v126_rename_lineage.py \
+  tests/test_source_file_complete_read.py \
+  tests/test_source_file_parser_isolation.py \
+  tests/test_source_file_retrieval_semantics.py \
+  tests/test_source_index_rename_lineage.py
+  # test_all_source_tools_have_disambiguating_descriptions is now ENFORCED (no longer deselected): Phase B
+  # gave assistant_source_index_health its missing "vault/card" contrast word, so the gate can hold the
+  # whole source-tool surface to disambiguating descriptions. The two remaining pre-existing count-drift
+  # tests (test_source_structure_cli / test_source_index_client_performance_hardening) are NOT part of this
+  # gate and stay tracked as pre-existing debt in issue #306.
 
 # Lint the source-index implementation + its tests. `ruff check` only (lint), NOT `ruff format --check`:
 # some source-index modules pre-date the repo's formatter adoption and must not be reformatted here.
@@ -49,6 +55,7 @@ ruff check \
   src/hb_assistant/obsidian_mcp/source_indexer.py \
   src/hb_assistant/obsidian_mcp/source_connector_service.py \
   src/hb_assistant/obsidian_mcp/source_content_provider.py \
+  src/hb_assistant/files/parsers/isolated.py \
   src/hb_assistant/obsidian_mcp/source_health_service.py \
   src/hb_assistant/obsidian_mcp/source_index_repository.py \
   src/hb_assistant/obsidian_mcp/source_project_number.py \
