@@ -24,6 +24,10 @@ from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorVal
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
 from hb_assistant.store.migrator import SQLiteMigrator
 
+# A parseable, non-future indexed_at so the freshness state resolves to "fresh" (needed for a root to be
+# trust-safe). A bare sentinel like "t" is unparseable → freshness "unknown" → the root fails closed.
+_RECENT_TS = "2026-07-01T12:00:00+00:00"
+
 
 def _insert(db: str, *, root_key: str, rel_path: str, body: str | None, ext: str,
             extraction_status: str = "ok") -> str:
@@ -34,8 +38,8 @@ def _insert(db: str, *, root_key: str, rel_path: str, body: str | None, ext: str
                   (sid, "external_file", root_key, rel_path))
         digest = hashlib.sha256((body or "").encode()).hexdigest()
         c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,'t')",
-                  (sid, ext, len(body or ""), 1, digest, extraction_status))
+                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
+                  (sid, ext, len(body or ""), 1, digest, extraction_status, _RECENT_TS))
         if body is not None:
             c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
                       "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
@@ -48,6 +52,29 @@ def _insert(db: str, *, root_key: str, rel_path: str, body: str | None, ext: str
                   "VALUES('fts_available','1','t')")
         c.commit()
     return sid
+
+
+def _make_root_trusted(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
+    """A2 test helper: certify ``root_key`` as SAFE — a recent parseable last_indexed_at (freshness=fresh)
+    plus a COMPLETED generation whose policy_fingerprint matches the current root policy (policy=current).
+    This is exactly what the shared trust authority requires before a root may serve client answers."""
+    from datetime import datetime, timezone
+
+    from hb_assistant.obsidian_mcp.source_indexer import _root_fingerprint
+
+    cfg_root = next(r for r in config.external_sources if r.source_root_key == root_key)
+    fp = _root_fingerprint(cfg_root, config)
+    root_path_hash = hashlib.sha256(str(Path(cfg_root.path)).encode("utf-8")).hexdigest()[:32]
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_metadata SET indexed_at=? WHERE indexed_at='t'", (now,))
+        c.execute(
+            "INSERT INTO source_index_scan_generations(generation_id, root_key, status, root_path_hash, "
+            "policy_fingerprint, started_at, updated_at, metadata_walk_completed_at, "
+            "reconciliation_completed_at, finished_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (f"gen-{root_key}", root_key, "completed", root_path_hash, fp, now, now, now, now, now),
+        )
+        c.commit()
 
 
 @pytest.fixture()
@@ -77,6 +104,11 @@ def env(tmp_path: Path):
         ExternalSourceRoot(source_root_key="work", path=str(work)),
         ExternalSourceRoot(source_root_key="secure", path=str(secure), sensitive=True),
     ])
+    # A2: both configured roots are certified SAFE so the positive-path serving tests exercise a TRUSTED
+    # root. ``secure`` stays sensitive (safe for path lookup, never live-readable). New fail-closed tests
+    # (test_source_root_trust.py) use separate, deliberately-uncertified roots.
+    _make_root_trusted(db, config, "work")
+    _make_root_trusted(db, config, "secure")
     return {"db": db, "repo": SourceIndexRepository(db), "config": config, "ids": ids,
             "root_abs": str(work), "tmp": str(tmp_path)}
 
@@ -113,14 +145,20 @@ def test_search_empty_query_returns_empty(env) -> None:
 
 
 def test_search_invalid_root_fails_closed(env) -> None:
-    # Defect F1: an unknown source_root_key is an explicit invalid_root error, not a silent empty page.
-    with pytest.raises(SourceConnectorValidationError, match="invalid_root"):
-        svc.search_source_files(env["repo"], env["config"], query="payment", source_root_key="nope", limit=5)
+    # A2: an unknown source_root_key returns a structured fail-closed envelope (unknown_root), zero items,
+    # authoritative:false — never stale items and never a silent empty page.
+    r = svc.search_source_files(env["repo"], env["config"], query="payment", source_root_key="nope", limit=5)
+    assert r["status"] == "unknown_root"
+    assert r["items"] == []
+    assert r["authoritative"] is False
+    assert r["root_readiness"]["trust_state"] == "unknown"
 
 
 def test_list_invalid_root_fails_closed(env) -> None:
-    with pytest.raises(SourceConnectorValidationError, match="invalid_root"):
-        svc.list_source_files(env["repo"], env["config"], source_root_key="nope")
+    r = svc.list_source_files(env["repo"], env["config"], source_root_key="nope")
+    assert r["status"] == "unknown_root"
+    assert r["items"] == []
+    assert r["authoritative"] is False
 
 
 def test_list_traversal_prefix_rejected(env) -> None:

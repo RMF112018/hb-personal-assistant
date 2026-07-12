@@ -15,6 +15,7 @@ Invariants:
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from .config import ObsidianMcpConfig
@@ -38,7 +39,6 @@ from .source_project_number import (
     query_project_candidates,
     rank_boost,
 )
-import time
 
 _MAX_NEIGHBORS = 20
 _MAX_CHILD_FOLDERS = 50
@@ -74,16 +74,24 @@ def list_source_roots(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
             "source_root_key": root.source_root_key,
             "enabled": bool(root.enabled),
             "sensitive": bool(root.sensitive),
+            "sensitivity_known": True,
+            "authorization_state": "authorized" if root.enabled else "denied",
             "source_kind": root.source_kind,
             "file_count": repo.count_source_files(root.source_root_key, conn=conn),
             "provenance": "config",
         })
     if not roots:
         for key in repo.distinct_indexed_root_keys(conn=conn):
+            # A2: a configless (index-only) root is NOT trusted-by-default. Its authorization is UNVERIFIED
+            # and its sensitivity is UNKNOWN — never `enabled=True, sensitive=False` (which would fail open).
+            # Reads/answers are blocked by default (the trust authority returns `unverified` for it).
             roots.append({
                 "source_root_key": key,
                 "enabled": True,
-                "sensitive": False,
+                "sensitive": None,
+                "sensitivity_known": False,
+                "authorization_state": "unverified",
+                "authoritative": False,
                 "source_kind": "external_file",
                 "file_count": repo.count_source_files(key, conn=conn),
                 "provenance": "index",
@@ -107,15 +115,107 @@ def _reject_unsafe_prefix(prefix: str | None) -> None:
         raise SourceConnectorValidationError("unsafe_prefix")
 
 
+def _blocked_page_envelope(
+    status: str,
+    *,
+    root_key: str | None,
+    decision: Any,
+    limit: int,
+    order: str,
+    extra: dict[str, Any] | None = None,
+    excluded: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """A2 fail-closed serving envelope: NO items, NO metadata, ``authoritative:false``, embedded sanitized
+    ``root_readiness``. Shared by search + list so an unsafe/unknown root can never return stale rows."""
+    from .source_root_trust import RC_UNKNOWN_ROOT, RESULT_UNKNOWN_ROOT, root_readiness_envelope
+
+    if decision is not None:
+        readiness = root_readiness_envelope(decision)
+    else:
+        readiness = {
+            "root_key": root_key,
+            "trust_state": "unknown",
+            "authorization_state": "unverified",
+            "reason_codes": [RC_UNKNOWN_ROOT] if status == RESULT_UNKNOWN_ROOT else [],
+        }
+    env: dict[str, Any] = {
+        "status": status,
+        "items": [],
+        "count": 0,
+        "limit": limit,
+        "limit_applied": True,
+        "order": order,
+        "has_more": False,
+        "next_cursor": None,
+        "cursor": None,
+        "truncated": False,
+        "authoritative": False,
+        "root_readiness": readiness,
+        "excluded_root_readiness": excluded or [],
+        "excluded_root_keys": [r.get("root_key") for r in (excluded or [])],
+    }
+    if extra:
+        env.update(extra)
+    return env
+
+
+def _safe_roots_for_scope(
+    repo: SourceIndexRepository, config: ObsidianMcpConfig, *, conn: Any = None
+) -> tuple[set[str], list[dict[str, Any]]]:
+    """Partition the known roots into (safe-for-path-lookup keys, sanitized readiness of the excluded).
+    Used by UNSCOPED search so one safe root never implies universal safety."""
+    from .source_root_trust import load_root_trust, root_readiness_envelope
+
+    allowed: set[str] = set()
+    excluded: list[dict[str, Any]] = []
+    for key in sorted(_known_root_keys(repo, config, conn=conn)):
+        decision = load_root_trust(repo, config, None, key, conn=conn)
+        if decision.safe_for_client_answering:
+            allowed.add(key)
+        else:
+            excluded.append(root_readiness_envelope(decision))
+    return allowed, excluded
+
+
 def search_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, query: str,
                         source_root_key: str | None = None, file_ext: str | None = None,
                         limit: int = 25, cursor: str | None = None,
                         conn: Any = None) -> dict[str, Any]:
-    """Root-aware FTS search over indexed source files, deterministic keyset cursor. Read-only."""
-    if source_root_key is not None and source_root_key not in _known_root_keys(repo, config, conn=conn):
-        raise SourceConnectorValidationError("invalid_root")
+    """Root-aware FTS search over indexed source files, deterministic keyset cursor. Read-only.
+
+    A2 fail-closed: an explicitly requested UNSAFE root returns a ``blocked_root_unready`` envelope with
+    zero items; an UNKNOWN root returns ``unknown_root``; an UNSCOPED search is restricted to safe roots
+    only and discloses ``excluded_root_keys`` (one safe root never implies universal safety)."""
+    from .source_root_trust import (
+        RESULT_BLOCKED_ROOT_UNREADY,
+        RESULT_OK,
+        RESULT_UNKNOWN_ROOT,
+        load_root_trust,
+        root_readiness_envelope,
+    )
+
     limit = clamp_limit(limit)
     order = ORDER_RANK_PATH
+    excluded_readiness: list[dict[str, Any]] = []
+    if source_root_key is not None:
+        if source_root_key not in _known_root_keys(repo, config, conn=conn):
+            return _blocked_page_envelope(
+                RESULT_UNKNOWN_ROOT, root_key=source_root_key, decision=None, limit=limit, order=order
+            )
+        _decision = load_root_trust(repo, config, None, source_root_key, conn=conn)
+        if not _decision.safe_for_client_answering:
+            return _blocked_page_envelope(
+                RESULT_BLOCKED_ROOT_UNREADY, root_key=source_root_key, decision=_decision,
+                limit=limit, order=order,
+            )
+        allowed_roots: set[str] = {source_root_key}
+    else:
+        allowed_roots, excluded_readiness = _safe_roots_for_scope(repo, config, conn=conn)
+        if not allowed_roots:
+            return _blocked_page_envelope(
+                RESULT_BLOCKED_ROOT_UNREADY, root_key=None, decision=None, limit=limit, order=order,
+                excluded=excluded_readiness,
+            )
     filters = {"op": "search", "query": query, "source_root_key": source_root_key,
                "file_ext": file_ext}
     query_digest = compute_query_digest(filters)
@@ -145,6 +245,9 @@ def search_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, 
         next_after = [last["score"], last["source_root_key"], last["rel_path"], last["source_id"]]
     items = []
     for idx, (boost, _neg_bm25, r) in enumerate(ranked):
+        # A2: never surface a row from a root that is not safe-for-path-lookup (unscoped safe-root filter).
+        if r.get("source_root_key") not in allowed_roots:
+            continue
         shaped = shape_source_file(r, snippet=r.get("snippet"), include_snippet=True)
         shaped["base_score"] = float(r.get("score") or 0.0)
         shaped["bm25_rank"] = float(r.get("score") or 0.0)
@@ -159,6 +262,15 @@ def search_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return {
         **env, "query": query, "search_backend": "source_index",
+        "status": RESULT_OK,
+        "authoritative": True,
+        "scope": "root" if source_root_key is not None else "unscoped_safe_roots",
+        "safe_root_keys": sorted(allowed_roots),
+        "excluded_root_keys": [r.get("root_key") for r in excluded_readiness],
+        "excluded_root_readiness": excluded_readiness,
+        "root_readiness": (
+            root_readiness_envelope(_decision) if source_root_key is not None else None
+        ),
         "ranking_strategy": "project_path_filename_content_fts",
         "detected_project_numbers": projects,
         "telemetry": {
@@ -180,13 +292,33 @@ def list_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
                       conn: Any = None) -> dict[str, Any]:
     """Index-backed listing under one root/prefix, keyset-paged. Advisory child folders derived from the
     returned page (``child_folders_partial`` when more pages remain). Read-only, never a filesystem scan."""
+    from .source_root_trust import (
+        RESULT_BLOCKED_ROOT_UNREADY,
+        RESULT_OK,
+        RESULT_UNKNOWN_ROOT,
+        load_root_trust,
+        root_readiness_envelope,
+    )
+
     if not source_root_key:
         raise SourceConnectorValidationError("source_root_key_required")
-    if source_root_key not in _known_root_keys(repo, config, conn=conn):
-        raise SourceConnectorValidationError("invalid_root")
     _reject_unsafe_prefix(prefix)
     limit = clamp_limit(limit)
     order = ORDER_ROOT_PATH
+    if source_root_key not in _known_root_keys(repo, config, conn=conn):
+        return _blocked_page_envelope(
+            RESULT_UNKNOWN_ROOT, root_key=source_root_key, decision=None, limit=limit, order=order,
+            extra={"source_root_key": source_root_key, "prefix": prefix, "child_folders": [],
+                   "child_folders_partial": False},
+        )
+    _decision = load_root_trust(repo, config, None, source_root_key, conn=conn)
+    if not _decision.safe_for_client_answering:
+        return _blocked_page_envelope(
+            RESULT_BLOCKED_ROOT_UNREADY, root_key=source_root_key, decision=_decision,
+            limit=limit, order=order,
+            extra={"source_root_key": source_root_key, "prefix": prefix, "child_folders": [],
+                   "child_folders_partial": False},
+        )
     filters = {"op": "list", "source_root_key": source_root_key, "prefix": prefix or ""}
     query_digest = compute_query_digest(filters)
     after: tuple[str, str] | None = None
@@ -206,6 +338,8 @@ def list_source_files(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
     env = page_envelope(items, limit=limit, order=order, query_digest=query_digest,
                         next_after=next_after, cursor=cursor)
     return {**env, "source_root_key": source_root_key, "prefix": prefix,
+            "status": RESULT_OK, "authoritative": True,
+            "root_readiness": root_readiness_envelope(_decision),
             "child_folders": _child_folders(page, prefix), "child_folders_partial": has_more}
 
 
@@ -232,12 +366,34 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
                          source_id: str | None = None, source_ref: str | None = None,
                          conn: Any = None) -> dict[str, Any]:
     """Metadata for one source file by stable id/ref. Distinguishes the ORIGINAL source file (primary)
-    from a generated source card (supplemental) and vault notes (separate). Never forces card lookup."""
-    del config
+    from a generated source card (supplemental) and vault notes (separate). Never forces card lookup.
+
+    A2 fail-closed: metadata for a file whose root is not safe-for-path-lookup is BLOCKED — no advisory
+    item metadata is exposed, only the sanitized root_readiness envelope."""
+    from .source_root_trust import (
+        RESULT_BLOCKED_ROOT_UNREADY,
+        RESULT_OK,
+        load_root_trust,
+        root_readiness_envelope,
+    )
+
     sid = resolve_source_id(source_id=source_id, source_ref=source_ref)
     detail = repo.get_source_detail(sid, conn=conn)
     if detail is None:
         raise SourceConnectorValidationError("source_not_found")
+    _root_key = detail.get("source_root_key")
+    _decision = load_root_trust(repo, config, None, str(_root_key), conn=conn)
+    if not _decision.safe_for_client_answering:
+        return {
+            "object_type": "source_file",
+            "is_source_file": True,
+            "status": RESULT_BLOCKED_ROOT_UNREADY,
+            "authoritative": False,
+            "source_id": sid,
+            "source_ref": encode_source_ref(sid),
+            "source_root_key": _root_key,
+            "root_readiness": root_readiness_envelope(_decision),
+        }
     cards = repo.list_cards_for_source(sid, conn=conn)
     active_cards = [c for c in cards if c.get("generation_status") in ("generated", "stale")]
     ext = (str(detail.get("file_ext")).lower().lstrip(".") if detail.get("file_ext") else None)
@@ -249,6 +405,9 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
     return {
         "object_type": "source_file",
         "is_source_file": True,
+        "status": RESULT_OK,
+        "authoritative": True,
+        "root_readiness": root_readiness_envelope(_decision),
         "source_id": sid,
         "source_ref": encode_source_ref(sid),
         "source_root_key": detail.get("source_root_key"),

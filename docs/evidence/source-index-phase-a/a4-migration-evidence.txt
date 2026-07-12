@@ -1,0 +1,13 @@
+LATEST_SCHEMA_VERSION = 125
+
+[1] FRESH: apply() -> 125 | table: source_index_scan_quarantine
+    indexes: ['idx_source_index_scan_quarantine_active', 'idx_source_index_scan_quarantine_root_state', 'sqlite_autoindex_source_index_scan_quarantine_1']
+    schema_migrations(125): (125, 'v125_source_index_scan_quarantine')
+    quick_check: ok | integrity_check: ok
+
+[2] IDEMPOTENT: second apply() -> 125 | table count still 1 | quick_check: ok
+
+[3] UPGRADE: pre-state max(version)= 124 | quarantine table present: False
+    upgrade apply() -> 125 | quarantine table re-created: True | quick_check: ok
+
+ALL MIGRATION CHECKS PASSED

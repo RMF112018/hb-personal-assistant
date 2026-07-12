@@ -1,0 +1,49 @@
+A4 PROVE-RED — parent commit 3c5d7738 (A2 corrective #2), schema V124
+========================================================================
+Method: a throwaway detached worktree was checked out at 3c5d7738 (the A4 parent). The A4
+implementation is entirely UNCOMMITTED on the phase-a branch, so at the parent the quarantine
+modules do not exist and the scan loop has no bounded-retry / quarantine behavior.
+
+------------------------------------------------------------------------
+(1) MODULE-ABSENCE PROVE-RED — the new suite cannot even collect at parent
+------------------------------------------------------------------------
+$ pytest tests/test_source_index_quarantine.py -q   # @ 3c5d7738
+
+ImportError while importing test module 'tests/test_source_index_quarantine.py'.
+tests/test_source_index_quarantine.py:30: in <module>
+    from hb_assistant.store.source_index_scan_quarantine_repository import (
+E   ModuleNotFoundError: No module named 'hb_assistant.store.source_index_scan_quarantine_repository'
+=========================== short test summary info ============================
+ERROR tests/test_source_index_quarantine.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+
+Interpretation: the durable quarantine table (V125), its repository, and the operator ops module
+do not exist at the parent. The feature is absent — all 26 A4 tests are red by construction.
+
+------------------------------------------------------------------------
+(2) BEHAVIORAL PROVE-RED — the *defect itself* is demonstrated at parent
+------------------------------------------------------------------------
+A standalone test using ONLY parent-available symbols (no new modules) documents the concrete
+defect A4 fixes: a permanently-failing per-file observation (poison file f2.txt) holds the cursor
+before f2 on EVERY pass, so later files (f3.txt) are NEVER indexed and the generation is retried
+forever as `partial` with no quarantine / blocked state.
+
+  test_a4_behavioral_red.py::test_poison_file_pins_generation_forever_no_quarantine
+    asserts (holds true AT PARENT): f3_indexed == 0  AND  generation_status == "partial"
+
+$ pytest tests/test_a4_behavioral_red.py -q       # @ 3c5d7738 (parent)
+.                                                                        [100%]
+   => PASSES at parent  => the "poison pins generation forever" defect is PRESENT.
+
+$ pytest test_a4_behavioral_red.py -q             # @ phase-a HEAD (A4 fix applied)
+E       AssertionError: parent: later files never index past the poison file
+E       assert 1 == 0
+   => FAILS on the fixed branch  => f3 IS now indexed past the quarantined poison file, and the
+      generation is `failed` + quarantine_unresolved (blocked, not forever-retried). The behavior
+      changed exactly as A4 intends.
+
+------------------------------------------------------------------------
+PROVE-GREEN — phase-a HEAD (A4 implemented)
+------------------------------------------------------------------------
+$ pytest tests/test_source_index_quarantine.py -q
+   26 passed, 0 failed, 0 errors   (node IDs + per-test timings in a4-node-ids.txt)

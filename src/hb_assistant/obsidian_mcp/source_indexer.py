@@ -914,50 +914,131 @@ def index_obsidian_note(
     return repo.upsert_source_file(record, conn=conn)
 
 
-def scan_vault_notes(repo: SourceIndexRepository, config: ObsidianMcpConfig) -> "ScanReport":
-    """Bounded, idempotent index of the Obsidian vault's markdown notes into the note FTS."""
+def scan_vault_notes(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    *,
+    allow_confirmed_empty_recovery: bool = False,
+) -> "ScanReport":
+    """Bounded, idempotent index of the Obsidian vault's markdown notes into the note FTS.
+
+    A1 deletion safety: a valid vault-note row is marked deleted ONLY when this scan is a
+    certified-complete, untruncated, error-free, uninterrupted traversal of an AVAILABLE vault root
+    (confirmed-absence only). A truncated / indeterminate-read / per-file-error / interrupted / empty
+    observation preserves every pre-existing active row (source row, its FTS row, and generated-card
+    state) and performs NO absence-based deletion — a resume/retry pass reconciles once the scan is
+    trustworthy. "Delete" is index-state only; no source FILE is ever removed.
+
+    ``allow_confirmed_empty_recovery`` is the one-shot operator override for the empty-root
+    blast-radius guard ONLY: it still requires a certified-complete scan to reach reconciliation, and it
+    is never exposed on a remote MCP surface (local operator CLI only).
+    """
     report = ScanReport(root_key=_VAULT_ROOT_KEY)
+    # Snapshot the active set BEFORE walking, so the empty-root guard and reconciliation compare against a
+    # stable baseline and ``active_rows_before_scan`` reflects the pre-scan index.
+    active_before = repo.active_rel_paths(_VAULT_ROOT_KEY)
+    report.active_rows_before_scan = len(active_before)
+
     vault_root = Path(config.vault_root)
     if not vault_root.is_dir():
-        report.error_codes.append("vault_root_not_found")
+        report.root_available = False
         report.errors += 1
+        report.error_codes.append("vault_root_not_found")
+        report.completeness = "root_unavailable"
+        report.deletion_reconciliation_allowed = False
         return report
+    report.root_available = True
+
     max_files = int(getattr(config, "external_source_scan_max_files", 5000))
     seen: set[str] = set()
-    # Stream the vault the same way as external roots: walk_source_tree never materializes the
-    # whole tree (no `sorted(rglob(...))`) and already applies should_ignore / is_excluded_source_path
-    # / symlink-escape pruning, so a large vault cannot exhaust memory.
-    for _kind, abs_path, rel_path in walk_source_tree(vault_root, config):
-        if abs_path.suffix.lower() != ".md":
-            continue
-        # Never re-index our own generated source cards (Source Notes/...) or full-email archive
-        # notes (Email Archive/...) as vault notes — that would feed the watcher its own writes and,
-        # for archives, leak full email bodies/addresses into the note FTS.
-        if is_source_notes_path(rel_path, config) or is_email_archive_path(rel_path):
-            continue
-        report.scanned += 1
-        if report.scanned > max_files:
-            report.truncated = True
-            break
-        seen.add(rel_path)
-        try:
-            existing = repo.lookup_by_path("obsidian_note", rel_path)
-            if (
-                existing
-                and not existing["deleted"]
-                and existing["mtime_ns"] == abs_path.stat().st_mtime_ns
-                and existing["content_sha256"] == _sha256_file(abs_path)
-            ):
-                report.skipped += 1
+    walk_errors: list[str] = []
+    walk_completed = False
+    # Stream the vault the same way as external roots: walk_source_tree never materializes the whole tree
+    # (no `sorted(rglob(...))`) and already applies should_ignore / is_excluded_source_path /
+    # symlink-escape pruning, so a large vault cannot exhaust memory. The ``error_sink`` makes the
+    # fail-OPEN walker REPORT indeterminate reads so an unreadable subtree can never masquerade as empty
+    # and drive a mass-delete (mirrors the external-root apply path in source_bootstrap).
+    try:
+        for _kind, abs_path, rel_path in walk_source_tree(
+            vault_root, config, error_sink=walk_errors
+        ):
+            if abs_path.suffix.lower() != ".md":
                 continue
-            if index_obsidian_note(abs_path, vault_root, repo, config) is not None:
-                report.indexed += 1
-        except Exception as exc:
-            report.errors += 1
-            report.error_codes.append(type(exc).__name__)
-    for gone in repo.active_rel_paths(_VAULT_ROOT_KEY) - seen:
-        repo.mark_deleted("obsidian_note", gone)
-        report.deleted += 1
+            # Never re-index our own generated source cards (Source Notes/...) or full-email archive
+            # notes (Email Archive/...) as vault notes — that would feed the watcher its own writes and,
+            # for archives, leak full email bodies/addresses into the note FTS.
+            if is_source_notes_path(rel_path, config) or is_email_archive_path(rel_path):
+                continue
+            report.scanned += 1
+            if report.scanned > max_files:
+                report.truncated = True
+                break
+            seen.add(rel_path)
+            try:
+                existing = repo.lookup_by_path("obsidian_note", rel_path)
+                if (
+                    existing
+                    and not existing["deleted"]
+                    and existing["mtime_ns"] == abs_path.stat().st_mtime_ns
+                    and existing["content_sha256"] == _sha256_file(abs_path)
+                ):
+                    report.skipped += 1
+                    continue
+                if index_obsidian_note(abs_path, vault_root, repo, config) is not None:
+                    report.indexed += 1
+            except Exception as exc:  # noqa: BLE001 — per-file observation/index failure (fail closed)
+                report.per_file_error_count += 1
+                report.errors += 1
+                report.error_codes.append(type(exc).__name__)
+        else:
+            # for-else: reached ONLY when the loop exhausts naturally (no break, no exception).
+            walk_completed = True
+    except Exception as exc:  # noqa: BLE001 — a traversal-level failure is an INTERRUPTION (fail closed)
+        report.interrupted = True
+        report.errors += 1
+        report.error_codes.append(type(exc).__name__)
+
+    report.walk_error_count = len(walk_errors)
+    report.eligible_files_seen = len(seen)
+
+    # ---- Certified-completeness gate (single deterministic reason code) ----------------------------
+    if report.interrupted:
+        report.completeness = "interrupted"
+    elif report.truncated or not walk_completed:
+        report.completeness = "truncated"
+    elif report.walk_error_count > 0:
+        report.completeness = "walk_errors"
+    elif report.per_file_error_count > 0:
+        report.completeness = "file_errors"
+    else:
+        report.completeness = "complete"
+
+    if report.completeness != "complete":
+        # Uncertified traversal: retain every successful insert/update committed above; delete NOTHING.
+        report.deletion_reconciliation_allowed = False
+        return report
+
+    # ---- Empty-root blast-radius guard -------------------------------------------------------------
+    # A certified-complete scan that observed ZERO eligible notes while the index still holds active rows
+    # is almost always a lost/empty mount, not a genuine full emptying. Block by default; the one-shot
+    # operator recovery (which STILL required a certified scan to get here) is the only way an established
+    # vault that legitimately emptied is reconciled — never a single empty observation on its own.
+    if (
+        report.eligible_files_seen == 0
+        and report.active_rows_before_scan > 0
+        and not allow_confirmed_empty_recovery
+    ):
+        report.completeness = "empty_root_guard"
+        report.deletion_reconciliation_allowed = False
+        return report
+
+    # ---- Confirmed-absence reconciliation (ONE transaction over the whole confirmed-gone batch) -----
+    report.deletion_reconciliation_allowed = True
+    gone = sorted(active_before - seen)
+    if gone:
+        report.deleted += repo.mark_deleted_batch(
+            "obsidian_note", gone, source_root_key=_VAULT_ROOT_KEY
+        )
     return report
 
 
@@ -970,6 +1051,19 @@ class ScanReport:
     deleted: int = 0
     errors: int = 0
     truncated: bool = False
+    # A1 vault deletion-safety completeness contract. ``completeness`` is a single deterministic reason
+    # code: complete | truncated | walk_errors | file_errors | interrupted | root_unavailable |
+    # empty_root_guard. Deletion reconciliation runs ONLY when ``completeness == "complete"`` (and, for a
+    # zero-observation scan, only under the operator recovery override) — a truncated/indeterminate/
+    # interrupted/empty scan preserves every pre-existing active row (confirmed-absence only).
+    completeness: str | None = None
+    deletion_reconciliation_allowed: bool = False
+    walk_error_count: int = 0
+    per_file_error_count: int = 0
+    interrupted: bool = False
+    root_available: bool = True
+    eligible_files_seen: int = 0
+    active_rows_before_scan: int = 0
     # bounded_out: a per-pass budget (max_files_per_pass / max_seconds) stopped the walk early, so it
     # is INCOMPLETE and a resume pass is needed. completed: the walk fully finished (delete-reconcile ran).
     bounded_out: bool = False
@@ -1007,6 +1101,14 @@ class ScanReport:
             "deleted": self.deleted,
             "errors": self.errors,
             "truncated": self.truncated,
+            "completeness": self.completeness,
+            "deletion_reconciliation_allowed": self.deletion_reconciliation_allowed,
+            "walk_error_count": self.walk_error_count,
+            "per_file_error_count": self.per_file_error_count,
+            "interrupted": self.interrupted,
+            "root_available": self.root_available,
+            "eligible_files_seen": self.eligible_files_seen,
+            "active_rows_before_scan": self.active_rows_before_scan,
             "bounded_out": self.bounded_out,
             "completed": self.completed,
             "metadata_upserted": self.metadata_upserted,
@@ -1022,6 +1124,19 @@ class ScanReport:
 
 # Bumped when the walker/cursor traversal order or frame format changes (folded into the fingerprint).
 _WALKER_VERSION = "gen-walk-v1"
+
+
+def _classify_observation_error(exc: BaseException) -> str:
+    """Map a per-file stat failure to a STRUCTURED quarantine error code (never the raw exception string).
+
+    ``path_unreadable`` — permission denied (EACCES/EPERM); ``path_changed_during_observation`` — the entry
+    vanished mid-walk (ENOENT); ``stat_failed`` — any other stat/OS error."""
+    e = getattr(exc, "errno", None)
+    if e in (errno.EACCES, errno.EPERM):
+        return "path_unreadable"
+    if e in (errno.ENOENT, errno.ESTALE):
+        return "path_changed_during_observation"
+    return "stat_failed"
 
 
 def _policy_fingerprint(
@@ -1052,6 +1167,12 @@ def _policy_fingerprint(
             int(config.source_index_generation_max_files)
             if getattr(config, "source_index_generation_max_files", None) is not None
             else None
+        ),
+        # The poison-file retry threshold GOVERNS a no-forward-progress failure (quarantine_unresolved), so it
+        # is part of the policy: changing it is a "relevant policy change" that lifts a quarantine block via a
+        # changed fingerprint (a fresh generation starts) — the same mechanism as fanout_limit above.
+        "quarantine_retry_threshold": int(
+            getattr(config, "source_index_quarantine_retry_threshold", 3)
         ),
         "parser_optin": bool(
             getattr(config, "source_index_enable_synchronous_parser_extraction", False)
@@ -1536,6 +1657,20 @@ def scan_source_root(
         # is NOT advanced past it) and the generation is suspended (partial) rather than completed with a
         # hole (F-03) — the file is retried next pass.
         pass_error = False
+        # A4 poison-file quarantine (durable per-path bounded retry). BELOW the retry threshold a failing file
+        # HOLDS the cursor (partial, retried next pass — the F-03 behavior). AT the threshold it is quarantined
+        # (a blocking root-level record) and the cursor advances PAST it so later files still index. A walk that
+        # exhausts holding a blocking quarantine is NON-authoritative (failed + quarantine_unresolved) and is
+        # not auto-restarted until the operator resolves it (or policy changes / explicit restart).
+        from hb_assistant.store.source_index_scan_quarantine_repository import (
+            SourceIndexScanQuarantineRepository,
+        )
+
+        quarantine_repo = SourceIndexScanQuarantineRepository(str(repo.db_path))
+        q_threshold = max(1, int(getattr(config, "source_index_quarantine_retry_threshold", 3)))
+        # Paths already quarantined (skip immediately) and paths still retrying (resolve on a good observation).
+        q_skip = quarantine_repo.blocking_paths(root.source_root_key)
+        q_retry_watch = quarantine_repo.troubled_paths(root.source_root_key) - q_skip
 
         def _flush() -> None:
             """Commit ONE batch ATOMICALLY: all metadata upserts + unchanged last-seen stamps + counters +
@@ -1553,16 +1688,35 @@ def scan_source_root(
                 state = repo.load_metadata_state_batch(root.source_root_key, rels, conn=c)
                 unchanged: list[str] = []
                 for abs_p, rel, cur in batch:
+                    if rel in q_skip:
+                        # Already quarantined (blocking): never re-attempt. Advance the cursor PAST it so the
+                        # walk can exhaust and later files still index; trust/completion stay blocked by the
+                        # durable quarantine record.
+                        report.files_walked += 1
+                        last_cursor = cur
+                        continue
                     try:
                         st = abs_p.stat()
-                    except OSError:
-                        # Unresolved stat error (disappeared mid-walk / transient I/O): STOP. Do NOT
-                        # advance the cursor past it — it is retried next pass, and the generation cannot
-                        # be marked complete while it is unresolved.
+                    except OSError as exc:
+                        # A per-file stat failure: record a bounded, durable retry attempt. Below the
+                        # threshold HOLD the cursor (retried next pass); at the threshold QUARANTINE and
+                        # advance past it (atomic with this batch's cursor checkpoint).
+                        ec = _classify_observation_error(exc)
+                        res = quarantine_repo.record_failure(
+                            root_key=root.source_root_key, rel_path=rel, source_id=None,
+                            generation_id=gid, failure_stage="metadata_stat", error_code=ec,
+                            threshold=q_threshold, conn=c, in_transaction=True,
+                        )
                         errors_count += 1
                         report.errors += 1
                         report.error_codes.append("stat_error")
-                        pass_error = True
+                        if res["action"] == "quarantine":
+                            q_skip.add(rel)
+                            q_retry_watch.discard(rel)
+                            report.files_walked += 1
+                            last_cursor = cur  # advance PAST the quarantined file
+                            continue
+                        pass_error = True  # below threshold: HOLD the cursor, retry next pass
                         break
                     ext = abs_p.suffix.lower().lstrip(".")
                     recomputed = extraction_disposition(ext, st.st_size, config)
@@ -1603,6 +1757,13 @@ def scan_source_root(
                         report.files_walked += 1
                         report.scanned += 1
                         report.skipped += 1
+                        if rel in q_retry_watch:
+                            # A path that was failing (below threshold) now observes cleanly → resolve its
+                            # retry record so a transient failure never accumulates toward the threshold.
+                            quarantine_repo.resolve_observed(
+                                root_key=root.source_root_key, rel_path=rel, conn=c, in_transaction=True
+                            )
+                            q_retry_watch.discard(rel)
                         last_cursor = cur  # a fast-skip is a resolved, COMMITTED observation
                         continue
                     # preserve = the extracted CONTENT is still valid (stat/disposition/sensitivity ok), but
@@ -1624,21 +1785,43 @@ def scan_source_root(
                             conn=c,
                             in_transaction=True,
                         )
-                    except (
-                        Exception
-                    ) as exc:  # an unresolved stat/upsert error: STOP (cursor held) → retried
+                    except Exception as exc:  # an unresolved metadata-upsert error: bounded retry / quarantine
+                        res = quarantine_repo.record_failure(
+                            root_key=root.source_root_key, rel_path=rel, source_id=None,
+                            generation_id=gid, failure_stage="metadata_upsert",
+                            error_code="metadata_upsert_failed", threshold=q_threshold,
+                            conn=c, in_transaction=True,
+                        )
                         errors_count += 1
                         report.errors += 1
                         report.error_codes.append(type(exc).__name__)
-                        pass_error = True
+                        if res["action"] == "quarantine":
+                            q_skip.add(rel)
+                            q_retry_watch.discard(rel)
+                            report.files_walked += 1
+                            last_cursor = cur  # advance PAST the quarantined file
+                            continue
+                        pass_error = True  # below threshold: HOLD the cursor, retry next pass
                         break
                     if outcome.source_id is None:
-                        # A metadata observation that produced no source id (second-stat race) is
-                        # INDETERMINATE — suspend without advancing the cursor rather than certify it.
+                        # A metadata observation that produced no source id (second-stat race) is a path that
+                        # changed during observation — bounded retry, then quarantine (never certified).
+                        res = quarantine_repo.record_failure(
+                            root_key=root.source_root_key, rel_path=rel, source_id=None,
+                            generation_id=gid, failure_stage="metadata_observe",
+                            error_code="path_changed_during_observation", threshold=q_threshold,
+                            conn=c, in_transaction=True,
+                        )
                         errors_count += 1
                         report.errors += 1
                         report.error_codes.append("metadata_no_source_id")
-                        pass_error = True
+                        if res["action"] == "quarantine":
+                            q_skip.add(rel)
+                            q_retry_watch.discard(rel)
+                            report.files_walked += 1
+                            last_cursor = cur  # advance PAST the quarantined file
+                            continue
+                        pass_error = True  # below threshold: HOLD the cursor, retry next pass
                         break
                     metadata_upserted += 1
                     files_observed += 1
@@ -1655,6 +1838,13 @@ def scan_source_root(
                     # showing obsolete project metadata unless it is re-staled (finding 3).
                     if prev is not None and (not preserve or not proj_match):
                         repo._mark_generated_notes_stale(c, outcome.source_id)
+                    if rel in q_retry_watch:
+                        # A previously-failing path (below threshold) now upserted cleanly → resolve its retry
+                        # record so a transient failure never accumulates toward the threshold.
+                        quarantine_repo.resolve_observed(
+                            root_key=root.source_root_key, rel_path=rel, conn=c, in_transaction=True
+                        )
+                        q_retry_watch.discard(rel)
                     last_cursor = (
                         cur  # advance ONLY after a fully successful, COMMITTED observation
                     )
@@ -1825,6 +2015,32 @@ def scan_source_root(
             report.generation_status = "partial"
             _emit_progress("")
             _finish_v119("partial")
+            return report
+
+        # A4: the walk exhausted, but this root holds a BLOCKING quarantine (a poison file reached the retry
+        # threshold this pass or a prior one). The generation is NON-authoritative: do NOT complete the walk
+        # or reconcile. Fail with ``quarantine_unresolved`` (a no-forward-progress code) so automatic workers
+        # do not restart it until the operator resolves the quarantine (or policy changes / explicit restart).
+        # Resolving the quarantine does NOT itself complete this generation — a fresh pass must verify the
+        # walk and reconcile before the root becomes authoritative.
+        if quarantine_repo.has_blocking(root.source_root_key):
+            if not _transition_or_conflict(
+                genrepo.fail_generation(
+                    gid,
+                    run_id,
+                    last_error_code="quarantine_unresolved",
+                    files_observed=files_observed,
+                    metadata_upserted=metadata_upserted,
+                    files_unchanged=files_unchanged,
+                    errors_count=errors_count,
+                ),
+                "failed",
+            ):
+                return report
+            report.error_code = "quarantine_unresolved"
+            report.error_codes.append("quarantine_unresolved")
+            report.generation_status = "failed"
+            _finish_v119("failed")
             return report
 
         # Full metadata walk complete. Lease-fenced: if this write affects 0 rows we lost ownership after

@@ -1,0 +1,21 @@
+A4 VALIDATION — phase-a branch (parent 3c5d7738 + uncommitted A4)
+Runner: .venv/bin/python 3.14.5 | PYTHONPATH=src:subrepos/construction-financial-review/src
+
+=== Batch 1: A4 + A1/A3/A2 core suites ===
+tests=191 failures=1 errors=0 skipped=0
+  FAILED test_source_index_generation_hardening::test_v122_fresh_and_incremental_migration  :: assert 125 == 123
+
+=== Batch 2: watcher / health / connector / manifest / migration suites ===
+tests=176 failures=1 errors=0 skipped=0
+  FAILED test_source_index_metadata_first_bootstrap::test_v119_migration_idempotent_and_additive  :: assert 125 == 123
+
+=== A4 focused suite (prove-green) ===
+tests=26 failures=0 errors=0 skipped=0
+
+KNOWN PRE-EXISTING BASELINE FAILURES (disclosed separately; NOT introduced by A4, NOT in any prove-red set):
+  * test_source_index_generation_hardening::test_v122_fresh_and_incremental_migration  -> assert 125 == 123
+  * test_source_index_metadata_first_bootstrap::test_v119_migration_idempotent_and_additive -> assert 125 == 123
+  Both hardcode `LATEST_SCHEMA_VERSION == 123`. They were ALREADY red at the parent (V124: `124 == 123`)
+  and remain red at V125 — pure stale version assertions, unrelated to quarantine behavior.
+Every other test across both batches and the focused A4 suite is GREEN.
+

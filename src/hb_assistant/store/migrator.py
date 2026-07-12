@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 124
+LATEST_SCHEMA_VERSION = 125
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7124,6 +7124,16 @@ class SQLiteMigrator:
 
         return V122_SOURCE_INDEX_SCAN_GENERATIONS_STATEMENTS
 
+    @staticmethod
+    def _v125_statements() -> list[str]:
+        # V125: durable poison-file quarantine (source_index_scan_quarantine) — one additive table + a
+        # partial-unique "one active unresolved record per (root, path)" index. Additive, ships EMPTY.
+        from hb_assistant.store.source_index_scan_quarantine_tables import (
+            V125_SOURCE_INDEX_SCAN_QUARANTINE_STATEMENTS,
+        )
+
+        return V125_SOURCE_INDEX_SCAN_QUARANTINE_STATEMENTS
+
     # v79 Detailed schedule version diff facts.
     @staticmethod
     def _v79_statements() -> list[str]:
@@ -9201,6 +9211,21 @@ class SQLiteMigrator:
                 )
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (124, 'v124_index_metadata_fts_rowid', ?)",
+                    (now,),
+                )
+
+            # --- V125: durable poison-file quarantine --------------------------------------------
+            # One additive table (source_index_scan_quarantine) recording per-(root, path) files that
+            # repeatedly failed per-file observation/upsert during a metadata walk. It is a ROOT-LEVEL
+            # blocker (keeps a root unsafe + its generation non-authoritative until an operator resolves it)
+            # and survives generation pruning (no FK/cascade; generation_id nullable; origin_generation_id
+            # retained for audit). Additive, ships EMPTY; parity-guarded (CREATE TABLE/INDEX IF NOT EXISTS).
+            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 125")
+            if cur.fetchone() is None:
+                for stmt in self._v125_statements():
+                    conn.execute(stmt)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (125, 'v125_source_index_scan_quarantine', ?)",
                     (now,),
                 )
 

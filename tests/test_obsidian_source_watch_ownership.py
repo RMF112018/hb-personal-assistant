@@ -104,15 +104,32 @@ def _watch_setup(tmp_path: Path, *, watch: bool) -> tuple[str, ObsidianMcpConfig
     return db, config
 
 
+def _ready(db: str, config: ObsidianMcpConfig, root_key: str = "proj") -> object:
+    """Make ``root_key`` watcher-activatable via a REAL bootstrap (A2: the watcher now activates only a
+    fully bootstrapped + certified + structure-ready root). Returns the app_config to inject."""
+    from hb_assistant.config.loader import load_config as load_app_config
+    from hb_assistant.obsidian_mcp import source_bootstrap as sb
+
+    root = next(r for r in config.external_sources if r.source_root_key == root_key)
+    rp = Path(root.path)
+    if not any(p.is_file() for p in rp.rglob("*")):
+        (rp / "seed.md").write_text("payment seed", encoding="utf-8")
+    acfg = load_app_config()
+    acfg.source_structure.scan_roots = {root_key: root.path}
+    sb.bootstrap(db_path=db, obsidian_config=config, app_config=acfg, root_key=root_key)
+    return acfg
+
+
 def _force_polling(self: SourceWatcher) -> None:
     raise ImportError("forced polling for deterministic test")
 
 
 def test_second_watcher_runs_degraded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db, config = _watch_setup(tmp_path, watch=True)
+    acfg = _ready(db, config)  # A2: fully ready so the OWNER (w1) passes the activation gate
     monkeypatch.setattr(SourceWatcher, "_start_watchdog", _force_polling)
-    w1 = SourceWatcher(db, config)
-    w2 = SourceWatcher(db, config)
+    w1 = SourceWatcher(db, config, app_config=acfg)
+    w2 = SourceWatcher(db, config, app_config=acfg)
     w1.start()
     try:
         w2.start()  # w1 holds a fresh lease → w2 must not become a competing drain owner
@@ -130,12 +147,13 @@ def test_second_watcher_runs_degraded(tmp_path: Path, monkeypatch: pytest.Monkey
 
 def test_owner_released_on_stop_lets_next_acquire(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db, config = _watch_setup(tmp_path, watch=True)
+    acfg = _ready(db, config)  # A2: fully ready so both owners pass the activation gate
     monkeypatch.setattr(SourceWatcher, "_start_watchdog", _force_polling)
-    w1 = SourceWatcher(db, config)
+    w1 = SourceWatcher(db, config, app_config=acfg)
     w1.start()
     assert w1.status()["is_owner"] is True
     w1.stop()  # releases the lease
-    w2 = SourceWatcher(db, config)
+    w2 = SourceWatcher(db, config, app_config=acfg)
     try:
         w2.start()
         assert w2.status()["is_owner"] is True

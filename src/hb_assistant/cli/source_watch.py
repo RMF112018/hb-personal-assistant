@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 import typer
@@ -349,6 +350,91 @@ def reconcile_cmd(
           json_out=json_out)
 
 
+@app.command("vault-reconcile")
+def vault_reconcile_cmd(
+    allow_confirmed_empty: bool = typer.Option(
+        False, "--allow-confirmed-empty",
+        help="One-shot override for the empty-root blast-radius guard (still requires a certified scan)."),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Explicit operator confirmation (required to mutate index state)."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator-only, LOCAL recovery for a vault that legitimately emptied.
+
+    A normal vault scan fail-closes its deletion reconciliation whenever a certified-complete scan
+    observes zero eligible notes while the index still holds active rows (the empty-root blast-radius
+    guard) — so an established vault that scans empty stays protected indefinitely. This command is the
+    only escape: it acquires a LOCAL operation lease, performs its OWN fresh certified-complete vault
+    scan (never trusting a caller-supplied scan result), and only then reconciles confirmed-gone rows,
+    writing a redacted audit receipt. It mutates index state only (never a source file) and is not
+    exposed to any remote MCP client.
+    """
+    import os
+    import uuid
+
+    if not allow_confirmed_empty or not confirm:
+        _emit(
+            {"ok": False, "error": "vault-reconcile requires BOTH --allow-confirmed-empty and --confirm "
+                                   "(operator-only, mutates index state)."},
+            json_out=json_out, exit_code=2)
+
+    from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
+    from hb_assistant.obsidian_mcp.source_indexer import scan_vault_notes
+
+    dbp = _db_path(db)
+    ocfg = _obsidian_config()
+    op_dir = Path(dbp).parent
+    op_dir.mkdir(parents=True, exist_ok=True)
+
+    # Local operation ownership: a non-blocking advisory lock so two recovery runs cannot race. No durable
+    # DB/generation/cursor state is introduced for the vault (A1 constraint) — the lease is process-local.
+    lock_path = op_dir / "vault_reconcile.lock"
+    lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            import fcntl
+
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            # Lease held by another process (OS-backed flock). Fail closed; the finally clause closes the fd.
+            _emit(
+                {"ok": False, "error": "another vault-reconcile operation holds the local lease"},
+                json_out=json_out, exit_code=2)
+
+        repo = SourceIndexRepository(dbp)
+        # Perform our OWN fresh, certified-complete scan; the override only lifts the empty-root guard.
+        report = scan_vault_notes(repo, ocfg, allow_confirmed_empty_recovery=True)
+        reconciled = report.completeness == "complete"
+        receipt = {
+            "receipt_id": uuid.uuid4().hex,
+            "operation": "vault_reconcile_confirmed_empty",
+            "completeness": report.completeness,
+            "deletion_reconciliation_allowed": report.deletion_reconciliation_allowed,
+            "eligible_files_seen": report.eligible_files_seen,
+            "active_rows_before_scan": report.active_rows_before_scan,
+            "deleted": report.deleted,
+            "walk_error_count": report.walk_error_count,
+            "per_file_error_count": report.per_file_error_count,
+            "truncated": report.truncated,
+            "interrupted": report.interrupted,
+            "error_codes": sorted(set(report.error_codes)),
+        }
+        receipts_dir = op_dir / "vault_reconcile_receipts"
+        receipts_dir.mkdir(parents=True, exist_ok=True)
+        receipt_path = receipts_dir / f"vault-reconcile-{receipt['receipt_id']}.json"
+        receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    finally:
+        os.close(lock_fd)
+
+    payload = {"ok": reconciled, "reconciled": reconciled,
+               "receipt_path": str(receipt_path), "receipt": receipt}
+    if not reconciled:
+        payload["note"] = ("no deletion performed — the fresh scan was not certified-complete "
+                           f"(completeness={report.completeness})")
+    _emit(payload, json_out=json_out)
+
+
 @app.command("prune-generations")
 def prune_generations_cmd(
     root_key: Optional[str] = typer.Option(None, "--root-key", help="Prune a single root."),
@@ -380,3 +466,69 @@ def prune_generations_cmd(
         None if all_roots else root_key, keep=keep_n, dry_run=dry_run
     )
     _emit({"ok": True, **result}, json_out=json_out)
+
+
+@app.command("quarantine-list")
+def quarantine_list_cmd(
+    root_key: Optional[str] = typer.Option(None, "--root-key", help="Filter to one root."),
+    state: str = typer.Option(
+        "unresolved", "--state", help="unresolved | resolved | confirmed_absent | all."),
+    limit: int = typer.Option(100, "--limit"),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """READ-ONLY: list poison-file quarantine records (rel_path only; no absolute paths). Not a mutation."""
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import list_quarantine
+
+    _emit(
+        list_quarantine(
+            _db_path(db), root_key=root_key,
+            resolution_state=None if state == "all" else state, limit=limit,
+        ),
+        json_out=json_out,
+    )
+
+
+@app.command("quarantine-inspect")
+def quarantine_inspect_cmd(
+    quarantine_id: str = typer.Argument(..., help="The quarantine_id to inspect."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """READ-ONLY: show one quarantine record's sanitized detail. Not a mutation."""
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import inspect_quarantine
+
+    res = inspect_quarantine(_db_path(db), quarantine_id)
+    _emit(res, json_out=json_out, exit_code=0 if res.get("ok") else 2)
+
+
+@app.command("quarantine-retry")
+def quarantine_retry_cmd(
+    root_key: str = typer.Option(..., "--root-key", help="Root whose quarantine(s) to retry."),
+    quarantine_id: Optional[str] = typer.Option(
+        None, "--quarantine-id", help="Retry ONE record; omit to retry a bounded batch for the root."),
+    max_items: int = typer.Option(
+        1, "--max-items", help="Bounded cap on records retried this invocation (batch mode)."),
+    confirm: bool = typer.Option(
+        False, "--confirm", help="Explicit operator confirmation (required — this mutates index state)."),
+    db: Optional[str] = typer.Option(None, "--db"),
+    json_out: bool = typer.Option(True, "--json"),
+) -> None:
+    """Operator-only, LOCAL bounded retry of poison-file quarantine(s).
+
+    Re-observes each targeted path and resolves it ONLY on a trustworthy observation (readable → resolved;
+    trustworthily absent → confirmed_absent); otherwise the unresolved quarantine is RETAINED. Never writes a
+    source file, has no remote MCP surface, and offers NO blanket "ignore"/waiver. Resolving the last
+    quarantine does not itself complete a generation — a fresh scan must verify + reconcile first."""
+    if not confirm:
+        _emit(
+            {"ok": False, "error": "quarantine-retry requires --confirm (operator-only, mutates index state)."},
+            json_out=json_out, exit_code=2,
+        )
+    from hb_assistant.obsidian_mcp.source_quarantine_ops import retry_quarantine
+
+    res = retry_quarantine(
+        _db_path(db), _obsidian_config(), root_key=root_key,
+        quarantine_id=quarantine_id, max_items=max(1, int(max_items)),
+    )
+    _emit(res, json_out=json_out, exit_code=0 if res.get("ok") else 2)

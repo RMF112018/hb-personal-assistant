@@ -1,0 +1,26 @@
+# A2 PROVE-RED — new A2 tests run against the A3-corrective PARENT commit (073a3a71),
+# BEFORE any A2 implementation, demonstrating the tests fail for the intended reason.
+#
+# Method: stash the tracked A2 src edits + hide the new source_root_trust.py so the tree is at parent
+# code state, then run the new A2 suite.
+#
+# Command (from worktree root, A2 src reverted to parent):
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider -q tests/test_source_root_trust.py
+#
+# Result: collection error — the shared trust authority module does not exist at the parent. This is the
+# correct pre-implementation failure (the whole A2 contract hangs off this new module):
+# ----------------------------------------------------------------------------------------------------------
+ImportError while importing test module 'tests/test_source_root_trust.py'.
+tests/test_source_root_trust.py:25: in <module>
+    from hb_assistant.obsidian_mcp.source_root_trust import (
+E   ModuleNotFoundError: No module named 'hb_assistant.obsidian_mcp.source_root_trust'
+=========================== short test summary info ============================
+ERROR tests/test_source_root_trust.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+#
+# Behavioral prove-red (also captured at parent): the modified existing suites encode the NEW contract and
+# fail against parent code, e.g. tests/test_source_connector_service.py::test_search_invalid_root_fails_closed
+# expects a structured `unknown_root` envelope (parent RAISES SourceConnectorValidationError), and
+# test_read_live_bounded / test_metadata_distinguishes_source_and_card require a certified-trusted root
+# (parent has no trust gate). After A2 implementation all pass GREEN — see a2-validation-focused.txt.

@@ -1,0 +1,38 @@
+..................F..........F.......................................... [ 27%]
+......F.F........................................F...................... [ 55%]
+........................................................................ [ 82%]
+.............................................                            [100%]
+=================================== FAILURES ===================================
+____________ test_all_source_tools_have_disambiguating_descriptions ____________
+tests/test_source_connector_eval.py:99: in test_all_source_tools_have_disambiguating_descriptions
+    assert ("vault" in low or "card" in low), f"{name} should contrast with vault notes / cards"
+E   AssertionError: assistant_source_index_health should contrast with vault notes / cards
+E   assert ('vault' in 'per-root source index health (file index + folder map layers): freshness, counts,\nskipped/unsupported, whether safe for client answering. no absolute paths. use before\ntrusting broad nas answers.' or 'card' in 'per-root source index health (file index + folder map layers): freshness, counts,\nskipped/unsupported, whether safe for client answering. no absolute paths. use before\ntrusting broad nas answers.')
+_____________ test_export_evidence_emits_gate_off_and_on_snapshots _____________
+tests/test_source_structure_cli.py:106: in test_export_evidence_emits_gate_off_and_on_snapshots
+    assert gate_off["summary"]["expected_exposed"] == 78
+E   assert 80 == 78
+_________________ test_v119_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_first_bootstrap.py:503: in test_v119_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_________________ test_v120_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_generation.py:56: in test_v120_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+__________________ test_v122_fresh_and_incremental_migration ___________________
+tests/test_source_index_generation_hardening.py:977: in test_v122_fresh_and_incremental_migration
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 123
+E   assert 124 == 123
+=============================== warnings summary ===============================
+../../../../../../..<repo>/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  <repo>/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+FAILED tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+FAILED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+FAILED tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
+FAILED tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration

@@ -1,0 +1,75 @@
+name: Source Index Gate
+
+# Phase A correctness & trust gate for the NAS source-index subsystem. Runs the vault deletion-safety,
+# canonical root-mapping, root-trust, poison-file quarantine, generation-hardening, migration, watcher-
+# lifecycle, connector-serving, and tool-surface/manifest-parity suites plus Ruff.
+#
+# Path filters are intentionally BROAD: a change to a shared migrator, config model, manifest, CLI, or any
+# source-index test must not be able to bypass this gate. `store/migrator.py` and `config/*` are included
+# because a schema or config change can silently break source-index behavior even when no `source_*` file
+# is touched.
+
+on:
+  pull_request:
+    paths:
+      - "src/hb_assistant/obsidian_mcp/source_*.py"
+      - "src/hb_assistant/obsidian_mcp/tool_*.py"
+      - "src/hb_assistant/obsidian_mcp/client_tool_manifest.py"
+      - "src/hb_assistant/obsidian_mcp/canonical_tool_specs.py"
+      - "src/hb_assistant/nas_mcp/**"
+      - "src/hb_assistant/store/source_index_*.py"
+      - "src/hb_assistant/store/migrator.py"
+      - "src/hb_assistant/config/**"
+      - "src/hb_assistant/cli/source_*.py"
+      - "tests/test_source_*.py"
+      - "tests/test_obsidian_source_*.py"
+      - "tests/test_nas_mcp_source_connector.py"
+      - "tests/test_tool_manifest_freshness_guard.py"
+      - "tests/test_n8c23_client_tool_manifest.py"
+      - "tests/test_manifest_schema_parity.py"
+      - "tests/test_migrator_v*source_index*.py"
+      - "scripts/ci_source_index_gate.sh"
+      - ".github/workflows/source-index-gate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/hb_assistant/obsidian_mcp/source_*.py"
+      - "src/hb_assistant/obsidian_mcp/tool_*.py"
+      - "src/hb_assistant/obsidian_mcp/client_tool_manifest.py"
+      - "src/hb_assistant/obsidian_mcp/canonical_tool_specs.py"
+      - "src/hb_assistant/nas_mcp/**"
+      - "src/hb_assistant/store/source_index_*.py"
+      - "src/hb_assistant/store/migrator.py"
+      - "src/hb_assistant/config/**"
+      - "src/hb_assistant/cli/source_*.py"
+      - "tests/test_source_*.py"
+      - "tests/test_obsidian_source_*.py"
+      - "tests/test_nas_mcp_source_connector.py"
+      - "tests/test_tool_manifest_freshness_guard.py"
+      - "tests/test_n8c23_client_tool_manifest.py"
+      - "tests/test_manifest_schema_parity.py"
+      - "tests/test_migrator_v*source_index*.py"
+      - "scripts/ci_source_index_gate.sh"
+      - ".github/workflows/source-index-gate.yml"
+
+jobs:
+  source-index-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package and dev dependencies
+        # [mcp] provides the MCP SDK (nas_mcp tool-surface / manifest-parity suites); [analytics-ui] provides
+        # fastapi (watcher-lifecycle suite); [watch] provides watchdog, WITHOUT which the watcher-activation /
+        # ownership / cli-run suites fail closed (backend_unavailable / degraded). [dev] alone is insufficient
+        # for the source-index gate (unlike the forecasting gate, which touches none of these surfaces).
+        run: pip install -e ".[dev,mcp,analytics-ui,watch]"
+
+      - name: Run source-index correctness & trust gate
+        run: bash scripts/ci_source_index_gate.sh

@@ -28,6 +28,22 @@ def _setup(tmp_path: Path, *, watch: bool) -> tuple[str, ObsidianMcpConfig, Path
     return db, config, root
 
 
+def _ready(db: str, config: ObsidianMcpConfig, root_key: str = "proj") -> object:
+    """Make ``root_key`` watcher-activatable via a REAL bootstrap (A2: the watcher now activates only a
+    fully bootstrapped + certified + structure-ready root). Returns the app_config to inject."""
+    from hb_assistant.config.loader import load_config as load_app_config
+    from hb_assistant.obsidian_mcp import source_bootstrap as sb
+
+    root = next(r for r in config.external_sources if r.source_root_key == root_key)
+    rp = Path(root.path)
+    if not any(p.is_file() for p in rp.rglob("*")):
+        (rp / "seed.md").write_text("payment seed", encoding="utf-8")
+    acfg = load_app_config()
+    acfg.source_structure.scan_roots = {root_key: root.path}
+    sb.bootstrap(db_path=db, obsidian_config=config, app_config=acfg, root_key=root_key)
+    return acfg
+
+
 def test_disabled_does_not_start(tmp_path: Path) -> None:
     db, config, _root = _setup(tmp_path, watch=False)
     w = SourceWatcher(db, config)
@@ -58,13 +74,14 @@ def test_poll_once_indexes(tmp_path: Path) -> None:
 
 def test_polling_fallback_when_watchdog_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     db, config, root = _setup(tmp_path, watch=True)
+    acfg = _ready(db, config)  # A2: root must be bootstrapped/certified before the watcher activates
     (root / "doc.md").write_text("tunnel note", encoding="utf-8")
 
     def _boom(self: SourceWatcher) -> None:
         raise ImportError("watchdog not installed")
 
     monkeypatch.setattr(SourceWatcher, "_start_watchdog", _boom)
-    w = SourceWatcher(db, config)
+    w = SourceWatcher(db, config, app_config=acfg)
     w.start()
     try:
         assert w.status()["mode"] == "polling"
@@ -90,7 +107,8 @@ def test_durable_queue_survives_new_watcher(tmp_path: Path) -> None:
 def test_watchdog_indexes_on_create(tmp_path: Path) -> None:
     pytest.importorskip("watchdog")
     db, config, root = _setup(tmp_path, watch=True)
-    w = SourceWatcher(db, config)
+    acfg = _ready(db, config)  # A2: root must be bootstrapped/certified before the watcher activates
+    w = SourceWatcher(db, config, app_config=acfg)
     w.start()
     try:
         assert w.status()["mode"] == "watchdog"

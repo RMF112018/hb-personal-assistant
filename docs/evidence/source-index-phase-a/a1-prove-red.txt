@@ -1,0 +1,81 @@
+FFFFFFF.FF...FFF                                                         [100%]
+=================================== FAILURES ===================================
+_______________ test_vault_over_cap_does_not_delete_unseen_notes _______________
+tests/test_source_index_vault_deletion_safety.py:92: in test_vault_over_cap_does_not_delete_unseen_notes
+    assert report.deleted == 0
+E   AssertionError: assert 3 == 0
+E    +  where 3 = ScanReport(root_key='__vault_notes__', scanned=3, indexed=0, skipped=2, deleted=3, errors=0, truncated=True, bounded_o...large=0, run_id=None, generation_id=None, generation_status=None, conflict=False, bounded_reason=None, error_code=None).deleted
+__________________ test_vault_truncated_scan_does_not_delete ___________________
+tests/test_source_index_vault_deletion_safety.py:106: in test_vault_truncated_scan_does_not_delete
+    assert report.completeness == "truncated"
+           ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'completeness'. Did you mean: 'completed'?
+_______________ test_vault_directory_read_error_does_not_delete ________________
+tests/test_source_index_vault_deletion_safety.py:136: in test_vault_directory_read_error_does_not_delete
+    assert report.walk_error_count >= 1
+           ^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'walk_error_count'
+_________________ test_vault_root_unavailable_does_not_delete __________________
+tests/test_source_index_vault_deletion_safety.py:156: in test_vault_root_unavailable_does_not_delete
+    assert report.root_available is False
+           ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'root_available'
+_________________ test_vault_interrupted_scan_does_not_delete __________________
+tests/test_source_index_vault_deletion_safety.py:182: in test_vault_interrupted_scan_does_not_delete
+    report = scan_vault_notes(repo, cfg)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/obsidian_mcp/source_indexer.py:930: in scan_vault_notes
+    for _kind, abs_path, rel_path in walk_source_tree(vault_root, config):
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_source_index_vault_deletion_safety.py:179: in fake_walk
+    raise RuntimeError("scan interrupted mid-traversal")
+E   RuntimeError: scan interrupted mid-traversal
+__________________ test_vault_per_file_error_does_not_delete ___________________
+tests/test_source_index_vault_deletion_safety.py:210: in test_vault_per_file_error_does_not_delete
+    assert report.per_file_error_count >= 1
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'per_file_error_count'
+____________ test_vault_complete_scan_deletes_confirmed_absent_note ____________
+tests/test_source_index_vault_deletion_safety.py:228: in test_vault_complete_scan_deletes_confirmed_absent_note
+    assert report.completeness == "complete"
+           ^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'completeness'. Did you mean: 'completed'?
+_________________ test_vault_false_delete_does_not_remove_fts __________________
+tests/test_source_index_vault_deletion_safety.py:260: in test_vault_false_delete_does_not_remove_fts
+    assert row_after is not None and row_after["deleted"] is False
+E   AssertionError: assert ({'content_sha256': 'fa515818c52bd108594ec1a6bd07e706dfa771391d216c625457cff3113ebe15', 'deleted': True, 'fts_rowid': 4, 'mtime_ns': 1783849235951843569, ...} is not None and True is False)
+____________ test_vault_false_delete_does_not_stale_generated_card _____________
+tests/test_source_index_vault_deletion_safety.py:277: in test_vault_false_delete_does_not_stale_generated_card
+    assert _card_status(db, sid) == "generated"
+E   AssertionError: assert 'stale' == 'generated'
+E     
+E     - generated
+E     + stale
+______________ test_vault_empty_completed_scan_blocks_mass_delete ______________
+tests/test_source_index_vault_deletion_safety.py:339: in test_vault_empty_completed_scan_blocks_mass_delete
+    assert report.eligible_files_seen == 0
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'eligible_files_seen'
+_________ test_vault_confirmed_empty_recovery_requires_fresh_selfscan __________
+tests/test_source_index_vault_deletion_safety.py:357: in test_vault_confirmed_empty_recovery_requires_fresh_selfscan
+    assert blocked.completeness == "empty_root_guard"
+           ^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ScanReport' object has no attribute 'completeness'. Did you mean: 'completed'?
+______________ test_vault_recovery_still_requires_certified_scan _______________
+tests/test_source_index_vault_deletion_safety.py:382: in test_vault_recovery_still_requires_certified_scan
+    report = scan_vault_notes(repo, cfg, allow_confirmed_empty_recovery=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: scan_vault_notes() got an unexpected keyword argument 'allow_confirmed_empty_recovery'
+=========================== short test summary info ============================
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_over_cap_does_not_delete_unseen_notes
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_truncated_scan_does_not_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_directory_read_error_does_not_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_root_unavailable_does_not_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_interrupted_scan_does_not_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_per_file_error_does_not_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_complete_scan_deletes_confirmed_absent_note
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_false_delete_does_not_remove_fts
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_false_delete_does_not_stale_generated_card
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_empty_completed_scan_blocks_mass_delete
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_confirmed_empty_recovery_requires_fresh_selfscan
+FAILED tests/test_source_index_vault_deletion_safety.py::test_vault_recovery_still_requires_certified_scan

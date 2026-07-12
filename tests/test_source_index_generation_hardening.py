@@ -974,7 +974,7 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
     from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
     db = str(tmp_path / "fresh.db")
-    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 123
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     cols = {r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)")}
     assert {"last_seen_generation", "last_seen_at", "last_indexed_fingerprint"} <= cols
@@ -982,7 +982,7 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
         "SELECT 1 FROM sqlite_master WHERE name='source_index_scan_generations'"
     ).fetchone()
     conn.close()
-    assert SQLiteMigrator(db_path=db).apply() == 123  # idempotent re-run
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION  # idempotent re-run
 
     # Seed REPRESENTATIVE V120/V121 manifest DATA (not just the migration markers) so the "prior manifest
     # data survives" claim is proven against real rows: a manifest carrying the V121 gateway_allowlist_json
@@ -1025,7 +1025,7 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
         assert col not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
     conn.close()
 
-    assert SQLiteMigrator(db_path=db).apply() == 123
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     for table, col in v122_columns:  # every column recreated
         assert col in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}, (table, col)

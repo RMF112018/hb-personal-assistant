@@ -1,0 +1,14 @@
+=== source-index-generation-and-recovery ===
+branch HEAD: 73e4e2fb3067f66d5d5d0823a6b347db3a786d8d
+runner: .venv/bin/python 3.14.5 | PYTHONPATH=src:subrepos/construction-financial-review/src
+
+COMMAND:
+python -m pytest tests/test_source_index_generation_hardening.py tests/test_source_index_quarantine.py tests/test_source_index_quarantine_lifecycle.py tests/test_obsidian_source_watch.py tests/test_obsidian_source_watch_lifecycle.py tests/test_obsidian_source_watch_ownership.py tests/test_obsidian_source_watch_reliability.py tests/test_source_index_watcher_automated_refresh.py tests/test_source_index_metadata_first_bootstrap.py tests/test_source_index_metadata_generation.py
+
+JUnit totals: tests=227 failures=0 errors=0 skipped=0
+failing node IDs: NONE
+
+BASELINE: the 3 schema-version tests here were corrected to ==LATEST_SCHEMA_VERSION (pre-failed on origin/main,
+see 08). Generation hardening, quarantine, lifecycle, and watcher recovery are green on both origin/main and HEAD.
+
+suites: test_source_index_generation_hardening, test_source_index_quarantine, test_source_index_quarantine_lifecycle, test_obsidian_source_watch, test_obsidian_source_watch_lifecycle, test_obsidian_source_watch_ownership, test_obsidian_source_watch_reliability, test_source_index_watcher_automated_refresh, test_source_index_metadata_first_bootstrap, test_source_index_metadata_generation

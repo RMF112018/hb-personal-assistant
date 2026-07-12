@@ -1,0 +1,35 @@
+FFFFFF                                                                   [100%]
+=================================== FAILURES ===================================
+_________________ test_v119_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_first_bootstrap.py:503: in test_v119_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_________________ test_v120_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_generation.py:56: in test_v120_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+__________________ test_v122_fresh_and_incremental_migration ___________________
+tests/test_source_index_generation_hardening.py:977: in test_v122_fresh_and_incremental_migration
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 123
+E   assert 124 == 123
+_____________ test_export_evidence_emits_gate_off_and_on_snapshots _____________
+tests/test_source_structure_cli.py:106: in test_export_evidence_emits_gate_off_and_on_snapshots
+    assert gate_off["summary"]["expected_exposed"] == 78
+E   assert 80 == 78
+_________________________ test_output_aliases_defined __________________________
+tests/test_source_index_client_performance_hardening.py:235: in test_output_aliases_defined
+    assert len(ASSISTANT_OUTPUT_ALIASES) == len(ALL_PA_OUTPUT_TOOLS) == 10
+E   AssertionError: assert 11 == 10
+E    +  where 11 = len(('pa_output_stage', 'pa_output_commit', 'pa_output_archive_commit', 'pa_output_cancel', 'pa_output_list', 'pa_output_metadata', ...))
+____________ test_all_source_tools_have_disambiguating_descriptions ____________
+tests/test_source_connector_eval.py:99: in test_all_source_tools_have_disambiguating_descriptions
+    assert ("vault" in low or "card" in low), f"{name} should contrast with vault notes / cards"
+E   AssertionError: assistant_source_index_health should contrast with vault notes / cards
+E   assert ('vault' in 'per-root source index health (file index + folder map layers): freshness, counts,\nskipped/unsupported, whether safe for client answering. no absolute paths. use before\ntrusting broad nas answers.' or 'card' in 'per-root source index health (file index + folder map layers): freshness, counts,\nskipped/unsupported, whether safe for client answering. no absolute paths. use before\ntrusting broad nas answers.')
+=========================== short test summary info ============================
+FAILED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+FAILED tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
+FAILED tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration
+FAILED tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+FAILED tests/test_source_index_client_performance_hardening.py::test_output_aliases_defined
+FAILED tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions

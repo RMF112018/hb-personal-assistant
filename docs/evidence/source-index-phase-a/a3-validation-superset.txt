@@ -1,0 +1,63 @@
+# A3 PROVE-GREEN — SUPERSET regression sweep (broader source-index regression picture)
+#
+# A wider sweep than the focused set, run to confirm A3 introduces no regression across the broader
+# source-index domain (correctness, generation hardening, repository, streaming walk, vault deletion,
+# reconcile, watcher, connector, NAS MCP connector, structure repository/CLI).
+#
+# Exact command (from worktree root):
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider -q --junit-xml=<scratch>/a3-superset-junit.xml \
+#     tests/test_source_root_mapping.py \
+#     tests/test_source_index_watcher_automated_refresh.py \
+#     tests/test_source_index_metadata_first_bootstrap.py \
+#     tests/test_source_index_metadata_generation.py \
+#     tests/test_source_structure_repository_service.py \
+#     tests/test_source_structure_cli.py \
+#     tests/test_source_index_health_readonly_conn.py \
+#     tests/test_source_index_generation_hardening.py \
+#     tests/test_source_index_repository.py \
+#     tests/test_source_index_streaming_walk.py \
+#     tests/test_source_index_vault_deletion_safety.py \
+#     tests/test_obsidian_vault_db_reconcile.py \
+#     tests/test_obsidian_source_index.py \
+#     tests/test_obsidian_source_watch.py \
+#     tests/test_source_connector_service.py \
+#     tests/test_nas_mcp_source_connector.py
+#
+# JUnit totals:
+#   314 tests: 310 passed, 4 failed, 0 errors, 0 skipped.
+#
+# Exactly FOUR failing node IDs, ALL pre-existing baseline defects (NOT A3 regressions;
+# see 08-baseline-vs-feature-failures.md), never absorbed into the A3 prove-red set:
+#   1. tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive  (stale == 123)
+#   2. tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive        (stale == 123)
+#   3. tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots            (stale 78 vs 80)
+#   4. tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration          (stale == 123)
+# ----------------------------------------------------------------------------------------------------------
+........................................................................ [ 22%]
+...........................F.F................................F......... [ 45%]
+................................F....................................... [ 68%]
+........................................................................ [ 91%]
+..........................                                               [100%]
+=================================== FAILURES ===================================
+_________________ test_v119_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_first_bootstrap.py:503: in test_v119_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_________________ test_v120_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_generation.py:56: in test_v120_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_____________ test_export_evidence_emits_gate_off_and_on_snapshots _____________
+tests/test_source_structure_cli.py:106: in test_export_evidence_emits_gate_off_and_on_snapshots
+    assert gate_off["summary"]["expected_exposed"] == 78
+E   assert 80 == 78
+__________________ test_v122_fresh_and_incremental_migration ___________________
+tests/test_source_index_generation_hardening.py:977: in test_v122_fresh_and_incremental_migration
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 123
+E   assert 124 == 123
+=========================== short test summary info ============================
+FAILED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+FAILED tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
+FAILED tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+FAILED tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration

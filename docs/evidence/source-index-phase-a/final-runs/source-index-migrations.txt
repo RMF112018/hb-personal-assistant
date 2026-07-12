@@ -1,0 +1,25 @@
+=== source-index-migrations ===
+branch HEAD: 73e4e2fb3067f66d5d5d0823a6b347db3a786d8d
+runner: .venv/bin/python 3.14.5 | PYTHONPATH=src:subrepos/construction-financial-review/src
+
+COMMAND:
+python -m pytest <3 schema-version tests updated to LATEST_SCHEMA_VERSION> tests/test_migrator_v117_source_index_bootstrap.py tests/test_migrator_v123_relpath_index.py
+BASELINE: the 3 schema tests failed on pristine origin/main (124==123); corrected to ==LATEST_SCHEMA_VERSION (see 08). v117/v123 pass on origin/main.
+
+JUnit totals: tests=13 failures=0 errors=0 skipped=0
+failing node IDs: NONE
+
+per-test node IDs (all passed):
+  [pass] test_source_index_generation_hardening::test_v122_fresh_and_incremental_migration
+  [pass] test_source_index_metadata_first_bootstrap::test_v119_migration_idempotent_and_additive
+  [pass] test_source_index_metadata_generation::test_v120_migration_idempotent_and_additive
+  [pass] test_migrator_v117_source_index_bootstrap::test_latest_schema_version_is_at_least_117
+  [pass] test_migrator_v117_source_index_bootstrap::test_v117_tables_created_additive
+  [pass] test_migrator_v117_source_index_bootstrap::test_bootstrap_state_columns
+  [pass] test_migrator_v117_source_index_bootstrap::test_reconciliation_scan_type_check
+  [pass] test_migrator_v117_source_index_bootstrap::test_reapply_idempotent
+  [pass] test_migrator_v117_source_index_bootstrap::test_old_db_upgrades_to_117
+  [pass] test_migrator_v123_relpath_index::test_v123_is_latest_and_fresh_db_has_only_root_scoped_index
+  [pass] test_migrator_v123_relpath_index::test_v123_drops_a_pre_existing_narrow_index
+  [pass] test_migrator_v123_relpath_index::test_same_relpath_under_two_roots_coexists_after_v123
+  [pass] test_migrator_v123_relpath_index::test_migration_is_idempotent_on_rerun

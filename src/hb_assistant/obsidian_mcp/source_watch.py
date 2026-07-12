@@ -62,9 +62,14 @@ def _roots_hash(config: ObsidianMcpConfig, db_path: str) -> str:
 class SourceWatcher:
     """Owns a daemon worker thread (watchdog observer or polling). Idempotent start/stop."""
 
-    def __init__(self, db_path: str, config: ObsidianMcpConfig) -> None:
+    def __init__(
+        self, db_path: str, config: ObsidianMcpConfig, *, app_config: Any = None
+    ) -> None:
         self._db_path = db_path
         self._config = config
+        # Application config for DETERMINISTIC trust evaluation (structure-root mapping namespace). When
+        # None the shared authority loads the on-disk config itself (production default); tests inject it.
+        self._app_config = app_config
         self._repo = SourceIndexRepository(db_path)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -77,6 +82,58 @@ class SourceWatcher:
         self._owner_token = uuid.uuid4().hex
         self._is_owner = False
         self._degraded = False
+
+    def _degrade(self, error_code: str) -> None:
+        """Fail closed: serve degraded, run NO drain thread. Sanitized error code only (no host paths)."""
+        self._is_owner = False
+        self._degraded = True
+        self._mode = "degraded"
+        self._last_error_code = error_code
+        _logger.warning(
+            "source_watch.degraded_trust", extra={"obsidian_mcp": {"error_code": error_code}}
+        )
+
+    def _enforce_watch_trust(self) -> bool:
+        """A2 independent trust enforcement gate. Returns True to proceed, or degrades + returns False.
+
+        Consults the shared ``load_root_trust`` authority so the watcher can never be started purely by the
+        ``external_source_watch_enabled`` config bit. The watcher maintains a root's live index, so it must
+        activate ONLY a fully ready root: every configured+enabled root must be
+        ``safe_for_watcher_activation`` (bootstrapped + certified + reconciled + structure-data-ready).
+        Fail-closed conditions, each with a sanitized reason code (no host paths):
+          * trust unevaluable (any exception) -> ``watcher_trust_unevaluable``;
+          * configured roots but none enabled/authorized -> ``watcher_no_authorized_roots``;
+          * a required root not yet ready -> the decision's ``watcher_activation_block_reason``
+            (``watcher_root_not_bootstrapped`` / ``watcher_policy_stale`` /
+            ``watcher_reconciliation_incomplete`` / ``watcher_structure_data_unready`` / ``watcher_root_denied``).
+        Bootstrap is a SEPARATE, watcher-independent operation, so blocking startup before bootstrap creates
+        no circular dependency (a root is made ready by ``source_bootstrap.bootstrap()``, then the watcher
+        activates)."""
+        from .source_root_trust import AUTH_AUTHORIZED, load_root_trust
+
+        configured = list(getattr(self._config, "external_sources", []) or [])
+        enabled = [r for r in configured if getattr(r, "enabled", False)]
+        if configured and not enabled:
+            self._degrade("watcher_no_authorized_roots")
+            return False
+        authorized_seen = False
+        for root in enabled:
+            try:
+                decision = load_root_trust(
+                    self._repo, self._config, self._app_config, root.source_root_key
+                )
+            except Exception:
+                self._degrade("watcher_trust_unevaluable")
+                return False
+            if decision.authorization_state == AUTH_AUTHORIZED:
+                authorized_seen = True
+            if not decision.safe_for_watcher_activation:
+                self._degrade(decision.watcher_activation_block_reason or "watcher_root_not_ready")
+                return False
+        if configured and not authorized_seen:
+            self._degrade("watcher_no_authorized_roots")
+            return False
+        return True
 
     # ----- lifecycle -------------------------------------------------------------------------
     def start(self, *, config: ObsidianMcpConfig | None = None) -> None:
@@ -126,6 +183,16 @@ class SourceWatcher:
             return
         self._is_owner = True
         self._degraded = False
+        # A2 (corrected): INDEPENDENTLY enforce the shared root-trust authority — the config bit + lease alone
+        # must not start the drain. The watcher maintains a root's LIVE index, so it activates ONLY a fully
+        # ready root (every enabled root must be safe_for_watcher_activation: bootstrapped + certified +
+        # reconciled + structure-data-ready). Fail closed (degraded, sanitized reason, NO host paths) when
+        # trust is unevaluable, when there are configured roots but none authorized, or when a required root
+        # is not yet ready. Bootstrap is a SEPARATE, watcher-independent operation, so blocking startup before
+        # bootstrap is NOT circular: source_bootstrap.bootstrap() establishes durable readiness, then the
+        # watcher activates.
+        if not self._enforce_watch_trust():
+            return
         with suppress(Exception):
             self._repo.requeue_stuck()  # recover events stuck in 'processing' from a prior run
         try:

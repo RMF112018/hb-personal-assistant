@@ -404,8 +404,9 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         def assistant_get_source(source_id: str, max_excerpt_chars: int | None = None) -> dict[str, Any]:
             """DB detail for an indexed source + its card linkage. The echoed ``text_excerpt`` is bounded
             to a least-exposure default (4000 chars); pass ``max_excerpt_chars`` to widen it (a truncated
-            excerpt is flagged with ``text_excerpt_truncated``). Prefer metadata first, then a bounded
-            read via assistant_source_file_read for full file content."""
+            excerpt is flagged with ``text_excerpt_truncated``). Prefer metadata first, then a BOUNDED
+            excerpt read via assistant_source_file_read — neither tool returns a full raw file, and a live
+            read only occurs when the file's root passes a root-trust check (else an indexed excerpt)."""
             return _assistant_result("assistant_get_source",
                                      {"source_id": source_id, "max_excerpt_chars": max_excerpt_chars})
 
