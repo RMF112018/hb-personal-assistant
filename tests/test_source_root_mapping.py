@@ -255,6 +255,74 @@ def test_no_absolute_paths_in_serialized_health(tmp_path):
 
 
 # ==================================================================================================
+# fail-closed mapping-configuration loading: a failed/invalid load is NOT an empty valid config
+# ==================================================================================================
+def test_health_config_load_failure_fails_closed(tmp_path, monkeypatch):
+    # app_config is NOT injected → health loads it internally. If the load RAISES, health must fail closed:
+    # every root's mapping is `mapping_configuration_unavailable`, structure_ready False, and the top-level
+    # availability flag is False. No identity fallback.
+    db, _root, ocfg, _acfg = _env(tmp_path, file_key="work", structure_key="work")
+
+    def _boom(*a, **k):
+        raise OSError("config file unreadable")
+
+    monkeypatch.setattr("hb_assistant.config.loader.load_config", _boom)
+    h = source_index_health(SourceIndexRepository(db), ocfg)  # no app_config injected
+    assert h["structure_mapping_config_available"] is False
+    r = next(x for x in h["roots"] if x["root_key"] == "work")
+    assert r["structure_mapping_reason"] == "mapping_configuration_unavailable"
+    assert r["structure_key"] is None
+    assert r["structure_ready"] is False
+    assert r["folder_count"] == 0  # no identity fallback despite an ingested "work" structure root
+
+
+def test_health_invalid_mapping_config_fails_closed(tmp_path, monkeypatch):
+    # A config that fails validation (a genuinely invalid structure_root_map) is indistinguishable from
+    # unavailable for trust purposes → fail closed, never structure-ready.
+    db, _root, ocfg, _acfg = _env(tmp_path, file_key="work", structure_key="work")
+
+    def _raise_validation(*a, **k):
+        from hb_assistant.config.models import SourceStructureConfig
+
+        # normalized-key collision with conflicting targets → pydantic ValidationError
+        SourceStructureConfig(structure_root_map={"work": "a", "work ": "b"})
+
+    monkeypatch.setattr("hb_assistant.config.loader.load_config", _raise_validation)
+    h = source_index_health(SourceIndexRepository(db), ocfg)
+    assert h["structure_mapping_config_available"] is False
+    r = next(x for x in h["roots"] if x["root_key"] == "work")
+    assert r["structure_mapping_reason"] == "mapping_configuration_unavailable"
+    assert r["structure_ready"] is False
+
+
+def test_valid_empty_config_still_allows_exact_identity_match(tmp_path):
+    # An explicitly injected VALID config whose scan_roots is empty is trusted (distinct from a failed
+    # load): exact identity matching against ingested structure roots still resolves.
+    db, _root, ocfg, acfg = _env(tmp_path, file_key="work", structure_key="work")
+    acfg.source_structure.scan_roots = {}  # valid, but declares no scan roots
+    acfg.source_structure.structure_root_map = {}
+    h = source_index_health(SourceIndexRepository(db), ocfg, app_config=acfg)
+    assert h["structure_mapping_config_available"] is True
+    r = next(x for x in h["roots"] if x["root_key"] == "work")
+    assert r["structure_mapping_reason"] == "exact_match"
+    assert r["structure_key"] == "work"
+    assert r["structure_ready"] is True
+
+
+def test_config_failure_cannot_report_structure_ready(tmp_path, monkeypatch):
+    # Blanket guarantee: under a config-load failure NO root may be reported structure_ready.
+    db, _root, ocfg, _acfg = _env(tmp_path, file_key="work", structure_key="work")
+
+    monkeypatch.setattr(
+        "hb_assistant.config.loader.load_config",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("load failed")),
+    )
+    h = source_index_health(SourceIndexRepository(db), ocfg)
+    assert h["structure_mapping_config_available"] is False
+    assert all(r["structure_ready"] is False for r in h["roots"])
+
+
+# ==================================================================================================
 # canonical config authority: validation rules + backward compatibility
 # ==================================================================================================
 def test_config_structure_root_map_defaults_empty_backward_compatible():

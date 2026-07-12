@@ -27,6 +27,10 @@ REASON_EXACT_MATCH = "exact_match"
 REASON_UNMAPPED = "unmapped"
 REASON_INVALID_EXPLICIT_MAP = "invalid_explicit_map"
 REASON_AMBIGUOUS = "ambiguous_configuration"
+# The mapping authority (application configuration) could not be loaded or was invalid. This is a
+# fail-CLOSED outcome distinct from ``unmapped``: with no trustworthy config the root's structure mapping is
+# unknown, so a caller must NOT treat the root as structure-ready or fall back to identity matching.
+REASON_CONFIG_UNAVAILABLE = "mapping_configuration_unavailable"
 
 
 def normalize_root_key(key: str | None) -> str:

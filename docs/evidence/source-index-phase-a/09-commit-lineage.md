@@ -1,0 +1,60 @@
+# Phase A — commit lineage (through A3)
+
+All commits are local on branch `fix/source-index-phase-a-correctness-trust`, branched from
+`origin/main` `9c27839b48fdab0e882fa475a6ace81dc93762fd`. No push / PR / merge / force.
+
+| Order | Full SHA | Checkpoint |
+|---|---|---|
+| 1 | `963c1759…` | A0 — repo-truth baseline, audit, test-design matrix (GREEN) |
+| 2 | `e1a333ec16e4c10ed8dc901af977e0879918f3c2` | A1 — vault deletion-safety gate (GREEN) |
+| 3 | `1d58d123a3b58463eecb270609d6afba69ed4609` | A1 follow-up (GREEN) — see below |
+| 4 | `80d089eea96a07016babaab852d67a3fc2355991` | A3 — canonical structure-root mapping (GREEN) |
+| 5 | *(this corrective follow-up)* | A3 corrective — fail-closed config loading + evidence split (GREEN) |
+
+## Intervening commit `1d58d123` — full disclosure
+
+- **Full SHA:** `1d58d123a3b58463eecb270609d6afba69ed4609`
+- **Subject:** `A1 follow-up: fix double-close in vault-reconcile lease + assert OS-backed exclusivity`
+- **Committed:** 2026-07-12 06:03 −0400, **before A3 began** (A3 = `80d089ee` used it as parent).
+- **Why it was needed:** The A3 authorization message required preserving a test or implementation assertion
+  that the recovery lease is an **OS-backed** file lock (`fcntl.flock`) shared across independent processes,
+  not an in-memory mutex. Writing that exclusivity test surfaced a **real bug** in the A1 code.
+
+### `git show --stat 1d58d123`
+```
+ src/hb_assistant/cli/source_watch.py             |  2 +-
+ tests/test_source_index_vault_deletion_safety.py | 29 ++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+), 1 deletion(-)
+```
+
+### Files changed & semantic summary
+1. **`src/hb_assistant/cli/source_watch.py`** (1 line) — In the `vault-reconcile` lease-contention branch,
+   removed a redundant inner `os.close(lock_fd)`. On contention the fd was closed in the `except` branch AND
+   again in the `finally` clause; the second `os.close` raised `Bad file descriptor`, which masked the
+   intended `typer.Exit(2)` and caused the command to exit **1** instead of **2**. The `finally` clause now
+   owns the single close, so contention **fails closed with exit 2** as designed.
+2. **`tests/test_source_index_vault_deletion_safety.py`** (+29) — Added
+   `test_vault_reconcile_cli_lease_is_os_backed_and_exclusive`: holds an `fcntl.flock` on the lease path via a
+   **separate fd**, then asserts the command's non-blocking acquisition fails closed (exit 2, "holds the local
+   lease"). This proves the lease is OS-backed and exclusive, and is the regression test for the bug above.
+
+### Did it modify A1 runtime behavior? — YES (narrow, disclosed)
+It changed one runtime behavior: **the `vault-reconcile` exit code on lease contention (1 → 2)**. This is a
+strict correctness improvement (fail-closed exit-code fidelity) confined to the contention path. It did **not**
+change deletion-safety logic, the completeness gate, the empty-root guard, or the transactional reconcile.
+
+### Complete A1 regression suite after `1d58d123` (re-run at the A3 corrective checkpoint)
+Because `1d58d123` altered A1 runtime behavior, the complete A1 suite was re-run:
+```
+PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest -p no:cacheprovider -q \
+  tests/test_source_index_vault_deletion_safety.py \
+  tests/test_source_index_streaming_walk.py \
+  tests/test_obsidian_vault_db_reconcile.py \
+  tests/test_obsidian_source_index.py \
+  tests/test_obsidian_source_watch.py \
+  tests/test_obsidian_source_watch_lifecycle.py \
+  tests/test_obsidian_source_watch_ownership.py \
+  tests/test_source_index_repository.py
+```
+**Result: 75 tests, 75 passed, 0 failed, 0 errors** (exit 0). No A1 regression; the OS-backed exclusivity
+test passes and the contention path returns exit 2.

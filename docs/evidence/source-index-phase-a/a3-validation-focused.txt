@@ -1,0 +1,40 @@
+# A3 PROVE-GREEN — FOCUSED validation run (the A3 checkpoint's primary validation set)
+#
+# Exact command (from worktree root):
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider -q --junit-xml=<scratch>/a3-focused-junit.xml \
+#     tests/test_source_root_mapping.py \
+#     tests/test_source_index_watcher_automated_refresh.py \
+#     tests/test_source_index_metadata_first_bootstrap.py \
+#     tests/test_source_structure_repository_service.py \
+#     tests/test_source_index_health_readonly_conn.py \
+#     tests/test_source_structure_cli.py
+#
+# JUnit totals (the repo's custom terminal reporter suppresses the text tally):
+#   135 tests: 133 passed, 2 failed, 0 errors, 0 skipped.
+#
+# Exactly TWO failing node IDs, BOTH pre-existing baseline defects (NOT A3 regressions;
+# see 08-baseline-vs-feature-failures.md), never absorbed into the A3 prove-red set:
+#   1. tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+#      -> stale `== 123`; migrator correctly returns 124.
+#   2. tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots
+#      -> stale hard-coded MCP tool-surface count 78; actual exposed count is 80.
+#         Confirmed identical (`assert 80 == 78`) on a throwaway pristine origin/main (9c27839b)
+#         worktree with zero Phase A code present.
+#
+# All 25 tests in tests/test_source_root_mapping.py (21 original + 4 fail-closed corrective) pass GREEN.
+# ----------------------------------------------------------------------------------------------------------
+........................................................................ [ 53%]
+...........................F.........................F.........          [100%]
+=================================== FAILURES ===================================
+_________________ test_v119_migration_idempotent_and_additive __________________
+tests/test_source_index_metadata_first_bootstrap.py:503: in test_v119_migration_idempotent_and_additive
+    assert v1 == v2 == 123
+E   assert 124 == 123
+_____________ test_export_evidence_emits_gate_off_and_on_snapshots _____________
+tests/test_source_structure_cli.py:106: in test_export_evidence_emits_gate_off_and_on_snapshots
+    assert gate_off["summary"]["expected_exposed"] == 78
+E   assert 80 == 78
+=========================== short test summary info ============================
+FAILED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+FAILED tests/test_source_structure_cli.py::test_export_evidence_emits_gate_off_and_on_snapshots

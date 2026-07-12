@@ -141,18 +141,33 @@ def _source_index_health_body(
     srepo = structure_repo or SourceStructureRepository(str(repo.db_path))
     structure_status = srepo.status(conn=conn)
     structure_roots = {r["root_key"]: r for r in srepo.list_roots(limit=100, conn=conn)}
-    # A3 canonical structure-root mapping inputs. Load app config if not injected (fail-open to empty).
+    # A3 canonical structure-root mapping inputs — FAIL CLOSED. The application configuration is the mapping
+    # authority. An explicitly injected config (even a valid EMPTY one) is trusted and still permits exact
+    # identity matching; but a FAILED or INVALID load must NOT be read as an empty valid config — otherwise
+    # health could call a root structure-ready without knowing the canonical mapping. A load/validation
+    # failure is distinguishable from a valid empty config: mapping_config_available is False, there is no
+    # identity fallback, and every root resolves to `mapping_configuration_unavailable` (structure_ready=False).
+    mapping_config_available = True
     if app_config is None:
-        with contextlib.suppress(Exception):
+        try:
             from hb_assistant.config.loader import load_config as _load_app_config
 
             app_config = _load_app_config()
-    _app_ss = getattr(app_config, "source_structure", None)
-    structure_scan_roots = dict(getattr(_app_ss, "scan_roots", {}) or {})
-    structure_root_map = dict(getattr(_app_ss, "structure_root_map", {}) or {})
-    # Exact-match namespace: prefer the declared config scan_roots; fall back to ingested structure roots
-    # so identity mappings still resolve when app config was not threaded in.
-    structure_namespace = list(structure_scan_roots.keys()) or list(structure_roots.keys())
+        except Exception:
+            mapping_config_available = False
+            app_config = None
+    if mapping_config_available:
+        _app_ss = getattr(app_config, "source_structure", None)
+        structure_scan_roots = dict(getattr(_app_ss, "scan_roots", {}) or {})
+        structure_root_map = dict(getattr(_app_ss, "structure_root_map", {}) or {})
+        # Exact-match namespace: prefer the declared config scan_roots; fall back to ingested structure roots
+        # so identity mappings still resolve for a valid config that did not declare scan_roots.
+        structure_namespace = list(structure_scan_roots.keys()) or list(structure_roots.keys())
+    else:
+        # No trustworthy mapping authority: no explicit map, no identity fallback. Fail closed.
+        structure_scan_roots = {}
+        structure_root_map = {}
+        structure_namespace = []
 
     # Bootstrap readiness + watcher/queue/reconciliation state (V117). All path-safe: bootstrap_state
     # and reconciliation rows carry only root_key; queue_health carries counts; the watcher-owner blob
@@ -200,14 +215,25 @@ def _source_index_health_body(
     skipped_by_code = dict(file_status.get("skipped_by_code") or {})
 
     per_root: list[dict[str, Any]] = []
-    from .source_root_mapping import resolve_structure_mapping
+    from .source_root_mapping import (
+        REASON_CONFIG_UNAVAILABLE,
+        StructureRootMapping,
+        normalize_root_key,
+        resolve_structure_mapping,
+    )
 
     for root in roots_env.get("roots") or []:
         key = root["source_root_key"]
         # A3: the ONE canonical exact/explicit resolver (no fuzzy substring / `syn-` strip / first-row).
-        struct_mapping = resolve_structure_mapping(
-            key, structure_namespace, config_map=structure_root_map
-        )
+        # When the mapping authority is unavailable/invalid, fail closed — never resolve, never identity-fall-back.
+        if mapping_config_available:
+            struct_mapping = resolve_structure_mapping(
+                key, structure_namespace, config_map=structure_root_map
+            )
+        else:
+            struct_mapping = StructureRootMapping(
+                normalize_root_key(key), None, REASON_CONFIG_UNAVAILABLE
+            )
         sroot = (
             structure_roots.get(struct_mapping.structure_key)
             if struct_mapping.structure_key is not None
@@ -416,6 +442,10 @@ def _source_index_health_body(
                 # A3 canonical structure-root mapping provenance for this file root (never fuzzy).
                 "structure_mapping_reason": struct_mapping.reason,
                 "structure_key": struct_mapping.structure_key,
+                # A root can only be structure-ready when the canonical authority resolved it to a structure
+                # key. A config-load/validation failure (structure_key None, reason
+                # mapping_configuration_unavailable) can therefore never report structure_ready True.
+                "structure_ready": struct_mapping.structure_key is not None,
                 "total_files_indexed": file_count or struct_files,
                 # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
                 "content_indexed_file_count": counts["content_searchable"],
@@ -548,6 +578,9 @@ def _source_index_health_body(
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return {
         "overall_freshness": overall,
+        # A3 fail-closed observability: False means the canonical mapping authority (app config) could not be
+        # loaded/validated, so every root's structure mapping is reported unavailable and never structure-ready.
+        "structure_mapping_config_available": mapping_config_available,
         "structure_status": {
             "root_count": structure_status.get("root_count"),
             "folder_count": structure_status.get("folder_count"),
