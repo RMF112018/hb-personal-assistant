@@ -1,0 +1,33 @@
+# A2 PROVE-GREEN — FOCUSED validation set (the A2 checkpoint's primary validation)
+#
+# Command (from worktree root):
+#   PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+#     -p no:cacheprovider -q --junit-xml=<scratch>/a2-junit.xml \
+#     tests/test_source_root_trust.py \
+#     tests/test_source_connector_service.py \
+#     tests/test_nas_mcp_source_connector.py \
+#     tests/test_source_root_mapping.py \
+#     tests/test_source_index_health_readonly_conn.py \
+#     tests/test_obsidian_source_watch.py \
+#     tests/test_obsidian_source_watch_lifecycle.py \
+#     tests/test_obsidian_source_watch_ownership.py \
+#     tests/test_source_index_watcher_automated_refresh.py \
+#     tests/test_source_index_vault_deletion_safety.py \
+#     tests/test_tool_manifest_freshness_guard.py \
+#     tests/test_manifest_schema_parity.py \
+#     tests/test_n8c_client_exposure_bridge.py \
+#     tests/test_source_index_client_performance_hardening.py
+#
+# JUnit totals: 275 tests: 274 passed, 1 failed, 0 errors, 0 skipped.
+#
+# The single failure is a PRE-EXISTING baseline defect (NOT an A2 regression; see
+# 08-baseline-vs-feature-failures.md), never absorbed into the A2 prove-red set:
+#   tests/test_source_index_client_performance_hardening.py::test_output_aliases_defined
+#     -> stale hard-coded output-alias count (asserts ==10; actual 11). Confirmed identical on a pristine
+#        origin/main (9c27839b) worktree with zero Phase A code present.
+#
+# All 35 A2 tests (tests/test_source_root_trust.py), all connector service + NAS MCP connector tests
+# (fail-closed gating + certified-safe positive paths), the A1 vault-deletion suite, the A3 mapping suite,
+# the watcher lifecycle/ownership suites, and the tool-manifest freshness/parity/exposure-bridge guards all
+# pass GREEN. The manifest docstring change re-froze cleanly through the live surface (no checksum edit) and
+# direct/gateway parity holds.

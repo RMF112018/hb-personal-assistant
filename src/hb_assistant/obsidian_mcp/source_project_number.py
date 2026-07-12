@@ -176,9 +176,18 @@ def match_explanation_for_row(
     factors: list[str] = []
     matched: list[str] = []
     primary = "fts_content_match"
-    read_status = "live_readable"
+    # A2 read-readiness semantics correction. The prior ``read_status="live_readable"`` asserted live
+    # readability from indexed metadata alone (ext/extraction), with NO live probe — a frontier client would
+    # infer the file is readable now, which is exactly the unsafe inference A2 eliminates. Emit a
+    # non-committal CAPABILITY (not a live-state) plus explicit canonical fields: ``live_readability`` is
+    # UNVERIFIED (no probe was performed here) and ``live_read_performed`` is False. A real live read only
+    # happens later in SourceContentProvider.read (after a root-trust check).
+    read_status = "read_capability_known"
+    live_readability = "unverified"
     if ext in {"xer", "mpp", "pln"} or str(row.get("extraction_status") or "") == "unsupported":
+        # Statically-unsupported formats: metadata-only, and NOT live-readable even in principle.
         read_status = "unsupported_metadata_only"
+        live_readability = "unsupported"
 
     for pn in project_numbers:
         if path_has_project(rel, pn):
@@ -217,14 +226,18 @@ def match_explanation_for_row(
         "primary_reason": primary,
         "matched_terms": matched,
         "rank_factors": factors,
+        # ``read_status`` is now a capability label (``read_capability_known`` /
+        # ``unsupported_metadata_only``), never a live-state claim. Canonical A2 fields:
         "read_status": read_status,
+        "live_readability": live_readability,
+        "live_read_performed": False,
+        "authoritative": False,
     }
 
 
 def rank_boost(row: dict[str, Any], *, query: str, project_numbers: list[str]) -> float:
     """Higher is better. Added to inverted BM25 (lower BM25 is better) via composite sort."""
     boost = 0.0
-    rel = str(row.get("rel_path") or "")
     expl = match_explanation_for_row(row, query=query, project_numbers=project_numbers)
     reason = expl["primary_reason"]
     if reason == "exact_project_number_path_match":

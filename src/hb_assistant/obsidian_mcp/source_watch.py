@@ -78,6 +78,49 @@ class SourceWatcher:
         self._is_owner = False
         self._degraded = False
 
+    def _degrade(self, error_code: str) -> None:
+        """Fail closed: serve degraded, run NO drain thread. Sanitized error code only (no host paths)."""
+        self._is_owner = False
+        self._degraded = True
+        self._mode = "degraded"
+        self._last_error_code = error_code
+        _logger.warning(
+            "source_watch.degraded_trust", extra={"obsidian_mcp": {"error_code": error_code}}
+        )
+
+    def _enforce_watch_trust(self) -> bool:
+        """A2 independent trust enforcement gate. Returns True to proceed, or degrades + returns False.
+
+        Consults the shared ``load_root_trust`` authority so the watcher can never be started purely by the
+        ``external_source_watch_enabled`` config bit. Fail-closed conditions: trust unevaluable (any
+        exception), a configured+enabled root that is explicitly DENIED, or configured roots with none
+        authorized. Legitimate pre-index states (uncertified/blocked/unverified) do NOT block the drain."""
+        from .source_root_trust import AUTH_AUTHORIZED, TRUST_DENIED, load_root_trust
+
+        configured = list(getattr(self._config, "external_sources", []) or [])
+        enabled = [r for r in configured if getattr(r, "enabled", False)]
+        if configured and not enabled:
+            self._degrade("watcher_no_authorized_roots")
+            return False
+        authorized_seen = False
+        for root in enabled:
+            try:
+                decision = load_root_trust(
+                    self._repo, self._config, None, root.source_root_key
+                )
+            except Exception:
+                self._degrade("watcher_trust_unevaluable")
+                return False
+            if decision.trust_state == TRUST_DENIED:
+                self._degrade("watcher_root_denied")
+                return False
+            if decision.authorization_state == AUTH_AUTHORIZED:
+                authorized_seen = True
+        if configured and not authorized_seen:
+            self._degrade("watcher_no_authorized_roots")
+            return False
+        return True
+
     # ----- lifecycle -------------------------------------------------------------------------
     def start(self, *, config: ObsidianMcpConfig | None = None) -> None:
         # Honor a freshly-loaded config (HTTP layer passes the current on-disk config so a just-
@@ -126,6 +169,14 @@ class SourceWatcher:
             return
         self._is_owner = True
         self._degraded = False
+        # A2: INDEPENDENTLY enforce the shared root-trust authority — the config bit + lease alone must not
+        # start the drain. Fail closed (degraded, sanitized reason, NO host paths) when trust is unevaluable,
+        # when a configured root the watcher would service is explicitly DENIED (operator-disabled), or when
+        # there are configured roots but none is authorized. (Un-bootstrapped/uncertified roots are the
+        # legitimate pre-index state the drain exists to service, so they do NOT block startup; the
+        # CLIENT-SERVING paths enforce policy/reconciliation/structure readiness before any answer.)
+        if not self._enforce_watch_trust():
+            return
         with suppress(Exception):
             self._repo.requeue_stuck()  # recover events stuck in 'processing' from a prior run
         try:

@@ -190,7 +190,7 @@ def _source_index_health_body(
     # against CURRENT policy: a completed generation whose stored fingerprint no longer matches the
     # configured root (a sensitivity / exclusion / root-path / matcher change) must NOT read as complete or
     # watcher-ready until the corrective generation runs.
-    from .source_indexer import _root_fingerprint, derive_watcher_ready
+    from .source_indexer import _root_fingerprint
 
     configured_fp_by_root: dict[str, str] = {}
     for _er in getattr(config, "external_sources", []) or []:
@@ -221,6 +221,7 @@ def _source_index_health_body(
         normalize_root_key,
         resolve_structure_mapping,
     )
+    from .source_root_trust import RootTrustInputs, evaluate_root_trust
 
     for root in roots_env.get("roots") or []:
         key = root["source_root_key"]
@@ -284,23 +285,39 @@ def _source_index_health_body(
         #                  verification is impossible, so "verified safe" is honestly false, while the root may
         #                  still be served ADVISORILY (see ``index_only_available``) — available ≠ verified-safe
         current_fp = configured_fp_by_root.get(key)
-        # Completeness/watcher currency (unchanged semantics): matches current policy, or unverifiable.
-        policy_current = current_fp is None or (
-            gen_row is not None and gen_row.get("policy_fingerprint") == current_fp
+        file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
+        legacy_watcher_ready = bool((bootstrap_by_root.get(key) or {}).get("watcher_ready"))
+        # A2: the ONE shared root-trust authority computes the policy / index / completeness state AND the
+        # root-specific client-trust verdict. Health CONSUMES it — no independent trust logic here — so
+        # serving, watcher startup, and health can never disagree for the same root. ``has_config`` marks a
+        # configured (not index-only/configless) root; a configless root is authorization-unverified.
+        _dec = evaluate_root_trust(
+            RootTrustInputs(
+                root_key=key,
+                enabled=bool(root.get("enabled", True)),
+                sensitive=bool(root.get("sensitive", False)),
+                has_config=(root.get("provenance") == "config"),
+                backend_available=backend_available,
+                freshness_state=state,
+                folder_count=folder_count,
+                file_count=file_count,
+                counts=counts,
+                gen_row=gen_row,
+                current_fp=current_fp,
+                file_index_status=file_index_status,
+                legacy_watcher_ready=legacy_watcher_ready,
+                struct_mapping=struct_mapping,
+                mapping_config_available=mapping_config_available,
+            )
         )
-        if current_fp is None:
-            policy_verification = "unavailable"
-        elif (
-            gen_row is not None
-            and gen_row.get("status") == "completed"
-            and gen_row.get("policy_fingerprint") == current_fp
-        ):
-            policy_verification = "current"
-        elif gen_row is None:
-            policy_verification = "uncertified"
-        else:
-            policy_verification = "stale"
-        policy_certified = policy_verification == "current"
+        policy_verification = _dec.policy_verification
+        index_only_available = _dec.index_only_available
+        safe = _dec.safe_for_client_answering
+        metadata_completeness_state = _dec.metadata_completeness_state
+        content_completeness_state = _dec.content_completeness_state
+        watcher_ready = _dec.watcher_ready
+        safe_for_path_lookup = _dec.safe_for_path_lookup
+        safe_for_content_answering = _dec.safe_for_content_answering
         layers = {
             "folder_layer_populated": folder_count > 0,
             "metadata_layer_populated": file_count > 0,
@@ -308,14 +325,6 @@ def _source_index_health_body(
             "content_layer_populated": counts.get("content_searchable", 0) > 0,
             "metadata_search_layer_populated": counts.get("metadata_searchable", 0) > 0,
         }
-        index_layers_ready = state in ("fresh", "degraded") and (
-            layers["metadata_layer_populated"] or layers["folder_layer_populated"]
-        )
-        # Advisory availability: serving is POSSIBLE from the index layers even when policy cannot be verified
-        # (configless / index-only profile). This is NOT "verified safe" — a client answering off it proceeds
-        # without policy certification (blocker 2: available ≠ verified-safe). ``safe`` requires certification.
-        index_only_available = index_layers_ready
-        safe = policy_certified and index_layers_ready
         summary_bits = []
         if policy_verification == "stale":
             summary_bits.append(
@@ -351,78 +360,6 @@ def _source_index_health_body(
                 else "partial/blocked — prefer health-aware routing"
             )
 
-        file_index_status = (bootstrap_by_root.get(key) or {}).get("file_index_status")
-        # Metadata completeness is REPORTED SEPARATELY from content completeness (V122): a metadata-first
-        # root can be fully metadata-indexed (searchable by path) with zero content extracted. Completeness
-        # derives from DURABLE GENERATION TRUTH when a V122 generation exists — the metadata WALK must have
-        # completed on a non-failed/non-abandoned generation; a failed/abandoned/running/partial generation
-        # is NOT complete. Roots with no V122 generation yet fall back to the legacy bootstrap status.
-        if gen_row is not None:
-            # Only a fully COMPLETED generation certifies completeness. reconcile_pending means the deletion
-            # sweep found indeterminate candidates (potential phantom rows still in the index), so its
-            # metadata set is NOT certifiably complete — it must read partial, not complete (finding 5).
-            # AND it must match CURRENT policy: a fingerprint mismatch (``policy_current`` is False above)
-            # means the completion is stale, so it reads partial and watcher-not-ready until the corrective run.
-            reconciliation_done = gen_row.get("status") == "completed" and policy_current
-            metadata_walk_done = reconciliation_done
-        else:
-            # Legacy fallback (root with no V122 generation): accept ONLY the explicit success sentinel
-            # ("bootstrapped"). Any other value ("partial"/"conflict"/"failed"/None) is NOT complete
-            # (finding 5) — the prior ``!= "partial"`` wrongly certified conflict/failed/unknown as done.
-            metadata_walk_done = file_index_status == "bootstrapped"
-            reconciliation_done = file_index_status == "bootstrapped"
-        if counts["metadata_indexed"] == 0:
-            metadata_completeness_state = "none"
-        elif metadata_walk_done:
-            metadata_completeness_state = "complete"
-        else:
-            metadata_completeness_state = "partial"
-        if counts["metadata_indexed"] == 0 or (
-            counts["content_extracted"] == 0 and counts["content_searchable"] == 0
-        ):
-            content_completeness_state = "none"
-        elif (
-            counts.get("content_pending", 0) > 0 or counts["failed"] > 0 or not reconciliation_done
-        ):
-            content_completeness_state = "partial"
-        else:
-            content_completeness_state = "complete"
-        # Watcher readiness (V122): for a root the new architecture tracks, readiness is a COMPLETED
-        # metadata+reconciliation generation AND structure truth (a folder map present) — NOT the persisted
-        # legacy readiness bit, which could read ready off a partial/legacy bootstrap (finding 5). Roots
-        # with no V122 generation yet fall back to the legacy bit.
-        legacy_watcher_ready = bool((bootstrap_by_root.get(key) or {}).get("watcher_ready"))
-        # Shared authority (V122 blocker 2): identical rule used by ``resolve_run_state`` so the CLI can
-        # never launch a watcher this projection reports as not-ready. FAIL-CLOSED on an unverifiable policy
-        # (``current_fp is None``) — stricter than the content-completeness ``policy_current`` above, which
-        # legitimately treats an absent current policy as "nothing to contradict".
-        watcher_ready = derive_watcher_ready(
-            gen_row=gen_row,
-            current_fp=current_fp,
-            folder_count=folder_count,
-            legacy_ready=legacy_watcher_ready,
-        )
-        # Path/filename lookup is safe when the root has SEARCHABLE metadata (a path FTS row) or a folder
-        # map — not merely a bare row count (V122) — AND the completion matches current policy (finding 2:
-        # a policy-stale root may index newly-excluded paths, so path lookup fails closed too) — AND the
-        # freshness timestamp is not MALFORMED (blocker 3: an unparseable ``last_indexed_at`` is a corrupt
-        # index signal; closing only client/content answering would leave the full trust surface open).
-        safe_for_path_lookup = (
-            policy_certified
-            and state != "unknown"
-            and (counts.get("metadata_searchable", 0) > 0 or folder_count > 0)
-        )
-        if not policy_certified:
-            # Uncertified/stale/unavailable policy may serve plaintext-when-now-sensitive or newly-excluded
-            # content → fail closed. Serving without verification goes through ``index_only_available``.
-            safe_for_content_answering = "none"
-        elif content_completeness_state == "complete" and state in ("fresh", "degraded"):
-            safe_for_content_answering = "complete"
-        elif counts["content_searchable"] > 0 and state in ("fresh", "degraded"):
-            safe_for_content_answering = "partial"
-        else:
-            safe_for_content_answering = "none"
-
         per_root.append(
             {
                 "root_key": key,
@@ -442,10 +379,18 @@ def _source_index_health_body(
                 # A3 canonical structure-root mapping provenance for this file root (never fuzzy).
                 "structure_mapping_reason": struct_mapping.reason,
                 "structure_key": struct_mapping.structure_key,
-                # A root can only be structure-ready when the canonical authority resolved it to a structure
-                # key. A config-load/validation failure (structure_key None, reason
-                # mapping_configuration_unavailable) can therefore never report structure_ready True.
-                "structure_ready": struct_mapping.structure_key is not None,
+                # A2 clarification: mapping RESOLUTION and OPERATIONAL structure readiness are distinct.
+                # `structure_mapping_resolved` is the A3 fact (canonical resolver produced a key);
+                # `structure_ready` is operational (mapping resolved AND backend up AND folder ingestion
+                # exists AND watcher/run-state ready) — a resolved mapping alone never implies ready.
+                "structure_mapping_resolved": _dec.structure_mapping_resolved,
+                "structure_ready": _dec.structure_ready,
+                # A2 root-specific client-trust verdict (from the shared authority).
+                "trust_state": _dec.trust_state,
+                "authorization_state": _dec.authorization_state,
+                "sensitivity_known": _dec.sensitivity_known,
+                "safe_for_live_read": _dec.safe_for_live_read,
+                "trust_reason_codes": list(_dec.reason_codes),
                 "total_files_indexed": file_count or struct_files,
                 # Honest, index-scoped breakdown (replaces the fts_available all-or-nothing proxy).
                 "content_indexed_file_count": counts["content_searchable"],
@@ -573,7 +518,25 @@ def _source_index_health_body(
             "investigate failed file-index queue items (`hb-assistant source-watch status`)"
         )
 
-    top_safe = bool(real_roots) and any(r["safe_for_client_answering"] for r in real_roots)
+    # A2 aggregate trust redefinition. The OLD ``safe_for_client_answering = any(...)`` let one safe root
+    # imply the whole deployment is client-safe — a routing signal that fails OPEN. The canonical field is now
+    # ALL enabled+authorized roots safe, and it is NON-VACUOUS: zero enabled+authorized roots is NOT
+    # client-safe. ``any_root_safe`` is retained but demoted (never the routing signal).
+    _enabled_authorized = [
+        r
+        for r in real_roots
+        if r.get("enabled", True) and r.get("authorization_state") == "authorized"
+    ]
+    any_root_safe = bool(real_roots) and any(r["safe_for_client_answering"] for r in real_roots)
+    all_enabled_roots_safe = bool(_enabled_authorized) and all(
+        r["safe_for_client_answering"] for r in _enabled_authorized
+    )
+    safe_root_keys = sorted(r["root_key"] for r in real_roots if r["safe_for_client_answering"])
+    unsafe_root_keys = sorted(
+        r["root_key"] for r in real_roots if not r["safe_for_client_answering"]
+    )
+    # Canonical routing signal (fail-closed): all enabled+authorized roots safe AND at least one exists.
+    top_safe = all_enabled_roots_safe
 
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     return {
@@ -624,7 +587,15 @@ def _source_index_health_body(
             "last_full_reconciliation": last_full.get("finished_at"),
         },
         "recommended_operator_action": recommended,
+        # A2 canonical routing signal: ALL enabled+authorized roots safe AND at least one exists (fail
+        # closed; zero enabled+authorized roots is NOT client-safe). ``any_root_safe`` is demoted — it must
+        # never be the routing signal because it lets one safe root imply universal readiness.
         "safe_for_client_answering": top_safe,
+        "all_enabled_roots_safe": all_enabled_roots_safe,
+        "any_root_safe": any_root_safe,
+        "zero_authorized_roots_is_not_client_safe": not bool(_enabled_authorized),
+        "safe_root_keys": safe_root_keys,
+        "unsafe_root_keys": unsafe_root_keys,
         "roots": per_root[:50],
         "root_count": len(per_root),
         "truncated": len(per_root) > 50,

@@ -118,6 +118,19 @@ class SourceContentProvider:
         if not ext or ext not in allowed or ext not in _LIVE_TEXT_EXTS:
             return self._indexed(detail, source_id, cap, "unsupported_type")
 
+        # A2: evaluate root trust BEFORE any live filesystem access. An untrusted root (policy
+        # uncertified/stale, index unready, unverified/denied authorization) can never be live-read — fall
+        # back to the bounded indexed excerpt with the sanitized readiness envelope.
+        from .source_root_trust import load_root_trust, root_readiness_envelope
+
+        _decision = load_root_trust(
+            self._repo, self._config, None, str(detail.get("source_root_key")), conn=conn
+        )
+        if not _decision.safe_for_live_read:
+            blocked = self._indexed(detail, source_id, cap, "root_not_trusted")
+            blocked["root_readiness"] = root_readiness_envelope(_decision)
+            return blocked
+
         root_resolved = Path(root.path).resolve()
         abs_path = Path(root.path) / str(rel_path)
         try:

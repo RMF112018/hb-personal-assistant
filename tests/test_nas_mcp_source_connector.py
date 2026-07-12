@@ -47,6 +47,29 @@ class _FakeMcp:
         return deco
 
 
+# A parseable, non-future indexed_at so freshness resolves to "fresh" (required for a root to be trust-safe).
+_RECENT_TS = "2026-07-01T12:00:00+00:00"
+
+
+def _make_root_trusted(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
+    """A2: certify ``root_key`` SAFE — a completed generation whose policy_fingerprint matches current
+    policy (freshness is already fresh from ``_seed``'s recent indexed_at)."""
+    from hb_assistant.obsidian_mcp.source_indexer import _root_fingerprint
+
+    cfg_root = next(r for r in config.external_sources if r.source_root_key == root_key)
+    fp = _root_fingerprint(cfg_root, config)
+    rph = hashlib.sha256(str(Path(cfg_root.path)).encode("utf-8")).hexdigest()[:32]
+    with sqlite3.connect(db) as c:
+        c.execute(
+            "INSERT INTO source_index_scan_generations(generation_id, root_key, status, root_path_hash, "
+            "policy_fingerprint, started_at, updated_at, metadata_walk_completed_at, "
+            "reconciliation_completed_at, finished_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+            (f"gen-{root_key}", root_key, "completed", rph, fp, _RECENT_TS, _RECENT_TS, _RECENT_TS,
+             _RECENT_TS, _RECENT_TS),
+        )
+        c.commit()
+
+
 def _seed(db: str, root_key: str, rel_path: str, body: str) -> str:
     sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
     with sqlite3.connect(db) as c:
@@ -54,8 +77,8 @@ def _seed(db: str, root_key: str, rel_path: str, body: str) -> str:
                   "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
                   (sid, "external_file", root_key, rel_path))
         c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,1,?,?,NULL,'t')",
-                  (sid, "txt", len(body), hashlib.sha256(body.encode()).hexdigest(), "ok"))
+                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,1,?,?,NULL,?)",
+                  (sid, "txt", len(body), hashlib.sha256(body.encode()).hexdigest(), "ok", _RECENT_TS))
         c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
                   "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
                   "VALUES(?,?,?,0,0,1,'t')", (sid, body, len(body)))
@@ -79,10 +102,13 @@ def mcp_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     (work / "Projects" / "invoice_B.txt").write_text("invoice payment due")
     sid = _seed(db, "work", "Projects/contract_A.txt", "payment application for the contract")
     _seed(db, "work", "Projects/invoice_B.txt", "invoice payment due")
-    with sqlite3.connect(db) as c:
-        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     config = ObsidianMcpConfig(external_sources=[ExternalSourceRoot(source_root_key="work",
                                                                     path=str(work))])
+    _make_root_trusted(db, config, "work")  # A2: certify "work" safe so serving tools return data
+    # Checkpoint AFTER seeding trust so the completed generation is in the main DB, visible to the broker's
+    # immutable read-only connection (an immutable reader ignores the WAL).
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     monkeypatch.setattr("hb_assistant.obsidian_mcp.config.load_config", lambda: config)
     vault = tmp_path / "vault"
     vault.mkdir(exist_ok=True)
@@ -197,8 +223,6 @@ def test_live_read_resolves_via_nas_root_injection(tmp_path: Path, monkeypatch: 
     (work / "Projects" / "contract_A.txt").write_text("payment application for the contract")
     # Index under the derived key syn-work (roots key "work" → syn-work).
     sid = _seed(db, "syn-work", "Projects/contract_A.txt", "payment application for the contract")
-    with sqlite3.connect(db) as c:
-        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     # load_config returns the real NAS default: NO external_sources.
     monkeypatch.setattr("hb_assistant.obsidian_mcp.config.load_config", ObsidianMcpConfig)
     vault = tmp_path / "vault"
@@ -209,6 +233,15 @@ def test_live_read_resolves_via_nas_root_injection(tmp_path: Path, monkeypatch: 
                "work": RootSpec("work", work, "read_only")},
         obsidian=NasObsidianConfig(vault_root=vault, backup_dir=tmp_path / "bk", support_dir=tmp_path / "sup"),
     )
+    # A2: certify the INJECTED syn-work root safe using the SAME config the broker will serve with (default
+    # ObsidianMcpConfig + resolve_external_sources), so the policy fingerprint matches. Seed BEFORE the
+    # checkpoint so the completed generation is visible to the broker's immutable read-only connection.
+    from hb_assistant.nas_mcp.obsidian_config import resolve_external_sources
+
+    _injected_config = ObsidianMcpConfig(external_sources=resolve_external_sources(cfg))
+    _make_root_trusted(db, _injected_config, "syn-work")
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     broker = NasMcpBroker(cfg)
     # roots_list now reflects the injected syn-work root.
     roots = broker.dispatch("assistant_source_roots_list", {})["result"]

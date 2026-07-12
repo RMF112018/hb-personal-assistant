@@ -45,9 +45,27 @@ This is exactly analogous to the stale `== 123` schema-version trio: a hard-code
 not updated when the tool surface grew to `80` upstream. It is disclosed here and **never absorbed into the A3
 prove-red set**. Phase A does not modify it. (A separate trivial PR can refresh the `78`/`85` literals.)
 
+## Known baseline failures #5 and #6 (discovered during A2 validation; PRE-EXISTING; NOT Phase A)
+The A2 validation set includes two suites outside the A0 18-suite set, each surfacing another **stale
+assertion**, both reproduced on a pristine `origin/main` (`9c27839b`) worktree with zero Phase A code:
+
+| Node ID | Assertion | Cause |
+|---|---|---|
+| `tests/test_source_index_client_performance_hardening.py::test_output_aliases_defined` | `len(ASSISTANT_OUTPUT_ALIASES) == len(ALL_PA_OUTPUT_TOOLS) == 10` (line 235) | stale hard-coded output-alias count; actual is `11` |
+| `tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions` | each source tool's description contains `"vault"`/`"card"` (line 99) | `assistant_source_index_health`'s description contains neither |
+
+**Proof they are pre-existing, not caused by A2:**
+1. `test_output_aliases_defined` counts MCP output-tool aliases — A2 adds no output tools; it fails
+   identically (`11 == 10`) on pristine `origin/main`.
+2. `test_all_source_tools_have_disambiguating_descriptions` fails on **`assistant_source_index_health`**, not
+   on `assistant_get_source` (the only tool docstring A2 changed — and that docstring still contains
+   "...its card linkage..."). It fails identically on pristine `origin/main`.
+
+Both are disclosed here and **never absorbed into the A2 prove-red set**. Phase A does not modify them.
+
 ## Phase A new failures
-None at A0 (A0 commits green; no executable failing tests committed). Per-subphase prove-red node IDs are
-enumerated in `07-test-matrix.md` and captured, run, and reported at each sub-phase checkpoint.
+None. Every sub-phase (A1, A3, A2) commits GREEN; the branch has no committed failing tests. Per-subphase
+prove-red output lives in the evidence package (`a1-prove-red.txt`, `a3-prove-red.txt`, `a2-prove-red.txt`).
 
 ## Totals (authoritative, via JUnit XML — the repo's custom terminal reporter suppresses the text tally)
 - **294 tests: 291 passed, 3 failed, 0 errors, 0 skipped** across 18 source-index suites (~206s).

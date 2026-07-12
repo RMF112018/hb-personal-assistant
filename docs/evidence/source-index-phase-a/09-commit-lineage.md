@@ -9,7 +9,8 @@ All commits are local on branch `fix/source-index-phase-a-correctness-trust`, br
 | 2 | `e1a333ec16e4c10ed8dc901af977e0879918f3c2` | A1 — vault deletion-safety gate (GREEN) |
 | 3 | `1d58d123a3b58463eecb270609d6afba69ed4609` | A1 follow-up (GREEN) — see below |
 | 4 | `80d089eea96a07016babaab852d67a3fc2355991` | A3 — canonical structure-root mapping (GREEN) |
-| 5 | *(this corrective follow-up)* | A3 corrective — fail-closed config loading + evidence split (GREEN) |
+| 5 | `073a3a71a8a338b2bc1c55d7943a32e3dda5566a` | A3 corrective — fail-closed config loading + evidence split (GREEN) |
+| 6 | *(this commit)* | A2 — root-specific client trust, fail-closed only (GREEN) |
 
 ## Intervening commit `1d58d123` — full disclosure
 

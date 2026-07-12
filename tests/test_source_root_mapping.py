@@ -306,11 +306,15 @@ def test_valid_empty_config_still_allows_exact_identity_match(tmp_path):
     r = next(x for x in h["roots"] if x["root_key"] == "work")
     assert r["structure_mapping_reason"] == "exact_match"
     assert r["structure_key"] == "work"
-    assert r["structure_ready"] is True
+    # A2 semantics: mapping RESOLUTION (the A3 fact) is `structure_mapping_resolved`; `structure_ready`
+    # is now OPERATIONAL (also requires backend + folder ingestion + watcher/run-state). A valid identity
+    # match resolves the mapping but does not by itself make the root operationally structure-ready.
+    assert r["structure_mapping_resolved"] is True
 
 
 def test_config_failure_cannot_report_structure_ready(tmp_path, monkeypatch):
-    # Blanket guarantee: under a config-load failure NO root may be reported structure_ready.
+    # Blanket guarantee: under a config-load failure NO root may be reported structure_ready OR
+    # structure_mapping_resolved (fail closed on both the operational and the mapping-resolution facts).
     db, _root, ocfg, _acfg = _env(tmp_path, file_key="work", structure_key="work")
 
     monkeypatch.setattr(
@@ -320,6 +324,7 @@ def test_config_failure_cannot_report_structure_ready(tmp_path, monkeypatch):
     h = source_index_health(SourceIndexRepository(db), ocfg)
     assert h["structure_mapping_config_available"] is False
     assert all(r["structure_ready"] is False for r in h["roots"])
+    assert all(r["structure_mapping_resolved"] is False for r in h["roots"])
 
 
 # ==================================================================================================
