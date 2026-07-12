@@ -11,7 +11,20 @@ All commits are local on branch `fix/source-index-phase-a-correctness-trust`, br
 | 4 | `80d089eea96a07016babaab852d67a3fc2355991` | A3 — canonical structure-root mapping (GREEN) |
 | 5 | `073a3a71a8a338b2bc1c55d7943a32e3dda5566a` | A3 corrective — fail-closed config loading + evidence split (GREEN) |
 | 6 | `554c4b905a947e7660d2e98fbbd64c9b55b61451` | A2 — root-specific client trust, fail-closed only (GREEN) |
-| 7 | *(branch HEAD — this A2-corrective commit)* | A2 corrective — evidence correction + 1 bootstrap↔watcher non-circularity regression test (GREEN) |
+| 7 | `351c7e4c…` | A2 corrective #1 — evidence correction + 1 non-circularity regression test (GREEN) |
+| 8 | *(branch HEAD — this A2-corrective-#2 commit)* | A2 corrective #2 — watcher trust enforcement + client read contract (GREEN) |
+
+## A2 corrective #2 (commit 8) — scope
+Two implementation-contract fixes on the HOLD-A4 disposition (see `14-a2-corrective2-watcher-and-read-contract.md`):
+- **Watcher startup fails closed** for a not-ready required root via the new shared-authority field
+  `safe_for_watcher_activation` (bootstrapped + certified + reconciled + structure-data-ready); non-circular
+  (bootstrap is watcher-independent). +6 named watcher lifecycle tests (trust suite 36→40); 4 existing
+  drain-mechanics tests aligned to seed real readiness.
+- **Client-visible `assistant_source_file_read` purpose corrected** in `tool_entry_manifest.py` (bounded
+  excerpt / no complete-file / safe root / truncation-fallback). `semantic_surface_checksum`
+  `…c4bf09fc`→`…a53b72` (regenerated, one purpose only).
+- Src: `source_root_trust.py`, `source_watch.py`, `tool_entry_manifest.py`. Evidence: `04`, `09`, `11`, `13`,
+  `14` + `manifest-checksum-a2corrective2.txt`. No push/PR/merge/force; no production mutation; tool names preserved.
 
 ## A2 corrective follow-up (commit 7) — scope
 

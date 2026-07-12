@@ -21,10 +21,10 @@
 #     tests/test_n8c_client_exposure_bridge.py \
 #     tests/test_tool_manifest_freshness_guard.py
 #
-# TERMINAL SUMMARY LINE:
-#   1 failed, 152 passed in 247.69s (0:04:07)
+# TERMINAL SUMMARY LINE (at A2 corrective #2 — trust suite 36→40):
+#   1 failed, 156 passed.
 #
-# JUnit XML totals (authoritative): tests="153" failures="1" errors="0" skipped="0".
+# JUnit XML totals (authoritative): tests="157" failures="1" errors="0" skipped="0".
 #
 # FAILING NODE IDs (1) — PRE-EXISTING baseline defect, NOT an A2 regression, never absorbed into the
 # A2 prove-red set (see 08-baseline-vs-feature-failures.md #5 and the reconciliation matrix
@@ -40,6 +40,6 @@
 # surface) is GREEN — confirming the docstring correction did NOT churn the frozen manifest checksum
 # (see 11-manifest-semantic-diff.md).
 #
-# NOTE ON COUNTS: this run is 153 tests. The A2 CHECKPOINT commit (554c4b90, before this corrective)
-# reported 152 here; the +1 is exactly the new non-circularity regression test added to
-# test_source_root_trust.py by this corrective follow-up. No other count moved.
+# NOTE ON COUNTS: this run is 157 tests at A2 corrective #2 (A2 checkpoint reported 152; corrective #1
+# reported 153). The +4 vs corrective #1 is the trust suite's net change (−2 superseded watcher tests,
+# +6 named watcher lifecycle tests). No other suite's count moved.

@@ -471,44 +471,18 @@ def test_watcher_config_bit_alone_cannot_bypass_when_no_roots(tmp_path):
         w.stop()
 
 
-def test_watcher_allows_uncertified_root_to_bootstrap(tmp_path):
-    # An enabled but not-yet-certified root is the legitimate PRE-INDEX state the drain exists to service —
-    # it must NOT block startup (else bootstrapping could never happen). Client SERVING still fails closed.
-    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+# ===================== watcher activation is bootstrap-gated (fail closed) =====================
+# A2 corrective: SourceWatcher.start() must itself enforce the shared authority's
+# ``safe_for_watcher_activation`` (bootstrapped + certified + reconciled + structure-data-ready). Bootstrap
+# is a SEPARATE, watcher-independent operation, so blocking the watcher pre-bootstrap is NOT circular.
+def _bootstrapped_watch_env(tmp_path, *, file_only=False):
+    """Build a real 'work' root + config + app_config and run a REAL ``source_bootstrap.bootstrap()``.
 
-    d = tmp_path / "x"
-    d.mkdir()
-    db, config = _watch_config(
-        tmp_path, roots=[ExternalSourceRoot(source_root_key="x", path=str(d))]
-    )
-    w = SourceWatcher(db, config)
-    w.start()
-    try:
-        assert w._mode in ("watchdog", "polling")  # NOT degraded
-        assert w._last_error_code != "watcher_no_authorized_roots"
-    finally:
-        w.stop()
-
-
-# ===================== bootstrap → watcher-start is non-circular (real bootstrap()) =====================
-def test_bootstrap_to_watcher_start_is_non_circular(tmp_path):
-    """A2 corrective regression: prove the bootstrap↔watcher relationship has NO circular dependency,
-    driving the REAL ``source_bootstrap.bootstrap()`` (not a stub).
-
-    Sequence proven end to end:
-      1. bootstrap allowed while root not watcher-ready  — bootstrap() runs to completion though the
-         watcher has never started and no run-state exists (bootstrap does NOT depend on the watcher).
-      2. successful bootstrap establishes durable readiness — the file-index layer is recorded complete
-         and bootstrapped in ``bootstrap_state`` (durable, survives the process).
-      3. watcher start then succeeds — SourceWatcher.start() comes up non-degraded on the bootstrapped root.
-      4. watcher start before bootstrap fails closed *for client serving* — before bootstrap the shared
-         trust authority reports the enabled root NOT safe_for_client_answering (serving fails closed),
-         while the watcher's own drain is permitted so indexing can occur (the resolution to the circle).
-    """
+    A FULL bootstrap makes the root ``safe_for_watcher_activation`` (completed generation + structure data);
+    a ``file_only`` bootstrap certifies the file layer but leaves structure data unready. Returns
+    (db, config, app_config)."""
     from hb_assistant.config.loader import load_config as load_app_config
     from hb_assistant.obsidian_mcp import source_bootstrap as sb
-    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
-    from hb_assistant.store.source_index_bootstrap_repository import SourceIndexBootstrapRepository
 
     root_dir = tmp_path / "work"
     root_dir.mkdir()
@@ -523,28 +497,125 @@ def test_bootstrap_to_watcher_start_is_non_circular(tmp_path):
         external_source_watch_enabled=True,
     )
     acfg = load_app_config()
-    acfg.source_structure.scan_roots = {}
-
-    # (4) BEFORE bootstrap: client SERVING fails closed for the enabled, un-bootstrapped root.
-    pre = load_root_trust(SourceIndexRepository(db), config, None, "work")
-    assert pre.safe_for_client_answering is False  # serving fails closed pre-bootstrap
-
-    # (1) bootstrap is ALLOWED and runs to completion with NO watcher ever started / no run-state present.
-    res = sb.bootstrap(
-        db_path=db, obsidian_config=config, app_config=acfg, root_key="work", file_only=True
+    acfg.source_structure.scan_roots = {"work": str(root_dir)}
+    sb.bootstrap(
+        db_path=db, obsidian_config=config, app_config=acfg, root_key="work", file_only=file_only
     )
-    assert res["roots"][0]["file_index"].get("bounded_out") is not True  # completed, not bounded
+    return db, config, acfg
 
-    # (2) bootstrap established DURABLE readiness on the file layer (independent of the watcher).
-    state = SourceIndexBootstrapRepository(db).get_bootstrap_state("work")
-    assert state["file_index_status"] == "bootstrapped"  # durable completed file-layer readiness
-    assert state["file_index_bootstrapped"] == 1
 
-    # (3) watcher start THEN succeeds (non-degraded) on the now-bootstrapped root.
-    w = SourceWatcher(db, config)
+def _unbootstrapped_watch_env(tmp_path):
+    """An enabled 'work' root with a file present but NO bootstrap/generation (pre-index state)."""
+    from hb_assistant.config.loader import load_config as load_app_config
+
+    d = tmp_path / "work"
+    d.mkdir()
+    (d / "f.txt").write_text("payment record")
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    config = ObsidianMcpConfig(
+        vault_root=str(d),
+        external_sources=[ExternalSourceRoot(source_root_key="work", path=str(d))],
+        external_source_watch_enabled=True,
+    )
+    acfg = load_app_config()
+    acfg.source_structure.scan_roots = {"work": str(d)}
+    return db, config, acfg
+
+
+def test_watcher_start_before_bootstrap_fails_closed(tmp_path):
+    # The watcher itself (not just client serving) MUST fail closed for a not-yet-bootstrapped root.
+    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+    db, config, acfg = _unbootstrapped_watch_env(tmp_path)
+    w = SourceWatcher(db, config, app_config=acfg)
     w.start()
     try:
-        assert w._mode in ("watchdog", "polling")  # NOT degraded
-        assert w._last_error_code != "watcher_no_authorized_roots"
+        assert w._mode == "degraded"
+        assert w._last_error_code == "watcher_root_not_bootstrapped"
+    finally:
+        w.stop()
+
+
+def test_bootstrap_succeeds_without_watcher(tmp_path):
+    # Reframed from the former 'watcher allows uncertified to bootstrap': bootstrap is a SEPARATE operation
+    # that runs WITHOUT the watcher and establishes durable readiness — this is what makes gating the watcher
+    # pre-bootstrap non-circular. It proves bootstrap is allowed, NOT that the watcher starts early.
+    from hb_assistant.store.source_index_scan_generations_repository import (
+        SourceIndexScanGenerationsRepository,
+    )
+
+    db, config, acfg = _bootstrapped_watch_env(tmp_path)  # a REAL bootstrap ran, no watcher involved
+    gen = (SourceIndexScanGenerationsRepository(db).latest_generations() or {}).get("work")
+    assert gen is not None and gen["status"] == "completed"  # durable readiness established
+    d = load_root_trust(SourceIndexRepository(db), config, acfg, "work")
+    assert d.safe_for_watcher_activation is True  # now — and only now — the watcher may activate
+
+
+def test_watcher_start_after_bootstrap_succeeds(tmp_path):
+    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+    db, config, acfg = _bootstrapped_watch_env(tmp_path)  # FULL bootstrap → fully ready
+    w = SourceWatcher(db, config, app_config=acfg)
+    w.start()
+    try:
+        assert w._mode in ("watchdog", "polling")  # NOT degraded — the ready root activates
+        assert w._last_error_code not in (
+            "watcher_root_not_bootstrapped", "watcher_structure_data_unready",
+            "watcher_policy_stale", "watcher_reconciliation_incomplete",
+        )
+    finally:
+        w.stop()
+
+
+def test_watcher_start_blocks_structure_data_unready(tmp_path):
+    # file_only bootstrap: file layer certified (trust_state safe) but NO structure data → not activatable.
+    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+    db, config, acfg = _bootstrapped_watch_env(tmp_path, file_only=True)
+    w = SourceWatcher(db, config, app_config=acfg)
+    w.start()
+    try:
+        assert w._mode == "degraded"
+        assert w._last_error_code == "watcher_structure_data_unready"
+    finally:
+        w.stop()
+
+
+def test_watcher_start_blocks_policy_stale(tmp_path):
+    # A fully-ready root whose certified generation's policy fingerprint later drifts must NOT keep draining.
+    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+    db, config, acfg = _bootstrapped_watch_env(tmp_path)
+    with sqlite3.connect(db) as c:
+        c.execute(
+            "UPDATE source_index_scan_generations SET policy_fingerprint='STALE_FP' WHERE root_key='work'"
+        )
+        c.commit()
+    w = SourceWatcher(db, config, app_config=acfg)
+    w.start()
+    try:
+        assert w._mode == "degraded"
+        assert w._last_error_code == "watcher_policy_stale"
+    finally:
+        w.stop()
+
+
+def test_watcher_start_blocks_reconciliation_incomplete(tmp_path):
+    # A generation regressed to a pre-reconcile lifecycle state must block watcher activation.
+    from hb_assistant.obsidian_mcp.source_watch import SourceWatcher
+
+    db, config, acfg = _bootstrapped_watch_env(tmp_path)
+    with sqlite3.connect(db) as c:
+        c.execute(
+            "UPDATE source_index_scan_generations SET status='reconcile_pending', "
+            "reconciliation_completed_at=NULL WHERE root_key='work'"
+        )
+        c.commit()
+    w = SourceWatcher(db, config, app_config=acfg)
+    w.start()
+    try:
+        assert w._mode == "degraded"
+        assert w._last_error_code == "watcher_reconciliation_incomplete"
     finally:
         w.stop()

@@ -63,6 +63,16 @@ RC_STRUCTURE_DATA_UNREADY = "structure_data_unready"
 RC_STRUCTURE_MAPPING_UNAVAILABLE = "structure_mapping_unavailable"
 RC_UNKNOWN_ROOT = "unknown_root"
 
+# Watcher-startup fail-closed reason codes (sanitized, path-free). The watcher may activate a root ONLY
+# when it is fully ready (bootstrapped + certified + reconciled + structure-data-ready); every other state
+# maps to exactly one of these.
+WATCHER_ROOT_NOT_BOOTSTRAPPED = "watcher_root_not_bootstrapped"
+WATCHER_POLICY_STALE = "watcher_policy_stale"
+WATCHER_RECONCILIATION_INCOMPLETE = "watcher_reconciliation_incomplete"
+WATCHER_STRUCTURE_DATA_UNREADY = "watcher_structure_data_unready"
+WATCHER_ROOT_DENIED = "watcher_root_denied"
+WATCHER_ROOT_NOT_READY = "watcher_root_not_ready"
+
 
 @dataclass(frozen=True)
 class RootTrustInputs:
@@ -117,6 +127,43 @@ class RootTrustDecision:
         """Whole-root client-answer safety — TRUE only for a fully trusted root."""
         return self.trust_state == TRUST_SAFE
 
+    @property
+    def safe_for_watcher_activation(self) -> bool:
+        """Whether ``SourceWatcher.start()`` may activate the drain for this root.
+
+        STRICTER than client answering: the watcher maintains a root's live index, so it must not run until
+        the root is fully bootstrapped and certified (``trust_state == safe`` ⇒ authorized+enabled, policy
+        current, freshness known, index layers ready), its reconciliation is complete, AND its structure data
+        is ready. A resolved mapping / a bare bootstrap-state row is never enough. Bootstrap is a SEPARATE
+        watcher-independent operation, so blocking the watcher pre-bootstrap creates no circular dependency."""
+        return (
+            self.trust_state == TRUST_SAFE and self.reconciliation_complete and self.structure_ready
+        )
+
+    @property
+    def watcher_activation_block_reason(self) -> str | None:
+        """The single sanitized reason the watcher must NOT activate this root, or ``None`` if it may.
+        Derived from the same decision fields (no separate policy)."""
+        if self.safe_for_watcher_activation:
+            return None
+        if self.authorization_state == AUTH_DENIED:
+            return WATCHER_ROOT_DENIED
+        gs = self.generation_status
+        if gs is None or gs in ("failed", "abandoned"):
+            return WATCHER_ROOT_NOT_BOOTSTRAPPED
+        if gs in ("running", "partial", "reconcile_pending"):
+            return WATCHER_RECONCILIATION_INCOMPLETE
+        # gs == "completed" from here.
+        if self.policy_verification == "stale":
+            return WATCHER_POLICY_STALE
+        if self.freshness_status == "unknown" or not self.index_only_available:
+            return WATCHER_ROOT_NOT_BOOTSTRAPPED
+        if not self.reconciliation_complete:
+            return WATCHER_RECONCILIATION_INCOMPLETE
+        if not self.structure_ready:
+            return WATCHER_STRUCTURE_DATA_UNREADY
+        return WATCHER_ROOT_NOT_READY
+
     def as_health_fields(self) -> dict[str, Any]:
         """The subset merged into the per-root health entry (preserves existing field names/values)."""
         return {
@@ -132,6 +179,7 @@ class RootTrustDecision:
             "authorization_state": self.authorization_state,
             "sensitivity_known": self.sensitivity_known,
             "safe_for_live_read": self.safe_for_live_read,
+            "safe_for_watcher_activation": self.safe_for_watcher_activation,
             "structure_ready": self.structure_ready,
             "structure_mapping_resolved": self.structure_mapping_resolved,
             "trust_reason_codes": list(self.reason_codes),
@@ -484,6 +532,7 @@ def root_readiness_envelope(decision: RootTrustDecision) -> dict[str, Any]:
         "safe_for_path_lookup": decision.safe_for_path_lookup,
         "safe_for_live_read": decision.safe_for_live_read,
         "safe_for_content_answering": decision.safe_for_content_answering,
+        "safe_for_watcher_activation": decision.safe_for_watcher_activation,
         "structure_ready": decision.structure_ready,
         "structure_mapping_resolved": decision.structure_mapping_resolved,
         "reason_codes": list(decision.reason_codes),

@@ -1,67 +1,71 @@
-# A2 corrective — watcher bootstrap remains possible (no circular dependency)
+# A2 — watcher startup enforces the authorized trust boundary (fail closed, non-circular)
 
-Purpose: confirm the A2 watcher-startup trust enforcement did NOT create a circular dependency in which the
-watcher requires a bootstrapped root while bootstrap requires the watcher. Provides the call flow and a
-regression test driving the **real** `source_bootstrap.bootstrap()`.
+Purpose: prove `SourceWatcher.start()` **itself** fails closed for a required root that is not fully ready,
+while bootstrap remains an independent operation — so there is no circular dependency.
 
-## The circularity risk, and how A2 resolves it
-- **Risk:** if `SourceWatcher.start()` failed closed for any not-yet-ready root, and readiness could only be
-  produced by the watcher, no root could ever be bootstrapped.
-- **Resolution (A2 design, already approved at the A2 GO):** bootstrap is a **separate operation**
-  (`source_bootstrap.bootstrap()`), independent of the watcher. The watcher's own drain performs incremental
-  indexing. Therefore:
-  - The watcher fails closed ONLY on **denied / no-authorized / trust-unevaluable** roots (config-level
-    problems), NOT on the legitimate enabled-but-not-yet-certified pre-index state.
-  - **Client SERVING** (search/list/metadata/read) is where policy/reconciliation/structure readiness is
-    enforced fail-closed before any answer.
+## Correction over the prior pass
+A2 corrective #1 relocated the required fail-closed behavior to client serving and let the watcher drain an
+enabled-but-uncertified root. That did **not** satisfy the A2 contract. This pass makes the watcher enforce the
+boundary directly: it activates a root ONLY when the shared authority reports
+`safe_for_watcher_activation == True`.
 
-## Reconciling the four required checks
-The corrective's item-5 asked for four properties. Three map directly to the design; the fourth is satisfied
-at the **client-serving** layer (the correct place), which this note makes explicit:
+## New canonical field (shared authority — no ad-hoc watcher policy)
+`RootTrustDecision.safe_for_watcher_activation` (in `source_root_trust.py`) is derived from the same decision:
 
-| Required property | Where enforced | Result |
-|---|---|---|
-| bootstrap allowed while root not watcher-ready | `source_bootstrap.bootstrap()` (watcher never started) | ✅ bootstrap runs to completion |
-| successful bootstrap establishes readiness | `bootstrap_state.file_index_status="bootstrapped"`, `file_index_bootstrapped=1` (durable) | ✅ recorded |
-| watcher start then succeeds | `SourceWatcher.start()` on the bootstrapped root | ✅ non-degraded |
-| watcher start **before** bootstrap fails closed | **client SERVING** fails closed pre-bootstrap (`safe_for_client_answering=False`); the watcher DRAIN is intentionally permitted for an enabled root so indexing can occur | ✅ serving fails closed; drain permitted (non-circular) |
-
-> Design note on the fourth property: making `SourceWatcher.start()` itself fail closed for an
-> enabled-but-un-bootstrapped root would re-introduce the exact circular dependency (the drain is what
-> indexes). A2 therefore fails the **client answer** closed before bootstrap — a client can never receive an
-> authoritative answer from an un-bootstrapped root — while allowing the drain. This is covered explicitly and
-> was the design accepted at the A2 checkpoint (`test_watcher_allows_uncertified_root_to_bootstrap`).
-
-## Call flow (non-circular)
 ```
-bootstrap():  map_roots → file-layer scan/upsert → SourceIndexBootstrapRepository records
-              file_index_status="bootstrapped", file_index_bootstrapped=1        [no watcher involved]
-                                   │
-                                   ▼
-client SERVING (search/list/metadata/read):  load_root_trust() → RootTrustDecision
-              pre-bootstrap  → safe_for_client_answering=False → blocked_root_unready   [fails closed]
-              post-certified → safe_for_client_answering=True  → ok
-                                   │
-                                   ▼
-SourceWatcher.start():  _enforce_watch_trust() → load_root_trust per configured root
-              denied / none-authorized / unevaluable → degraded (sanitized reason)      [fails closed]
-              enabled (even un-bootstrapped/uncertified) → drain permitted              [non-circular]
+safe_for_watcher_activation == (
+    trust_state == "safe"          # authorized + enabled + policy current + freshness known + index layers ready
+    and reconciliation_complete    # generation reconciliation finished
+    and structure_ready            # structure mapping resolved + backend up + folder map exists + run-state ready
+)
 ```
 
-## Regression test (real `bootstrap()`)
-`tests/test_source_root_trust.py::test_bootstrap_to_watcher_start_is_non_circular` proves the full sequence:
+`RootTrustDecision.watcher_activation_block_reason` maps every not-ready state to one sanitized code:
+`watcher_root_not_bootstrapped` (no/failed generation, freshness unknown, index layers unready),
+`watcher_reconciliation_incomplete` (running/partial/reconcile_pending generation),
+`watcher_policy_stale` (completed generation whose policy fingerprint drifted),
+`watcher_structure_data_unready` (safe file layer but no structure data), `watcher_root_denied`.
 
-1. **Pre-bootstrap serving fails closed:** `load_root_trust(...).safe_for_client_answering is False` for the
-   enabled, un-bootstrapped root.
-2. **bootstrap allowed with no watcher:** `source_bootstrap.bootstrap(db_path, obsidian_config, app_config,
-   root_key="work", file_only=True)` runs to completion (`file_index.bounded_out is not True`) though the
-   watcher has never started.
-3. **Durable readiness established:** `get_bootstrap_state("work")` →
-   `file_index_status == "bootstrapped"`, `file_index_bootstrapped == 1`.
-4. **Watcher then starts non-degraded:** `SourceWatcher.start()` →
-   `_mode in ("watchdog","polling")`, `_last_error_code != "watcher_no_authorized_roots"`.
+`SourceWatcher.start() → _enforce_watch_trust()` now requires EVERY configured+enabled root to be
+`safe_for_watcher_activation`; otherwise it degrades (no drain thread) with the decision's block reason.
+Existing fail-closed conditions are retained: `watcher_no_authorized_roots`, `watcher_trust_unevaluable`,
+`watcher_lease_error`/`watcher_not_owner`. The watcher takes an injected `app_config` so its trust evaluation
+is deterministic and identical to the health projection.
 
-Result: `36 passed` in `test_source_root_trust.py` (this test + the 35 A2-checkpoint trust tests). The related
-watcher fail-closed direction is covered by `test_watcher_degrades_when_all_roots_disabled` (no-authorized),
-`test_watcher_degrades_on_unevaluable_trust` (unevaluable), and
-`test_watcher_config_bit_alone_cannot_bypass_when_no_roots` (config bit alone cannot bypass).
+## No circular dependency (the key argument)
+Bootstrap is a SEPARATE, watcher-independent operation. A full `source_bootstrap.bootstrap()` writes a
+`completed` scan generation (matching the policy fingerprint) AND structure data — establishing durable
+readiness — with the watcher never running. So:
+
+```
+SourceWatcher.start() before bootstrap  → degraded (watcher_root_not_bootstrapped)   [fails closed]
+source_bootstrap.bootstrap()            → runs WITHOUT the watcher                    [independent]
+                                        → writes completed generation + structure     [durable readiness]
+SourceWatcher.start() after bootstrap   → activates (watchdog/polling)                [non-circular]
+```
+
+Blocking the watcher pre-bootstrap cannot deadlock, because the thing that makes a root ready is bootstrap,
+which does not need the watcher.
+
+## Regression tests (real `source_bootstrap.bootstrap()`), in `test_source_root_trust.py`
+| Test | Proves |
+|---|---|
+| `test_watcher_start_before_bootstrap_fails_closed` | watcher degrades with `watcher_root_not_bootstrapped` for an enabled, un-bootstrapped root |
+| `test_bootstrap_succeeds_without_watcher` | a REAL bootstrap runs with no watcher, writes a `completed` generation, and only then is `safe_for_watcher_activation` True (reframed from the former "allows uncertified to bootstrap") |
+| `test_watcher_start_after_bootstrap_succeeds` | after a full bootstrap the watcher activates non-degraded |
+| `test_watcher_start_blocks_policy_stale` | a certified root whose fingerprint later drifts degrades with `watcher_policy_stale` |
+| `test_watcher_start_blocks_reconciliation_incomplete` | a generation regressed to `reconcile_pending` degrades with `watcher_reconciliation_incomplete` |
+| `test_watcher_start_blocks_structure_data_unready` | a file-only-bootstrapped root (trust safe, no structure data) degrades with `watcher_structure_data_unready` |
+
+Retained: `test_watcher_degrades_when_all_roots_disabled` (`watcher_no_authorized_roots`),
+`test_watcher_degrades_on_unevaluable_trust` (`watcher_trust_unevaluable`),
+`test_watcher_config_bit_alone_cannot_bypass_when_no_roots`. Trust suite: **40 passed**.
+
+## Blast radius on existing watcher suites (aligned, not bypassed)
+The stricter gate means drain-mechanics tests must run on a READY root. Four existing tests that start the
+drain on an unseeded root now seed real readiness (a full `bootstrap()` + injected `app_config`) instead of
+starting on a pre-index root:
+`test_obsidian_source_watch.py::{test_polling_fallback_when_watchdog_unavailable, test_watchdog_indexes_on_create}`,
+`test_obsidian_source_watch_ownership.py::{test_second_watcher_runs_degraded, test_owner_released_on_stop_lets_next_acquire}`.
+Contention/lease/redaction tests are unchanged (they fail closed earlier, at the lease step). Combined watcher
+lifecycle + ownership + automated-refresh: **79 passed**.

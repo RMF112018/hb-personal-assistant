@@ -20,21 +20,22 @@
 #     tests/test_nas_mcp_source_connector.py
 #
 # TERMINAL SUMMARY LINE (the repo's custom reporter suppresses the per-test tally; the final summary
-# line and any FAILED lines are still emitted):
-#   114 passed in 179.47s (0:02:59)
+# line and any FAILED lines are still emitted). Counts below are at A2 corrective #2 (trust suite 36→40):
+#   118 passed, 0 failed.
 #
-# JUnit XML totals (authoritative): tests="114" failures="0" errors="0" skipped="0".
+# JUnit XML totals (authoritative): tests="118" failures="0" errors="0" skipped="0".
 #
 # FAILING NODE IDs: none.
 #
 # Per-suite contribution (JUnit-derived):
 #   tests/test_source_index_vault_deletion_safety.py .... 19  (A1 deletion-safety)
 #   tests/test_source_root_mapping.py ................... 25  (A3 canonical mapping)
-#   tests/test_source_root_trust.py .................... 36  (A2 root trust, incl. the new non-circular test)
-#   tests/test_source_connector_service.py ..............<remainder> (A2 serving wiring)
-#   tests/test_nas_mcp_source_connector.py ..............<remainder> (A2 direct/gateway parity)
+#   tests/test_source_root_trust.py .................... 40  (A2 root trust, incl. the 6 watcher lifecycle tests)
+#   tests/test_source_connector_service.py .............. 25  (A2 serving wiring)
+#   tests/test_nas_mcp_source_connector.py ..............  9  (A2 direct/gateway parity)
 #   ---------------------------------------------------------------
-#   TOTAL 114 passed, 0 failed.
+#   TOTAL 118 passed, 0 failed.  (was 114 at A2 corrective #1; +4 = the trust suite's net change,
+#   −2 superseded watcher tests +6 named watcher lifecycle tests.)
 #
 # A0 BASELINE COMPARISON: none of these suites carries a pre-existing baseline failure at A0 — every
 # node here is Phase-A-authored or A2-seeded and is GREEN. (The pre-existing baseline defects live in

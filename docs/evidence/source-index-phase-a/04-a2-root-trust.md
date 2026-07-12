@@ -79,24 +79,29 @@ health but was reporting-only.
 
 6. **Watcher startup enforcement** — `source_watch.py`: `SourceWatcher.start()` independently calls the
    shared authority so the `external_source_watch_enabled` bit + lease alone can no longer start the drain.
-   Fail-closed (degraded, sanitized reason, no host paths) on **trust unevaluable**
-   (`watcher_trust_unevaluable`), a configured **denied** root (`watcher_root_denied`), or configured roots
-   with **none authorized** (`watcher_no_authorized_roots`). **Design note:** the watcher's drain performs
-   the indexing itself, so un-bootstrapped/uncertified roots (the legitimate pre-index state) do NOT block
-   startup — the CLIENT-SERVING paths enforce policy/reconciliation/structure readiness before any answer.
-   This separation is covered by `test_watcher_allows_uncertified_root_to_bootstrap`.
+   **CORRECTED (A2 corrective #2):** the watcher now activates a root ONLY when it is
+   `safe_for_watcher_activation` (bootstrapped + certified + reconciled + structure-data-ready). It fails
+   closed (degraded, sanitized reason, no host paths) on trust unevaluable (`watcher_trust_unevaluable`),
+   no authorized roots (`watcher_no_authorized_roots`), and — new — a required root that is not ready
+   (`watcher_root_not_bootstrapped` / `watcher_policy_stale` / `watcher_reconciliation_incomplete` /
+   `watcher_structure_data_unready`). This is **non-circular** because bootstrap is a separate,
+   watcher-independent operation. Covered by the six watcher lifecycle tests; see
+   `13-watcher-bootstrap-noncircular.md`. *(The prior claim that un-bootstrapped roots do not block startup is
+   superseded.)*
 
-7. **Tool help corrected + manifest re-frozen** — `nas_mcp/tool_registration.py`: the `assistant_get_source`
-   docstring's "...for full file content" overstatement replaced with an explicit bounded-excerpt statement
-   noting the root-trust check. The frozen manifest is a **SQLite row** recomputed from the live surface, so
-   re-freezing means re-running the official generation path (`pa_tool_manifest_refresh_stage` →
-   `pa_tool_manifest_refresh_promote`, or the registration-time `bootstrap_persisted_manifest`) — **no stored
-   checksum was hand-edited**. The freshness-guard + parity + exposure-bridge tests rebuild the surface live
-   and pass, proving direct/gateway parity holds. `semantic_surface_checksum` is derived from each tool's
-   canonical `purpose` (unchanged here), so the edit does not churn the checksum. **Confirmed by regeneration:**
-   the checksum is byte-identical on pristine origin/main and A2 HEAD
-   (`sha256:3eb81b4d…c4bf09fc`) — see `11-manifest-semantic-diff.md` and the probe artifacts
-   (`manifest_probe.py`, `manifest-checksum-{originmain,a2head}.txt`).
+7. **Client-visible read contract corrected + manifest re-frozen** — the `assistant_get_source` docstring
+   overstatement was fixed in corrective #1, but the load-bearing defect was the canonical **manifest
+   `purpose`** of `assistant_source_file_read`, which read the generic family fallback
+   `"Indexed NAS source-file discovery."`. **CORRECTED (A2 corrective #2):** `tool_entry_manifest.py` now
+   carries a proper `assistant_source_file_read` entry disclosing the real contract (bounded excerpt; no
+   complete-file retrieval; safe root required; truncation / indexed fallback). The frozen manifest is a
+   **SQLite row** recomputed from the live surface via the official generation path
+   (`bootstrap_persisted_manifest` / `seed_frozen_schema_index`) — **no stored checksum was hand-edited**; the
+   freshness guard compares live-rebuilt to stored dynamically (no hard-coded baseline). Freshness + parity +
+   exposure-bridge tests pass (direct==gateway). **Regeneration diff (expected):** `semantic_surface_checksum`
+   moves from `sha256:3eb81b4d…c4bf09fc` (origin/main) to `sha256:16af53d3…a53b72` — the change is confined to
+   the one corrected `read` purpose; no other tool purpose drifted. See `11-manifest-semantic-diff.md` and the
+   probe artifacts (`manifest_probe.py`, `manifest-checksum-{originmain,a2corrective2}.txt`).
 
 ## Files changed
 
@@ -144,10 +149,13 @@ NOT ruff-formatted on origin/main; their diffs are additive with no reformat chu
 - Structure dependency: `test_mapping_resolved_is_not_structure_ready`.
 - Read semantics: `test_read_status_no_live_claim_without_probe`, `test_read_checks_trust_before_fs_for_unsafe_root`,
   `test_read_sensitive_root_never_live`.
-- Watcher startup fail-closed: `test_watcher_degrades_when_all_roots_disabled`,
-  `test_watcher_degrades_on_unevaluable_trust`, `test_watcher_allows_uncertified_root_to_bootstrap`.
-- Bootstrap↔watcher non-circularity (real `bootstrap()`): `test_bootstrap_to_watcher_start_is_non_circular`
-  (A2 corrective) — see `13-watcher-bootstrap-noncircular.md`.
+- Watcher startup fail-closed (A2 corrective #2 — the watcher itself enforces
+  `safe_for_watcher_activation`): `test_watcher_start_before_bootstrap_fails_closed`,
+  `test_watcher_start_blocks_policy_stale`, `test_watcher_start_blocks_reconciliation_incomplete`,
+  `test_watcher_start_blocks_structure_data_unready`, `test_watcher_degrades_when_all_roots_disabled`,
+  `test_watcher_degrades_on_unevaluable_trust`.
+- Bootstrap is watcher-independent (non-circular, real `bootstrap()`): `test_bootstrap_succeeds_without_watcher`,
+  `test_watcher_start_after_bootstrap_succeeds` — see `13-watcher-bootstrap-noncircular.md`.
 - No absolute-path leak: `test_health_no_absolute_path_leak`, `test_unscoped_search_..._discloses_excluded`.
 - Running corrective gen doesn't reopen trust: `test_running_corrective_generation_does_not_reopen_trust`.
 - Direct == gateway: `test_direct_and_gateway_trust_agree` (single connector-service authority behind both).

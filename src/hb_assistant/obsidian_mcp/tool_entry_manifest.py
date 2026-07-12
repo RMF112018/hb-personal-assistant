@@ -89,6 +89,28 @@ TOOL_ENTRY_OVERRIDES: dict[str, dict[str, Any]] = {
         "do_not_use_when": "Broad file discovery — search with assistant_source_file_search first.",
         "examples": ["Show metadata for the matched source file"],
     },
+    "assistant_source_file_read": {
+        "purpose": (
+            "Read a bounded excerpt from one trusted indexed NAS source file; not complete-file "
+            "retrieval. Requires a safe root and an exact selected file; the excerpt may be truncated or "
+            "fall back to the indexed excerpt."
+        ),
+        "use_when": (
+            "You selected an exact source_id/path from search on a safe root and need a short verbatim "
+            "excerpt to confirm content."
+        ),
+        "do_not_use_when": (
+            "The root is not trusted, you need the whole file, or you only need file details "
+            "(use assistant_source_file_metadata) or discovery (use assistant_source_file_search)."
+        ),
+        "examples": ["Read the top of the matched contract PDF", "Show the first lines of the selected file"],
+        "common_failure_modes": [
+            "untrusted / unready root (blocked_root_unready)",
+            "unsupported binary type",
+            "excerpt truncated at the bounded limit",
+            "indexed-excerpt fallback when a live read is unavailable",
+        ],
+    },
     "assistant_search_sources": {
         "purpose": "Search Obsidian vault notes and indexed source cards by query; not NAS file bodies.",
         "use_when": "Find vault meeting notes, project notes, or generated cards.",
