@@ -1,3 +1,39 @@
+# Claude Code AEOS Entrypoint
+
+This repository uses AEOS governance for AI-assisted software delivery.
+
+Before performing substantive work, read:
+
+1. `AGENTS.md`
+2. `AI_OPERATING_MANUAL.md`
+3. `.ai/project-sources/00_AEOS_MASTER_INDEX.md`
+4. This `CLAUDE.md`
+
+Use the AEOS Master Index to identify the active workflow mode, governing sources, required evidence, and required final disposition.
+
+Repository-specific guidance below remains authoritative for Claude Code execution. Do not delete or bypass it.
+
+## AEOS Required Behavior
+
+- Treat current repository state as the highest source of truth.
+- Do not rely on prior chat history as evidence.
+- Preserve approved scope and architecture.
+- Do not silently redesign.
+- Do not expand scope without explicit approval.
+- Produce evidence for implementation claims.
+- Stop before destructive Git operations, deployments, irreversible migrations, or credential changes.
+
+## AEOS Authority Order
+
+1. Current repository and runtime evidence
+2. Approved feature specification and acceptance criteria
+3. Repository-local instructions, including this file
+4. AEOS governance documents
+5. Current user instruction
+6. Prior conversation context
+
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
