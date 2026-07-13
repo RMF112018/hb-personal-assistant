@@ -39,6 +39,20 @@ def _iso_after(delay_seconds: float) -> str:
     return (datetime.now(timezone.utc) + timedelta(seconds=max(0.0, delay_seconds))).isoformat()
 
 
+def is_sqlite_busy(exc: BaseException) -> bool:
+    """True iff ``exc`` is a SQLite BUSY/LOCKED contention (retryable), masking any *extended* result code
+    (e.g. ``SQLITE_BUSY_SNAPSHOT``) to its primary code with ``& 0xFF``. Only busy/locked is retryable —
+    every other ``OperationalError`` is a real error. Falls back to a narrow message match ONLY when no
+    numeric ``sqlite_errorcode`` is available (older interpreters); never treats an arbitrary error as busy."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return (code & 0xFF) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+    if isinstance(exc, sqlite3.OperationalError):
+        msg = str(exc).lower()
+        return "database is locked" in msg or "database table is locked" in msg
+    return False
+
+
 # Bounded-backoff config for retryable 'moved' drain deferrals (Phase B / B4 corrective) — named
 # constants, never magic numbers embedded in the drain. A recoverable condition (stale/unready root,
 # ambiguous mount, dest not yet visible, dest reindex pending) re-queues the SAME move event with a
@@ -1176,20 +1190,33 @@ class SourceIndexRepository:
         destination_metadata: dict[str, Any],
         conn: sqlite3.Connection | None = None,
     ) -> dict[str, Any]:
-        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C2R2-002). In ONE transaction, first prove
-        this drain still owns the claim (``status='processing'`` AND ``attempts=expected_attempt``); if not,
-        return ``result='claim_conflict'`` with **no source/lineage mutation** (a stale worker whose event
-        was reclaimed can never mutate). Otherwise run the same core move. The ownership check and the
-        mutation are atomic — a concurrent reclaim between them is impossible within the single txn."""
+        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C4-001). Ownership is proven by a **guarded
+        WRITE as the first statement** — ``UPDATE … SET updated_at=? WHERE event_id=? AND status='processing'
+        AND attempts=?`` — NOT a read-only ``SELECT``. This matters: the shared ``transaction()`` helper never
+        emits ``BEGIN`` and the connection uses ``isolation_level=''`` (implicit ``BEGIN`` fires only before a
+        DML), so a ``SELECT`` would hold no write lock and a reclaim could slip in before the first mutation.
+        The guarded ``UPDATE`` acquires the RESERVED write lock at this first statement, so this connection
+        holds it through ``_confirmed_move_locked`` and the commit — no concurrent reclaim can commit until it
+        finishes — and ``rowcount`` reflects ownership at lock-acquisition time (0 → the event was already
+        reclaimed → ``result='claim_conflict'``, **no source/lineage mutation**). The write also refreshes the
+        stuck-event lease so the event can't be TTL-reclaimed between commit and re-indexing. SQLite
+        BUSY/LOCKED on the guarded write → ``result='db_busy'`` (no lock acquired, no mutation; retryable);
+        any other ``OperationalError`` propagates as a real error."""
         old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_relative_path)
         new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_relative_path)
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            owned = c.execute(
-                "SELECT 1 FROM source_intelligence_events "
-                "WHERE event_id=? AND status='processing' AND attempts=?",
-                (event_id, int(expected_attempt)),
-            ).fetchone()
-            if owned is None:
+            try:
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (_now(), event_id, int(expected_attempt)),
+                )
+            except sqlite3.OperationalError as e:
+                if is_sqlite_busy(e):
+                    return {"old_source_id": old_sid, "new_source_id": new_sid,
+                            "linked": False, "result": "db_busy"}
+                raise
+            if (cur.rowcount or 0) != 1:
                 return {"old_source_id": old_sid, "new_source_id": new_sid,
                         "linked": False, "result": "claim_conflict"}
             return self._confirmed_move_locked(
@@ -1656,23 +1683,31 @@ class SourceIndexRepository:
           * ``"deferred"`` — re-queued with a future ``next_attempt_at`` (retryable on a later drain);
           * ``"exhausted"`` — ``expected_attempt >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
             guarded terminal disposition (a move never loops forever);
-          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed.
+          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed;
+          * ``"db_busy"`` — SQLite BUSY/LOCKED on the guarded write (PLAN-C4-002/C4R5-001): the retry could
+            not be written; the caller must leave the event ``processing`` for ``requeue_stuck`` (fail-closed,
+            never a false terminal). Any other ``OperationalError`` propagates as a real error.
         """
         if expected_attempt >= MOVED_MAX_ATTEMPTS:
             return "exhausted"
         delay = min(
             MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, expected_attempt - 1))
         )
-        with borrow_connection(conn, self.db_path) as c, transaction(c):
-            cur = c.execute(
-                "UPDATE source_intelligence_events "
-                "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
-                "WHERE event_id=? AND status='processing' AND attempts=?",
-                (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
-            )
-            if (cur.rowcount or 0) == 0:
-                return "conflict"
-        return "deferred"
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events "
+                    "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
+                )
+                if (cur.rowcount or 0) == 0:
+                    return "conflict"
+            return "deferred"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
 
     def complete_owned_event(
         self,
@@ -1682,25 +1717,36 @@ class SourceIndexRepository:
         expected_attempt: int,
         error_code: str | None = None,
         conn: sqlite3.Connection | None = None,
-    ) -> bool:
-        """Terminal completion guarded by the claim generation (Phase B / B4 corrective). Only the drain
-        that currently owns the claim (``status='processing'`` AND ``attempts=expected_attempt``) may
-        finish it — a stale worker's completion is a no-op. Returns True iff the row was updated."""
+    ) -> str:
+        """Busy-aware terminal completion guarded by the claim generation (Phase B / B4 corrective,
+        PLAN-C4R6-001). Only the drain that currently owns the claim (``status='processing'`` AND
+        ``attempts=expected_attempt``) may finish it. Returns:
+          * ``"completed"`` — the terminal transition was persisted;
+          * ``"conflict"`` — a stale worker (reclaimed) → no-op;
+          * ``"db_busy"`` — SQLite BUSY/LOCKED on the terminal write: the completion could not be written, so
+            the event is left ``processing`` for ``requeue_stuck`` (fail-closed; NEVER a false terminal and
+            NEVER an unguarded fallback). Any other ``OperationalError`` propagates as a real error."""
         if status == "skipped":
             error_code = normalize_skip_code(error_code)
-        with borrow_connection(conn, self.db_path) as c, transaction(c):
-            cur = c.execute(
-                "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
-                "WHERE event_id=? AND status='processing' AND attempts=?",
-                (status, error_code, _now(), event_id, int(expected_attempt)),
-            )
-            return (cur.rowcount or 0) > 0
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (status, error_code, _now(), event_id, int(expected_attempt)),
+                )
+                return "completed" if (cur.rowcount or 0) > 0 else "conflict"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
 
     def event_is_owned(
         self, event_id: str, expected_attempt: int, *, conn: sqlite3.Connection | None = None
     ) -> bool:
-        """True iff the event is still owned by this claim generation (processing + attempts match). Used
-        to re-check ownership after the move commits but BEFORE expensive re-indexing."""
+        """True iff the event is still owned by this claim generation (processing + attempts match).
+        Read-only; retained for test assertions. The DRAIN uses :meth:`heartbeat_owned_event` (a guarded
+        WRITE) instead, so the ownership re-check also refreshes the lease and holds a write lock."""
         with borrow_connection(conn, self.db_path) as c:
             row = c.execute(
                 "SELECT 1 FROM source_intelligence_events "
@@ -1708,6 +1754,28 @@ class SourceIndexRepository:
                 (event_id, int(expected_attempt)),
             ).fetchone()
         return row is not None
+
+    def heartbeat_owned_event(
+        self, event_id: str, *, expected_attempt: int, conn: sqlite3.Connection | None = None
+    ) -> str:
+        """Guarded ownership heartbeat before EXPENSIVE re-indexing (Phase B / B4 corrective, PLAN-C4-001).
+        A guarded WRITE (not a read-only SELECT) so it both re-proves ownership under the claim generation
+        AND refreshes the stuck-event lease. Returns ``"ok"`` (rowcount==1 — owned, lease refreshed),
+        ``"conflict"`` (reclaimed → the current owner is authoritative; do NOT index), or ``"db_busy"``
+        (SQLite BUSY/LOCKED → leave the event ``processing`` for ``requeue_stuck``; retryable). Any other
+        ``OperationalError`` propagates as a real error."""
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (_now(), event_id, int(expected_attempt)),
+                )
+                return "ok" if (cur.rowcount or 0) == 1 else "conflict"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
 
     def requeue_stuck(
         self, ttl_seconds: int = 900, *, conn: sqlite3.Connection | None = None

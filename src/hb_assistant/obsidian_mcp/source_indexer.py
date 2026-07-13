@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import sqlite3
 import threading
 import unicodedata
 from collections.abc import Iterator
@@ -23,7 +24,7 @@ from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
 
 from . import pathsafe
 from .config import ExternalSourceRoot, ObsidianMcpConfig
-from .source_index_repository import SourceIndexRepository
+from .source_index_repository import SourceIndexRepository, is_sqlite_busy
 from .source_skip_codes import (
     BOUNDED_RESUME,
     DEFERRED_PATH,
@@ -1479,6 +1480,12 @@ def _apply_moved_event(
             src_key=src_key, expected_attempt=expected_attempt,
         )
     except Exception as exc:  # noqa: BLE001 - never let a moved event fall through to the generic handler
+        if isinstance(exc, sqlite3.OperationalError) and is_sqlite_busy(exc):
+            # Transient SQLite contention — leave the event 'processing' for requeue_stuck (fail-closed;
+            # never a false terminal). No source mutation escaped: the move op fails closed before mutating.
+            return
+        # Busy-aware terminal error completion (never an unguarded fallback): a BUSY/LOCKED on the terminal
+        # write leaves the event 'processing' for requeue_stuck rather than converting or crashing.
         repo.complete_owned_event(
             event_id, "error", expected_attempt=expected_attempt, error_code=type(exc).__name__
         )
@@ -1503,16 +1510,19 @@ def _apply_moved_event_inner(
     are already canonically validated by ``normalize_moved_rel_path`` (caller)."""
     from .source_root_trust import load_root_trust
 
-    def _defer(code: str) -> None:
-        if repo.defer_event(event_id, error_code=code, expected_attempt=expected_attempt) == "exhausted":
-            # Recoverable condition that never cleared within the retry budget. NEVER delete the old row;
-            # a guarded terminal, NON-mutating skip.
-            repo.complete_owned_event(
-                event_id, "skipped", expected_attempt=expected_attempt, error_code=f"{code}_unresolved"
-            )
-
-    def _terminal(status: str, code: str) -> None:
+    def _terminal(status: str, code: str | None) -> None:
+        # Busy-aware terminal transition (PLAN-C4R6-001): "completed"/"conflict"/"db_busy" are all safe
+        # end-states — a BUSY/LOCKED terminal write leaves the event 'processing' for requeue_stuck (never
+        # a false terminal, never an unguarded fallback).
         repo.complete_owned_event(event_id, status, expected_attempt=expected_attempt, error_code=code)
+
+    def _defer(code: str) -> None:
+        # Uniform busy-aware recovery: "deferred" → queued-with-backoff; "conflict" → the current owner is
+        # authoritative (do nothing); "db_busy" → leave 'processing' for requeue_stuck (fail-closed); and on
+        # "exhausted" a guarded terminal NON-mutating skip (recoverable condition never cleared; old row
+        # kept — never delete it).
+        if repo.defer_event(event_id, error_code=code, expected_attempt=expected_attempt) == "exhausted":
+            _terminal("skipped", f"{code}_unresolved")
 
     root_path = Path(root.path)
     # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
@@ -1564,6 +1574,11 @@ def _apply_moved_event_inner(
     result = move.get("result")
     if result == "claim_conflict":
         return
+    if result == "db_busy":
+        # The guarded ownership write could not acquire the lock (contention) — NO mutation. Retryable
+        # under the claim generation; if defer is itself busy it leaves the event 'processing'.
+        _defer("db_busy")
+        return
     if result == "conflicting_successor":
         _terminal("skipped", "conflicting_successor")
         return
@@ -1574,9 +1589,14 @@ def _apply_moved_event_inner(
     if post.state != "contained" or post.resolved_path != resolved0 or post.identity != identity0:
         _defer("dest_changed_during_move")
         return
-    # 7. Re-check ownership before EXPENSIVE indexing. If lost, do not index under a stale claim — leave the
-    #    dest pending+invalidated for the current owner to recover.
-    if not repo.event_is_owned(event_id, expected_attempt):
+    # 7. Re-check ownership before EXPENSIVE indexing via a guarded HEARTBEAT (which also refreshes the
+    #    stuck lease, so the event can't be TTL-reclaimed mid-index). "conflict" → a reclaim won; leave the
+    #    dest pending+invalidated for the current owner. "db_busy" → contention; defer (fail-closed).
+    hb = repo.heartbeat_owned_event(event_id, expected_attempt=expected_attempt)
+    if hb == "conflict":
+        return
+    if hb == "db_busy":
+        _defer("db_busy")
         return
     dest_abs = root_path / new_rel
     try:
