@@ -46,6 +46,45 @@ ORDER_RANK_PATH = "rank,source_root_key,rel_path,source_id"
 CONTENT_LIVE_EXTRACT = "live_extract"
 CONTENT_INDEXED_FALLBACK = "indexed_excerpt_fallback"
 
+# --- Phase B complete-read state vocabulary (single source of truth) -------------------------------
+# Read modes accepted by assistant_source_file_read / SourceContentProvider.read.
+READ_MODE_EXCERPT = "excerpt"
+READ_MODE_COMPLETE = "complete"
+
+# retrieval_state — the outcome of a read request. A complete request NEVER degrades to a truncated
+# `partial`; `partial` is reserved for mode='excerpt'.
+RS_COMPLETE = "complete"
+RS_PARTIAL = "partial"
+RS_UNSUPPORTED = "unsupported_format"
+RS_ARCHIVE_NOT_EXPANDED = "archive_not_expanded"
+RS_TOO_LARGE = "too_large"
+RS_UNAVAILABLE = "unavailable"
+RS_DENIED = "denied"
+RS_STALE = "stale"
+RS_MOVED = "moved"
+RS_PARSER_TIMEOUT = "parser_timeout"
+RS_PARSER_FAILED = "parser_failed"
+RS_PARSER_RESOURCE_EXCEEDED = "parser_resource_exceeded"
+RS_PARSER_OUTPUT_TOO_LARGE = "parser_output_too_large"
+
+# content_state — what kind of content (if any) the response carries.
+CS_RAW_TEXT = "raw_text"
+CS_EXTRACTED = "extracted_content"
+CS_METADATA_ONLY = "metadata_only"
+CS_NONE = "none"
+
+# completeness_state — invariant: retrieval_state == complete  <=>  completeness_state == complete.
+COMP_COMPLETE = "complete"
+COMP_PARTIAL = "partial"
+COMP_NONE = "none"
+
+# Formats a complete read serves as raw text (read whole, no parser). Deliberately SEPARATE from the
+# indexing discovery allowlist (config.allowed_file_types) so enabling complete-read for these does not
+# change bootstrap/watcher scan scope.
+COMPLETE_READ_TEXT_EXTS = frozenset(
+    {"txt", "md", "markdown", "csv", "json", "xml", "html", "htm", "log"}
+)
+
 _SOURCE_REF_PREFIX = "hbsrc1_"
 
 # Static, conservative extension→mime map (advisory only; never trusted for gating).

@@ -1,0 +1,618 @@
+From 5aeb7ab39b87600eb0d9e7952eaa3db762c2325b Mon Sep 17 00:00:00 2001
+From: RMF <65404870+RMF112018@users.noreply.github.com>
+Date: Mon, 13 Jul 2026 03:25:46 -0400
+Subject: [PATCH] Phase B 4th corrective (C4/code): atomic write-lock ownership
+ + busy-aware fail-closed moved transitions (PB-010)
+
+Fourth corrective on phase-b-source-index-architecture-completion, base
+0464e347; preserves 80b4d13d, e488136f, 0464e347 (no amend). Closes the AEOS
+FAIL/NO-GO PB-010 on the third commit. Evidence lands in a separate,
+non-circular evidence-only commit (E5).
+
+Root cause: apply_owned_confirmed_same_root_move proved ownership with a
+read-only SELECT inside `with transaction(c)`, but the shared transaction()
+helper never emits BEGIN and the connection uses isolation_level='' (implicit
+BEGIN fires only before the first DML). The SELECT held no write lock, so a
+requeue_stuck+reclaim could commit between the SELECT and the first source DML
+and a stale attempt mutated under a lost claim.
+
+Fix (scoped to the owned-move op + its indexer caller; shared transaction()
+and global connection config unchanged):
+- Ownership is proven by a guarded WRITE as the first statement
+  (UPDATE ... SET updated_at=? WHERE event_id=? AND status='processing'
+  AND attempts=?). The DML takes the RESERVED write lock immediately, so
+  ownership and the source mutation share one write transaction; rowcount
+  reflects ownership at lock-acquisition time (0 -> claim_conflict, no
+  mutation). The write also refreshes the stuck lease.
+- Pre-index event_is_owned SELECT replaced by a guarded heartbeat_owned_event
+  (re-proves ownership AND refreshes the lease before expensive reindexing).
+- is_sqlite_busy classifies SQLite BUSY/LOCKED by the PRIMARY result code
+  (masking extended codes via & 0xFF), with a narrow message fallback; only
+  busy/locked is retryable, every other OperationalError stays an error.
+- defer_event and complete_owned_event are busy-aware (return db_busy on
+  contention). Every moved transition (move guard, heartbeat, defer, terminal
+  complete/skip, exhaustion, guarded exception path) is fail-closed: BUSY/LOCKED
+  leaves the event 'processing' for requeue_stuck -- never a false terminal,
+  never an unguarded fallback.
+
+Tests (tests/test_source_index_moved_drain.py): all four orderings
+(reclaim-before-guard -> claim_conflict; guard-before-reclaim -> B blocked at
+the mutation boundary via a two-connection spy; reclaim-after-move ->
+pre-index heartbeat conflict, no stale indexing; owner retained -> indexing
+proceeds), busy-through-defer recoverable, exhaustion+busy-terminal
+recoverable, non-busy OperationalError terminal, is_sqlite_busy primary+
+extended classification, and controlled-timestamp lease-refresh. Contention
+connections roll back + close in finally; stuck recovery is deterministic
+(seeded lease). Full moved-drain suite green; ruff + mypy clean on the touched
+modules.
+
+No push / PR / deploy / prod DB / watcher activation / prod migration.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../obsidian_mcp/source_index_repository.py   | 138 +++++++---
+ .../obsidian_mcp/source_indexer.py            |  44 ++-
+ tests/test_source_index_moved_drain.py        | 252 +++++++++++++++++-
+ 3 files changed, 385 insertions(+), 49 deletions(-)
+
+diff --git a/src/hb_assistant/obsidian_mcp/source_index_repository.py b/src/hb_assistant/obsidian_mcp/source_index_repository.py
+index 0331c6e1..32de638f 100644
+--- a/src/hb_assistant/obsidian_mcp/source_index_repository.py
++++ b/src/hb_assistant/obsidian_mcp/source_index_repository.py
+@@ -39,6 +39,20 @@ def _iso_after(delay_seconds: float) -> str:
+     return (datetime.now(timezone.utc) + timedelta(seconds=max(0.0, delay_seconds))).isoformat()
+ 
+ 
++def is_sqlite_busy(exc: BaseException) -> bool:
++    """True iff ``exc`` is a SQLite BUSY/LOCKED contention (retryable), masking any *extended* result code
++    (e.g. ``SQLITE_BUSY_SNAPSHOT``) to its primary code with ``& 0xFF``. Only busy/locked is retryable —
++    every other ``OperationalError`` is a real error. Falls back to a narrow message match ONLY when no
++    numeric ``sqlite_errorcode`` is available (older interpreters); never treats an arbitrary error as busy."""
++    code = getattr(exc, "sqlite_errorcode", None)
++    if isinstance(code, int):
++        return (code & 0xFF) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
++    if isinstance(exc, sqlite3.OperationalError):
++        msg = str(exc).lower()
++        return "database is locked" in msg or "database table is locked" in msg
++    return False
++
++
+ # Bounded-backoff config for retryable 'moved' drain deferrals (Phase B / B4 corrective) — named
+ # constants, never magic numbers embedded in the drain. A recoverable condition (stale/unready root,
+ # ambiguous mount, dest not yet visible, dest reindex pending) re-queues the SAME move event with a
+@@ -1176,20 +1190,33 @@ class SourceIndexRepository:
+         destination_metadata: dict[str, Any],
+         conn: sqlite3.Connection | None = None,
+     ) -> dict[str, Any]:
+-        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C2R2-002). In ONE transaction, first prove
+-        this drain still owns the claim (``status='processing'`` AND ``attempts=expected_attempt``); if not,
+-        return ``result='claim_conflict'`` with **no source/lineage mutation** (a stale worker whose event
+-        was reclaimed can never mutate). Otherwise run the same core move. The ownership check and the
+-        mutation are atomic — a concurrent reclaim between them is impossible within the single txn."""
++        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C4-001). Ownership is proven by a **guarded
++        WRITE as the first statement** — ``UPDATE … SET updated_at=? WHERE event_id=? AND status='processing'
++        AND attempts=?`` — NOT a read-only ``SELECT``. This matters: the shared ``transaction()`` helper never
++        emits ``BEGIN`` and the connection uses ``isolation_level=''`` (implicit ``BEGIN`` fires only before a
++        DML), so a ``SELECT`` would hold no write lock and a reclaim could slip in before the first mutation.
++        The guarded ``UPDATE`` acquires the RESERVED write lock at this first statement, so this connection
++        holds it through ``_confirmed_move_locked`` and the commit — no concurrent reclaim can commit until it
++        finishes — and ``rowcount`` reflects ownership at lock-acquisition time (0 → the event was already
++        reclaimed → ``result='claim_conflict'``, **no source/lineage mutation**). The write also refreshes the
++        stuck-event lease so the event can't be TTL-reclaimed between commit and re-indexing. SQLite
++        BUSY/LOCKED on the guarded write → ``result='db_busy'`` (no lock acquired, no mutation; retryable);
++        any other ``OperationalError`` propagates as a real error."""
+         old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_relative_path)
+         new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_relative_path)
+         with borrow_connection(conn, self.db_path) as c, transaction(c):
+-            owned = c.execute(
+-                "SELECT 1 FROM source_intelligence_events "
+-                "WHERE event_id=? AND status='processing' AND attempts=?",
+-                (event_id, int(expected_attempt)),
+-            ).fetchone()
+-            if owned is None:
++            try:
++                cur = c.execute(
++                    "UPDATE source_intelligence_events SET updated_at=? "
++                    "WHERE event_id=? AND status='processing' AND attempts=?",
++                    (_now(), event_id, int(expected_attempt)),
++                )
++            except sqlite3.OperationalError as e:
++                if is_sqlite_busy(e):
++                    return {"old_source_id": old_sid, "new_source_id": new_sid,
++                            "linked": False, "result": "db_busy"}
++                raise
++            if (cur.rowcount or 0) != 1:
+                 return {"old_source_id": old_sid, "new_source_id": new_sid,
+                         "linked": False, "result": "claim_conflict"}
+             return self._confirmed_move_locked(
+@@ -1656,23 +1683,31 @@ class SourceIndexRepository:
+           * ``"deferred"`` — re-queued with a future ``next_attempt_at`` (retryable on a later drain);
+           * ``"exhausted"`` — ``expected_attempt >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
+             guarded terminal disposition (a move never loops forever);
+-          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed.
++          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed;
++          * ``"db_busy"`` — SQLite BUSY/LOCKED on the guarded write (PLAN-C4-002/C4R5-001): the retry could
++            not be written; the caller must leave the event ``processing`` for ``requeue_stuck`` (fail-closed,
++            never a false terminal). Any other ``OperationalError`` propagates as a real error.
+         """
+         if expected_attempt >= MOVED_MAX_ATTEMPTS:
+             return "exhausted"
+         delay = min(
+             MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, expected_attempt - 1))
+         )
+-        with borrow_connection(conn, self.db_path) as c, transaction(c):
+-            cur = c.execute(
+-                "UPDATE source_intelligence_events "
+-                "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
+-                "WHERE event_id=? AND status='processing' AND attempts=?",
+-                (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
+-            )
+-            if (cur.rowcount or 0) == 0:
+-                return "conflict"
+-        return "deferred"
++        try:
++            with borrow_connection(conn, self.db_path) as c, transaction(c):
++                cur = c.execute(
++                    "UPDATE source_intelligence_events "
++                    "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
++                    "WHERE event_id=? AND status='processing' AND attempts=?",
++                    (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
++                )
++                if (cur.rowcount or 0) == 0:
++                    return "conflict"
++            return "deferred"
++        except sqlite3.OperationalError as e:
++            if is_sqlite_busy(e):
++                return "db_busy"
++            raise
+ 
+     def complete_owned_event(
+         self,
+@@ -1682,25 +1717,36 @@ class SourceIndexRepository:
+         expected_attempt: int,
+         error_code: str | None = None,
+         conn: sqlite3.Connection | None = None,
+-    ) -> bool:
+-        """Terminal completion guarded by the claim generation (Phase B / B4 corrective). Only the drain
+-        that currently owns the claim (``status='processing'`` AND ``attempts=expected_attempt``) may
+-        finish it — a stale worker's completion is a no-op. Returns True iff the row was updated."""
++    ) -> str:
++        """Busy-aware terminal completion guarded by the claim generation (Phase B / B4 corrective,
++        PLAN-C4R6-001). Only the drain that currently owns the claim (``status='processing'`` AND
++        ``attempts=expected_attempt``) may finish it. Returns:
++          * ``"completed"`` — the terminal transition was persisted;
++          * ``"conflict"`` — a stale worker (reclaimed) → no-op;
++          * ``"db_busy"`` — SQLite BUSY/LOCKED on the terminal write: the completion could not be written, so
++            the event is left ``processing`` for ``requeue_stuck`` (fail-closed; NEVER a false terminal and
++            NEVER an unguarded fallback). Any other ``OperationalError`` propagates as a real error."""
+         if status == "skipped":
+             error_code = normalize_skip_code(error_code)
+-        with borrow_connection(conn, self.db_path) as c, transaction(c):
+-            cur = c.execute(
+-                "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
+-                "WHERE event_id=? AND status='processing' AND attempts=?",
+-                (status, error_code, _now(), event_id, int(expected_attempt)),
+-            )
+-            return (cur.rowcount or 0) > 0
++        try:
++            with borrow_connection(conn, self.db_path) as c, transaction(c):
++                cur = c.execute(
++                    "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
++                    "WHERE event_id=? AND status='processing' AND attempts=?",
++                    (status, error_code, _now(), event_id, int(expected_attempt)),
++                )
++                return "completed" if (cur.rowcount or 0) > 0 else "conflict"
++        except sqlite3.OperationalError as e:
++            if is_sqlite_busy(e):
++                return "db_busy"
++            raise
+ 
+     def event_is_owned(
+         self, event_id: str, expected_attempt: int, *, conn: sqlite3.Connection | None = None
+     ) -> bool:
+-        """True iff the event is still owned by this claim generation (processing + attempts match). Used
+-        to re-check ownership after the move commits but BEFORE expensive re-indexing."""
++        """True iff the event is still owned by this claim generation (processing + attempts match).
++        Read-only; retained for test assertions. The DRAIN uses :meth:`heartbeat_owned_event` (a guarded
++        WRITE) instead, so the ownership re-check also refreshes the lease and holds a write lock."""
+         with borrow_connection(conn, self.db_path) as c:
+             row = c.execute(
+                 "SELECT 1 FROM source_intelligence_events "
+@@ -1709,6 +1755,28 @@ class SourceIndexRepository:
+             ).fetchone()
+         return row is not None
+ 
++    def heartbeat_owned_event(
++        self, event_id: str, *, expected_attempt: int, conn: sqlite3.Connection | None = None
++    ) -> str:
++        """Guarded ownership heartbeat before EXPENSIVE re-indexing (Phase B / B4 corrective, PLAN-C4-001).
++        A guarded WRITE (not a read-only SELECT) so it both re-proves ownership under the claim generation
++        AND refreshes the stuck-event lease. Returns ``"ok"`` (rowcount==1 — owned, lease refreshed),
++        ``"conflict"`` (reclaimed → the current owner is authoritative; do NOT index), or ``"db_busy"``
++        (SQLite BUSY/LOCKED → leave the event ``processing`` for ``requeue_stuck``; retryable). Any other
++        ``OperationalError`` propagates as a real error."""
++        try:
++            with borrow_connection(conn, self.db_path) as c, transaction(c):
++                cur = c.execute(
++                    "UPDATE source_intelligence_events SET updated_at=? "
++                    "WHERE event_id=? AND status='processing' AND attempts=?",
++                    (_now(), event_id, int(expected_attempt)),
++                )
++                return "ok" if (cur.rowcount or 0) == 1 else "conflict"
++        except sqlite3.OperationalError as e:
++            if is_sqlite_busy(e):
++                return "db_busy"
++            raise
++
+     def requeue_stuck(
+         self, ttl_seconds: int = 900, *, conn: sqlite3.Connection | None = None
+     ) -> int:
+diff --git a/src/hb_assistant/obsidian_mcp/source_indexer.py b/src/hb_assistant/obsidian_mcp/source_indexer.py
+index 1c21b391..35b7e365 100644
+--- a/src/hb_assistant/obsidian_mcp/source_indexer.py
++++ b/src/hb_assistant/obsidian_mcp/source_indexer.py
+@@ -11,6 +11,7 @@ import hashlib
+ import json
+ import logging
+ import os
++import sqlite3
+ import threading
+ import unicodedata
+ from collections.abc import Iterator
+@@ -23,7 +24,7 @@ from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
+ 
+ from . import pathsafe
+ from .config import ExternalSourceRoot, ObsidianMcpConfig
+-from .source_index_repository import SourceIndexRepository
++from .source_index_repository import SourceIndexRepository, is_sqlite_busy
+ from .source_skip_codes import (
+     BOUNDED_RESUME,
+     DEFERRED_PATH,
+@@ -1479,6 +1480,12 @@ def _apply_moved_event(
+             src_key=src_key, expected_attempt=expected_attempt,
+         )
+     except Exception as exc:  # noqa: BLE001 - never let a moved event fall through to the generic handler
++        if isinstance(exc, sqlite3.OperationalError) and is_sqlite_busy(exc):
++            # Transient SQLite contention — leave the event 'processing' for requeue_stuck (fail-closed;
++            # never a false terminal). No source mutation escaped: the move op fails closed before mutating.
++            return
++        # Busy-aware terminal error completion (never an unguarded fallback): a BUSY/LOCKED on the terminal
++        # write leaves the event 'processing' for requeue_stuck rather than converting or crashing.
+         repo.complete_owned_event(
+             event_id, "error", expected_attempt=expected_attempt, error_code=type(exc).__name__
+         )
+@@ -1503,16 +1510,19 @@ def _apply_moved_event_inner(
+     are already canonically validated by ``normalize_moved_rel_path`` (caller)."""
+     from .source_root_trust import load_root_trust
+ 
++    def _terminal(status: str, code: str | None) -> None:
++        # Busy-aware terminal transition (PLAN-C4R6-001): "completed"/"conflict"/"db_busy" are all safe
++        # end-states — a BUSY/LOCKED terminal write leaves the event 'processing' for requeue_stuck (never
++        # a false terminal, never an unguarded fallback).
++        repo.complete_owned_event(event_id, status, expected_attempt=expected_attempt, error_code=code)
++
+     def _defer(code: str) -> None:
++        # Uniform busy-aware recovery: "deferred" → queued-with-backoff; "conflict" → the current owner is
++        # authoritative (do nothing); "db_busy" → leave 'processing' for requeue_stuck (fail-closed); and on
++        # "exhausted" a guarded terminal NON-mutating skip (recoverable condition never cleared; old row
++        # kept — never delete it).
+         if repo.defer_event(event_id, error_code=code, expected_attempt=expected_attempt) == "exhausted":
+-            # Recoverable condition that never cleared within the retry budget. NEVER delete the old row;
+-            # a guarded terminal, NON-mutating skip.
+-            repo.complete_owned_event(
+-                event_id, "skipped", expected_attempt=expected_attempt, error_code=f"{code}_unresolved"
+-            )
+-
+-    def _terminal(status: str, code: str) -> None:
+-        repo.complete_owned_event(event_id, status, expected_attempt=expected_attempt, error_code=code)
++            _terminal("skipped", f"{code}_unresolved")
+ 
+     root_path = Path(root.path)
+     # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
+@@ -1564,6 +1574,11 @@ def _apply_moved_event_inner(
+     result = move.get("result")
+     if result == "claim_conflict":
+         return
++    if result == "db_busy":
++        # The guarded ownership write could not acquire the lock (contention) — NO mutation. Retryable
++        # under the claim generation; if defer is itself busy it leaves the event 'processing'.
++        _defer("db_busy")
++        return
+     if result == "conflicting_successor":
+         _terminal("skipped", "conflicting_successor")
+         return
+@@ -1574,9 +1589,14 @@ def _apply_moved_event_inner(
+     if post.state != "contained" or post.resolved_path != resolved0 or post.identity != identity0:
+         _defer("dest_changed_during_move")
+         return
+-    # 7. Re-check ownership before EXPENSIVE indexing. If lost, do not index under a stale claim — leave the
+-    #    dest pending+invalidated for the current owner to recover.
+-    if not repo.event_is_owned(event_id, expected_attempt):
++    # 7. Re-check ownership before EXPENSIVE indexing via a guarded HEARTBEAT (which also refreshes the
++    #    stuck lease, so the event can't be TTL-reclaimed mid-index). "conflict" → a reclaim won; leave the
++    #    dest pending+invalidated for the current owner. "db_busy" → contention; defer (fail-closed).
++    hb = repo.heartbeat_owned_event(event_id, expected_attempt=expected_attempt)
++    if hb == "conflict":
++        return
++    if hb == "db_busy":
++        _defer("db_busy")
+         return
+     dest_abs = root_path / new_rel
+     try:
+diff --git a/tests/test_source_index_moved_drain.py b/tests/test_source_index_moved_drain.py
+index 1076d47b..59b78c71 100644
+--- a/tests/test_source_index_moved_drain.py
++++ b/tests/test_source_index_moved_drain.py
+@@ -1,4 +1,4 @@
+-"""Phase B / B4 corrective — governed 'moved' event drain (PB-005/006/007).
++"""Phase B / B4 corrective — governed 'moved' event drain (PB-005/006/007/010).
+ 
+ Proves the rename/move mutation runs OFF the observer thread, in the readiness-gated, symlink/identity-safe
+ drain: a recoverable condition (stale/unready root, lost mount, dest not yet visible, pre/post-mutation
+@@ -368,7 +368,8 @@ def test_stale_claim_cannot_complete_or_defer(tmp_path) -> None:
+     repo.claim_queued(50)                      # attempt 2 now owns it
+     # stale worker A (expected_attempt=1) cannot defer or complete the reclaimed event
+     assert repo.defer_event(eid, error_code="x", expected_attempt=1) == "conflict"
+-    assert repo.complete_owned_event(eid, "done", expected_attempt=1) is False
++    assert repo.complete_owned_event(eid, "done", expected_attempt=1) == "conflict"
++    assert repo.heartbeat_owned_event(eid, expected_attempt=1) == "conflict"  # stale gen cannot refresh
+     assert repo.event_is_owned(eid, 1) is False and repo.event_is_owned(eid, 2) is True
+     with sqlite3.connect(db) as c:
+         assert c.execute("SELECT status, attempts FROM source_intelligence_events "
+@@ -394,6 +395,253 @@ def test_stale_claim_move_is_claim_conflict_no_mutation(tmp_path) -> None:
+     assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None  # untouched
+ 
+ 
++# ---------------- PB-010 (C4): atomic write-lock ownership, busy fail-closed, lease refresh ----------------
++
++def test_concurrent_reclaim_cannot_race_owned_move(tmp_path, monkeypatch) -> None:
++    """The guarded ownership UPDATE takes the write lock as its FIRST statement, so at the mutation boundary
++    a second connection provably cannot reclaim (BUSY/LOCKED) until this move commits. Proves the
++    'A's guard succeeds before B' ordering — B cannot slip a reclaim between ownership and mutation."""
++    db, root, config, repo = _env(tmp_path)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
++                             source_root_key="work")
++    repo.claim_queued(50)  # attempt 1 (processing, attempts=1)
++    outcome: dict = {}
++    orig = repo._confirmed_move_locked
++    b = sqlite3.connect(db, timeout=0)
++    b.execute("PRAGMA busy_timeout=0")
++    try:
++        def spy(c, *a, **k):
++            # Worker A has executed the guarded ownership UPDATE and now holds the RESERVED write lock.
++            try:
++                b.execute("BEGIN IMMEDIATE")  # a concurrent reclaim tries to acquire the write lock
++                b.execute("UPDATE source_intelligence_events SET status='queued', attempts=attempts+1 "
++                          "WHERE event_id=?", (eid,))
++                b.commit()
++                outcome["reclaimed"] = True
++            except sqlite3.OperationalError as e:
++                outcome["busy"] = (getattr(e, "sqlite_errorcode", 0) or 0) & 0xFF
++                b.rollback()
++            return orig(c, *a, **k)
++        monkeypatch.setattr(repo, "_confirmed_move_locked", spy)
++        res = repo.apply_owned_confirmed_same_root_move(
++            event_id=eid, expected_attempt=1, root_key="work",
++            old_relative_path="old.txt", new_relative_path="new.txt",
++            destination_metadata={"file_ext": "txt", "size_bytes": 1, "mtime_ns": 1})
++    finally:
++        b.rollback()
++        b.close()
++    assert outcome.get("busy") in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)  # B blocked at the boundary
++    assert "reclaimed" not in outcome                                          # B never reclaimed under A
++    assert res["result"] == "move_applied"
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old  # legitimate owner superseded old + lineage
++
++
++def test_reclaim_after_move_blocks_stale_indexing(tmp_path, monkeypatch) -> None:
++    """A reclaim that commits AFTER the move but BEFORE indexing is caught by the pre-index heartbeat
++    (conflict) → the stale claim does NOT index the destination."""
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
++                             source_root_key="work")
++    calls = {"index": 0}
++    monkeypatch.setattr(si, "index_source_file",
++                        lambda *a, **k: calls.__setitem__("index", calls["index"] + 1))
++    orig = repo.apply_owned_confirmed_same_root_move
++
++    def wrap(**kw):
++        res = orig(**kw)  # the move commits here
++        # a concurrent worker reclaims the event (attempts 1 -> 2) before this drain reaches the heartbeat
++        with sqlite3.connect(db) as c:
++            c.execute("UPDATE source_intelligence_events SET status='queued' WHERE event_id=?", (kw["event_id"],))
++            c.commit()
++        repo.claim_queued(50)  # attempt 2 now owns it
++        return res
++
++    monkeypatch.setattr(repo, "apply_owned_confirmed_same_root_move", wrap)
++    drain_queue(repo, config)
++    assert calls["index"] == 0                                # stale attempt-1 never indexed
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old  # move committed; lineage intact
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
++                         (eid,)).fetchone() == ("processing", 2)  # current owner (attempt 2) untouched
++        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
++                         (new,)).fetchone()[0] == "pending"        # dest left pending for the owner
++
++
++def test_db_busy_through_defer_is_recoverable(tmp_path, monkeypatch) -> None:
++    """An unrelated writer holding the DB write lock through BOTH the move ownership attempt AND the
++    deferral → no mutation, no terminal transition, event stays recoverable; after release + deterministic
++    stuck recovery the move completes."""
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
++                             source_root_key="work")
++    repo.claim_queued(50)  # attempt 1
++    a = sqlite3.connect(db, timeout=0)  # worker A: no busy wait
++    a.execute("PRAGMA busy_timeout=0")
++    b = sqlite3.connect(db, timeout=0)  # unrelated writer B
++    b.execute("PRAGMA busy_timeout=0")
++    b.execute("BEGIN IMMEDIATE")  # B holds the write lock
++    try:
++        move = repo.apply_owned_confirmed_same_root_move(
++            event_id=eid, expected_attempt=1, root_key="work",
++            old_relative_path="old.txt", new_relative_path="new.txt",
++            destination_metadata={"file_ext": "txt", "size_bytes": 1, "mtime_ns": 1}, conn=a)
++        assert move["result"] == "db_busy"                                    # no lock acquired, no mutation
++        assert repo.defer_event(eid, error_code="db_busy", expected_attempt=1, conn=a) == "db_busy"
++    finally:
++        b.rollback()
++        b.close()
++        a.rollback()
++        a.close()
++    assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None  # nothing mutated
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
++                         (eid,)).fetchone() == ("processing", 1)  # recoverable, not terminal
++        # deterministic stuck recovery: seed an old lease so requeue_stuck is eligible (no wall-clock wait)
++        c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
++                  "WHERE event_id=?", (eid,))
++        c.commit()
++    assert repo.requeue_stuck(900) == 1
++    drain_queue(repo, config)                                     # attempt 2 claims + completes the move
++    assert _event(db)[0] == "done"
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
++
++
++def test_db_busy_during_terminal_completion_is_recoverable(tmp_path) -> None:
++    """Exhaustion followed by a CONTENDED terminal write: defer returns 'exhausted', then the guarded
++    terminal completion hits BUSY → 'db_busy', leaving the event 'processing' (never a false terminal);
++    after release the terminal completion persists."""
++    db, root, config, repo = _env(tmp_path)
++    eid = repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="b.txt",
++                             source_root_key="work")
++    repo.claim_queued(50)  # attempt 1
++    with sqlite3.connect(db) as c:
++        c.execute("UPDATE source_intelligence_events SET attempts=6 WHERE event_id=?", (eid,))
++        c.commit()
++    # at the exhaustion boundary defer_event does NO write and reports 'exhausted'
++    assert repo.defer_event(eid, error_code="dest_reindex_pending", expected_attempt=6) == "exhausted"
++    a = sqlite3.connect(db, timeout=0)
++    a.execute("PRAGMA busy_timeout=0")
++    b = sqlite3.connect(db, timeout=0)
++    b.execute("PRAGMA busy_timeout=0")
++    b.execute("BEGIN IMMEDIATE")  # contention on the terminal write
++    try:
++        assert repo.complete_owned_event(
++            eid, "error", expected_attempt=6, error_code="dest_reindex_exhausted", conn=a) == "db_busy"
++    finally:
++        b.rollback()
++        b.close()
++        a.rollback()
++        a.close()
++    with sqlite3.connect(db) as c:  # left processing (recoverable), NOT terminal
++        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
++                         (eid,)).fetchone() == ("processing", 6)
++    # after release, the guarded terminal completion persists
++    assert repo.complete_owned_event(
++        eid, "error", expected_attempt=6, error_code="dest_reindex_exhausted") == "completed"
++    assert _event(db)[:2] == ("error", "dest_reindex_exhausted")
++
++
++def test_non_busy_operational_error_is_terminal_error(tmp_path, monkeypatch) -> None:
++    """A NON-busy OperationalError in the moved handler surfaces as a terminal 'error' (not silently
++    retained/retried)."""
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    _enqueue_move(repo, "old.txt", "new.txt")
++
++    def boom(**kw):
++        raise sqlite3.OperationalError("no such column: bogus")  # NOT busy/locked
++
++    monkeypatch.setattr(repo, "apply_owned_confirmed_same_root_move", boom)
++    drain_queue(repo, config)
++    assert _event(db)[:2] == ("error", "OperationalError")
++
++
++def test_busy_raised_in_moved_handler_leaves_processing(tmp_path, monkeypatch) -> None:
++    """A BUSY/LOCKED OperationalError raised in the moved handler is retryable: the event is left
++    'processing' for requeue_stuck (fail-closed), never a false terminal. Also exercises the message
++    fallback of is_sqlite_busy (a fabricated error carries no numeric code)."""
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
++                             source_root_key="work")
++
++    def boom(**kw):
++        raise sqlite3.OperationalError("database is locked")
++
++    monkeypatch.setattr(repo, "apply_owned_confirmed_same_root_move", boom)
++    drain_queue(repo, config)
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT status FROM source_intelligence_events WHERE event_id=?",
++                         (eid,)).fetchone()[0] == "processing"
++
++
++def test_is_sqlite_busy_classifies_primary_and_extended() -> None:
++    """The classifier masks EXTENDED result codes to the primary code and rejects unrelated errors."""
++    from hb_assistant.obsidian_mcp.source_index_repository import is_sqlite_busy
++
++    class _E:  # stand-in carrying a numeric sqlite_errorcode
++        def __init__(self, code: int) -> None:
++            self.sqlite_errorcode = code
++
++    assert is_sqlite_busy(_E(sqlite3.SQLITE_BUSY)) is True                 # primary busy (5)
++    assert is_sqlite_busy(_E(sqlite3.SQLITE_LOCKED)) is True               # primary locked (6)
++    assert is_sqlite_busy(_E(sqlite3.SQLITE_BUSY | (1 << 8))) is True      # extended busy (e.g. 261)
++    assert is_sqlite_busy(_E(sqlite3.SQLITE_LOCKED | (2 << 8))) is True    # extended locked
++    assert is_sqlite_busy(_E(1)) is False                                 # SQLITE_ERROR — not busy
++    # no numeric code -> narrow message fallback (only for OperationalError)
++    assert is_sqlite_busy(sqlite3.OperationalError("database is locked")) is True
++    assert is_sqlite_busy(sqlite3.OperationalError("no such table: x")) is False
++    assert is_sqlite_busy(ValueError("locked")) is False                  # not OperationalError, no code
++
++
++def test_move_and_heartbeat_refresh_lease_to_controlled_timestamp(tmp_path, monkeypatch) -> None:
++    """The move-boundary guarded UPDATE and the pre-index heartbeat each refresh the lease to the injected
++    timestamp (controlled clock — no 'two fast stamps differ' race); a stale generation cannot refresh."""
++    import hb_assistant.obsidian_mcp.source_index_repository as R
++    db, root, config, repo = _env(tmp_path)
++    _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
++                             source_root_key="work")
++    repo.claim_queued(50)  # attempt 1
++
++    def _uat() -> str:
++        with sqlite3.connect(db) as c:
++            return c.execute("SELECT updated_at FROM source_intelligence_events WHERE event_id=?",
++                             (eid,)).fetchone()[0]
++
++    monkeypatch.setattr(R, "_now", lambda: "2030-01-02T03:04:05+00:00")
++    move = repo.apply_owned_confirmed_same_root_move(
++        event_id=eid, expected_attempt=1, root_key="work",
++        old_relative_path="old.txt", new_relative_path="new.txt",
++        destination_metadata={"file_ext": "txt", "size_bytes": 1, "mtime_ns": 1})
++    assert move["result"] == "move_applied"
++    assert _uat() == "2030-01-02T03:04:05+00:00"                 # move boundary refreshed the lease
++
++    monkeypatch.setattr(R, "_now", lambda: "2031-06-07T08:09:10+00:00")
++    assert repo.heartbeat_owned_event(eid, expected_attempt=1) == "ok"
++    assert _uat() == "2031-06-07T08:09:10+00:00"                 # heartbeat refreshed it again
++
++    monkeypatch.setattr(R, "_now", lambda: "2099-12-31T00:00:00+00:00")
++    assert repo.heartbeat_owned_event(eid, expected_attempt=2) == "conflict"  # wrong generation
++    assert _uat() == "2031-06-07T08:09:10+00:00"                 # stale gen did NOT refresh
++
++
+ # ---------------- PB-007: two-stage FTS + public-search invalidation through the drain ----------------
+ 
+ OLD_TOKEN = "zqxoldtoken7141"   # unique tokens that cannot match a path / filename / project metadata
+-- 
+2.50.1 (Apple Git-155)
+

@@ -22,6 +22,7 @@ from .config import ObsidianMcpConfig
 from .source_connector_models import (
     ORDER_RANK_PATH,
     ORDER_ROOT_PATH,
+    READ_MODE_EXCERPT,
     SourceConnectorValidationError,
     clamp_limit,
     compute_query_digest,
@@ -465,10 +466,18 @@ def _neighbors(repo: SourceIndexRepository, detail: dict[str, Any], sid: str, *,
 
 def read_source_file(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
                      source_id: str | None = None, source_ref: str | None = None,
-                     max_chars: int | None = None, prefer_live: bool = True,
+                     max_chars: int | None = None, max_bytes: int | None = None,
+                     prefer_live: bool = True, mode: str = READ_MODE_EXCERPT,
                      conn: Any = None) -> dict[str, Any]:
-    """Bounded, extension-gated, single-file read via ``SourceContentProvider``. Falls back to the
-    indexed excerpt (labelled ``indexed_excerpt_fallback``) when a live read is not permitted."""
+    """Read one NAS source FILE via ``SourceContentProvider``.
+
+    ``mode='excerpt'`` (default) returns a bounded, extension-gated excerpt, degrading to the indexed
+    excerpt (``indexed_excerpt_fallback``) when a live read is not permitted. ``mode='complete'`` returns
+    a complete-or-explicit-failure read (subprocess-isolated for pdf/docx/xlsx/eml) with an explicit
+    ``retrieval_state``/``content_state``/``completeness_state``; it never truncates and labels the result
+    complete. Prefer a ``source_ref`` handoff from a search result; absolute paths are never accepted or
+    returned."""
     sid = resolve_source_id(source_id=source_id, source_ref=source_ref)
     provider = SourceContentProvider(repo, config)
-    return provider.read(sid, max_chars=max_chars, prefer_live=prefer_live, conn=conn)
+    return provider.read(sid, max_chars=max_chars, max_bytes=max_bytes,
+                         prefer_live=prefer_live, mode=mode, conn=conn)

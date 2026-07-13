@@ -1,0 +1,669 @@
+# Phase B C8 gate-equivalent run — ISOLATED clean detached worktree (source-index CI gate list + 2 corrective files, de-duplicated).
+# tested_code_sha: 9182f3d488b737b74bf0447b77cf25b445047d54
+# worktree: /private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8   (HEAD == C8; import provenance proven beneath this worktree)
+# python: Python 3.14.5   (main repo venv interpreter; code + deps imported from the worktree via PYTHONPATH)
+# pipefail: set (PYTEST_EXIT below is pytest's real exit via ${PIPESTATUS[0]}, not tee's)
+# command (run from /private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8):
+PYTHONPATH="/private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8/src:/private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8/subrepos/construction-financial-review/src" /Users/bobbyfetting/hb-personal-assistant/.venv/bin/python -m pytest tests/test_manifest_schema_parity.py tests/test_migrator_v117_source_index_bootstrap.py tests/test_migrator_v123_relpath_index.py tests/test_migrator_v126_rename_lineage.py tests/test_migrator_v127_moved_event.py tests/test_n8c23_client_tool_manifest.py tests/test_nas_mcp_source_connector.py tests/test_obsidian_source_watch_lifecycle.py tests/test_obsidian_source_watch_ownership.py tests/test_obsidian_source_watch_reliability.py tests/test_obsidian_source_watch.py tests/test_source_connector_eval.py tests/test_source_connector_service.py tests/test_source_file_complete_read.py tests/test_source_file_parser_isolation.py tests/test_source_file_retrieval_semantics.py tests/test_source_index_generation_hardening.py tests/test_source_index_health_readonly_conn.py tests/test_source_index_metadata_first_bootstrap.py tests/test_source_index_metadata_generation.py tests/test_source_index_moved_drain.py tests/test_source_index_quarantine_lifecycle.py tests/test_source_index_quarantine.py tests/test_source_index_rename_lineage.py tests/test_source_index_search_latency_index.py tests/test_source_index_vault_deletion_safety.py tests/test_source_index_watcher_automated_refresh.py tests/test_source_root_mapping.py tests/test_source_root_trust.py tests/test_tool_manifest_freshness_guard.py  -rA
+# ----------------------------------------------------------------------------------------------
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+........................................................................ [ 55%]
+........................................................................ [ 69%]
+........................................................................ [ 83%]
+........................................................................ [ 97%]
+..............                                                           [100%]
+=============================== warnings summary ===============================
+../../../../../../../Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+______________________ test_second_watcher_runs_degraded _______________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:206 source_watch.degraded_not_owner
+_______________________ test_status_owner_redacts_token ________________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+____________ test_owner_records_hostname_for_cross_host_attribution ____________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+_____________________ test_lease_check_error_fails_closed ______________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:197 source_watch.degraded_lease_error
+_______________________ test_corrupt_pdf_does_not_crash ________________________
+----------------------------- Captured stderr call -----------------------------
+EOF marker not found
+_________ test_give_up_partial_transition_lease_loss_reports_conflict __________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1789 source_scan.lease_lost
+__________ test_give_up_failed_transition_lease_loss_reports_conflict __________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1789 source_scan.lease_lost
+_____ test_moved_guarded_terminal_failure_never_reaches_unguarded_fallback _____
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1486 source_index.moved_terminalize_failed_left_processing
+_________ test_moved_invalid_terminalization_failure_reaches_backstop __________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1486 source_index.moved_terminalize_failed_left_processing
+_______ test_unconfigured_moved_terminalization_failure_reaches_backstop _______
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1486 source_index.moved_terminalize_failed_left_processing
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[missing-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[missing-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[missing-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[none-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[none-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[none-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[zero-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[zero-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[zero-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[negative-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[negative-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[negative-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[true-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[true-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[true-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[false-valid_configured] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[false-moved_invalid] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+_ test_moved_dispatch_invalid_claim_generation_no_mutation[false-unconfigured_root] _
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:2776 source_index.moved_invalid_claim_generation
+____________ test_terminalize_moved_exception_validates_generation _____________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1474 source_index.moved_terminalize_skipped_invalid_generation
+WARNING  hb_assistant.obsidian_mcp.source_index:source_indexer.py:1486 source_index.moved_terminalize_failed_left_processing
+_______________ test_quarantined_root_fails_watcher_start_closed _______________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+________________ test_watcher_degrades_when_all_roots_disabled _________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+__________________ test_watcher_degrades_on_unevaluable_trust __________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+_______________ test_watcher_start_before_bootstrap_fails_closed _______________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+_______________ test_watcher_start_blocks_structure_data_unready _______________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+____________________ test_watcher_start_blocks_policy_stale ____________________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+_____________ test_watcher_start_blocks_reconciliation_incomplete ______________
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:117 source_watch.degraded_trust
+=========================== short test summary info ============================
+PASSED tests/test_manifest_schema_parity.py::test_parity_fails_when_schema_index_not_frozen
+PASSED tests/test_manifest_schema_parity.py::test_for_manifest_reads_required_args_from_frozen_index_only
+PASSED tests/test_manifest_schema_parity.py::test_parity_detects_required_args_drift
+PASSED tests/test_manifest_schema_parity.py::test_refresh_stage_auto_freezes_schema_index
+PASSED tests/test_manifest_schema_parity.py::test_refresh_stage_succeeds_after_registration
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_latest_schema_version_is_at_least_117
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_v117_tables_created_additive
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_bootstrap_state_columns
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_reconciliation_scan_type_check
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_reapply_idempotent
+PASSED tests/test_migrator_v117_source_index_bootstrap.py::test_old_db_upgrades_to_117
+PASSED tests/test_migrator_v123_relpath_index.py::test_v123_is_latest_and_fresh_db_has_only_root_scoped_index
+PASSED tests/test_migrator_v123_relpath_index.py::test_v123_drops_a_pre_existing_narrow_index
+PASSED tests/test_migrator_v123_relpath_index.py::test_same_relpath_under_two_roots_coexists_after_v123
+PASSED tests/test_migrator_v123_relpath_index.py::test_migration_is_idempotent_on_rerun
+PASSED tests/test_migrator_v126_rename_lineage.py::test_latest_version_at_least_126
+PASSED tests/test_migrator_v126_rename_lineage.py::test_column_and_index_added
+PASSED tests/test_migrator_v126_rename_lineage.py::test_preserves_prior_source_index_versions
+PASSED tests/test_migrator_v126_rename_lineage.py::test_idempotent_reapply
+PASSED tests/test_migrator_v126_rename_lineage.py::test_parity_guard_on_partially_migrated_db
+PASSED tests/test_migrator_v127_moved_event.py::test_latest_version_is_127
+PASSED tests/test_migrator_v127_moved_event.py::test_columns_and_indexes_present
+PASSED tests/test_migrator_v127_moved_event.py::test_moved_and_legacy_types_accepted
+PASSED tests/test_migrator_v127_moved_event.py::test_rebuild_from_old_shape_preserves_rows_and_ids
+PASSED tests/test_migrator_v127_moved_event.py::test_parity_incomplete_table_is_rebuilt_not_marked_applied
+PASSED tests/test_migrator_v127_moved_event.py::test_idempotent_reapply
+PASSED tests/test_migrator_v127_moved_event.py::test_v122_to_v126_preserved
+PASSED tests/test_migrator_v127_moved_event.py::test_fresh_table_is_schema_current_no_false_rebuild
+PASSED tests/test_migrator_v127_moved_event.py::test_missing_attempts_column_rebuilds_losslessly_even_with_v127_recorded
+PASSED tests/test_migrator_v127_moved_event.py::test_wrong_status_default_rebuilds
+PASSED tests/test_migrator_v127_moved_event.py::test_index_right_name_wrong_columns_rebuilds
+PASSED tests/test_migrator_v127_moved_event.py::test_invalid_existing_rows_fail_closed_and_roll_back
+PASSED tests/test_n8c23_client_tool_manifest.py::test_classification
+PASSED tests/test_n8c23_client_tool_manifest.py::test_build_includes_recipes_replacement_and_negatives
+PASSED tests/test_n8c23_client_tool_manifest.py::test_freshness_detects_missing_and_extra
+PASSED tests/test_n8c23_client_tool_manifest.py::test_freshness_no_active_manifest_is_stale
+PASSED tests/test_n8c23_client_tool_manifest.py::test_freshness_fails_on_deployment_runtime_commit_mismatch
+PASSED tests/test_n8c23_client_tool_manifest.py::test_manifest_get_labels_unpersisted_as_ephemeral_not_active
+PASSED tests/test_n8c23_client_tool_manifest.py::test_get_active_hydrates_tool_family_from_manifest_payload
+PASSED tests/test_n8c23_client_tool_manifest.py::test_staged_refresh_mints_approval_and_is_not_silent
+PASSED tests/test_nas_mcp_source_connector.py::test_tools_return_data
+PASSED tests/test_nas_mcp_source_connector.py::test_missing_denied_cleanly
+PASSED tests/test_nas_mcp_source_connector.py::test_snapshot_is_read_only
+PASSED tests/test_nas_mcp_source_connector.py::test_kill_switch_disables_only_source_connector
+PASSED tests/test_nas_mcp_source_connector.py::test_reads_are_not_writes_safe_mode
+PASSED tests/test_nas_mcp_source_connector.py::test_no_write_scan_or_action_tool_registered
+PASSED tests/test_nas_mcp_source_connector.py::test_hb_root_tools_not_broadened
+PASSED tests/test_nas_mcp_source_connector.py::test_status_reports_source_connector
+PASSED tests/test_nas_mcp_source_connector.py::test_live_read_resolves_via_nas_root_injection
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_queue_health_shape_and_drain_stamp
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_queue_health_oldest_processing_age
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_recover_stuck_requeues_processing
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_test_event_enqueues_and_drains
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_restart_is_idempotent_and_returns_status
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_status_includes_queue_health
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_status_endpoint_viewer_ok
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_mutations_require_operator
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_recover_stuck_operator
+PASSED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_test_event_lazy_constructs
+PASSED tests/test_obsidian_source_watch_ownership.py::test_acquire_first_owner
+PASSED tests/test_obsidian_source_watch_ownership.py::test_second_owner_refused_when_fresh
+PASSED tests/test_obsidian_source_watch_ownership.py::test_reentry_same_owner_preserves_started_at
+PASSED tests/test_obsidian_source_watch_ownership.py::test_stale_owner_reclaimed
+PASSED tests/test_obsidian_source_watch_ownership.py::test_refresh_and_release_require_ownership
+PASSED tests/test_obsidian_source_watch_ownership.py::test_get_watcher_owner_marks_stale
+PASSED tests/test_obsidian_source_watch_ownership.py::test_second_watcher_runs_degraded
+PASSED tests/test_obsidian_source_watch_ownership.py::test_owner_released_on_stop_lets_next_acquire
+PASSED tests/test_obsidian_source_watch_ownership.py::test_status_owner_redacts_token
+PASSED tests/test_obsidian_source_watch_ownership.py::test_owner_records_hostname_for_cross_host_attribution
+PASSED tests/test_obsidian_source_watch_ownership.py::test_lease_check_error_fails_closed
+PASSED tests/test_obsidian_source_watch_reliability.py::test_start_honors_freshly_passed_config
+PASSED tests/test_obsidian_source_watch_reliability.py::test_status_consistent_after_stop_and_config_false
+PASSED tests/test_obsidian_source_watch_reliability.py::test_status_running_and_config_true_reports_true
+PASSED tests/test_obsidian_source_watch_reliability.py::test_status_default_config_unchanged_for_unit_callers
+PASSED tests/test_obsidian_source_watch.py::test_disabled_does_not_start
+PASSED tests/test_obsidian_source_watch.py::test_status_shape
+PASSED tests/test_obsidian_source_watch.py::test_poll_once_indexes
+PASSED tests/test_obsidian_source_watch.py::test_polling_fallback_when_watchdog_unavailable
+PASSED tests/test_obsidian_source_watch.py::test_durable_queue_survives_new_watcher
+PASSED tests/test_obsidian_source_watch.py::test_watchdog_indexes_on_create
+PASSED tests/test_source_connector_eval.py::test_all_source_tools_have_disambiguating_descriptions
+PASSED tests/test_source_connector_eval.py::test_source_prompts_route_to_source_tools
+PASSED tests/test_source_connector_eval.py::test_specific_source_tool_selection
+PASSED tests/test_source_connector_eval.py::test_vault_and_card_prompts_do_not_route_to_source_tools
+PASSED tests/test_source_connector_eval.py::test_scenarios_cover_the_brief
+PASSED tests/test_source_connector_service.py::test_search_root_aware_rows
+PASSED tests/test_source_connector_service.py::test_search_hyphenated_project_number_no_fts_error
+PASSED tests/test_source_connector_service.py::test_search_empty_query_returns_empty
+PASSED tests/test_source_connector_service.py::test_search_invalid_root_fails_closed
+PASSED tests/test_source_connector_service.py::test_list_invalid_root_fails_closed
+PASSED tests/test_source_connector_service.py::test_list_traversal_prefix_rejected
+PASSED tests/test_source_connector_service.py::test_search_root_and_ext_filter
+PASSED tests/test_source_connector_service.py::test_search_bounded_snippet
+PASSED tests/test_source_connector_service.py::test_cursor_deterministic_nonoverlapping
+PASSED tests/test_source_connector_service.py::test_cursor_equal_rank_rows
+PASSED tests/test_source_connector_service.py::test_cursor_query_mismatch_rejected
+PASSED tests/test_source_connector_service.py::test_list_root_scoped_prefix_keyset
+PASSED tests/test_source_connector_service.py::test_list_requires_root
+PASSED tests/test_source_connector_service.py::test_metadata_distinguishes_source_and_card
+PASSED tests/test_source_connector_service.py::test_metadata_by_source_ref
+PASSED tests/test_source_connector_service.py::test_metadata_unknown_raises
+PASSED tests/test_source_connector_service.py::test_read_live_bounded
+PASSED tests/test_source_connector_service.py::test_read_indexed_fallback_when_not_live
+PASSED tests/test_source_connector_service.py::test_read_sensitive_root_never_live
+PASSED tests/test_source_connector_service.py::test_read_denies_unsupported_binary
+PASSED tests/test_source_connector_service.py::test_read_path_escape_is_contained
+PASSED tests/test_source_connector_service.py::test_read_no_directory_traversal
+PASSED tests/test_source_connector_service.py::test_reads_do_not_mutate
+PASSED tests/test_source_connector_service.py::test_roots_fall_back_to_index_when_config_empty
+PASSED tests/test_source_connector_service.py::test_status_and_roots_no_abs_paths
+PASSED tests/test_source_file_complete_read.py::test_complete_txt_returns_whole_file
+PASSED tests/test_source_file_complete_read.py::test_complete_csv_and_json_whole
+PASSED tests/test_source_file_complete_read.py::test_complete_carries_provenance_block
+PASSED tests/test_source_file_complete_read.py::test_search_ref_then_complete_roundtrip
+PASSED tests/test_source_file_complete_read.py::test_complete_over_output_budget_is_too_large_not_partial
+PASSED tests/test_source_file_complete_read.py::test_complete_input_over_limit_too_large
+PASSED tests/test_source_file_complete_read.py::test_complete_deleted_is_unavailable
+PASSED tests/test_source_file_complete_read.py::test_complete_untrusted_root_is_stale
+PASSED tests/test_source_file_complete_read.py::test_complete_missing_live_file_is_unavailable
+PASSED tests/test_source_file_complete_read.py::test_complete_index_divergence_is_stale
+PASSED tests/test_source_file_complete_read.py::test_complete_change_during_read_is_stale
+PASSED tests/test_source_file_complete_read.py::test_invalid_mode_fails_closed
+PASSED tests/test_source_file_complete_read.py::test_excerpt_mode_still_partial
+PASSED tests/test_source_file_parser_isolation.py::test_isolated_parses_real_fixture[pdf-_make_pdf-Pay Application 12]
+PASSED tests/test_source_file_parser_isolation.py::test_isolated_parses_real_fixture[docx-_make_docx-Pay Application 12]
+PASSED tests/test_source_file_parser_isolation.py::test_isolated_parses_real_fixture[xlsx-_make_xlsx-Invoice]
+PASSED tests/test_source_file_parser_isolation.py::test_isolated_parses_real_fixture[eml-_make_eml-pay application 12]
+PASSED tests/test_source_file_parser_isolation.py::test_corrupt_pdf_does_not_crash
+PASSED tests/test_source_file_parser_isolation.py::test_corrupt_xlsx_does_not_crash
+PASSED tests/test_source_file_parser_isolation.py::test_output_over_budget_is_not_ok
+PASSED tests/test_source_file_parser_isolation.py::test_input_over_budget_is_too_large_no_child
+PASSED tests/test_source_file_parser_isolation.py::test_timeout_enforced
+PASSED tests/test_source_file_parser_isolation.py::test_segfault_classified_failed_parent_survives
+PASSED tests/test_source_file_parser_isolation.py::test_nonzero_exit_classified_failed
+PASSED tests/test_source_file_parser_isolation.py::test_malformed_payload_classified_failed
+PASSED tests/test_source_file_parser_isolation.py::test_process_group_kills_grandchild
+PASSED tests/test_source_file_parser_isolation.py::test_unsupported_ext_no_spawn
+PASSED tests/test_source_file_parser_isolation.py::test_cpu_limits_derived_from_timeout
+PASSED tests/test_source_file_parser_isolation.py::test_sigkill_classified_parser_failed
+PASSED tests/test_source_file_parser_isolation.py::test_sigxcpu_classified_resource_exceeded
+PASSED tests/test_source_file_parser_isolation.py::test_provider_complete_read_parser_formats[pdf-_make_pdf-Pay Application 12]
+PASSED tests/test_source_file_parser_isolation.py::test_provider_complete_read_parser_formats[docx-_make_docx-Pay Application 12]
+PASSED tests/test_source_file_parser_isolation.py::test_provider_complete_read_parser_formats[xlsx-_make_xlsx-Invoice]
+PASSED tests/test_source_file_parser_isolation.py::test_provider_complete_read_parser_formats[eml-_make_eml-pay application 12]
+PASSED tests/test_source_file_retrieval_semantics.py::test_xer_is_explicit_unsupported
+PASSED tests/test_source_file_retrieval_semantics.py::test_zip_is_archive_not_expanded
+PASSED tests/test_source_file_retrieval_semantics.py::test_unknown_binary_unsupported
+PASSED tests/test_source_file_retrieval_semantics.py::test_sensitive_root_denied
+PASSED tests/test_source_file_retrieval_semantics.py::test_path_escape_denied
+PASSED tests/test_source_file_retrieval_semantics.py::test_symlink_escape_denied
+PASSED tests/test_source_file_retrieval_semantics.py::test_source_ref_is_path_free
+PASSED tests/test_source_file_retrieval_semantics.py::test_unconfigured_root_source_ref_unavailable
+PASSED tests/test_source_file_retrieval_semantics.py::test_forged_source_ref_rejected
+PASSED tests/test_source_file_retrieval_semantics.py::test_no_absolute_paths_in_any_blocked_response
+PASSED tests/test_source_index_generation_hardening.py::test_advance_cursor_returns_zero_when_lease_lost
+PASSED tests/test_source_index_generation_hardening.py::test_scan_aborts_as_conflict_when_lease_lost_midbatch
+PASSED tests/test_source_index_generation_hardening.py::test_batch_metadata_and_cursor_commit_atomically
+PASSED tests/test_source_index_generation_hardening.py::test_unchanged_scan_repairs_missing_path_fts_and_disposition
+PASSED tests/test_source_index_generation_hardening.py::test_disposition_transition_invalidates_content_keeps_path
+PASSED tests/test_source_index_generation_hardening.py::test_preserve_content_repair_keeps_extracted_text
+PASSED tests/test_source_index_generation_hardening.py::test_sensitivity_flip_changes_fingerprint_and_abandons_active_generation
+PASSED tests/test_source_index_generation_hardening.py::test_invalid_cursor_abandons_generation_without_reconciliation[{"version":1,"frames":[{"d":"../escape","after":null}]}]
+PASSED tests/test_source_index_generation_hardening.py::test_invalid_cursor_abandons_generation_without_reconciliation[{"version":1,"frames":[{"d":"gone-dir","after":null}]}]
+PASSED tests/test_source_index_generation_hardening.py::test_invalid_cursor_abandons_generation_without_reconciliation[{"version":1,"frames":["not-a-dict"]}]
+PASSED tests/test_source_index_generation_hardening.py::test_invalid_cursor_abandons_generation_without_reconciliation[{"version":99,"frames":[]}]
+PASSED tests/test_source_index_generation_hardening.py::test_indeterminate_candidate_leaves_reconcile_pending_no_delete
+PASSED tests/test_source_index_generation_hardening.py::test_probe_candidate_classifies_three_outcomes
+PASSED tests/test_source_index_generation_hardening.py::test_health_metadata_completeness_from_generation_truth
+PASSED tests/test_source_index_generation_hardening.py::test_search_result_fields_path_only_then_content
+PASSED tests/test_source_index_generation_hardening.py::test_scandir_read_error_classification
+PASSED tests/test_source_index_generation_hardening.py::test_directory_read_error_suspends_without_deletion
+PASSED tests/test_source_index_generation_hardening.py::test_empty_root_guard_blocks_mass_delete
+PASSED tests/test_source_index_generation_hardening.py::test_per_file_error_holds_cursor_then_retries
+PASSED tests/test_source_index_generation_hardening.py::test_v119_to_v120_first_generation_repairs_legacy_rows
+PASSED tests/test_source_index_generation_hardening.py::test_file_inserted_behind_cursor_no_loss_next_generation_catches
+PASSED tests/test_source_index_generation_hardening.py::test_sensitivity_flip_on_completed_root_resecures_unchanged_content
+PASSED tests/test_source_index_generation_hardening.py::test_project_reclassification_replaces_stale_project_on_unchanged_file
+PASSED tests/test_source_index_generation_hardening.py::test_content_indexed_at_cleared_when_content_removed
+PASSED tests/test_source_index_generation_hardening.py::test_validate_cursor_strict_rules
+PASSED tests/test_source_index_generation_hardening.py::test_malformed_json_cursor_abandons_without_reconciliation
+PASSED tests/test_source_index_generation_hardening.py::test_health_reconcile_pending_is_not_complete_and_watcher_not_ready
+PASSED tests/test_source_index_generation_hardening.py::test_health_legacy_fallback_requires_explicit_success
+PASSED tests/test_source_index_generation_hardening.py::test_walk_complete_and_finish_are_lease_fenced
+PASSED tests/test_source_index_generation_hardening.py::test_scan_reports_conflict_when_finish_loses_lease
+PASSED tests/test_source_index_generation_hardening.py::test_scan_reports_conflict_when_walk_complete_loses_lease
+PASSED tests/test_source_index_generation_hardening.py::test_v122_fresh_and_incremental_migration
+PASSED tests/test_source_index_generation_hardening.py::test_walk_none_outcome_suspends_without_advancing
+PASSED tests/test_source_index_generation_hardening.py::test_reconcile_survivor_none_leaves_reconcile_pending
+PASSED tests/test_source_index_generation_hardening.py::test_committed_prefix_counter_no_double_count
+PASSED tests/test_source_index_generation_hardening.py::test_validate_cursor_round4_rules
+PASSED tests/test_source_index_generation_hardening.py::test_sensitive_to_plain_transition_clears_vault_content
+PASSED tests/test_source_index_generation_hardening.py::test_project_number_change_reprocesses_unchanged_file
+PASSED tests/test_source_index_generation_hardening.py::test_new_exclusion_removes_indexed_rows_on_completed_root
+PASSED tests/test_source_index_generation_hardening.py::test_reconcile_ignores_persisted_cursor_and_restarts
+PASSED tests/test_source_index_generation_hardening.py::test_preserve_rebuilds_fts_from_retained_text
+PASSED tests/test_source_index_generation_hardening.py::test_preserve_refreshes_abs_path_hash_and_project_relationship
+PASSED tests/test_source_index_generation_hardening.py::test_health_stale_when_generation_fingerprint_mismatches_policy
+PASSED tests/test_source_index_generation_hardening.py::test_abandon_is_ownership_fenced
+PASSED tests/test_source_index_generation_hardening.py::test_scan_reports_conflict_when_abandon_loses_lease
+PASSED tests/test_source_index_generation_hardening.py::test_failed_high_fanout_not_auto_retried_until_policy_change
+PASSED tests/test_source_index_generation_hardening.py::test_failed_generation_explicit_restart_attempts_fresh
+PASSED tests/test_source_index_generation_hardening.py::test_project_reroute_restales_generated_note
+PASSED tests/test_source_index_generation_hardening.py::test_transient_io_during_cursor_validation_suspends_not_abandons
+PASSED tests/test_source_index_generation_hardening.py::test_fanout_during_cursor_validation_fails
+PASSED tests/test_source_index_generation_hardening.py::test_no_progress_recovery_then_ordinary_scan_not_blocked
+PASSED tests/test_source_index_generation_hardening.py::test_empty_root_guard_blocks_auto_retry_and_restart_recovers
+PASSED tests/test_source_index_generation_hardening.py::test_run_scan_forwards_restart
+PASSED tests/test_source_index_generation_hardening.py::test_cli_bootstrap_restart_reaches_bootstrap
+PASSED tests/test_source_index_generation_hardening.py::test_health_certified_when_latest_generation_is_current_completed
+PASSED tests/test_source_index_generation_hardening.py::test_freshness_state_compares_in_utc_not_local_clock
+PASSED tests/test_source_index_generation_hardening.py::test_health_trust_closed_during_running_corrective_scan
+PASSED tests/test_source_index_generation_hardening.py::test_health_uncertified_configured_root_without_generation
+PASSED tests/test_source_index_generation_hardening.py::test_health_configless_reports_unavailable_but_serving_preserved
+PASSED tests/test_source_index_generation_hardening.py::test_probe_root_dir_classifies_three_outcomes
+PASSED tests/test_source_index_generation_hardening.py::test_missing_root_records_failed_generation_and_closes_health
+PASSED tests/test_source_index_generation_hardening.py::test_indeterminate_root_probe_suspends_without_deletion
+PASSED tests/test_source_index_generation_hardening.py::test_validate_cursor_indeterminate_child_error_suspends_not_abandons
+PASSED tests/test_source_index_generation_hardening.py::test_scandir_per_entry_indeterminate_raises_read_error
+PASSED tests/test_source_index_generation_hardening.py::test_give_up_partial_transition_lease_loss_reports_conflict
+PASSED tests/test_source_index_generation_hardening.py::test_give_up_failed_transition_lease_loss_reports_conflict
+PASSED tests/test_source_index_generation_hardening.py::test_r8_freshness_fresh_for_valid_now_and_offsets
+PASSED tests/test_source_index_generation_hardening.py::test_r8_freshness_future_anomaly_for_future_values
+PASSED tests/test_source_index_generation_hardening.py::test_r8_freshness_none_is_never_succeeded_but_empty_is_malformed
+PASSED tests/test_source_index_generation_hardening.py::test_r8_freshness_unknown_for_malformed_never_fresh
+PASSED tests/test_source_index_generation_hardening.py::test_r8_freshness_blocked_takes_precedence
+PASSED tests/test_source_index_generation_hardening.py::test_r8_derive_watcher_ready_rules
+PASSED tests/test_source_index_generation_hardening.py::test_r8_walk_error_sink_records_indeterminate_only
+PASSED tests/test_source_index_generation_hardening.py::test_r8_walk_error_sink_silent_for_confirmed_missing
+PASSED tests/test_source_index_generation_hardening.py::test_r8_walk_no_sink_is_unchanged
+PASSED tests/test_source_index_generation_hardening.py::test_r8_run_scan_preserves_lease_lost
+PASSED tests/test_source_index_generation_hardening.py::test_r8_run_scan_preserves_active_run_conflict
+PASSED tests/test_source_index_generation_hardening.py::test_r8_bootstrap_file_layer_conflict_stays_failure[_LeaseLossGenRepo-lease_lost]
+PASSED tests/test_source_index_generation_hardening.py::test_r8_bootstrap_file_layer_conflict_stays_failure[_StartConflictGenRepo-active_run_conflict]
+PASSED tests/test_source_index_generation_hardening.py::test_r8_reconcile_full_conflict_reason_distinguishes[_LeaseLossGenRepo-lease_lost]
+PASSED tests/test_source_index_generation_hardening.py::test_r8_reconcile_full_conflict_reason_distinguishes[_StartConflictGenRepo-active_run_conflict]
+PASSED tests/test_source_index_health_readonly_conn.py::test_source_index_health_threads_conn_to_bootstrap
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_disposition_parsers_metadata_only_by_default
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_disposition_flag_on_enables_parsers
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_disposition_too_large_before_everything
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_metadata_only_files_never_hashed_or_parsed
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_flag_on_root_scan_metadata_only_but_targeted_extracts
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_content_to_metadata_only_clears_text_and_fts
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_bounded_default_applies_without_explicit_cap
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_unbounded_removes_cap
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_run_lifecycle_completed_and_partial_rows
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_concurrent_run_conflict_is_retryable
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_reconcile_full_bounded_out_is_not_completed
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_reconcile_full_completed_when_unbounded
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_stale_run_reaped_to_abandoned
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_interrupt_backstop
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_heartbeat_failure_isolated
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_redact_rel_prefix_hides_paths
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_cli_rejects_unbounded_with_cap
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_cli_rejects_nonpositive_cap
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_cli_jsonl_stream_is_all_one_line_json
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_parser_optin_defaults_off_on_old_config
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_health_counts_and_completeness
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_health_query_uses_root_index_no_full_scan
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_v119_migration_idempotent_and_additive
+PASSED tests/test_source_index_metadata_first_bootstrap.py::test_bootstrap_partial_status_keeps_not_bootstrapped
+PASSED tests/test_source_index_metadata_generation.py::test_v120_migration_idempotent_and_additive
+PASSED tests/test_source_index_metadata_generation.py::test_metadata_only_file_is_searchable_by_filename
+PASSED tests/test_source_index_metadata_generation.py::test_weighted_rank_prefers_path_over_body
+PASSED tests/test_source_index_metadata_generation.py::test_root_scan_path_only_then_targeted_body_searchable
+PASSED tests/test_source_index_metadata_generation.py::test_stale_lease_release_preserves_cursor_not_abandon
+PASSED tests/test_source_index_metadata_generation.py::test_live_owner_conflict_is_none
+PASSED tests/test_source_index_metadata_generation.py::test_bounded_passes_resume_one_generation
+PASSED tests/test_source_index_metadata_generation.py::test_partial_generation_deletes_nothing_complete_deletes
+PASSED tests/test_source_index_metadata_generation.py::test_high_fanout_fails_generation_no_delete
+PASSED tests/test_source_index_metadata_generation.py::test_no_absolute_path_in_generation_state
+PASSED tests/test_source_index_moved_drain.py::test_ready_root_move_applies
+PASSED tests/test_source_index_moved_drain.py::test_source_missing_indexes_destination_as_ordinary
+PASSED tests/test_source_index_moved_drain.py::test_stale_root_defers_then_applies_after_recovery
+PASSED tests/test_source_index_moved_drain.py::test_unavailable_mount_defers_not_consumed
+PASSED tests/test_source_index_moved_drain.py::test_dest_absent_defers_then_appears
+PASSED tests/test_source_index_moved_drain.py::test_symlink_destination_is_terminal_and_keeps_old_current
+PASSED tests/test_source_index_moved_drain.py::test_distinct_move_destinations_not_deduplicated
+PASSED tests/test_source_index_moved_drain.py::test_reindex_failure_is_retryable_then_succeeds
+PASSED tests/test_source_index_moved_drain.py::test_reindex_exhaustion_is_error_not_done
+PASSED tests/test_source_index_moved_drain.py::test_pre_transaction_drift_keeps_old_current
+PASSED tests/test_source_index_moved_drain.py::test_post_transaction_drift_leaves_old_superseded
+PASSED tests/test_source_index_moved_drain.py::test_defer_conflict_when_event_not_processing
+PASSED tests/test_source_index_moved_drain.py::test_moved_invalid_payload_is_terminal
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[/abs/old.txt-new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[../old.txt-new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[a\\old.txt-new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[a//old.txt-new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[.hidden/old.txt-new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[old.txt-/abs/new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_invalid_paths_are_terminal_no_mutation[old.txt-../new.txt]
+PASSED tests/test_source_index_moved_drain.py::test_parent_symlink_escape_rejected_before_mutation
+PASSED tests/test_source_index_moved_drain.py::test_stale_claim_cannot_complete_or_defer
+PASSED tests/test_source_index_moved_drain.py::test_stale_claim_move_is_claim_conflict_no_mutation
+PASSED tests/test_source_index_moved_drain.py::test_concurrent_reclaim_cannot_race_owned_move
+PASSED tests/test_source_index_moved_drain.py::test_reclaim_after_move_blocks_stale_indexing
+PASSED tests/test_source_index_moved_drain.py::test_db_busy_through_defer_is_recoverable
+PASSED tests/test_source_index_moved_drain.py::test_db_busy_during_terminal_completion_is_recoverable
+PASSED tests/test_source_index_moved_drain.py::test_non_busy_operational_error_is_terminal_error
+PASSED tests/test_source_index_moved_drain.py::test_busy_raised_in_moved_handler_leaves_processing
+PASSED tests/test_source_index_moved_drain.py::test_is_sqlite_busy_classifies_primary_and_extended
+PASSED tests/test_source_index_moved_drain.py::test_move_and_heartbeat_refresh_lease_to_controlled_timestamp
+PASSED tests/test_source_index_moved_drain.py::test_moved_guarded_terminal_failure_never_reaches_unguarded_fallback
+PASSED tests/test_source_index_moved_drain.py::test_moved_invalid_terminalization_failure_reaches_backstop
+PASSED tests/test_source_index_moved_drain.py::test_unconfigured_moved_terminalization_failure_reaches_backstop
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[missing-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[missing-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[missing-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[none-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[none-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[none-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[zero-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[zero-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[zero-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[negative-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[negative-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[negative-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[nonnumeric-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[true-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[true-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[true-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[false-valid_configured]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[false-moved_invalid]
+PASSED tests/test_source_index_moved_drain.py::test_moved_dispatch_invalid_claim_generation_no_mutation[false-unconfigured_root]
+PASSED tests/test_source_index_moved_drain.py::test_terminalize_moved_exception_validates_generation
+PASSED tests/test_source_index_moved_drain.py::test_move_invalidates_fts_and_public_search_two_stage
+PASSED tests/test_source_index_moved_drain.py::test_unexpected_moved_exception_cannot_overwrite_current_claim
+PASSED tests/test_source_index_quarantine_lifecycle.py::test_quarantine_lifecycle_blocks_serving_and_reconcile_then_recovers
+PASSED tests/test_source_index_quarantine_lifecycle.py::test_quarantine_toggles_watcher_activation_via_shared_authority
+PASSED tests/test_source_index_quarantine_lifecycle.py::test_quarantined_root_fails_watcher_start_closed
+PASSED tests/test_source_index_quarantine.py::test_migration_fresh_creates_quarantine_table
+PASSED tests/test_source_index_quarantine.py::test_migration_is_idempotent
+PASSED tests/test_source_index_quarantine.py::test_migration_upgrade_recreates_quarantine_table
+PASSED tests/test_source_index_quarantine.py::test_record_failure_holds_below_threshold_then_quarantines
+PASSED tests/test_source_index_quarantine.py::test_record_failure_keeps_single_active_row_no_duplicates
+PASSED tests/test_source_index_quarantine.py::test_record_failure_normalizes_unknown_error_code
+PASSED tests/test_source_index_quarantine.py::test_resolve_observed_clears_below_threshold_retry
+PASSED tests/test_source_index_quarantine.py::test_threshold_retry_creates_one_quarantine_and_indexes_later_files
+PASSED tests/test_source_index_quarantine.py::test_no_duplicate_quarantine_rows_across_repeated_passes
+PASSED tests/test_source_index_quarantine.py::test_unresolved_quarantine_suspends_auto_retry
+PASSED tests/test_source_index_quarantine.py::test_transient_failure_below_threshold_never_quarantines
+PASSED tests/test_source_index_quarantine.py::test_quarantine_state_durable_across_repo_reopen
+PASSED tests/test_source_index_quarantine.py::test_stored_rel_path_is_root_relative_no_absolute_host_path
+PASSED tests/test_source_index_quarantine.py::test_unresolved_quarantine_blocks_root_trust
+PASSED tests/test_source_index_quarantine.py::test_generation_retention_preserves_unresolved_quarantine
+PASSED tests/test_source_index_quarantine.py::test_pruned_origin_generation_does_not_clear_root_blocker
+PASSED tests/test_source_index_quarantine.py::test_resolved_quarantine_retention_is_bounded_but_keeps_blockers
+PASSED tests/test_source_index_quarantine.py::test_operator_retry_resolves_now_readable_path
+PASSED tests/test_source_index_quarantine.py::test_operator_retry_confirmed_absent_only_when_trustworthy
+PASSED tests/test_source_index_quarantine.py::test_operator_retry_retains_when_root_unavailable
+PASSED tests/test_source_index_quarantine.py::test_operator_retry_is_bounded_by_max_items
+PASSED tests/test_source_index_quarantine.py::test_operator_retry_is_idempotent_on_resolved_record
+PASSED tests/test_source_index_quarantine.py::test_config_threshold_must_be_at_least_one
+PASSED tests/test_source_index_quarantine.py::test_quarantine_threshold_participates_in_policy_fingerprint
+PASSED tests/test_source_index_quarantine.py::test_no_remote_quarantine_write_tool_exposed
+PASSED tests/test_source_index_quarantine.py::test_quarantine_cli_commands_registered_locally
+PASSED tests/test_source_index_rename_lineage.py::test_confirmed_move_links_and_invalidates
+PASSED tests/test_source_index_rename_lineage.py::test_move_rolls_back_and_keeps_old_current
+PASSED tests/test_source_index_rename_lineage.py::test_move_without_old_row_is_source_missing_no_mutation
+PASSED tests/test_source_index_rename_lineage.py::test_move_conflicting_successor_does_not_mutate
+PASSED tests/test_source_index_rename_lineage.py::test_move_over_indexed_destination_invalidates_content
+PASSED tests/test_source_index_rename_lineage.py::test_old_ref_answers_moved_with_successor
+PASSED tests/test_source_index_rename_lineage.py::test_moved_successor_outside_authorization_not_disclosed
+PASSED tests/test_source_index_rename_lineage.py::test_non_current_successor_not_fabricated_move
+PASSED tests/test_source_index_rename_lineage.py::test_plain_deleted_without_lineage_is_unavailable
+PASSED tests/test_source_index_rename_lineage.py::test_watcher_same_root_move_enqueues_moved_event_no_mutation
+PASSED tests/test_source_index_rename_lineage.py::test_watcher_cross_root_move_falls_back_to_delete_create
+PASSED tests/test_source_index_rename_lineage.py::test_watcher_vault_root_move_falls_back
+PASSED tests/test_source_index_search_latency_index.py::test_metadata_fts_rowid_index_present_after_migration
+PASSED tests/test_source_index_search_latency_index.py::test_search_join_uses_fts_rowid_index_not_full_scan
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_over_cap_does_not_delete_unseen_notes
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_truncated_scan_does_not_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_directory_read_error_does_not_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_root_unavailable_does_not_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_interrupted_scan_does_not_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_per_file_error_does_not_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_complete_scan_deletes_confirmed_absent_note
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_complete_scan_preserves_present_notes
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_false_delete_does_not_remove_fts
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_false_delete_does_not_stale_generated_card
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_confirmed_delete_updates_source_fts_and_card_state_atomically
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_scan_remains_streaming_and_prunes_excluded_subtrees
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_scan_is_idempotent_after_resume_or_retry
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_empty_completed_scan_blocks_mass_delete
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_confirmed_empty_recovery_requires_fresh_selfscan
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_recovery_still_requires_certified_scan
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_reconcile_cli_requires_both_flags
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_reconcile_cli_recovers_empty_vault_and_writes_receipt
+PASSED tests/test_source_index_vault_deletion_safety.py::test_vault_reconcile_cli_lease_is_os_backed_and_exclusive
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_mapping_exact_match
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_mapping_explicit_map_mismatched_keys
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_mapping_file_root_with_no_structure_root
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_mapping_structure_root_with_no_file_root
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_dry_run_writes_nothing
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_all_roots_apply_sets_watcher_ready
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_root_specific
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_idempotent_second_run
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_file_only_does_not_touch_structure
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_structure_only
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_failed_file_index_not_watcher_ready
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_structure_not_configured_not_ready
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_bootstrap_no_absolute_path_leak
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_run_state_disabled_by_config
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_run_state_not_bootstrapped
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_run_state_backend_unavailable
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_run_state_running
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_detects_new_modified_deleted
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_deleted_file_no_longer_active
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_folder_drift_flagged
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_records_run_row
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_before_bootstrap_recommends_bootstrap
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_sections_present_after_bootstrap
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_surfaces_drift
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_watcher_disabled_reported
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_no_absolute_path_leak
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_health_bounded_roots
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_help
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_bootstrap_dry_run
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_run_refuses_unbootstrapped_then_runs
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_run_bootstrap_if_needed
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_status_path_safe
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_reconcile_and_drain
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_cli_bootstrap_requires_target
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_scan_types[lightweight]
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_reconcile_scan_types[full]
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_lightweight_reconcile_indeterminate_read_suspends_deletions
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_lightweight_reconcile_confirmed_removal_still_reconciles
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_lightweight_reconcile_empty_root_blast_radius_guard
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_lightweight_reconcile_emptying_under_threshold_reconciles
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_drain_deleted_still_present_is_skipped
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_drain_deleted_absent_under_usable_root_is_deleted
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_drain_deleted_root_unavailable_is_skipped
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_drain_deleted_unconfigured_root_is_skipped
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_drain_deleted_indeterminate_probe_is_skipped
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_fingerprint_mismatch_not_running
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_fingerprint_compute_failure_fails_closed
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_generation_read_failure_fails_closed
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_no_folder_map_not_running
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_legacy_root_honors_persisted_bit
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_run_state_agrees_with_health_watcher_ready
+PASSED tests/test_source_index_watcher_automated_refresh.py::test_r8_health_malformed_last_indexed_closes_full_trust_surface
+PASSED tests/test_source_root_mapping.py::test_exact_normalized_key_match_succeeds
+PASSED tests/test_source_root_mapping.py::test_configured_explicit_map_succeeds_with_provenance
+PASSED tests/test_source_root_mapping.py::test_invalid_explicit_map_target_fails_closed
+PASSED tests/test_source_root_mapping.py::test_work_does_not_match_syn_work
+PASSED tests/test_source_root_mapping.py::test_work_does_not_match_work_backup
+PASSED tests/test_source_root_mapping.py::test_home_does_not_match_home_work
+PASSED tests/test_source_root_mapping.py::test_full_corpus_no_cross_collision_without_explicit_map
+PASSED tests/test_source_root_mapping.py::test_cli_override_precedence_and_provenance
+PASSED tests/test_source_root_mapping.py::test_many_to_one_mapping_allowed
+PASSED tests/test_source_root_mapping.py::test_duplicate_source_keys_after_normalization_rejected
+PASSED tests/test_source_root_mapping.py::test_normalizer_is_shared_and_deterministic
+PASSED tests/test_source_root_mapping.py::test_resolver_never_raises_on_degenerate_inputs
+PASSED tests/test_source_root_mapping.py::test_bootstrap_wrapper_delegates_to_shared_resolver
+PASSED tests/test_source_root_mapping.py::test_health_does_not_fuzzy_match_work_to_work_backup
+PASSED tests/test_source_root_mapping.py::test_health_explicit_map_resolves_syn_prefixed_root
+PASSED tests/test_source_root_mapping.py::test_health_and_watcher_readiness_agree_on_mapping
+PASSED tests/test_source_root_mapping.py::test_ephemeral_cli_override_cannot_certify_durable_readiness
+PASSED tests/test_source_root_mapping.py::test_no_absolute_paths_in_serialized_health
+PASSED tests/test_source_root_mapping.py::test_health_config_load_failure_fails_closed
+PASSED tests/test_source_root_mapping.py::test_health_invalid_mapping_config_fails_closed
+PASSED tests/test_source_root_mapping.py::test_valid_empty_config_still_allows_exact_identity_match
+PASSED tests/test_source_root_mapping.py::test_config_failure_cannot_report_structure_ready
+PASSED tests/test_source_root_mapping.py::test_config_structure_root_map_defaults_empty_backward_compatible
+PASSED tests/test_source_root_mapping.py::test_config_structure_root_map_rejects_normalized_collision
+PASSED tests/test_source_root_mapping.py::test_validate_structure_root_map_surfaces_config_errors
+PASSED tests/test_source_root_trust.py::test_certified_root_is_safe
+PASSED tests/test_source_root_trust.py::test_uncertified_policy_fails_closed
+PASSED tests/test_source_root_trust.py::test_stale_policy_fails_closed
+PASSED tests/test_source_root_trust.py::test_running_corrective_generation_does_not_reopen_trust
+PASSED tests/test_source_root_trust.py::test_disabled_root_is_denied
+PASSED tests/test_source_root_trust.py::test_configless_root_is_unverified
+PASSED tests/test_source_root_trust.py::test_sensitive_root_not_live_readable
+PASSED tests/test_source_root_trust.py::test_freshness_unknown_fails_closed
+PASSED tests/test_source_root_trust.py::test_mapping_resolved_is_not_structure_ready
+PASSED tests/test_source_root_trust.py::test_safe_root_search_still_works
+PASSED tests/test_source_root_trust.py::test_explicit_unsafe_root_search_blocked
+PASSED tests/test_source_root_trust.py::test_disabled_root_search_blocked
+PASSED tests/test_source_root_trust.py::test_unknown_root_search_returns_unknown_root
+PASSED tests/test_source_root_trust.py::test_unscoped_search_restricts_to_safe_and_discloses_excluded
+PASSED tests/test_source_root_trust.py::test_unscoped_search_all_unsafe_returns_blocked
+PASSED tests/test_source_root_trust.py::test_list_unsafe_root_blocked
+PASSED tests/test_source_root_trust.py::test_list_safe_root_works
+PASSED tests/test_source_root_trust.py::test_metadata_unsafe_root_blocked
+PASSED tests/test_source_root_trust.py::test_metadata_safe_root_works
+PASSED tests/test_source_root_trust.py::test_read_checks_trust_before_fs_for_unsafe_root
+PASSED tests/test_source_root_trust.py::test_read_safe_root_is_live
+PASSED tests/test_source_root_trust.py::test_read_sensitive_root_never_live
+PASSED tests/test_source_root_trust.py::test_read_status_no_live_claim_without_probe
+PASSED tests/test_source_root_trust.py::test_read_status_unsupported_is_metadata_only
+PASSED tests/test_source_root_trust.py::test_health_aggregate_all_safe_not_any_safe
+PASSED tests/test_source_root_trust.py::test_zero_authorized_roots_is_not_client_safe
+PASSED tests/test_source_root_trust.py::test_health_no_absolute_path_leak
+PASSED tests/test_source_root_trust.py::test_direct_and_gateway_trust_agree
+PASSED tests/test_source_root_trust.py::test_configless_root_listed_unverified
+PASSED tests/test_source_root_trust.py::test_configless_root_load_trust_unverified
+PASSED tests/test_source_root_trust.py::test_safe_root_pagination_deterministic
+PASSED tests/test_source_root_trust.py::test_watcher_degrades_when_all_roots_disabled
+PASSED tests/test_source_root_trust.py::test_watcher_degrades_on_unevaluable_trust
+PASSED tests/test_source_root_trust.py::test_watcher_config_bit_alone_cannot_bypass_when_no_roots
+PASSED tests/test_source_root_trust.py::test_watcher_start_before_bootstrap_fails_closed
+PASSED tests/test_source_root_trust.py::test_bootstrap_succeeds_without_watcher
+PASSED tests/test_source_root_trust.py::test_watcher_start_after_bootstrap_succeeds
+PASSED tests/test_source_root_trust.py::test_watcher_start_blocks_structure_data_unready
+PASSED tests/test_source_root_trust.py::test_watcher_start_blocks_policy_stale
+PASSED tests/test_source_root_trust.py::test_watcher_start_blocks_reconciliation_incomplete
+PASSED tests/test_tool_manifest_freshness_guard.py::test_matching_surface_without_checksum_baseline_is_indeterminate
+PASSED tests/test_tool_manifest_freshness_guard.py::test_matching_surface_with_checksums_is_current
+PASSED tests/test_tool_manifest_freshness_guard.py::test_added_tool_makes_stale
+PASSED tests/test_tool_manifest_freshness_guard.py::test_removed_tool_makes_stale
+PASSED tests/test_tool_manifest_freshness_guard.py::test_family_change_makes_stale
+PASSED tests/test_tool_manifest_freshness_guard.py::test_gateway_scope_change_makes_stale
+PASSED tests/test_tool_manifest_freshness_guard.py::test_stale_surface_blocks_write_route_not_read
+PASSED tests/test_tool_manifest_freshness_guard.py::test_indeterminate_surface_blocks_write_route_not_read
+PASSED tests/test_tool_manifest_freshness_guard.py::test_live_freshness_auto_freezes_schema_index
+PASSED tests/test_tool_manifest_freshness_guard.py::test_persisted_manifest_agrees_with_live_surface_freshness
+PASSED tests/test_tool_manifest_freshness_guard.py::test_manifest_entries_match_freshness_baseline
+518 passed, 1 warning in 439.03s (0:07:19)
+
+PYTEST_EXIT=0

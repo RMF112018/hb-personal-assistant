@@ -59,6 +59,31 @@ def _roots_hash(config: ObsidianMcpConfig, db_path: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
+def enqueue_move(repo: Any, root_key: str, root_path: Path, src_path: str,
+                 dest_path: str | None) -> str:
+    """Correlate a same-root external file move into ONE governed ``moved`` event (Phase B / B4).
+
+    Enqueues a single ``moved`` event carrying BOTH paths (rel_path=old, dest_rel_path=new) for the
+    readiness-gated drain — performing **no** stat or DB mutation on the caller's (observer) thread, which
+    was the PB-005 defect. Returns ``"moved"`` when the governed event was enqueued, or ``"fallback"`` when
+    the caller should emit the conservative ``deleted``+``created`` pair (vault root / cross-root /
+    out-of-root / ignored destination). The old row is never superseded here — only the drain, after it
+    proves destination + root readiness, may do so."""
+    if not dest_path or root_key == _VAULT_ROOT_KEY:
+        return "fallback"
+    try:
+        old_rel = str(Path(src_path).relative_to(root_path))
+        new_rel = str(Path(dest_path).relative_to(root_path))
+    except ValueError:
+        return "fallback"  # a path outside this root -> not a same-root move
+    if should_ignore(new_rel, Path(dest_path).name):
+        return "fallback"
+    repo.enqueue_event(
+        event_type="moved", rel_path=old_rel, dest_rel_path=new_rel, source_root_key=root_key
+    )
+    return "moved"
+
+
 class SourceWatcher:
     """Owns a daemon worker thread (watchdog observer or polling). Idempotent start/stop."""
 
@@ -296,9 +321,19 @@ class SourceWatcher:
                     self._enqueue(event.src_path, "deleted")
 
             def on_moved(self, event: Any) -> None:
-                if not event.is_directory:
-                    self._enqueue(event.src_path, "deleted")
-                    self._enqueue(getattr(event, "dest_path", event.src_path), "created")
+                if event.is_directory:
+                    return
+                dest_path = getattr(event, "dest_path", None)
+                # Same-root external move → ONE governed 'moved' event (no observer-thread stat/mutation);
+                # the drain performs the readiness-gated, symlink/identity-safe, transactional lineage move.
+                if enqueue_move(repo, self._root_key, self._root_path, event.src_path,
+                                dest_path) == "moved":
+                    watcher._last_event_at = _now()
+                    return
+                # Conservative fallback (cross-root / vault / out-of-root / ignored dest): the deleted event
+                # obeys the NAS confirmed-absence rules in the drain — never an immediate delete.
+                self._enqueue(event.src_path, "deleted")
+                self._enqueue(dest_path or event.src_path, "created")
 
         observer = Observer()
         for root in _enabled_roots(config):

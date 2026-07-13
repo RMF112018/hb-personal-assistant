@@ -1,0 +1,313 @@
+From 9182f3d488b737b74bf0447b77cf25b445047d54 Mon Sep 17 00:00:00 2001
+From: RMF <65404870+RMF112018@users.noreply.github.com>
+Date: Mon, 13 Jul 2026 04:52:02 -0400
+Subject: [PATCH] Phase B 6th corrective (C8/code): validate moved claim
+ generation at dispatch entry, no fabricated attempt (PB-010 residual)
+
+Sixth corrective on phase-b-source-index-architecture-completion, base
+6adb9fac (E7); preserves all seven prior commits (80b4d13d, e488136f,
+0464e347, 5aeb7ab3/C4, 8003ca02/E5, 3f4a9b2b/C6, 6adb9fac/E7) -- no amend.
+Evidence lands in a separate evidence-only commit (E9).
+
+Residual PB-010 defect: the moved dispatch branch computed
+`expected_attempt = int(event.get("attempts") or 1)` BEFORE the direct
+moved_invalid / unconfigured_root / _apply_moved_event terminalizations, so a
+missing/None/0 generation was coerced to attempt 1. If the DB row was genuinely
+at attempt 1, a direct guarded completion could succeed under a fabricated
+generation -- contradicting the invariant (no default, no coercion, invalid
+generation -> no queue mutation). C6 only hardened the last-resort backstop.
+
+Fix (source_indexer.py; two edits, one module):
+- Validate the claim generation at the moved DISPATCH ENTRY, before
+  normalization, root lookup, dispatch, or any terminalization. No default, no
+  coercion: type(x) is not int rejects bool/str; < 1 rejects 0/negative. An
+  invalid generation performs NO queue mutation (continue -> leave 'processing'
+  for requeue_stuck). Remove the `or 1` fallback.
+- Extract the C6 generic-handler backstop into `_terminalize_moved_exception`
+  (an independent last-resort boundary) so it stays directly testable; the
+  drain delegates to it. Its own generation check remains as defense in depth.
+  The terminalization exception is bound separately and only safe identifiers
+  are logged (event_id, validated attempt, exception classes).
+
+Tests (tests/test_source_index_moved_drain.py): the 3x7 matrix -- every invalid
+generation (missing/None/0/negative/nonnumeric string/True/False) x every
+dispatch class (valid_configured / moved_invalid / unconfigured_root) --
+asserts _apply_moved_event, complete_owned_event and complete_event are all
+uncalled, the FULL event row (status/attempts/error_code/updated_at/
+next_attempt_at) is byte-identical to the post-claim snapshot, source/lineage/
+destination content are untouched, and deterministic requeue_stuck recovers.
+A direct `_terminalize_moved_exception` test covers the seven invalid forms plus
+a valid generation whose guarded completion raises (swallowed) or succeeds. The
+superseded backstop-only invalid-generation test is removed. Full moved-drain
+suite green; ruff + mypy clean on the module.
+
+No push / PR / deploy / prod DB / watcher activation / prod migration.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../obsidian_mcp/source_indexer.py            |  78 ++++++++----
+ tests/test_source_index_moved_drain.py        | 116 ++++++++++++++----
+ 2 files changed, 142 insertions(+), 52 deletions(-)
+
+diff --git a/src/hb_assistant/obsidian_mcp/source_indexer.py b/src/hb_assistant/obsidian_mcp/source_indexer.py
+index 172bf918..bfec177f 100644
+--- a/src/hb_assistant/obsidian_mcp/source_indexer.py
++++ b/src/hb_assistant/obsidian_mcp/source_indexer.py
+@@ -1459,6 +1459,39 @@ def resolve_destination(root_path: Path, new_rel: str) -> DestinationResolution:
+     )
+ 
+ 
++def _terminalize_moved_exception(
++    repo: SourceIndexRepository, event: dict[str, Any], exc: Exception
++) -> None:
++    """Last-resort backstop for a moved event whose processing raised (Phase B / B4 corrective — an
++    INDEPENDENT PB-010 boundary, C6/C8). Validates the claim generation with NO default/coercion
++    (``type(x) is not int`` rejects bool/str; ``< 1`` rejects 0/negative); on a verified positive int it
++    attempts the attempt-generation-guarded completion and swallows a failure (leave the event ``processing``
++    for ``requeue_stuck``) — NEVER the unguarded ``complete_event``. Logging carries only safe identifiers
++    (event_id, validated attempt, exception classes) — never messages, paths, root keys, or payload."""
++    raw_attempt = event.get("attempts")
++    if type(raw_attempt) is not int or raw_attempt < 1:
++        # No valid claim generation → invent no ownership; perform NO queue mutation.
++        _logger.warning(
++            "source_index.moved_terminalize_skipped_invalid_generation",
++            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
++                                    "attempt": raw_attempt,
++                                    "exception": type(exc).__name__}},
++        )
++        return
++    try:
++        repo.complete_owned_event(
++            event["event_id"], "error", expected_attempt=raw_attempt, error_code=type(exc).__name__
++        )
++    except Exception as terminal_exc:  # noqa: BLE001 - moved events never fall through to the unguarded path
++        _logger.warning(
++            "source_index.moved_terminalize_failed_left_processing",
++            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
++                                    "expected_attempt": raw_attempt,
++                                    "exception": type(exc).__name__,
++                                    "terminalize_exception": type(terminal_exc).__name__}},
++        )
++
++
+ def _apply_moved_event(
+     repo: SourceIndexRepository,
+     config: ObsidianMcpConfig,
+@@ -2733,7 +2766,20 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
+                 # excluded/deferred/unsupported skip. BOTH paths cross the queue trust boundary and are
+                 # canonically validated (no FS access) before any lookup/probe/mutation; terminal-invalid
+                 # payloads never mutate. All terminal completions are ownership-guarded (claim generation).
+-                expected_attempt = int(event.get("attempts") or 1)
++                # PB-010 (C8): validate the claim generation FIRST — before normalization, root lookup,
++                # dispatch, or ANY terminalization. No default, no coercion (``type(x) is not int`` rejects
++                # bool/str; ``< 1`` rejects 0/negative). An invalid generation performs NO queue mutation:
++                # leave the event 'processing' for requeue_stuck (fail closed). The generic backstop keeps
++                # its own copy of this check as an independent last-resort boundary.
++                raw_attempt = event.get("attempts")
++                if type(raw_attempt) is not int or raw_attempt < 1:
++                    _logger.warning(
++                        "source_index.moved_invalid_claim_generation",
++                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
++                                                "attempt": raw_attempt}},
++                    )
++                    continue
++                expected_attempt = raw_attempt
+                 old_norm = normalize_moved_rel_path(event["rel_path"])
+                 new_norm = normalize_moved_rel_path(event.get("dest_rel_path"))
+                 src_key = event.get("source_root_key")
+@@ -2826,33 +2872,11 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
+                 repo.complete_event(event["event_id"], event_status, error_code=event_code)
+             processed += 1
+         except Exception as exc:  # noqa: BLE001 - per-event backstop (fail closed)
+-            # PB-010 (C6): a moved event must NEVER reach the unguarded, event_id-only complete_event()
+-            # fallback — a stale attempt could overwrite the current owner's queue state. Every moved
+-            # terminalization is attempt-generation guarded; if the guarded write itself fails (or the
+-            # claim generation is invalid), leave the event 'processing' for requeue_stuck (fail closed).
++            # PB-010: a moved event must NEVER reach the unguarded, event_id-only complete_event() fallback
++            # — a stale attempt could overwrite the current owner's queue state. Delegate to the guarded,
++            # generation-validating backstop helper (an independent last-resort boundary; see C6/C8).
+             if event["event_type"] == "moved":
+-                raw_attempt = event.get("attempts")
+-                if type(raw_attempt) is not int or raw_attempt < 1:
+-                    # No valid claim generation → invent no ownership; perform NO queue mutation.
+-                    _logger.warning(
+-                        "source_index.moved_terminalize_skipped_invalid_generation",
+-                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+-                                                "attempt": raw_attempt,
+-                                                "exception": type(exc).__name__}},
+-                    )
+-                    continue
+-                try:
+-                    repo.complete_owned_event(
+-                        event["event_id"], "error",
+-                        expected_attempt=raw_attempt, error_code=type(exc).__name__,
+-                    )
+-                except Exception:  # noqa: BLE001 - moved events never fall through to the unguarded path
+-                    _logger.warning(
+-                        "source_index.moved_terminalize_failed_left_processing",
+-                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+-                                                "expected_attempt": raw_attempt,
+-                                                "exception": type(exc).__name__}},
+-                    )
++                _terminalize_moved_exception(repo, event, exc)
+             else:
+                 repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+     if cards_done or summaries_done:
+diff --git a/tests/test_source_index_moved_drain.py b/tests/test_source_index_moved_drain.py
+index 9cdca05f..9a735310 100644
+--- a/tests/test_source_index_moved_drain.py
++++ b/tests/test_source_index_moved_drain.py
+@@ -642,7 +642,8 @@ def test_move_and_heartbeat_refresh_lease_to_controlled_timestamp(tmp_path, monk
+     assert _uat() == "2031-06-07T08:09:10+00:00"                 # stale gen did NOT refresh
+ 
+ 
+-# ---------------- PB-010 (C6): no moved event reaches the generic unguarded complete_event fallback ----------------
++# ---------------- PB-010 (C6/C8): no moved event reaches the generic unguarded complete_event fallback;
++# ---------------- the claim generation is validated at the dispatch entry (no fabricated attempt) ----------------
+ 
+ def _spy(store: list):
+     def _fn(*a, **k):
+@@ -759,44 +760,71 @@ def test_unconfigured_moved_terminalization_failure_reaches_backstop(tmp_path, m
+     assert repo.requeue_stuck(900) == 1
+ 
+ 
+-@pytest.mark.parametrize("bad_attempt", [
++_INVALID_ATTEMPTS = [
+     pytest.param("__MISSING__", id="missing"),
+     pytest.param(None, id="none"),
+     pytest.param(0, id="zero"),
+     pytest.param(-3, id="negative"),
+     pytest.param("x", id="nonnumeric"),
+-    pytest.param(True, id="boolean"),
+-])
+-def test_moved_backstop_invalid_claim_generation_fails_closed(tmp_path, monkeypatch, bad_attempt) -> None:
+-    """A moved event reaching the backstop with an invalid claim generation performs NO queue mutation
+-    (neither guarded nor unguarded completion) — no fabricated attempt — and stays recoverable."""
+-    db, root, config, repo = _env(tmp_path)
+-    (root / "old.txt").write_text("x")
+-    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+-                             source_root_key="work")
+-    repo.claim_queued(50)  # real DB row -> processing, attempts=1
++    pytest.param(True, id="true"),
++    pytest.param(False, id="false"),
++]
+ 
+-    event = {"event_id": eid, "event_type": "moved", "rel_path": "old.txt",
+-             "dest_rel_path": "new.txt", "source_root_key": "work", "source_id": None}
++
++def _event_row(db: str, eid: str):
++    """Full moved-event queue row (every field a dispatch/terminalization could touch)."""
++    with sqlite3.connect(db) as c:
++        return c.execute(
++            "SELECT status, attempts, error_code, updated_at, next_attempt_at "
++            "FROM source_intelligence_events WHERE event_id=?", (eid,)).fetchone()
++
++
++@pytest.mark.parametrize("dispatch", ["valid_configured", "moved_invalid", "unconfigured_root"])
++@pytest.mark.parametrize("bad_attempt", _INVALID_ATTEMPTS)
++def test_moved_dispatch_invalid_claim_generation_no_mutation(
++    tmp_path, monkeypatch, dispatch, bad_attempt
++) -> None:
++    """An invalid claim generation is rejected at the moved DISPATCH ENTRY — before normalization, root
++    lookup, dispatch, or any terminalization — for EVERY dispatch class (valid_configured / moved_invalid /
++    unconfigured_root) and EVERY invalid form (missing/None/0/negative/string/True/False). No fabricated
++    attempt, no post-claim queue mutation, no source/lineage/content/indexing change, deterministic recovery."""
++    db, root, config, repo = _env(tmp_path)
++    old = _index_file(root, "old.txt", "x", repo, config)  # a real pre-indexed source to prove non-mutation
++    (root / "new.txt").write_text("x moved")
++    if dispatch == "moved_invalid":
++        rel, dest, srk = "old.txt", "old.txt", "work"        # old == new
++    elif dispatch == "unconfigured_root":
++        rel, dest, srk = "old.txt", "new.txt", "ghost"       # not a configured root
++    else:
++        rel, dest, srk = "old.txt", "new.txt", "work"        # would otherwise reach _apply_moved_event
++    eid = repo.enqueue_event(event_type="moved", rel_path=rel, dest_rel_path=dest, source_root_key=srk)
++    repo.claim_queued(50)  # legitimate claim -> processing, attempts=1
++    before = _event_row(db, eid)  # snapshot AFTER the legitimate claim, BEFORE the crafted event
++    old_before = _row(db, old)
++
++    event = {"event_id": eid, "event_type": "moved", "rel_path": rel, "dest_rel_path": dest,
++             "source_root_key": srk, "source_id": None}
+     if bad_attempt != "__MISSING__":
+         event["attempts"] = bad_attempt
+     monkeypatch.setattr(repo, "claim_queued", lambda *a, **k: [event])
+-
+-    def _boom(*a, **k):
+-        raise sqlite3.OperationalError("no such table: boom")  # NON-busy, forces the backstop
+-
+-    monkeypatch.setattr(si, "_apply_moved_event", _boom)
+-    ce_calls: list = []
++    apply_calls: list = []
+     coe_calls: list = []
+-    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
++    ce_calls: list = []
++    monkeypatch.setattr(si, "_apply_moved_event", _spy(apply_calls))
+     monkeypatch.setattr(repo, "complete_owned_event", _spy(coe_calls))
++    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
+ 
+     drain_queue(repo, config)  # must NOT raise
+ 
+-    assert ce_calls == [] and coe_calls == []  # invalid generation → NO queue mutation, no fabricated attempt
+-    with sqlite3.connect(db) as c:
+-        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
+-                         (eid,)).fetchone() == ("processing", 1)  # real row untouched
++    # short-circuit at dispatch entry: no dispatch, no terminalization of any kind
++    assert apply_calls == [] and coe_calls == [] and ce_calls == []
++    # NO post-claim queue mutation — the FULL event row is byte-identical to the post-claim snapshot
++    assert _event_row(db, eid) == before
++    # source + lineage + destination content untouched (esp. the valid_configured route that would move/index)
++    assert _row(db, old) == old_before and repo.find_successor_source_id(old) is None
++    new_sid = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    assert _row(db, new_sid) is None  # destination never indexed; no content invalidation created
++    # recoverable via deterministic stuck recovery
+     monkeypatch.undo()
+     with sqlite3.connect(db) as c:
+         c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
+@@ -805,6 +833,44 @@ def test_moved_backstop_invalid_claim_generation_fails_closed(tmp_path, monkeypa
+     assert repo.requeue_stuck(900) == 1
+ 
+ 
++def test_terminalize_moved_exception_validates_generation(tmp_path, monkeypatch) -> None:
++    """Direct coverage of the defensive backstop helper (independent last-resort boundary): an invalid
++    generation calls no guarded completion (no fabricated attempt); a valid generation calls the guarded
++    completion and swallows its failure."""
++    _, _, _, repo = _env(tmp_path)
++    exc = sqlite3.OperationalError("boom")
++    for bad in ("__MISSING__", None, 0, -1, "x", True, False):
++        coe_calls: list = []
++        monkeypatch.setattr(repo, "complete_owned_event", _spy(coe_calls))
++        event = {"event_id": "e1"}
++        if bad != "__MISSING__":
++            event["attempts"] = bad
++        si._terminalize_moved_exception(repo, event, exc)
++        assert coe_calls == []  # invalid generation → no guarded completion, no fabricated attempt
++
++    # valid generation whose guarded completion RAISES non-busy → swallowed (event left processing)
++    seen: list = []
++
++    def _raise_coe(event_id, status, *, expected_attempt, error_code=None, conn=None):
++        seen.append(expected_attempt)
++        raise sqlite3.OperationalError("no such column")
++
++    monkeypatch.setattr(repo, "complete_owned_event", _raise_coe)
++    si._terminalize_moved_exception(repo, {"event_id": "e1", "attempts": 3}, exc)  # must NOT raise
++    assert seen == [3]
++
++    # valid generation whose guarded completion SUCCEEDS → called cleanly with that attempt
++    ok: list = []
++
++    def _ok_coe(event_id, status, *, expected_attempt, error_code=None, conn=None):
++        ok.append(expected_attempt)
++        return "completed"
++
++    monkeypatch.setattr(repo, "complete_owned_event", _ok_coe)
++    si._terminalize_moved_exception(repo, {"event_id": "e1", "attempts": 2}, exc)
++    assert ok == [2]
++
++
+ # ---------------- PB-007: two-stage FTS + public-search invalidation through the drain ----------------
+ 
+ OLD_TOKEN = "zqxoldtoken7141"   # unique tokens that cannot match a path / filename / project metadata
+-- 
+2.50.1 (Apple Git-155)
+

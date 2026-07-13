@@ -1,0 +1,3 @@
+$ .venv/bin/python -m mypy <6 touched modules>
+pyproject.toml: note: unused section(s): module = ['hb_assistant.actions.*', 'hb_assistant.automation.*', 'hb_assistant.automation.launchd_manager', 'hb_assistant.cli.actions', 'hb_assistant.cli.automation', 'hb_assistant.cli.launcher', 'hb_assistant.cli.run', 'hb_assistant.cli.scheduler', 'hb_assistant.config.path_policy', 'hb_assistant.construction.second_brain.*', 'hb_assistant.launcher.*', 'hb_assistant.obsidian.*', 'hb_assistant.procore.live_gate', 'hb_assistant.retrieval.context', 'hb_assistant.scheduler.*', 'hb_assistant.source_refresh.*']
+Success: no issues found in 6 source files

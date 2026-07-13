@@ -1426,6 +1426,8 @@ class NasMcpBroker:
                         repo, config, source_id=arguments.get("source_id"),
                         source_ref=arguments.get("source_ref"),
                         max_chars=arguments.get("max_chars"),
+                        max_bytes=arguments.get("max_bytes"),
+                        mode=str(arguments.get("mode") or "excerpt"),
                         prefer_live=bool(arguments.get("prefer_live", True)), conn=conn)
                 if tool_name == "assistant_source_index_health":
                     from hb_assistant.obsidian_mcp.source_health_service import (  # noqa: PLC0415

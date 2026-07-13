@@ -1,0 +1,1685 @@
+From e488136f52f979d7544d8603653a0413ee512ca8 Mon Sep 17 00:00:00 2001
+From: RMF <65404870+RMF112018@users.noreply.github.com>
+Date: Sun, 12 Jul 2026 18:10:04 -0400
+Subject: [PATCH] Phase B corrective: governed 'moved' drain + trust/content
+ invalidation (PB-005..009)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Corrective commit for the AEOS implementation-audit FAIL on 80b4d13d (three High
+B4 trust/deletion defects + two parser findings) and three rounds of AEOS
+plan-review required changes. New commit — 80b4d13d is left intact.
+
+The same-root rename/move no longer runs on the watchdog observer thread. on_moved
+enqueues one governed 'moved' event (old + new rel_path); the readiness-gated,
+symlink/identity-safe, transactional lineage move + destination re-extraction runs
+in the drain, with bounded-backoff deferral for every recoverable condition so a
+move is never terminally consumed while it could still succeed and the old row is
+never superseded until the move is proven safe.
+
+- PB-005: remove observer-thread apply_same_root_move; V127 rebuilds the events
+  table (literal 'moved' type + dest_rel_path + next_attempt_at, parity-validated,
+  preserves queued rows/ids); enqueue_event/claim_queued/defer_event add bounded
+  backoff; drain 'moved' branch gates on safe_for_watcher_activation.
+- PB-006: os.lstat (non-following) dest confirmation + symlink_escapes + pre/post
+  transaction identity re-checks close the probe->mutate->index TOCTOU.
+- PB-007: _invalidate_content_locked fully invalidates an overwritten destination
+  (FTS row, text excerpt, chunks, content metadata cols, its own generated card);
+  apply_confirmed_same_root_move returns a distinguishable result
+  (move_applied/move_already_applied/source_missing/conflicting_successor).
+- PB-008: parser RLIMIT_CPU derived from timeout_s (_cpu_limits).
+- PB-009: SIGKILL -> parser_failed (ambiguous); SIGXCPU -> parser_resource_exceeded.
+
+source_missing indexes the destination as an ordinary source (no invented
+lineage); reindex failure is retryable; reindex exhaustion terminates as
+error/dest_reindex_exhausted (never a false 'done'). Evidence:
+docs/evidence/source-index-phase-b/05-corrective-audit-response.md. No push/PR.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+---
+ .../05-corrective-audit-response.md           | 101 ++++++
+ .../gate-equivalent-corrective-venv.txt       |  16 +
+ src/hb_assistant/files/parsers/isolated.py    |  32 +-
+ .../obsidian_mcp/source_index_repository.py   | 192 +++++++++--
+ .../obsidian_mcp/source_indexer.py            | 163 ++++++++++
+ src/hb_assistant/obsidian_mcp/source_watch.py |  59 ++--
+ src/hb_assistant/store/migrator.py            | 111 ++++++-
+ .../store/source_intelligence_tables.py       |   5 +
+ tests/test_migrator_v126_rename_lineage.py    |   5 +-
+ tests/test_migrator_v127_moved_event.py       | 142 +++++++++
+ tests/test_source_file_parser_isolation.py    |  44 ++-
+ tests/test_source_index_moved_drain.py        | 297 ++++++++++++++++++
+ tests/test_source_index_rename_lineage.py     | 111 +++++--
+ 13 files changed, 1181 insertions(+), 97 deletions(-)
+ create mode 100644 docs/evidence/source-index-phase-b/05-corrective-audit-response.md
+ create mode 100644 docs/evidence/source-index-phase-b/final-runs/gate-equivalent-corrective-venv.txt
+ create mode 100644 tests/test_migrator_v127_moved_event.py
+ create mode 100644 tests/test_source_index_moved_drain.py
+
+diff --git a/docs/evidence/source-index-phase-b/05-corrective-audit-response.md b/docs/evidence/source-index-phase-b/05-corrective-audit-response.md
+new file mode 100644
+index 00000000..2dbd41cc
+--- /dev/null
++++ b/docs/evidence/source-index-phase-b/05-corrective-audit-response.md
+@@ -0,0 +1,101 @@
++# Phase B — Corrective-Commit Audit Response (FIND-PB-005…009)
++
++This corrective commit addresses the AEOS Implementation-Audit **FAIL** on Phase B commit `80b4d13d`
++(three High B4 trust/deletion defects + two non-blocking parser findings) and the **three rounds** of AEOS
++plan-review required changes. It is a **new commit** on branch `phase-b-source-index-architecture-completion`
++— `80b4d13d` is left intact (the audited commit + finding→fix trail are preserved). **No push / PR / deploy
++/ production DB / watcher activation / production migration.**
++
++Root architectural change: the same-root rename/move is no longer executed on the watchdog **observer
++thread**. `on_moved` now enqueues one governed **`moved`** event (old + new rel_path); the readiness-gated,
++symlink/identity-safe, transactional lineage move + destination re-extraction runs in the **drain**, with
++**bounded-backoff deferral** for every recoverable condition so a move is never terminally consumed while
++it could still succeed, and the old row is never superseded until the move is proven safe.
++
++## Finding → fix → test
++
++### FIND-PB-005 (High) — observer-thread mutation + no readiness gate + commit-then-enqueue
++**Fix.** `source_watch.apply_same_root_move` (observer-thread mutation) **deleted**; new module-level
++`source_watch.enqueue_move` enqueues ONE `moved` event and does no stat/DB work (`source_watch.py`).
++V127 rebuilds `source_intelligence_events` to carry a literal `moved` type + `dest_rel_path` +
++`next_attempt_at` (`store/migrator.py`, `store/source_intelligence_tables.py::EVENT_TYPE_VALUES_V127`).
++`enqueue_event`/`claim_queued` thread `dest_rel_path`; new `defer_event` gives bounded backoff
++(`source_index_repository.py`). The drain `moved` branch (`source_indexer.py::_apply_moved_event`) gates on
++`_probe_root_dir == "usable"` then `load_root_trust(...).safe_for_watcher_activation`, does the whole
++move+reindex in one governed iteration (no commit-then-enqueue split), and DEFERS recoverable conditions.
++**Tests.** `test_source_index_moved_drain.py`: `test_ready_root_move_applies`,
++`test_stale_root_defers_then_applies_after_recovery`, `test_unavailable_mount_defers_not_consumed`;
++`test_source_index_rename_lineage.py::test_watcher_same_root_move_enqueues_moved_event_no_mutation`.
++
++### FIND-PB-006 (High) — symlink-following destination confirmation
++**Fix.** The drain confirms the destination with `os.lstat` (non-following): a symlink/non-regular dest is
++terminal `dest_not_regular`; `pathsafe.symlink_escapes` rejects a regular-file escape (`dest_escapes_root`);
++`pathsafe.path_blocked` rejects protected paths (`dest_denied`). Pre- and post-transaction `lstat` identity
++re-checks (`_same_identity`) close the probe→mutate→index TOCTOU window.
++**Tests.** `test_symlink_destination_is_terminal_and_keeps_old_current`,
++`test_pre_transaction_drift_keeps_old_current`, `test_post_transaction_drift_leaves_old_superseded`.
++
++### FIND-PB-007 (High) — stale destination content retained on an overwrite move
++**Fix.** New `_invalidate_content_locked` fully invalidates the destination's content representation
++(drops the FTS row via its current `fts_rowid`, DELETEs the `source_intelligence_text` excerpt + chunks,
++nulls `content_sha256/fts_rowid/page_count/paragraph_count/sheet_count/extraction_failure_code/
++extraction_disposition/content_indexed_at` + sets `extraction_status='pending'`, stales the dest's OWN
++generated card). Called inside `apply_confirmed_same_root_move`'s transaction; the metadata `ON CONFLICT`
++also re-asserts `content_sha256=''`/`fts_rowid=NULL`.
++**Tests.** `test_source_index_rename_lineage.py::test_move_over_indexed_destination_invalidates_content`
++(asserts metadata reset, excerpt+chunks gone, dest card `stale`).
++
++### FIND-PB-008 (Med) — CPU rlimit not derived from the timeout
++**Fix.** `files/parsers/isolated.py::_cpu_limits(timeout_s)` derives `(soft, hard)` from the wall timeout;
++`timeout_s` is threaded through `_worker_main` / `ctx.Process` / `_apply_child_limits`.
++**Test.** `test_source_file_parser_isolation.py::test_cpu_limits_derived_from_timeout`.
++
++### FIND-PB-009 (Low) — SIGKILL misclassified as resource-exhaustion
++**Fix.** `_classify_dead_child`: only `SIGXCPU` → `parser_resource_exceeded`; `SIGKILL` (ambiguous) →
++`parser_failed`. The child's catchable `MemoryError` (RLIMIT_AS) still maps to `parser_resource_exceeded`.
++**Tests.** `test_sigkill_classified_parser_failed`, `test_sigxcpu_classified_resource_exceeded`.
++
++## Plan-review contract corrections (3 rounds) → where satisfied
++
++| Contract correction | Where |
++|---|---|
++| Recoverable conditions **deferred**, not terminally consumed (backoff) | `defer_event` + `_apply_moved_event` matrix; `test_stale_root_defers_then_applies_after_recovery` |
++| Moved dedup on **both** paths (A→B vs A→C distinct) | `enqueue_event` moved-branch dedup; `test_distinct_move_destinations_not_deduplicated` |
++| V127 parity validates **more than column presence** (probe `moved` INSERT + indexes) | `SQLiteMigrator._events_schema_current`; `test_parity_incomplete_table_is_rebuilt_not_marked_applied` |
++| Rebuild **preserves rows + event_ids** (faithful full-column copy; no AUTOINCREMENT/triggers/FKs) | V127 block; `test_rebuild_from_old_shape_preserves_rows_and_ids` |
++| Reindex failure **retryable** after a committed move; distinguishable move `result` | `apply_confirmed_same_root_move` result enum + `_apply_moved_event`; `test_reindex_failure_is_retryable_then_succeeds` |
++| Mount/dest **transient-vs-terminal** dispositions | matrix (defer root_unavailable/dest_absent/dest_indeterminate; terminal dest_not_regular/dest_escapes_root/moved_invalid) |
++| Probe→mutation **pre/post identity** validation | `_same_identity` pre+post `lstat`; pre/post drift tests |
++| Content invalidation covers the **complete** search/read surface | `_invalidate_content_locked`; overwrite-invalidation test |
++| Generated-note **explicit** stale invariant (collision case) | `_invalidate_content_locked` + relink; overwrite-invalidation test asserts `stale` |
++| V127 rollback / code-rollback posture documented | V127 migration comment (§below) |
++| `source_missing` **indexes the destination** (no lineage), not a silent drop | result `source_missing` → drain indexes dest; `test_source_missing_indexes_destination_as_ordinary` |
++| Post-transaction drift → old **superseded** (not "current") | `test_post_transaction_drift_leaves_old_superseded` |
++| Reindex exhaustion → **`error`/dest_reindex_exhausted`**, not `done` | `_apply_moved_event`; `test_reindex_exhaustion_is_error_not_done` |
++| Current event-type authority named; public `enqueue_event("moved")` accepted | `EVENT_TYPE_VALUES_V127`; `test_moved_and_legacy_types_accepted` |
++| `index_source_file` returning `None` defers (not complete on bare no-throw) | `_apply_moved_event`; `test_reindex_failure_is_retryable_then_succeeds` |
++| `defer_event` fails closed if not `processing` | guarded UPDATE; `test_defer_conflict_when_event_not_processing` |
++
++## V127 rebuild recovery / rollback posture
++- **Atomic:** the entire `SQLiteMigrator.apply()` runs under one `with transaction(conn)` — the V127
++  CREATE/INSERT/DROP/RENAME is all-or-nothing; a crash rolls the whole migration back and cannot lose
++  queued rows (they survive in the pre-rebuild table).
++- **Idempotent + self-healing:** version-guarded on 127; `_events_schema_current` re-validates AFTER the
++  rebuild and records V127 only on success. A parity-incomplete table (columns present but stale CHECK, or
++  a missing index) is detected and rebuilt on the next apply — never marked applied on column presence.
++- **No AUTOINCREMENT / triggers / FKs** on the events table (`event_id` is a client uuid TEXT PK), so
++  there is no sequence/trigger/FK to preserve across the rebuild.
++- **Code-rollback caveat:** after V127, OLD application code cannot read/insert `moved` rows — therefore
++  Phase B does not deploy or migrate production (Phase C owns the prod schema-copy + backup/restore proof).
++
++## Test results
++See `final-runs/gate-equivalent-corrective-venv.txt` — the full source-index CI-gate test list plus the two
++new Phase B corrective files (`test_source_index_moved_drain.py`, `test_migrator_v127_moved_event.py`), run
++under `.venv/bin/python -m pytest` (CPython 3.14). The gate script uses bare `pytest`, which on this machine
++resolves to system Python 3.13 with an incompatible FastAPI (environment artifact, not a code regression —
++see `02-limitations-and-reviewer-notes.md`); definitive gate execution is deferred to CI under an activated
++venv. `ruff check` + `mypy` clean on every touched module.
++
++## Commit identity
++Recorded in `06-corrective-committed-tree-identity.md` after the corrective commit (full SHA, parent
++`80b4d13d`, name-status, patch/bundle sha256). The count-drift `#306` tests remain pre-existing + untouched.
+diff --git a/docs/evidence/source-index-phase-b/final-runs/gate-equivalent-corrective-venv.txt b/docs/evidence/source-index-phase-b/final-runs/gate-equivalent-corrective-venv.txt
+new file mode 100644
+index 00000000..06af8597
+--- /dev/null
++++ b/docs/evidence/source-index-phase-b/final-runs/gate-equivalent-corrective-venv.txt
+@@ -0,0 +1,16 @@
++# Gate-equivalent test list (source-index CI gate) + Phase B corrective tests, under .venv/bin/python -m pytest (3.14).
++# python: Python 3.14.5
++........................................................................ [ 15%]
++........................................................................ [ 30%]
++........................................................................ [ 46%]
++........................................................................ [ 61%]
++........................................................................ [ 76%]
++........................................................................ [ 92%]
++....................................                                     [100%]
++=============================== warnings summary ===============================
++.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
++  /Users/bobbyfetting/hb-personal-assistant/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
++    from starlette.testclient import TestClient as TestClient  # noqa
++
++-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
++PYTEST_EXIT: 0
+diff --git a/src/hb_assistant/files/parsers/isolated.py b/src/hb_assistant/files/parsers/isolated.py
+index 93fbf914..32cb6d01 100644
+--- a/src/hb_assistant/files/parsers/isolated.py
++++ b/src/hb_assistant/files/parsers/isolated.py
+@@ -75,7 +75,17 @@ class IsolatedResult:
+ # Child process
+ # --------------------------------------------------------------------------------------------------
+ 
+-def _apply_child_limits(max_memory_mb: int) -> None:
++def _cpu_limits(timeout_s: float) -> tuple[int, int]:
++    """Derive the child's ``RLIMIT_CPU`` (soft, hard) from the parent's wall-clock ``timeout_s`` so the
++    CPU backstop tracks the actual budget instead of a fixed constant (PB-008). The soft limit sits a
++    couple of seconds ABOVE the wall timeout — the parent's timeout→terminate→kill is the primary bound;
++    RLIMIT_CPU (SIGXCPU → parser_resource_exceeded) is a coarse secondary ceiling for a child that pegs a
++    core without tripping the wall poll."""
++    soft = max(1, int(timeout_s) + 2)
++    return (soft, soft + 3)
++
++
++def _apply_child_limits(max_memory_mb: int, timeout_s: float) -> None:
+     """Apply address-space + CPU rlimits BEFORE any parser import. Best-effort; never raises."""
+     try:
+         import resource
+@@ -90,9 +100,9 @@ def _apply_child_limits(max_memory_mb: int) -> None:
+         except (ValueError, OSError):  # pragma: no cover - platform refused the limit
+             pass
+     if hasattr(resource, "RLIMIT_CPU"):
+-        # A coarse CPU backstop below the wall-clock timeout; SIGXCPU -> classified resource_exceeded.
++        # Coarse CPU backstop DERIVED from the wall timeout; SIGXCPU -> classified resource_exceeded.
+         try:
+-            resource.setrlimit(resource.RLIMIT_CPU, (60, 90))
++            resource.setrlimit(resource.RLIMIT_CPU, _cpu_limits(timeout_s))
+         except (ValueError, OSError):  # pragma: no cover
+             pass
+ 
+@@ -143,13 +153,14 @@ def _run_parser(path: Path, ext: str, max_output_bytes: int) -> dict[str, Any]:
+     return {"status": STATUS_OK, "text": text, "char_count": len(text), "output_bytes": encoded_len}
+ 
+ 
+-def _worker_main(path_str: str, ext: str, max_output_bytes: int, max_memory_mb: int, send: Any) -> None:
++def _worker_main(path_str: str, ext: str, max_output_bytes: int, max_memory_mb: int,
++                 timeout_s: float, send: Any) -> None:
+     """Child entry point (module-level so ``spawn`` can pickle it). Sends exactly one result dict."""
+     try:
+         os.setsid()  # own session/process group -> parent can killpg the whole subtree on timeout
+     except OSError:  # pragma: no cover - already a session leader
+         pass
+-    _apply_child_limits(max_memory_mb)
++    _apply_child_limits(max_memory_mb, timeout_s)
+     try:
+         result = _run_parser(Path(path_str), ext, max_output_bytes)
+     except MemoryError:
+@@ -215,9 +226,12 @@ def _classify_dead_child(exitcode: int | None) -> IsolatedResult:
+     """Child died without sending a payload. Map exit/signal to a resource/crash classification."""
+     if exitcode is not None and exitcode < 0:
+         sig = -exitcode
+-        # SIGKILL here is NOT our own timeout kill (that path returns parser_timeout before reaching
+-        # here) -> an external OOM/limit kill; SIGXCPU is the CPU rlimit. Both are resource exhaustion.
+-        if sig in (getattr(signal, "SIGKILL", 9), getattr(signal, "SIGXCPU", 24)):
++        # SIGXCPU is unambiguously our CPU rlimit → resource exhaustion. SIGKILL is AMBIGUOUS (PB-009):
++        # our own timeout kill returns parser_timeout before reaching here, but an unsolicited SIGKILL
++        # could be the OOM killer OR an operator/administrative kill — not provably resource exhaustion —
++        # so it is classified as a generic parser_failed, not parser_resource_exceeded. The child's own
++        # catchable MemoryError (RLIMIT_AS) still maps to parser_resource_exceeded inside _worker_main.
++        if sig == getattr(signal, "SIGXCPU", 24):
+             return IsolatedResult(status=STATUS_RESOURCE_EXCEEDED, failure_code=f"signal_{sig}")
+         return IsolatedResult(status=STATUS_FAILED, failure_code=f"signal_{sig}")
+     return IsolatedResult(status=STATUS_FAILED, failure_code="no_payload")
+@@ -276,7 +290,7 @@ def extract_for_complete_read(
+     target = _worker if _worker is not None else _worker_main
+     proc = ctx.Process(
+         target=target,
+-        args=(str(path), ext, int(max_output_bytes), int(max_memory_mb), send),
++        args=(str(path), ext, int(max_output_bytes), int(max_memory_mb), float(timeout_s), send),
+         daemon=True,
+     )
+     proc.start()
+diff --git a/src/hb_assistant/obsidian_mcp/source_index_repository.py b/src/hb_assistant/obsidian_mcp/source_index_repository.py
+index a0d4d37a..2cc13170 100644
+--- a/src/hb_assistant/obsidian_mcp/source_index_repository.py
++++ b/src/hb_assistant/obsidian_mcp/source_index_repository.py
+@@ -18,7 +18,7 @@ import sqlite3
+ import uuid
+ from collections.abc import Iterable
+ from contextlib import suppress
+-from datetime import datetime, timezone
++from datetime import datetime, timedelta, timezone
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -33,6 +33,21 @@ def _now() -> str:
+     return datetime.now(timezone.utc).isoformat()
+ 
+ 
++def _iso_after(delay_seconds: float) -> str:
++    """``_now()`` shifted forward by ``delay_seconds`` — SAME normalized UTC/ISO representation as every
++    queue timestamp, so lexical SQLite ``next_attempt_at <= ?`` comparisons stay deterministic."""
++    return (datetime.now(timezone.utc) + timedelta(seconds=max(0.0, delay_seconds))).isoformat()
++
++
++# Bounded-backoff config for retryable 'moved' drain deferrals (Phase B / B4 corrective) — named
++# constants, never magic numbers embedded in the drain. A recoverable condition (stale/unready root,
++# ambiguous mount, dest not yet visible, dest reindex pending) re-queues the SAME move event with a
++# future next_attempt_at; after MOVED_MAX_ATTEMPTS claim cycles the caller applies a terminal disposition.
++MOVED_MAX_ATTEMPTS = 6
++MOVED_BACKOFF_BASE_S = 30
++MOVED_BACKOFF_CAP_S = 1800
++
++
+ def _map_disposition(disposition: str | None, extraction_status: str | None) -> str:
+     """Effective extraction disposition, mapping a legacy NULL from the extraction_status (V122).
+ 
+@@ -1016,6 +1031,45 @@ class SourceIndexRepository:
+         )
+         self._mark_generated_notes_stale(c, source_id)
+ 
++    def _invalidate_content_locked(
++        self, c: sqlite3.Connection, source_id: str, source_kind: str
++    ) -> None:
++        """Fully invalidate a source's CONTENT representation IN PLACE (Phase B / B4 corrective) — WITHOUT
++        deleting the source row — for a move that OVERWRITES an already-indexed destination. Clears every
++        content-derived field the read/search paths consult, so no stale content is served or advertised
++        complete while the destination awaits re-extraction:
++
++          * drops the FTS row (via the CURRENT metadata.fts_rowid — read BEFORE it is nulled) so old body
++            text is no longer searchable;
++          * DELETEs the bounded text excerpt (text_excerpt/full_text_sha256/text_vault_ref) and the chunks;
++          * nulls the metadata content columns (content_sha256/fts_rowid/page_count/paragraph_count/
++            sheet_count/extraction_failure_code/extraction_disposition/content_indexed_at) and sets
++            extraction_status='pending';
++          * stales any generated notes (source cards) for this source (the dest's OWN pre-existing card,
++            which the old→new relink's UNIQUE-collision IGNORE would otherwise leave 'generated').
++
++        Mirrors replace-mode ``_upsert_source_file_locked`` (text/chunks/content_indexed_at) + the FTS drop
++        in ``_mark_deleted_by_source_id_locked``. Idempotent / no-op when the source has no content."""
++        row = c.execute(
++            "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?", (source_id,)
++        ).fetchone()
++        fts_rowid = row[0] if row else None
++        if fts_rowid is not None and self._fts_available(c):
++            fts_table = (
++                "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
++            )
++            c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
++        c.execute("DELETE FROM source_intelligence_text WHERE source_id=?", (source_id,))
++        c.execute("DELETE FROM source_intelligence_chunks WHERE source_id=?", (source_id,))
++        c.execute(
++            "UPDATE source_intelligence_metadata SET content_sha256='', fts_rowid=NULL, "
++            " page_count=NULL, paragraph_count=NULL, sheet_count=NULL, extraction_failure_code=NULL, "
++            " extraction_disposition=NULL, content_indexed_at=NULL, extraction_status='pending' "
++            "WHERE source_id=?",
++            (source_id,),
++        )
++        self._mark_generated_notes_stale(c, source_id)
++
+     def apply_confirmed_same_root_move(
+         self,
+         root_key: str,
+@@ -1030,14 +1084,21 @@ class SourceIndexRepository:
+         Invariant: the old row cannot become non-current unless the destination row + lineage are durably
+         persisted in the SAME transaction — on any failure the whole move rolls back and the old row stays
+         current. The move carries ONLY lineage (``renamed_from_source_id``): extraction/content trust is
+-        NOT carried forward (a filesystem move does not prove byte identity), so the destination row is
+-        (re)written with the current dest metadata and ``extraction_status='pending'`` and its inherited
+-        generated-note links are marked ``stale`` (inherited-but-unverified) pending re-extraction. The
+-        caller is responsible for confirming the destination is present first and for enqueuing
+-        re-extraction of ``new_rel_path``.
+-
+-        Returns ``{old_source_id, new_source_id, linked}`` — ``linked`` is False when no current old row
+-        existed (then this is a plain create with no predecessor)."""
++        NOT carried forward (a filesystem move does not prove byte identity), so the destination's content
++        representation is FULLY invalidated (``_invalidate_content_locked``) and ``extraction_status`` set
++        to ``pending``. The caller confirms the destination present/regular first and (re)extracts
++        ``new_rel_path`` afterward.
++
++        Returns ``{old_source_id, new_source_id, linked, result}`` where ``result`` distinguishes:
++          * ``move_applied`` — a current predecessor existed → superseded this call (``linked`` True);
++          * ``move_already_applied`` — no current predecessor, but a lineage successor == new_sid already
++            exists (an idempotent retry) → dest content re-invalidated, lineage untouched;
++          * ``source_missing`` — no current predecessor and no successor → NO mutation here; the caller
++            indexes the destination as an ordinary current source (``renamed_from_source_id=null``);
++          * ``conflicting_successor`` — the predecessor is already superseded by a DIFFERENT successor →
++            NO mutation (fail closed).
++        Only ``move_applied``/``move_already_applied`` mutate; ``source_missing``/``conflicting_successor``
++        leave the store untouched."""
+         old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
+         new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
+         now = _now()
+@@ -1046,24 +1107,52 @@ class SourceIndexRepository:
+                 "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
+                 (old_sid,),
+             ).fetchone() is not None
+-            lineage = old_sid if old_present else None
++            if old_present:
++                result = "move_applied"
++            else:
++                # No current predecessor — distinguish idempotent-retry / conflict / genuinely-missing so a
++                # retried or racing move never fabricates lineage or re-deletes.
++                succ = c.execute(
++                    "SELECT source_id FROM source_intelligence_sources "
++                    "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
++                    (old_sid,),
++                ).fetchone()
++                if succ is not None and succ[0] == new_sid:
++                    result = "move_already_applied"
++                elif succ is not None:
++                    # Superseded by a DIFFERENT successor → do not mutate (fail closed).
++                    return {"old_source_id": old_sid, "new_source_id": new_sid,
++                            "linked": False, "result": "conflicting_successor"}
++                else:
++                    # Predecessor genuinely gone with no tracked successor → nothing to move here; the
++                    # caller indexes the destination as an ordinary current source (no invented lineage).
++                    return {"old_source_id": old_sid, "new_source_id": new_sid,
++                            "linked": False, "result": "source_missing"}
++
++            lineage = old_sid  # both move_applied and move_already_applied carry lineage
+             # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
++            # COALESCE-preserve lineage on a retry so re-running never nulls an existing predecessor link.
+             c.execute(
+                 "INSERT INTO source_intelligence_sources"
+                 "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
+                 " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
+                 "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
+-                " renamed_from_source_id=excluded.renamed_from_source_id, updated_at=excluded.updated_at",
++                " renamed_from_source_id=COALESCE(excluded.renamed_from_source_id, "
++                "  source_intelligence_sources.renamed_from_source_id), updated_at=excluded.updated_at",
+                 (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
+             )
++            # FULL content invalidation of the destination (drops a pre-existing dest's FTS row via its
++            # CURRENT fts_rowid, text, chunks, content metadata cols, and stales the dest's own card) —
++            # BEFORE the metadata upsert nulls fts_rowid. Fresh dest → no-op.
++            self._invalidate_content_locked(c, new_sid, "external_file")
+             # Destination metadata = current dest stat; content trust invalidated (extraction pending).
+             c.execute(
+                 "INSERT INTO source_intelligence_metadata"
+                 "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
+                 " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
+                 "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
+-                " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, "
+-                " extraction_status='pending', indexed_at=excluded.indexed_at",
++                " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, content_sha256='', "
++                " fts_rowid=NULL, extraction_status='pending', indexed_at=excluded.indexed_at",
+                 (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
+                  dest_metadata.get("mtime_ns"), "", now),
+             )
+@@ -1077,7 +1166,8 @@ class SourceIndexRepository:
+                 )
+                 # Old row becomes non-current only now that the destination + lineage are persisted.
+                 self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
+-        return {"old_source_id": old_sid, "new_source_id": new_sid, "linked": old_present}
++        return {"old_source_id": old_sid, "new_source_id": new_sid,
++                "linked": old_present, "result": result}
+ 
+     def find_successor_source_id(
+         self, source_id: str, *, conn: sqlite3.Connection | None = None
+@@ -1400,13 +1490,27 @@ class SourceIndexRepository:
+         rel_path: str | None = None,
+         source_root_key: str | None = None,
+         source_id: str | None = None,
++        dest_rel_path: str | None = None,
+         conn: sqlite3.Connection | None = None,
+     ) -> str:
+         event_id = uuid.uuid4().hex
+         now = _now()
+         with borrow_connection(conn, self.db_path) as c, transaction(c):
+-            # Coalesce: if an identical queued event for this path exists, reuse it (debounce backstop).
+-            if rel_path is not None:
++            # Coalesce: if an identical queued event exists, reuse it (debounce backstop).
++            if event_type == "moved":
++                # A move's queue identity is BOTH paths + root (source_root_key, rel_path, dest_rel_path):
++                # distinct moves of the same source (A->B vs A->C) must NEVER collapse into one event.
++                # ``IS`` (not ``=``) so a NULL component compares NULL-safe. Ordinary events keep the
++                # (rel_path, event_type) identity below.
++                existing = c.execute(
++                    "SELECT event_id FROM source_intelligence_events "
++                    "WHERE status='queued' AND event_type='moved' "
++                    "AND source_root_key IS ? AND rel_path IS ? AND dest_rel_path IS ?",
++                    (source_root_key, rel_path, dest_rel_path),
++                ).fetchone()
++                if existing is not None:
++                    return str(existing[0])
++            elif rel_path is not None:
+                 existing = c.execute(
+                     "SELECT event_id FROM source_intelligence_events "
+                     "WHERE status='queued' AND rel_path=? AND event_type=?",
+@@ -1429,9 +1533,9 @@ class SourceIndexRepository:
+                     return str(existing[0])
+             c.execute(
+                 "INSERT INTO source_intelligence_events "
+-                "(event_id, source_id, rel_path, source_root_key, event_type, status, attempts, created_at, updated_at) "
+-                "VALUES (?,?,?,?,?,'queued',0,?,?)",
+-                (event_id, source_id, rel_path, source_root_key, event_type, now, now),
++                "(event_id, source_id, rel_path, source_root_key, dest_rel_path, event_type, status, attempts, created_at, updated_at) "
++                "VALUES (?,?,?,?,?,?,'queued',0,?,?)",
++                (event_id, source_id, rel_path, source_root_key, dest_rel_path, event_type, now, now),
+             )
+         return event_id
+ 
+@@ -1440,10 +1544,15 @@ class SourceIndexRepository:
+     ) -> list[dict[str, Any]]:
+         now = _now()
+         with borrow_connection(conn, self.db_path) as c, transaction(c):
++            # ``next_attempt_at`` gates bounded-backoff deferrals: a deferred event is re-eligible only once
++            # its future timestamp has passed. Ordinary events have NULL → always eligible (behavior
++            # unchanged). Lexical compare is sound because both columns use the same _now() ISO format.
+             rows = c.execute(
+-                "SELECT event_id, source_id, rel_path, source_root_key, event_type FROM source_intelligence_events "
+-                "WHERE status='queued' ORDER BY created_at LIMIT ?",
+-                (int(limit),),
++                "SELECT event_id, source_id, rel_path, source_root_key, event_type, attempts, dest_rel_path "
++                "FROM source_intelligence_events "
++                "WHERE status='queued' AND (next_attempt_at IS NULL OR next_attempt_at <= ?) "
++                "ORDER BY created_at LIMIT ?",
++                (now, int(limit)),
+             ).fetchall()
+             claimed = []
+             for r in rows:
+@@ -1459,6 +1568,10 @@ class SourceIndexRepository:
+                         "rel_path": r[2],
+                         "source_root_key": r[3],
+                         "event_type": r[4],
++                        # attempts AFTER this claim (the UPDATE above incremented it) — the drain uses this
++                        # to decide defer-vs-exhausted for retryable 'moved' conditions.
++                        "attempts": int(r[5] or 0) + 1,
++                        "dest_rel_path": r[6],
+                     }
+                 )
+             return claimed
+@@ -1498,6 +1611,41 @@ class SourceIndexRepository:
+                 (status, error_code, _now(), event_id),
+             )
+ 
++    def defer_event(
++        self,
++        event_id: str,
++        *,
++        error_code: str,
++        attempts: int,
++        conn: sqlite3.Connection | None = None,
++    ) -> str:
++        """Bounded, backoff-based retry for a CLAIMED ('processing') event (Phase B / B4 corrective).
++
++        Returns:
++          * ``"deferred"`` — re-queued with a future ``next_attempt_at`` (retryable on a later drain);
++          * ``"exhausted"`` — ``attempts >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
++            terminal disposition (a move never loops forever);
++          * ``"conflict"`` — the guarded ``WHERE ... status='processing'`` matched 0 rows (the event is no
++            longer owned by this drain, e.g. requeue_stuck reclaimed it) → **fail closed**, never claim a
++            false deferral.
++
++        The exponential backoff (base/cap from the named module constants) spaces retries so a stale root
++        is not hammered every drain cycle; ``next_attempt_at`` uses ``_iso_after`` (identical ISO format to
++        every other queue timestamp)."""
++        if attempts >= MOVED_MAX_ATTEMPTS:
++            return "exhausted"
++        delay = min(MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, attempts - 1)))
++        with borrow_connection(conn, self.db_path) as c, transaction(c):
++            cur = c.execute(
++                "UPDATE source_intelligence_events "
++                "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
++                "WHERE event_id=? AND status='processing'",
++                (error_code, _iso_after(delay), _now(), event_id),
++            )
++            if (cur.rowcount or 0) == 0:
++                return "conflict"
++        return "deferred"
++
+     def requeue_stuck(
+         self, ttl_seconds: int = 900, *, conn: sqlite3.Connection | None = None
+     ) -> int:
+diff --git a/src/hb_assistant/obsidian_mcp/source_indexer.py b/src/hb_assistant/obsidian_mcp/source_indexer.py
+index 52531d89..7c4b09cf 100644
+--- a/src/hb_assistant/obsidian_mcp/source_indexer.py
++++ b/src/hb_assistant/obsidian_mcp/source_indexer.py
+@@ -1388,6 +1388,147 @@ def _probe_root_dir(root_path: Path) -> str:
+     return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
+ 
+ 
++def _same_identity(a: os.stat_result, b: os.stat_result) -> bool:
++    """True when two ``lstat`` results denote the SAME inode (dev/ino) with unchanged size + mtime — used
++    to detect a destination replaced between probe and mutation/indexing (PB-006 TOCTOU)."""
++    return (
++        a.st_dev == b.st_dev
++        and a.st_ino == b.st_ino
++        and a.st_size == b.st_size
++        and a.st_mtime_ns == b.st_mtime_ns
++    )
++
++
++def _apply_moved_event(
++    repo: SourceIndexRepository,
++    config: ObsidianMcpConfig,
++    event: dict[str, Any],
++    root: ExternalSourceRoot,
++    *,
++    old_rel: str,
++    new_rel: str,
++    src_key: str,
++    attempts: int,
++) -> None:
++    """Governed same-root rename/move (Phase B / B4 corrective — PB-005/006/007), off the observer thread.
++
++    Readiness-gated (``safe_for_watcher_activation``), symlink- and identity-safe, transactional lineage
++    move + destination re-extraction. Every RECOVERABLE condition (lost/flaky mount, not-yet-ready root,
++    dest not yet visible, transient I/O, pre/post-mutation drift, pending re-extraction) DEFERS with
++    bounded backoff — a move is never terminally consumed while it could still succeed, and the old row is
++    left current until the move is proven safe. A provably-invalid destination (symlink/non-regular,
++    escapes-root, protected path) is a fail-closed TERMINAL skip that never deletes the old row."""
++    import stat as _sm
++
++    from .source_root_trust import load_root_trust
++
++    event_id = event["event_id"]
++
++    def _defer(code: str) -> None:
++        outcome = repo.defer_event(event_id, error_code=code, attempts=attempts)
++        if outcome == "exhausted":
++            # A recoverable condition that never cleared within the retry budget. NEVER delete the old row
++            # (the false-deletion hazard); leave lineage untouched and let reconciliation own it —
++            # a terminal, NON-mutating skip.
++            repo.complete_event(event_id, "skipped", error_code=f"{code}_unresolved")
++        # "deferred" / "conflict" → nothing more this drain.
++
++    root_path = Path(root.path)
++    # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
++    if _probe_root_dir(root_path) != "usable":
++        _defer("root_unavailable")
++        return
++    # 2. Root readiness — the SAME strict bar the watcher activates on. A not-yet-ready root defers,
++    #    leaving the old row current until the move can be proven safe.
++    try:
++        ready = bool(load_root_trust(repo, config, None, src_key).safe_for_watcher_activation)
++    except Exception:
++        _defer("root_trust_unevaluable")
++        return
++    if not ready:
++        _defer("root_not_ready")
++        return
++    # 3. Destination confirmation via os.lstat (does NOT follow symlinks): a symlink/non-regular dest is
++    #    terminal-denied, ENOENT defers (not yet visible), other OSError defers (transient).
++    dest_abs = root_path / new_rel
++    if pathsafe.path_blocked(new_rel, include_hidden=False):
++        repo.complete_event(event_id, "skipped", error_code="dest_denied")
++        return
++    try:
++        lst0 = os.lstat(dest_abs)
++    except FileNotFoundError:
++        _defer("dest_absent")
++        return
++    except OSError:
++        _defer("dest_indeterminate")
++        return
++    if not _sm.S_ISREG(lst0.st_mode):
++        repo.complete_event(event_id, "skipped", error_code="dest_not_regular")
++        return
++    try:
++        if pathsafe.symlink_escapes(dest_abs, root_path):
++            repo.complete_event(event_id, "skipped", error_code="dest_escapes_root")
++            return
++    except OSError:
++        _defer("dest_indeterminate")
++        return
++    # 4. Immediate pre-transaction identity re-check (narrows the probe→mutate window). Drift here is
++    #    PRE-mutation → no mutation, old row stays current, deferred.
++    try:
++        lst1 = os.lstat(dest_abs)
++    except OSError:
++        _defer("dest_indeterminate")
++        return
++    if not (_sm.S_ISREG(lst1.st_mode) and _same_identity(lst0, lst1)):
++        _defer("dest_changed_before_move")
++        return
++    dest_metadata = {
++        "file_ext": Path(new_rel).suffix.lower().lstrip("."),
++        "size_bytes": lst1.st_size,
++        "mtime_ns": lst1.st_mtime_ns,
++    }
++    # 5. Transactional lineage move. move_txn failure is recoverable (nothing was superseded — the txn
++    #    rolled back). conflicting_successor is a fail-closed terminal skip (no mutation happened).
++    try:
++        move = repo.apply_confirmed_same_root_move(src_key, old_rel, new_rel, dest_metadata)
++    except Exception:
++        _defer("move_txn_error")
++        return
++    if move.get("result") == "conflicting_successor":
++        repo.complete_event(event_id, "skipped", error_code="conflicting_successor")
++        return
++    # move_applied / move_already_applied / source_missing all proceed to (re)index the destination
++    # (source_missing indexes it as an ordinary current source — the move op wrote no lineage).
++    # 6. Post-transaction identity re-check: drift AFTER the move leaves the old row SUPERSEDED (not
++    #    restored). The dest is already content-invalidated + pending, so just defer re-extraction; no
++    #    stale content is ever advertised complete.
++    try:
++        lst2 = os.lstat(dest_abs)
++        drifted = not (_sm.S_ISREG(lst2.st_mode) and _same_identity(lst1, lst2))
++    except OSError:
++        drifted = True
++    if drifted:
++        _defer("dest_changed_during_move")
++        return
++    # 7. Re-extract the destination. index_source_file returns str|None: None (or an exception) is a
++    #    RETRYABLE indexing failure — never complete on a bare no-throw. The move stays committed; retry
++    #    recognizes move_already_applied and re-attempts indexing.
++    try:
++        sid = index_source_file(dest_abs, root, repo, config)
++    except Exception:
++        sid = None
++    if sid is None:
++        outcome = repo.defer_event(event_id, error_code="dest_reindex_pending", attempts=attempts)
++        if outcome == "exhausted":
++            # The safe move committed; only the content refresh did not complete. Terminal ERROR (not
++            # 'done') accurately reports "move committed, content pending" with lineage + supersede +
++            # invalidation intact; reconciliation / an explicit reindex recovers. Client trust stays safe
++            # because pending content is never advertised complete.
++            repo.complete_event(event_id, "error", error_code="dest_reindex_exhausted")
++        return
++    repo.complete_event(event_id, "done")
++
++
+ class _LeaseLost(Exception):
+     """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
+     ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
+@@ -2500,6 +2641,28 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
+                                 repo.complete_event(
+                                     event["event_id"], "skipped", error_code="indeterminate"
+                                 )
++            elif event["event_type"] == "moved":
++                # Governed same-root rename/move (Phase B / B4 corrective). Placed BEFORE the path-policy
++                # branches below (which key on the OLD rel_path) so a move is never mis-routed as an
++                # excluded/deferred/unsupported skip. Terminal-invalid payloads never mutate; everything
++                # else is dispatched to the readiness-gated, symlink/identity-safe drain move.
++                old_rel = event["rel_path"]
++                new_rel = event.get("dest_rel_path")
++                src_key = event.get("source_root_key")
++                if not old_rel or not new_rel or old_rel == new_rel or src_key == _VAULT_ROOT_KEY:
++                    repo.complete_event(event["event_id"], "skipped", error_code="moved_invalid")
++                else:
++                    root = roots.get(src_key)
++                    if root is None or not getattr(root, "enabled", True):
++                        repo.complete_event(
++                            event["event_id"], "skipped", error_code="unconfigured_root"
++                        )
++                    else:
++                        _apply_moved_event(
++                            repo, config, event, root,
++                            old_rel=old_rel, new_rel=new_rel, src_key=src_key,
++                            attempts=int(event.get("attempts") or 1),
++                        )
+             elif (
+                 event["source_root_key"] == _VAULT_ROOT_KEY
+                 and event["rel_path"]
+diff --git a/src/hb_assistant/obsidian_mcp/source_watch.py b/src/hb_assistant/obsidian_mcp/source_watch.py
+index 688c0b83..3ffebad0 100644
+--- a/src/hb_assistant/obsidian_mcp/source_watch.py
++++ b/src/hb_assistant/obsidian_mcp/source_watch.py
+@@ -59,43 +59,29 @@ def _roots_hash(config: ObsidianMcpConfig, db_path: str) -> str:
+     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+ 
+ 
+-def apply_same_root_move(repo: Any, root_key: str, root_path: Path, src_path: str,
+-                         dest_path: str | None) -> bool:
+-    """Correlate a same-root file move into a transactional lineage update (Phase B / B4).
+-
+-    Returns True when the move was handled as a lineage-preserving rename (caller must NOT emit a
+-    delete+create), or False to fall back to the conservative delete+create path. Only external (NAS)
+-    roots are correlated; the vault root keeps its own semantics. The destination must be a confirmed
+-    regular file — an unconfirmed/indeterminate destination falls back so the source deletion still obeys
+-    the drain's confirmed-absence rules. Content trust is NOT carried: the transactional op invalidates
+-    extraction and we enqueue a ``created`` event to re-extract the destination."""
++def enqueue_move(repo: Any, root_key: str, root_path: Path, src_path: str,
++                 dest_path: str | None) -> str:
++    """Correlate a same-root external file move into ONE governed ``moved`` event (Phase B / B4).
++
++    Enqueues a single ``moved`` event carrying BOTH paths (rel_path=old, dest_rel_path=new) for the
++    readiness-gated drain — performing **no** stat or DB mutation on the caller's (observer) thread, which
++    was the PB-005 defect. Returns ``"moved"`` when the governed event was enqueued, or ``"fallback"`` when
++    the caller should emit the conservative ``deleted``+``created`` pair (vault root / cross-root /
++    out-of-root / ignored destination). The old row is never superseded here — only the drain, after it
++    proves destination + root readiness, may do so."""
+     if not dest_path or root_key == _VAULT_ROOT_KEY:
+-        return False
++        return "fallback"
+     try:
+         old_rel = str(Path(src_path).relative_to(root_path))
+         new_rel = str(Path(dest_path).relative_to(root_path))
+     except ValueError:
+-        return False  # a path outside this root -> not a same-root move
++        return "fallback"  # a path outside this root -> not a same-root move
+     if should_ignore(new_rel, Path(dest_path).name):
+-        return False
+-    dest_file = Path(dest_path)
+-    try:
+-        if not dest_file.is_file():
+-            return False  # destination not confirmed present -> conservative fallback
+-        st = dest_file.stat()
+-    except OSError:
+-        return False
+-    dest_metadata = {
+-        "file_ext": dest_file.suffix.lower().lstrip("."),
+-        "size_bytes": st.st_size,
+-        "mtime_ns": st.st_mtime_ns,
+-    }
+-    try:
+-        repo.apply_confirmed_same_root_move(root_key, old_rel, new_rel, dest_metadata)
+-        repo.enqueue_event(event_type="created", rel_path=new_rel, source_root_key=root_key)
+-        return True
+-    except Exception:  # noqa: BLE001 - any failure -> conservative delete+create fallback
+-        return False
++        return "fallback"
++    repo.enqueue_event(
++        event_type="moved", rel_path=old_rel, dest_rel_path=new_rel, source_root_key=root_key
++    )
++    return "moved"
+ 
+ 
+ class SourceWatcher:
+@@ -338,13 +324,14 @@ class SourceWatcher:
+                 if event.is_directory:
+                     return
+                 dest_path = getattr(event, "dest_path", None)
+-                # Same-root external move -> transactional lineage rename (no delete+create burst).
+-                if apply_same_root_move(repo, self._root_key, self._root_path, event.src_path,
+-                                        dest_path):
++                # Same-root external move → ONE governed 'moved' event (no observer-thread stat/mutation);
++                # the drain performs the readiness-gated, symlink/identity-safe, transactional lineage move.
++                if enqueue_move(repo, self._root_key, self._root_path, event.src_path,
++                                dest_path) == "moved":
+                     watcher._last_event_at = _now()
+                     return
+-                # Conservative fallback (cross-root / unconfirmed dest / vault / op failure): the deleted
+-                # event obeys the NAS confirmed-absence rules in the drain — never an immediate delete.
++                # Conservative fallback (cross-root / vault / out-of-root / ignored dest): the deleted event
++                # obeys the NAS confirmed-absence rules in the drain — never an immediate delete.
+                 self._enqueue(event.src_path, "deleted")
+                 self._enqueue(dest_path or event.src_path, "created")
+ 
+diff --git a/src/hb_assistant/store/migrator.py b/src/hb_assistant/store/migrator.py
+index 6de05815..bd80b637 100644
+--- a/src/hb_assistant/store/migrator.py
++++ b/src/hb_assistant/store/migrator.py
+@@ -14,7 +14,7 @@ from .connection import get_connection, open_connection, transaction
+ # Single source of truth for the head schema version. Bump this with every new
+ # migration block in apply(). Tests should assert against this constant rather
+ # than hard-coding a literal so version bumps do not break unrelated tests.
+-LATEST_SCHEMA_VERSION = 126
++LATEST_SCHEMA_VERSION = 127
+ 
+ 
+ class StaffingMigrationError(RuntimeError):
+@@ -9260,6 +9260,81 @@ class SQLiteMigrator:
+                     (now,),
+                 )
+ 
++            # --- V127: durable-queue support for governed 'moved' events (Phase B / B4 corrective) ---
++            # Rebuild source_intelligence_events to (a) widen the event_type CHECK to accept 'moved' and
++            # (b) add two nullable columns: ``dest_rel_path`` (a move's destination rel_path) and
++            # ``next_attempt_at`` (bounded-backoff deferral timestamp). SQLite cannot ALTER a CHECK, so the
++            # widening requires a full table rebuild. The whole apply() runs in ONE transaction (see top),
++            # so this CREATE/INSERT/DROP/RENAME is atomic: a crash rolls the entire migration back and
++            # CANNOT lose queued rows. Parity-guarded + idempotent: the rebuild runs only when the events
++            # table is not already at the V127 shape, and version 127 is recorded ONLY after parity is
++            # re-proven (a table with the columns but an OLD CHECK, or missing an index, is rebuilt — never
++            # marked applied on column presence alone). Immutable historical DDL: the V93 CREATE +
++            # EVENT_TYPE_VALUES are untouched; V127 owns the new shape via the version-pinned
++            # EVENT_TYPE_VALUES_V127. Recovery: a txn failure rolls the rebuild back; a parity-incomplete
++            # table is detected + rebuilt on the next apply. Code-rollback caveat: after V127, OLD
++            # application code cannot read/insert 'moved' rows — so do NOT deploy or migrate production in
++            # Phase B (Phase C owns the prod schema-copy + backup/restore proof).
++            cur = conn.execute("SELECT version FROM schema_migrations WHERE version = 127")
++            if cur.fetchone() is None:
++                from hb_assistant.store.source_intelligence_tables import (
++                    EVENT_STATUS_VALUES,
++                    EVENT_TYPE_VALUES_V127,
++                )
++
++                if not self._events_schema_current(conn):
++                    et_csv = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES_V127)
++                    st_csv = ", ".join(f"'{v}'" for v in EVENT_STATUS_VALUES)
++                    conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
++                    conn.execute(
++                        "CREATE TABLE source_intelligence_events_v127 ("
++                        " event_id TEXT PRIMARY KEY,"
++                        " source_id TEXT,"
++                        " rel_path TEXT,"
++                        " source_root_key TEXT,"
++                        " dest_rel_path TEXT,"
++                        " next_attempt_at TEXT,"
++                        f" event_type TEXT NOT NULL CHECK(event_type IN ({et_csv})),"
++                        f" status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ({st_csv})),"
++                        " error_code TEXT,"
++                        " attempts INTEGER NOT NULL DEFAULT 0,"
++                        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
++                        " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
++                        ")"
++                    )
++                    # Faithful copy of every existing row + event_id; the two new columns default NULL.
++                    # (event_id is a client uuid TEXT PK — no AUTOINCREMENT/sequence; no triggers, no FKs
++                    # to recreate.)
++                    conn.execute(
++                        "INSERT INTO source_intelligence_events_v127 "
++                        "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
++                        " event_type, status, error_code, attempts, created_at, updated_at) "
++                        "SELECT event_id, source_id, rel_path, source_root_key, NULL, NULL, "
++                        " event_type, status, error_code, attempts, created_at, updated_at "
++                        "FROM source_intelligence_events"
++                    )
++                    conn.execute("DROP TABLE source_intelligence_events")
++                    conn.execute(
++                        "ALTER TABLE source_intelligence_events_v127 "
++                        "RENAME TO source_intelligence_events"
++                    )
++                    conn.execute(
++                        "CREATE INDEX IF NOT EXISTS idx_si_events_status "
++                        "ON source_intelligence_events(status, created_at)"
++                    )
++                    conn.execute(
++                        "CREATE INDEX IF NOT EXISTS idx_si_events_source "
++                        "ON source_intelligence_events(source_id)"
++                    )
++                if not self._events_schema_current(conn):
++                    # The whole apply() transaction rolls back — the old events table is preserved intact.
++                    raise RuntimeError("v127_events_rebuild_parity_failed")
++                conn.execute(
++                    "INSERT INTO schema_migrations (version, name, applied_at) "
++                    "VALUES (127, 'v127_events_moved_dest_backoff', ?)",
++                    (now,),
++                )
++
+ 
+         # Return latest version, then release the migration connection. get_connection's
+         # contract is that the caller closes it; left open, this WAL connection is only
+@@ -9271,6 +9346,40 @@ class SQLiteMigrator:
+         conn.close()
+         return version
+ 
++    @staticmethod
++    def _events_schema_current(conn: sqlite3.Connection) -> bool:
++        """True only if ``source_intelligence_events`` is at the FULL V127 shape (Phase B / B4 corrective):
++        both ``dest_rel_path`` + ``next_attempt_at`` columns present, both indexes present, AND the
++        ``event_type`` CHECK accepts ``'moved'`` (proven by a scratch INSERT rolled back in a savepoint).
++
++        A table that merely HAS the columns but retains the old CHECK — or is missing an index — returns
++        False, so V127 rebuilds rather than being falsely recorded on column presence alone."""
++        cols = {
++            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
++        }
++        if not {"dest_rel_path", "next_attempt_at"}.issubset(cols):
++            return False
++        idx = {
++            r[1] for r in conn.execute("PRAGMA index_list(source_intelligence_events)").fetchall()
++        }
++        if not {"idx_si_events_status", "idx_si_events_source"}.issubset(idx):
++            return False
++        # Prove the CHECK permits 'moved' without committing a probe row: INSERT then ROLLBACK TO the
++        # savepoint unconditionally (whether the INSERT succeeded or raised the CHECK IntegrityError).
++        conn.execute("SAVEPOINT v127_probe")
++        try:
++            conn.execute(
++                "INSERT INTO source_intelligence_events (event_id, event_type, status) "
++                "VALUES ('__v127_probe__', 'moved', 'queued')"
++            )
++            ok = True
++        except sqlite3.IntegrityError:
++            ok = False
++        finally:
++            conn.execute("ROLLBACK TO v127_probe")
++            conn.execute("RELEASE v127_probe")
++        return ok
++
+     @staticmethod
+     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:
+         """Root-scope source identity (NAS N8).
+diff --git a/src/hb_assistant/store/source_intelligence_tables.py b/src/hb_assistant/store/source_intelligence_tables.py
+index 8a68c9c9..64846771 100644
+--- a/src/hb_assistant/store/source_intelligence_tables.py
++++ b/src/hb_assistant/store/source_intelligence_tables.py
+@@ -61,6 +61,11 @@ EVENT_TYPE_VALUES: tuple[str, ...] = (
+     "reindex_requested",
+     "rebuild",
+ )
++# CURRENT event-type authority (Phase B / B4 corrective). The historical ``EVENT_TYPE_VALUES`` above is
++# frozen — it is baked into the immutable V93 CREATE and MUST NOT change. Runtime enqueue/drain code and
++# the V127 events-table rebuild reference ``EVENT_TYPE_VALUES_V127`` so a governed ``moved`` event is
++# accepted; no current path may reject ``moved`` by importing the historical constant.
++EVENT_TYPE_VALUES_V127: tuple[str, ...] = (*EVENT_TYPE_VALUES, "moved")
+ EVENT_STATUS_VALUES: tuple[str, ...] = ("queued", "processing", "done", "error", "skipped")
+ 
+ V93_TABLES: tuple[str, ...] = (
+diff --git a/tests/test_migrator_v126_rename_lineage.py b/tests/test_migrator_v126_rename_lineage.py
+index e5b16d7e..6e5026e2 100644
+--- a/tests/test_migrator_v126_rename_lineage.py
++++ b/tests/test_migrator_v126_rename_lineage.py
+@@ -23,8 +23,9 @@ def _versions(db: str) -> set[int]:
+         return {r[0] for r in c.execute("SELECT version FROM schema_migrations").fetchall()}
+ 
+ 
+-def test_latest_version_is_126() -> None:
+-    assert LATEST_SCHEMA_VERSION == 126
++def test_latest_version_at_least_126() -> None:
++    # V126 lands the rename-lineage column; later corrective migrations (V127) may bump the head further.
++    assert LATEST_SCHEMA_VERSION >= 126
+ 
+ 
+ def test_column_and_index_added(tmp_path: Path) -> None:
+diff --git a/tests/test_migrator_v127_moved_event.py b/tests/test_migrator_v127_moved_event.py
+new file mode 100644
+index 00000000..0fb71bc8
+--- /dev/null
++++ b/tests/test_migrator_v127_moved_event.py
+@@ -0,0 +1,142 @@
++"""Phase B / B4 corrective — V127 events-table rebuild ('moved' type + dest_rel_path + next_attempt_at).
++
++Proves the rebuild widens the event_type CHECK to accept 'moved', adds the two nullable columns, PRESERVES
++every existing queued row + event_id, keeps both indexes, is idempotent, and — critically — parity is
++validated on more than column presence: a table that has the new columns but retains the OLD CHECK (or is
++otherwise incomplete) is REBUILT, never falsely marked applied. Uses scratch SQLite DBs only.
++"""
++
++from __future__ import annotations
++
++import sqlite3
++from pathlib import Path
++
++import pytest
++
++from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
++from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
++from hb_assistant.store.source_intelligence_tables import EVENT_TYPE_VALUES
++
++# Old (pre-V127) events DDL — historical shape, no dest_rel_path/next_attempt_at, CHECK WITHOUT 'moved'.
++_OLD_CHECK = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES)
++_OLD_EVENTS_DDL = (
++    "CREATE TABLE source_intelligence_events ("
++    " event_id TEXT PRIMARY KEY, source_id TEXT, rel_path TEXT, source_root_key TEXT,"
++    f" event_type TEXT NOT NULL CHECK(event_type IN ({_OLD_CHECK})),"
++    " status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN"
++    " ('queued','processing','done','error','skipped')),"
++    " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
++    " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
++    " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
++)
++
++
++def _cols(db: str) -> set[str]:
++    with sqlite3.connect(db) as c:
++        return {r[1] for r in c.execute("PRAGMA table_info(source_intelligence_events)").fetchall()}
++
++
++def _indexes(db: str) -> set[str]:
++    with sqlite3.connect(db) as c:
++        return {r[1] for r in c.execute("PRAGMA index_list(source_intelligence_events)").fetchall()}
++
++
++def _versions(db: str) -> set[int]:
++    with sqlite3.connect(db) as c:
++        return {r[0] for r in c.execute("SELECT version FROM schema_migrations").fetchall()}
++
++
++def _revert_to_old_events(db: str, *, with_new_columns: bool, rows: list[tuple[str, str]]) -> None:
++    """Simulate a pre-V127 (or torn) events table and un-record V127 so the next apply() re-runs it.
++
++    ``with_new_columns`` False → genuine pre-V127 shape. True → the columns exist but the CHECK is still
++    the OLD one (the exact 'columns present but stale CHECK' case parity must catch). ``rows`` are
++    (event_id, event_type) queued rows to seed for preservation checks."""
++    ddl = _OLD_EVENTS_DDL
++    if with_new_columns:
++        ddl = ddl[:-1] + ", dest_rel_path TEXT, next_attempt_at TEXT)"
++    with sqlite3.connect(db) as c:
++        c.execute("DROP TABLE source_intelligence_events")
++        c.execute(ddl)
++        c.execute("CREATE INDEX idx_si_events_status ON source_intelligence_events(status, created_at)")
++        c.execute("CREATE INDEX idx_si_events_source ON source_intelligence_events(source_id)")
++        for eid, et in rows:
++            c.execute("INSERT INTO source_intelligence_events(event_id, event_type, status) "
++                      "VALUES(?,?,'queued')", (eid, et))
++        c.execute("DELETE FROM schema_migrations WHERE version = 127")
++        c.commit()
++
++
++@pytest.fixture()
++def fresh(tmp_path: Path) -> str:
++    db = str(tmp_path / "db.sqlite")
++    SQLiteMigrator(db_path=db).apply()
++    return db
++
++
++def test_latest_version_is_127(fresh) -> None:
++    assert LATEST_SCHEMA_VERSION == 127
++    assert 127 in _versions(fresh)
++
++
++def test_columns_and_indexes_present(fresh) -> None:
++    assert {"dest_rel_path", "next_attempt_at"}.issubset(_cols(fresh))
++    assert {"idx_si_events_status", "idx_si_events_source"}.issubset(_indexes(fresh))
++
++
++def test_moved_and_legacy_types_accepted(fresh) -> None:
++    repo = SourceIndexRepository(fresh)
++    # public enqueue path (not a raw INSERT) — proves the runtime authority + CHECK accept 'moved'
++    repo.enqueue_event(event_type="moved", rel_path="a", dest_rel_path="b", source_root_key="R")
++    repo.enqueue_event(event_type="created", rel_path="c", source_root_key="R")
++    repo.enqueue_event(event_type="deleted", rel_path="d", source_root_key="R")
++    with sqlite3.connect(fresh) as c:
++        kinds = {r[0] for r in c.execute("SELECT event_type FROM source_intelligence_events").fetchall()}
++    assert {"moved", "created", "deleted"}.issubset(kinds)
++
++
++def test_rebuild_from_old_shape_preserves_rows_and_ids(tmp_path) -> None:
++    db = str(tmp_path / "db.sqlite")
++    SQLiteMigrator(db_path=db).apply()
++    _revert_to_old_events(db, with_new_columns=False,
++                          rows=[("evt-1", "created"), ("evt-2", "deleted")])
++    assert "dest_rel_path" not in _cols(db)  # confirm we are genuinely pre-V127
++    # re-apply -> V127 rebuild fires
++    assert SQLiteMigrator(db_path=db).apply() == 127
++    assert {"dest_rel_path", "next_attempt_at"}.issubset(_cols(db))
++    with sqlite3.connect(db) as c:
++        preserved = {r[0]: r[1] for r in c.execute(
++            "SELECT event_id, event_type FROM source_intelligence_events").fetchall()}
++    assert preserved == {"evt-1": "created", "evt-2": "deleted"}  # rows + IDs preserved
++    # 'moved' now accepted after the rebuild
++    SourceIndexRepository(db).enqueue_event(event_type="moved", rel_path="x", dest_rel_path="y",
++                                            source_root_key="R")
++
++
++def test_parity_incomplete_table_is_rebuilt_not_marked_applied(tmp_path) -> None:
++    db = str(tmp_path / "db.sqlite")
++    SQLiteMigrator(db_path=db).apply()
++    # columns present BUT the OLD CHECK (rejects 'moved') + V127 un-recorded — a torn/partial state.
++    _revert_to_old_events(db, with_new_columns=True, rows=[("evt-1", "created")])
++    assert {"dest_rel_path", "next_attempt_at"}.issubset(_cols(db))  # columns alone are NOT enough
++    with sqlite3.connect(db) as c, pytest.raises(sqlite3.IntegrityError):
++        # old CHECK really rejects 'moved' pre-repair
++        c.execute("INSERT INTO source_intelligence_events(event_id,event_type,status) "
++                  "VALUES('probe','moved','queued')")
++    # re-apply -> parity probe fails on the stale CHECK -> full rebuild -> now accepts 'moved'
++    assert SQLiteMigrator(db_path=db).apply() == 127
++    assert 127 in _versions(db)
++    SourceIndexRepository(db).enqueue_event(event_type="moved", rel_path="x", dest_rel_path="y",
++                                            source_root_key="R")
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT event_type FROM source_intelligence_events "
++                         "WHERE event_id='evt-1'").fetchone()[0] == "created"  # legacy row survived
++
++
++def test_idempotent_reapply(fresh) -> None:
++    for _ in range(3):
++        assert SQLiteMigrator(db_path=fresh).apply() == 127
++
++
++def test_v122_to_v126_preserved(fresh) -> None:
++    assert {122, 123, 124, 125, 126, 127}.issubset(_versions(fresh))
+diff --git a/tests/test_source_file_parser_isolation.py b/tests/test_source_file_parser_isolation.py
+index 4d80535e..6d0a8735 100644
+--- a/tests/test_source_file_parser_isolation.py
++++ b/tests/test_source_file_parser_isolation.py
+@@ -84,28 +84,33 @@ def _make_eml(p: Path) -> Path:
+ 
+ # ---------- module-level test workers (must be top-level for spawn pickling) ----------
+ 
+-def _worker_sleep(path_str, ext, mob, mmb, send):
++def _worker_sleep(path_str, ext, mob, mmb, timeout_s, send):
+     os.setsid()
+     time.sleep(300)
+ 
+ 
+-def _worker_segfault(path_str, ext, mob, mmb, send):
++def _worker_segfault(path_str, ext, mob, mmb, timeout_s, send):
+     os.setsid()
+     os.kill(os.getpid(), signal.SIGSEGV)
+ 
+ 
+-def _worker_nonzero(path_str, ext, mob, mmb, send):
++def _worker_nonzero(path_str, ext, mob, mmb, timeout_s, send):
+     os.setsid()
+     os._exit(7)
+ 
+ 
+-def _worker_malformed(path_str, ext, mob, mmb, send):
++def _worker_malformed(path_str, ext, mob, mmb, timeout_s, send):
+     os.setsid()
+     send.send("not-a-dict")
+     send.close()
+ 
+ 
+-def _worker_fork_grandchild(path_str, ext, mob, mmb, send):
++def _worker_sigkill(path_str, ext, mob, mmb, timeout_s, send):
++    os.setsid()
++    os.kill(os.getpid(), signal.SIGKILL)  # unsolicited SIGKILL (NOT our timeout path)
++
++
++def _worker_fork_grandchild(path_str, ext, mob, mmb, timeout_s, send):
+     os.setsid()  # become group leader so a killpg reaches the grandchild too
+     pid = os.fork()
+     if pid == 0:  # grandchild
+@@ -233,6 +238,35 @@ def test_unsupported_ext_no_spawn(tmp_path) -> None:
+     assert r.status == "unsupported_format"
+ 
+ 
++# ---------- PB-008: CPU rlimit derived from the wall timeout ----------
++
++def test_cpu_limits_derived_from_timeout() -> None:
++    # The soft CPU limit tracks timeout_s (sits a couple seconds above it), not a fixed 60/90 constant.
++    assert iso._cpu_limits(20.0) == (22, 25)
++    assert iso._cpu_limits(5.0) == (7, 10)
++    soft, hard = iso._cpu_limits(0.0)  # floored, still valid + ordered
++    assert soft >= 1 and hard > soft
++
++
++# ---------- PB-009: SIGKILL is ambiguous -> parser_failed; SIGXCPU -> resource_exceeded ----------
++
++def test_sigkill_classified_parser_failed(tmp_path) -> None:
++    # An UNSOLICITED SIGKILL (OOM killer / operator kill — not our timeout path) is not provably resource
++    # exhaustion, so it classifies as parser_failed, never parser_resource_exceeded.
++    p = _make_docx(tmp_path / "t.docx")
++    r = iso.extract_for_complete_read(p, "docx", max_input_bytes=25_000_000, max_output_bytes=1_000_000,
++                                      timeout_s=5.0, max_memory_mb=512, _worker=_worker_sigkill)
++    assert r.status == "parser_failed"
++    assert r.failure_code == f"signal_{int(signal.SIGKILL)}"
++
++
++def test_sigxcpu_classified_resource_exceeded() -> None:
++    # The CPU rlimit backstop (SIGXCPU) IS provable resource exhaustion.
++    r = iso._classify_dead_child(-int(signal.SIGXCPU))
++    assert r.status == "parser_resource_exceeded"
++    assert r.failure_code == f"signal_{int(signal.SIGXCPU)}"
++
++
+ # ---------- provider-level complete reads of each real format ----------
+ 
+ def _index_and_trust(db: str, config: ObsidianMcpConfig, root_key: str, rel_path: str,
+diff --git a/tests/test_source_index_moved_drain.py b/tests/test_source_index_moved_drain.py
+new file mode 100644
+index 00000000..c0df4a5c
+--- /dev/null
++++ b/tests/test_source_index_moved_drain.py
+@@ -0,0 +1,297 @@
++"""Phase B / B4 corrective — governed 'moved' event drain (PB-005/006/007).
++
++Proves the rename/move mutation runs OFF the observer thread, in the readiness-gated, symlink/identity-safe
++drain: a recoverable condition (stale/unready root, lost mount, dest not yet visible, pre/post-mutation
++drift, pending re-extraction) DEFERS with bounded backoff and leaves the old row current until the move is
++proven safe; a provably-invalid destination is a fail-closed terminal skip that never deletes the old row;
++and reindex outcomes are honestly reported (retryable failure, exhaustion -> error, never a false 'done').
++
++Root-trust readiness is stubbed here (``load_root_trust`` is exercised in test_source_root_trust.py) so
++these tests isolate the drain disposition matrix.
++"""
++
++from __future__ import annotations
++
++import os
++import sqlite3
++import types
++from pathlib import Path
++
++from hb_assistant.obsidian_mcp import source_indexer as si
++from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
++from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
++from hb_assistant.obsidian_mcp.source_indexer import drain_queue, index_source_file
++from hb_assistant.store.migrator import SQLiteMigrator
++
++
++def _patch_trust(monkeypatch, *, safe: bool) -> None:
++    monkeypatch.setattr(
++        "hb_assistant.obsidian_mcp.source_root_trust.load_root_trust",
++        lambda *a, **k: types.SimpleNamespace(safe_for_watcher_activation=safe),
++    )
++
++
++def _env(tmp_path: Path):
++    root = tmp_path / "work"
++    root.mkdir()
++    db = str(tmp_path / "db.sqlite")
++    SQLiteMigrator(db_path=db).apply()
++    config = ObsidianMcpConfig(
++        external_sources=[ExternalSourceRoot(source_root_key="work", path=str(root), enabled=True)]
++    )
++    repo = SourceIndexRepository(db)
++    return db, root, config, repo
++
++
++def _index_file(root: Path, rel: str, body: str, repo, config) -> str:
++    p = root / rel
++    p.parent.mkdir(parents=True, exist_ok=True)
++    p.write_text(body)
++    sid = index_source_file(p, config.external_sources[0], repo, config)
++    assert sid is not None, "precondition: old file indexed"
++    return sid
++
++
++def _row(db: str, sid: str):
++    with sqlite3.connect(db) as c:
++        return c.execute("SELECT deleted, active, renamed_from_source_id FROM "
++                         "source_intelligence_sources WHERE source_id=?", (sid,)).fetchone()
++
++
++def _event(db: str):
++    with sqlite3.connect(db) as c:
++        return c.execute("SELECT status, error_code, next_attempt_at FROM source_intelligence_events "
++                         "ORDER BY created_at DESC LIMIT 1").fetchone()
++
++
++def _enqueue_move(repo, old_rel: str, new_rel: str):
++    repo.enqueue_event(event_type="moved", rel_path=old_rel, dest_rel_path=new_rel,
++                       source_root_key="work")
++
++
++# ---------------- happy path ----------------
++
++def test_ready_root_move_applies(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "a/old.txt", "hello", repo, config)
++    (root / "a" / "new.txt").write_text("hello moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="a/new.txt")
++    _enqueue_move(repo, "a/old.txt", "a/new.txt")
++    drain_queue(repo, config)
++    assert _row(db, old)[0] == 1                     # old superseded
++    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] == old   # dest current + lineage
++    assert repo.find_successor_source_id(old) == new
++    assert _event(db)[0] == "done"
++
++
++def test_source_missing_indexes_destination_as_ordinary(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    # No predecessor indexed. A move whose source is unknown indexes the dest as an ordinary current
++    # source with NO fabricated lineage.
++    (root / "new.txt").write_text("orphan dest")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    _enqueue_move(repo, "missing.txt", "new.txt")
++    drain_queue(repo, config)
++    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] is None   # ordinary, no lineage
++    assert _event(db)[0] == "done"
++
++
++# ---------------- recoverable deferrals (never terminally consumed) ----------------
++
++def test_stale_root_defers_then_applies_after_recovery(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    old = _index_file(root, "old.txt", "hi", repo, config)
++    (root / "new.txt").write_text("hi moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    _enqueue_move(repo, "old.txt", "new.txt")
++    # 1) stale at first drain -> deferred, retryable, old row current, no successor
++    _patch_trust(monkeypatch, safe=False)
++    drain_queue(repo, config)
++    st, code, nxt = _event(db)
++    assert st == "queued" and code == "root_not_ready" and nxt is not None
++    assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None
++    # 2) becomes ready; clear the backoff so the SAME event is eligible -> it applies
++    _patch_trust(monkeypatch, safe=True)
++    with sqlite3.connect(db) as c:
++        c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
++        c.commit()
++    drain_queue(repo, config)
++    assert _row(db, old)[0] == 1 and repo.find_successor_source_id(old) == new
++    assert _event(db)[0] == "done"
++
++
++def test_unavailable_mount_defers_not_consumed(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    # old row present in the index, but the mount is gone at drain time
++    old = source_id_for("external_file", source_root_key="work", rel_path="old.txt")
++    with sqlite3.connect(db) as c:
++        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
++                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
++                  (old, "external_file", "work", "old.txt"))
++        c.commit()
++    config.external_sources[0].path = str(tmp_path / "gone")  # non-existent root
++    _enqueue_move(repo, "old.txt", "new.txt")
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "queued" and code == "root_unavailable"
++    assert _row(db, old)[0] == 0  # old row untouched
++
++
++def test_dest_absent_defers_then_appears(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    _enqueue_move(repo, "old.txt", "new.txt")  # dest not on disk yet
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "queued" and code == "dest_absent" and _row(db, old)[0] == 0
++    # dest appears; clear backoff -> applies
++    (root / "new.txt").write_text("x moved")
++    with sqlite3.connect(db) as c:
++        c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
++        c.commit()
++    drain_queue(repo, config)
++    assert _row(db, old)[0] == 1 and _event(db)[0] == "done"
++
++
++# ---------------- terminal, fail-closed (never delete old) ----------------
++
++def test_symlink_destination_is_terminal_and_keeps_old_current(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    outside = tmp_path / "outside.txt"
++    outside.write_text("evil")
++    os.symlink(outside, root / "new.txt")  # symlink destination
++    _enqueue_move(repo, "old.txt", "new.txt")
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "skipped" and code == "dest_not_regular"
++    assert _row(db, old)[0] == 0  # old row NOT deleted by a symlink dest
++    assert repo.find_successor_source_id(old) is None
++
++
++# ---------------- dedup on both paths ----------------
++
++def test_distinct_move_destinations_not_deduplicated(tmp_path) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _enqueue_move(repo, "a.txt", "b.txt")
++    _enqueue_move(repo, "a.txt", "c.txt")   # different dest -> distinct event
++    _enqueue_move(repo, "a.txt", "b.txt")   # identical -> coalesced
++    with sqlite3.connect(db) as c:
++        rows = c.execute("SELECT dest_rel_path FROM source_intelligence_events "
++                         "WHERE event_type='moved' AND status='queued' ORDER BY dest_rel_path").fetchall()
++    assert [r[0] for r in rows] == ["b.txt", "c.txt"]
++
++
++# ---------------- reindex failure recovery + honest exhaustion ----------------
++
++def test_reindex_failure_is_retryable_then_succeeds(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    _enqueue_move(repo, "old.txt", "new.txt")
++    # 1) reindex returns None -> move committed, event retryable, dest pending, old superseded
++    monkeypatch.setattr(si, "index_source_file", lambda *a, **k: None)
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "queued" and code == "dest_reindex_pending"
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old       # move already committed
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
++                         (new,)).fetchone()[0] == "pending"
++    # 2) reindex recovers (real) on retry -> move_already_applied -> done
++    monkeypatch.undo()
++    _patch_trust(monkeypatch, safe=True)
++    with sqlite3.connect(db) as c:
++        c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
++        c.commit()
++    drain_queue(repo, config)
++    assert _event(db)[0] == "done"
++    assert _row(db, new)[2] == old  # lineage not duplicated/altered
++
++
++def test_reindex_exhaustion_is_error_not_done(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    _enqueue_move(repo, "old.txt", "new.txt")
++    monkeypatch.setattr(si, "index_source_file", lambda *a, **k: None)  # always fails
++    # Drive the event past MOVED_MAX_ATTEMPTS claim cycles (clearing backoff each time).
++    for _ in range(10):
++        with sqlite3.connect(db) as c:
++            c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL WHERE status='queued'")
++            c.commit()
++        drain_queue(repo, config)
++        if _event(db)[0] != "queued":
++            break
++    st, code, _ = _event(db)
++    assert st == "error" and code == "dest_reindex_exhausted"
++    # trust-critical invariants still hold: move committed, dest pending (never advertised complete)
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
++
++
++# ---------------- pre/post-transaction identity drift ----------------
++
++def test_pre_transaction_drift_keeps_old_current(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    _enqueue_move(repo, "old.txt", "new.txt")
++    monkeypatch.setattr(si, "_same_identity", lambda a, b: False)  # drift detected pre-mutation
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "queued" and code == "dest_changed_before_move"
++    assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None  # NOT mutated
++
++
++def test_post_transaction_drift_leaves_old_superseded(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    old = _index_file(root, "old.txt", "x", repo, config)
++    (root / "new.txt").write_text("x moved")
++    new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
++    _enqueue_move(repo, "old.txt", "new.txt")
++    # pass the pre-move identity check, fail the post-move one (drift AFTER the transaction).
++    calls = {"n": 0}
++
++    def _ident(a, b):
++        calls["n"] += 1
++        return calls["n"] == 1
++
++    monkeypatch.setattr(si, "_same_identity", _ident)
++    drain_queue(repo, config)
++    st, code, _ = _event(db)
++    assert st == "queued" and code == "dest_changed_during_move"
++    # old is already SUPERSEDED (not restored); dest pending, never advertised complete
++    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
++    with sqlite3.connect(db) as c:
++        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
++                         (new,)).fetchone()[0] == "pending"
++
++
++# ---------------- queue safety ----------------
++
++def test_defer_conflict_when_event_not_processing(tmp_path) -> None:
++    db, root, config, repo = _env(tmp_path)
++    eid = repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="b.txt",
++                             source_root_key="work")
++    # event is 'queued', not 'processing' -> defer must fail closed
++    assert repo.defer_event(eid, error_code="x", attempts=1) == "conflict"
++
++
++def test_moved_invalid_payload_is_terminal(tmp_path, monkeypatch) -> None:
++    db, root, config, repo = _env(tmp_path)
++    _patch_trust(monkeypatch, safe=True)
++    repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="a.txt",
++                       source_root_key="work")  # old == new
++    drain_queue(repo, config)
++    assert _event(db)[:2] == ("skipped", "moved_invalid")
+diff --git a/tests/test_source_index_rename_lineage.py b/tests/test_source_index_rename_lineage.py
+index ccd06984..ba7e2e1a 100644
+--- a/tests/test_source_index_rename_lineage.py
++++ b/tests/test_source_index_rename_lineage.py
+@@ -81,6 +81,7 @@ def test_confirmed_move_links_and_invalidates(db) -> None:
+                                               {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
+     new = res["new_source_id"]
+     assert res["linked"] is True
++    assert res["result"] == "move_applied"
+     # old row is now non-current; new row carries lineage
+     assert _row(db, old)[0] == 1  # deleted
+     assert _row(db, new)[2] == old  # renamed_from_source_id
+@@ -114,12 +115,71 @@ def test_move_rolls_back_and_keeps_old_current(db, monkeypatch) -> None:
+     assert _row(db, new_sid) is None
+ 
+ 
+-def test_move_without_old_row_is_plain_create(db) -> None:
++def test_move_without_old_row_is_source_missing_no_mutation(db) -> None:
++    # No current predecessor and no tracked successor → source_missing: the move op does NOT mutate. The
++    # drain then indexes the destination as an ordinary current source (renamed_from_source_id=null).
+     repo = SourceIndexRepository(db)
+     res = repo.apply_confirmed_same_root_move("work", "a/missing.txt", "a/new.txt",
+                                               {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
+     assert res["linked"] is False
+-    assert _row(db, res["new_source_id"])[2] is None  # no fabricated predecessor
++    assert res["result"] == "source_missing"
++    assert _row(db, res["new_source_id"]) is None  # no dest row fabricated by the move op
++
++
++def test_move_conflicting_successor_does_not_mutate(db) -> None:
++    # The predecessor is already superseded by a DIFFERENT successor → conflicting_successor, no mutation.
++    repo = SourceIndexRepository(db)
++    _insert_source(db, root_key="work", rel_path="a/old.txt")
++    repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/first.txt",
++                                        {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 1})
++    other = source_id_for("external_file", source_root_key="work", rel_path="a/second.txt")
++    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/second.txt",
++                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
++    assert res["result"] == "conflicting_successor"
++    assert _row(db, other) is None  # the divergent destination was not written
++
++
++def test_move_over_indexed_destination_invalidates_content(db) -> None:
++    # PB-007: moving A->B onto a B that was ALREADY indexed must invalidate B's stale content
++    # representation (text excerpt, chunks, FTS row, content metadata, its OWN generated card).
++    repo = SourceIndexRepository(db)
++    _insert_source(db, root_key="work", rel_path="a/old.txt")
++    dest_rel = "a/dest.txt"
++    dest = source_id_for("external_file", source_root_key="work", rel_path=dest_rel)
++    with sqlite3.connect(db) as c:
++        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
++                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
++                  (dest, "external_file", "work", dest_rel))
++        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
++                  "content_sha256,extraction_status,fts_rowid,indexed_at,extraction_disposition,"
++                  "content_indexed_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
++                  (dest, "txt", 99, 999, "OLDHASH", "ok", None, _NOW, "content", _NOW))
++        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
++                  "excerpt_truncated,full_text_sha256,raw_body_persisted,redaction_applied,updated_at) "
++                  "VALUES(?,?,?,?,?,0,1,?)", (dest, "STALE DEST BODY", 14, 0, "fsha", _NOW))
++        c.execute("INSERT INTO source_intelligence_chunks(chunk_id,source_id,ordinal,chunk_text,"
++                  "char_count,raw_body_persisted,created_at) VALUES(?,?,?,?,?,0,?)",
++                  (f"{dest}:0", dest, 0, "STALE DEST BODY", 14, _NOW))
++        c.execute("INSERT INTO source_intelligence_generated_notes(generated_note_id,source_id,"
++                  "note_rel_path,generation_status,generated_at,updated_at) VALUES(?,?,?,?,?,?)",
++                  ("destnote", dest, "Source Notes/dest.md", "generated", _NOW, _NOW))
++        c.commit()
++    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", dest_rel,
++                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
++    assert res["result"] == "move_applied" and res["new_source_id"] == dest
++    with sqlite3.connect(db) as c:
++        meta = c.execute("SELECT content_sha256, extraction_status, extraction_disposition, "
++                         "content_indexed_at, fts_rowid FROM source_intelligence_metadata "
++                         "WHERE source_id=?", (dest,)).fetchone()
++        text = c.execute("SELECT COUNT(*) FROM source_intelligence_text WHERE source_id=?",
++                         (dest,)).fetchone()[0]
++        chunks = c.execute("SELECT COUNT(*) FROM source_intelligence_chunks WHERE source_id=?",
++                           (dest,)).fetchone()[0]
++        note = c.execute("SELECT generation_status FROM source_intelligence_generated_notes "
++                         "WHERE generated_note_id='destnote'").fetchone()[0]
++    assert meta == ("", "pending", None, None, None)  # content metadata fully reset
++    assert text == 0 and chunks == 0                   # excerpt + chunks dropped
++    assert note == "stale"                             # dest's OWN card staled (collision case)
+ 
+ 
+ # ---------------- old source_ref -> moved (lookup ordering) ----------------
+@@ -176,46 +236,53 @@ def test_plain_deleted_without_lineage_is_unavailable(tmp_path) -> None:
+     assert r["retrieval_state"] == "unavailable"
+ 
+ 
+-# ---------------- watcher helper: confirmed same-root vs conservative ----------------
++# ---------------- watcher: enqueue-only 'moved' event vs conservative fallback ----------------
++# The observer thread NEVER stats/mutates (PB-005): on_moved enqueues one governed 'moved' event carrying
++# both paths, or falls back to delete+create. The readiness-gated drain owns the actual lineage move.
+ 
+-def test_watcher_helper_confirmed_same_root_move(tmp_path) -> None:
++def _queued(db: str):
++    with sqlite3.connect(db) as c:
++        return c.execute("SELECT event_type, rel_path, dest_rel_path, source_root_key "
++                         "FROM source_intelligence_events WHERE status='queued' "
++                         "ORDER BY event_type").fetchall()
++
++
++def test_watcher_same_root_move_enqueues_moved_event_no_mutation(tmp_path) -> None:
+     db = str(tmp_path / "db.sqlite")
+     SQLiteMigrator(db_path=db).apply()
+     root = tmp_path / "work"
+     (root / "a").mkdir(parents=True)
+     old = _insert_source(db, root_key="work", rel_path="a/old.txt")
+-    dest = root / "a" / "new.txt"
+-    dest.write_text("moved content")
+     repo = SourceIndexRepository(db)
+-    handled = source_watch.apply_same_root_move(repo, "work", root, str(root / "a" / "old.txt"), str(dest))
+-    assert handled is True
+-    assert repo.find_successor_source_id(old) is not None
+-    assert _row(db, old)[0] == 1  # old marked deleted via the transactional op
++    outcome = source_watch.enqueue_move(repo, "work", root, str(root / "a" / "old.txt"),
++                                        str(root / "a" / "new.txt"))
++    assert outcome == "moved"
++    # exactly one governed 'moved' event carrying both paths; NO delete/create; NO source-table mutation
++    assert _queued(db) == [("moved", "a/old.txt", "a/new.txt", "work")]
++    assert _row(db, old) == (0, 1, None)  # old row untouched on the observer thread
+ 
+ 
+-def test_watcher_helper_unconfirmed_dest_is_conservative(tmp_path) -> None:
++def test_watcher_cross_root_move_falls_back_to_delete_create(tmp_path) -> None:
+     db = str(tmp_path / "db.sqlite")
+     SQLiteMigrator(db_path=db).apply()
+     root = tmp_path / "work"
+     (root / "a").mkdir(parents=True)
+-    old = _insert_source(db, root_key="work", rel_path="a/old.txt")
+     repo = SourceIndexRepository(db)
+-    # destination does NOT exist on disk -> helper must NOT correlate (conservative fallback)
+-    handled = source_watch.apply_same_root_move(repo, "work", root, str(root / "a" / "old.txt"),
+-                                                str(root / "a" / "new.txt"))
+-    assert handled is False
+-    assert _row(db, old)[0] == 0  # old row untouched (no unsafe delete)
++    # destination outside the root -> not a same-root move -> caller uses the conservative fallback
++    outcome = source_watch.enqueue_move(repo, "work", root, str(root / "a" / "old.txt"),
++                                        str(tmp_path / "elsewhere" / "new.txt"))
++    assert outcome == "fallback"
++    assert _queued(db) == []  # enqueue_move itself emits nothing on fallback
+ 
+ 
+-def test_watcher_helper_vault_root_not_correlated(tmp_path) -> None:
++def test_watcher_vault_root_move_falls_back(tmp_path) -> None:
+     db = str(tmp_path / "db.sqlite")
+     SQLiteMigrator(db_path=db).apply()
+     root = tmp_path / "vault"
+     root.mkdir(exist_ok=True)
+-    (root / "new.txt").write_text("x")
+     repo = SourceIndexRepository(db)
+     from hb_assistant.obsidian_mcp.source_indexer import _VAULT_ROOT_KEY  # noqa: PLC0415
+ 
+-    handled = source_watch.apply_same_root_move(repo, _VAULT_ROOT_KEY, root, str(root / "old.txt"),
+-                                                str(root / "new.txt"))
+-    assert handled is False
++    outcome = source_watch.enqueue_move(repo, _VAULT_ROOT_KEY, root, str(root / "old.txt"),
++                                        str(root / "new.txt"))
++    assert outcome == "fallback"
+-- 
+2.50.1 (Apple Git-155)
+

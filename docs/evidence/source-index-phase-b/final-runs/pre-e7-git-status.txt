@@ -1,0 +1,23 @@
+# Phase B pre-E7 git status --short (after testing C6; tested_code_sha: 3f4a9b2b084bd720a6f9c8a040b2e7a44cc11707)
+# Untracked entries below are the C6/E7 evidence artifacts about to be committed into E7,
+# plus pre-existing foreign worktree churn (docs/implementation/*, frontend/*) NOT staged.
+?? docs/evidence/source-index-phase-b.zip
+?? docs/evidence/source-index-phase-b/08-corrective2-committed-tree-identity.md
+?? docs/evidence/source-index-phase-b/11-corrective5-audit-response.md
+?? docs/evidence/source-index-phase-b/12-corrective5-committed-tree-identity.md
+?? docs/evidence/source-index-phase-b/final-runs/E5-detached-manifest.md
+?? docs/evidence/source-index-phase-b/final-runs/c6-no-code-drift.txt
+?? docs/evidence/source-index-phase-b/final-runs/gate-equivalent-c6-3f4a9b2b.txt
+?? docs/evidence/source-index-phase-b/final-runs/mypy-c6.txt
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective2-0464e347.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective2-0464e347.patch
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective4-e5-8003ca02.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective4-e5-8003ca02.patch
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective5-c6-3f4a9b2b.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective5-c6-3f4a9b2b.patch
+?? docs/evidence/source-index-phase-b/final-runs/pre-e7-git-status.txt
+?? docs/evidence/source-index-phase-b/final-runs/ruff-c6.txt
+?? docs/implementation/project-schedule-controls/baseline-repo-truth.md
+?? docs/implementation/project-schedule-controls/canonical-metric-contract.md
+?? docs/implementation/project-schedule-controls/phase-2-api-contract.md
+?? frontend/src/lib/copyHelpers.test.ts

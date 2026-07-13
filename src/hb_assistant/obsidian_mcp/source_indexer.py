@@ -11,19 +11,20 @@ import hashlib
 import json
 import logging
 import os
+import sqlite3
 import threading
 import unicodedata
 from collections.abc import Iterator
 from contextlib import suppress
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from hb_assistant.construction.email.project_matcher import HB_PROJECT_NUMBER_RE
 
 from . import pathsafe
 from .config import ExternalSourceRoot, ObsidianMcpConfig
-from .source_index_repository import SourceIndexRepository
+from .source_index_repository import SourceIndexRepository, is_sqlite_busy
 from .source_skip_codes import (
     BOUNDED_RESUME,
     DEFERRED_PATH,
@@ -1388,6 +1389,265 @@ def _probe_root_dir(root_path: Path) -> str:
     return "usable" if _sm.S_ISDIR(st.st_mode) else "absent"
 
 
+def normalize_moved_rel_path(rel: str | None) -> str | None:
+    """Lexically validate + canonicalize a moved event's relative path WITHOUT touching the filesystem
+    (PB-006 / PLAN-C2R2-001). BOTH the old and new paths cross the queue trust boundary and must pass this
+    before any lookup, source-id derivation, filesystem probe, or mutation. Returns the canonical posix
+    relative path, or ``None`` when it is unsafe: empty, absolute, containing ``..``/``.``/empty segments,
+    a backslash/alternate separator or NUL, a non-canonical form (duplicate separators / trailing slash),
+    or a protected/hidden segment (``path_blocked``)."""
+    if not rel or not isinstance(rel, str):
+        return None
+    if "\\" in rel or "\x00" in rel:
+        return None
+    p = PurePosixPath(rel)
+    if p.is_absolute():
+        return None
+    parts = p.parts
+    if not parts or any(seg in ("", ".", "..") for seg in parts):
+        return None
+    canonical = "/".join(parts)
+    if canonical != rel:  # duplicate separators, trailing slash, './' etc. → reject rather than coerce
+        return None
+    if pathsafe.path_blocked(canonical, include_hidden=False):
+        return None
+    return canonical
+
+
+@dataclass(frozen=True)
+class DestinationResolution:
+    """Structured verdict of a moved-event destination check (PB-006). ``identity`` is
+    ``(st_dev, st_ino, st_size, st_mtime_ns)`` of the non-following ``lstat``; ``resolved_path`` is the
+    symlink-resolved absolute path proven inside the resolved root."""
+
+    state: str  # contained | absent | indeterminate | outside_root | not_regular
+    resolved_path: Path | None = None
+    identity: tuple[int, int, int, int] | None = None
+
+
+def resolve_destination(root_path: Path, new_rel: str) -> DestinationResolution:
+    """Classify a normalized destination rel-path against the root (PB-006). ``new_rel`` MUST already be
+    lexically validated by :func:`normalize_moved_rel_path` (so no absolute/traversal path is ever probed).
+    ``os.lstat`` is non-following → a symlink final component is ``not_regular``; ``resolve()`` +
+    ``relative_to`` catches a symlinked PARENT escaping the root (``outside_root``); transient I/O →
+    ``indeterminate`` (recoverable). A parent-symlink escape may be lstat/resolve-probed here, but the
+    caller rejects ``outside_root`` BEFORE any source mutation or content indexing."""
+    import stat as _sm
+
+    dest_abs = root_path / new_rel
+    try:
+        lst = os.lstat(dest_abs)
+    except FileNotFoundError:
+        return DestinationResolution("absent")
+    except OSError:
+        return DestinationResolution("indeterminate")
+    if not _sm.S_ISREG(lst.st_mode):
+        return DestinationResolution("not_regular")
+    try:
+        resolved_root = root_path.resolve(strict=True)
+        resolved_dest = dest_abs.resolve(strict=True)
+    except OSError:
+        return DestinationResolution("indeterminate")
+    try:
+        resolved_dest.relative_to(resolved_root)
+    except ValueError:
+        return DestinationResolution("outside_root")
+    return DestinationResolution(
+        "contained",
+        resolved_path=resolved_dest,
+        identity=(lst.st_dev, lst.st_ino, lst.st_size, lst.st_mtime_ns),
+    )
+
+
+def _terminalize_moved_exception(
+    repo: SourceIndexRepository, event: dict[str, Any], exc: Exception
+) -> None:
+    """Last-resort backstop for a moved event whose processing raised (Phase B / B4 corrective — an
+    INDEPENDENT PB-010 boundary, C6/C8). Validates the claim generation with NO default/coercion
+    (``type(x) is not int`` rejects bool/str; ``< 1`` rejects 0/negative); on a verified positive int it
+    attempts the attempt-generation-guarded completion and swallows a failure (leave the event ``processing``
+    for ``requeue_stuck``) — NEVER the unguarded ``complete_event``. Logging carries only safe identifiers
+    (event_id, validated attempt, exception classes) — never messages, paths, root keys, or payload."""
+    raw_attempt = event.get("attempts")
+    if type(raw_attempt) is not int or raw_attempt < 1:
+        # No valid claim generation → invent no ownership; perform NO queue mutation.
+        _logger.warning(
+            "source_index.moved_terminalize_skipped_invalid_generation",
+            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                    "attempt": raw_attempt,
+                                    "exception": type(exc).__name__}},
+        )
+        return
+    try:
+        repo.complete_owned_event(
+            event["event_id"], "error", expected_attempt=raw_attempt, error_code=type(exc).__name__
+        )
+    except Exception as terminal_exc:  # noqa: BLE001 - moved events never fall through to the unguarded path
+        _logger.warning(
+            "source_index.moved_terminalize_failed_left_processing",
+            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                    "expected_attempt": raw_attempt,
+                                    "exception": type(exc).__name__,
+                                    "terminalize_exception": type(terminal_exc).__name__}},
+        )
+
+
+def _apply_moved_event(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    event: dict[str, Any],
+    root: ExternalSourceRoot,
+    *,
+    old_rel: str,
+    new_rel: str,
+    src_key: str,
+    expected_attempt: int,
+) -> None:
+    """Governed same-root rename/move (Phase B / B4 corrective — PB-005/006/007/010), off the observer
+    thread. GUARDED EXCEPTION WRAP: any unexpected error completes via the ownership-guarded path, so a
+    moved event can NEVER reach the drain's generic unguarded ``complete_event``."""
+    event_id = event["event_id"]
+    try:
+        _apply_moved_event_inner(
+            repo, config, root, event_id=event_id, old_rel=old_rel, new_rel=new_rel,
+            src_key=src_key, expected_attempt=expected_attempt,
+        )
+    except Exception as exc:  # noqa: BLE001 - never let a moved event fall through to the generic handler
+        if isinstance(exc, sqlite3.OperationalError) and is_sqlite_busy(exc):
+            # Transient SQLite contention — leave the event 'processing' for requeue_stuck (fail-closed;
+            # never a false terminal). No source mutation escaped: the move op fails closed before mutating.
+            return
+        # Busy-aware terminal error completion (never an unguarded fallback): a BUSY/LOCKED on the terminal
+        # write leaves the event 'processing' for requeue_stuck rather than converting or crashing.
+        repo.complete_owned_event(
+            event_id, "error", expected_attempt=expected_attempt, error_code=type(exc).__name__
+        )
+
+
+def _apply_moved_event_inner(
+    repo: SourceIndexRepository,
+    config: ObsidianMcpConfig,
+    root: ExternalSourceRoot,
+    *,
+    event_id: str,
+    old_rel: str,
+    new_rel: str,
+    src_key: str,
+    expected_attempt: int,
+) -> None:
+    """Readiness-gated, resolved/identity-safe, ownership-guarded move + destination re-extraction. Every
+    RECOVERABLE condition (lost mount, not-ready root, dest not yet visible, transient I/O, pre/post-mutation
+    drift, pending re-extraction) DEFERS under the CLAIM GENERATION (never terminally consumed while it could
+    still succeed; old row left current until the move is proven safe). A provably-invalid destination
+    (non-regular, escapes-root) is a fail-closed TERMINAL skip that never deletes the old row. Both rel-paths
+    are already canonically validated by ``normalize_moved_rel_path`` (caller)."""
+    from .source_root_trust import load_root_trust
+
+    def _terminal(status: str, code: str | None) -> None:
+        # Busy-aware terminal transition (PLAN-C4R6-001): "completed"/"conflict"/"db_busy" are all safe
+        # end-states — a BUSY/LOCKED terminal write leaves the event 'processing' for requeue_stuck (never
+        # a false terminal, never an unguarded fallback).
+        repo.complete_owned_event(event_id, status, expected_attempt=expected_attempt, error_code=code)
+
+    def _defer(code: str) -> None:
+        # Uniform busy-aware recovery: "deferred" → queued-with-backoff; "conflict" → the current owner is
+        # authoritative (do nothing); "db_busy" → leave 'processing' for requeue_stuck (fail-closed); and on
+        # "exhausted" a guarded terminal NON-mutating skip (recoverable condition never cleared; old row
+        # kept — never delete it).
+        if repo.defer_event(event_id, error_code=code, expected_attempt=expected_attempt) == "exhausted":
+            _terminal("skipped", f"{code}_unresolved")
+
+    root_path = Path(root.path)
+    # 1. Mount usable? (recoverable — a lost/flaky mount must not consume the move.)
+    if _probe_root_dir(root_path) != "usable":
+        _defer("root_unavailable")
+        return
+    # 2. Root readiness — the SAME strict bar the watcher activates on.
+    try:
+        ready = bool(load_root_trust(repo, config, None, src_key).safe_for_watcher_activation)
+    except Exception:  # noqa: BLE001
+        _defer("root_trust_unevaluable")
+        return
+    if not ready:
+        _defer("root_not_ready")
+        return
+    # 3. Structured destination resolution (resolved-path containment catches a symlinked PARENT).
+    res = resolve_destination(root_path, new_rel)
+    if res.state == "absent":
+        _defer("dest_absent")
+        return
+    if res.state == "indeterminate":
+        _defer("dest_indeterminate")
+        return
+    if res.state == "outside_root":
+        _terminal("skipped", "dest_escapes_root")
+        return
+    if res.state == "not_regular":
+        _terminal("skipped", "dest_not_regular")
+        return
+    resolved0, identity0 = res.resolved_path, res.identity
+    # 4. Immediate pre-transaction re-resolution (drift here is PRE-mutation → NO move, old stays current).
+    pre = resolve_destination(root_path, new_rel)
+    if pre.state != "contained" or pre.resolved_path != resolved0 or pre.identity != identity0:
+        _defer("dest_changed_before_move")
+        return
+    assert identity0 is not None
+    dest_metadata = {
+        "file_ext": PurePosixPath(new_rel).suffix.lower().lstrip("."),
+        "size_bytes": identity0[2],
+        "mtime_ns": identity0[3],
+    }
+    # 5. Ownership-guarded lineage move (ownership SELECT + mutation atomic in one txn). claim_conflict →
+    #    a stale worker whose event was reclaimed: NO mutation happened, and we must NOT complete/defer
+    #    (the current owner is authoritative).
+    move = repo.apply_owned_confirmed_same_root_move(
+        event_id=event_id, expected_attempt=expected_attempt, root_key=src_key,
+        old_relative_path=old_rel, new_relative_path=new_rel, destination_metadata=dest_metadata,
+    )
+    result = move.get("result")
+    if result == "claim_conflict":
+        return
+    if result == "db_busy":
+        # The guarded ownership write could not acquire the lock (contention) — NO mutation. Retryable
+        # under the claim generation; if defer is itself busy it leaves the event 'processing'.
+        _defer("db_busy")
+        return
+    if result == "conflicting_successor":
+        _terminal("skipped", "conflicting_successor")
+        return
+    # move_applied / move_already_applied / source_missing → (re)index the destination.
+    # 6. Post-transaction re-resolution: drift AFTER the move leaves the old row SUPERSEDED (not restored);
+    #    dest is content-invalidated + pending, so just defer re-extraction — never advertise complete.
+    post = resolve_destination(root_path, new_rel)
+    if post.state != "contained" or post.resolved_path != resolved0 or post.identity != identity0:
+        _defer("dest_changed_during_move")
+        return
+    # 7. Re-check ownership before EXPENSIVE indexing via a guarded HEARTBEAT (which also refreshes the
+    #    stuck lease, so the event can't be TTL-reclaimed mid-index). "conflict" → a reclaim won; leave the
+    #    dest pending+invalidated for the current owner. "db_busy" → contention; defer (fail-closed).
+    hb = repo.heartbeat_owned_event(event_id, expected_attempt=expected_attempt)
+    if hb == "conflict":
+        return
+    if hb == "db_busy":
+        _defer("db_busy")
+        return
+    dest_abs = root_path / new_rel
+    try:
+        sid = index_source_file(dest_abs, root, repo, config)
+    except Exception:  # noqa: BLE001
+        sid = None
+    if sid is None:
+        # None (or an exception) is a RETRYABLE indexing failure — never complete on a bare no-throw.
+        if repo.defer_event(
+            event_id, error_code="dest_reindex_pending", expected_attempt=expected_attempt
+        ) == "exhausted":
+            # The safe move committed; only the content refresh did not complete. Terminal ERROR (not
+            # 'done') — "move committed, content pending", lineage + supersede + invalidation intact.
+            _terminal("error", "dest_reindex_exhausted")
+        return
+    _terminal("done", None)
+
+
 class _LeaseLost(Exception):
     """Raised inside a batch txn when the generation-cursor advance affects 0 rows — this run lost the
     ownership lease (a stale-lease takeover claimed the generation). The batch rolls back and the pass
@@ -2500,6 +2760,48 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                                 repo.complete_event(
                                     event["event_id"], "skipped", error_code="indeterminate"
                                 )
+            elif event["event_type"] == "moved":
+                # Governed same-root rename/move (Phase B / B4 corrective). Placed BEFORE the path-policy
+                # branches below (which key on the OLD rel_path) so a move is never mis-routed as an
+                # excluded/deferred/unsupported skip. BOTH paths cross the queue trust boundary and are
+                # canonically validated (no FS access) before any lookup/probe/mutation; terminal-invalid
+                # payloads never mutate. All terminal completions are ownership-guarded (claim generation).
+                # PB-010 (C8): validate the claim generation FIRST — before normalization, root lookup,
+                # dispatch, or ANY terminalization. No default, no coercion (``type(x) is not int`` rejects
+                # bool/str; ``< 1`` rejects 0/negative). An invalid generation performs NO queue mutation:
+                # leave the event 'processing' for requeue_stuck (fail closed). The generic backstop keeps
+                # its own copy of this check as an independent last-resort boundary.
+                raw_attempt = event.get("attempts")
+                if type(raw_attempt) is not int or raw_attempt < 1:
+                    _logger.warning(
+                        "source_index.moved_invalid_claim_generation",
+                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                                "attempt": raw_attempt}},
+                    )
+                    continue
+                expected_attempt = raw_attempt
+                old_norm = normalize_moved_rel_path(event["rel_path"])
+                new_norm = normalize_moved_rel_path(event.get("dest_rel_path"))
+                src_key = event.get("source_root_key")
+                if (old_norm is None or new_norm is None or old_norm == new_norm
+                        or src_key == _VAULT_ROOT_KEY):
+                    repo.complete_owned_event(
+                        event["event_id"], "skipped",
+                        expected_attempt=expected_attempt, error_code="moved_invalid",
+                    )
+                else:
+                    root = roots.get(src_key)
+                    if root is None or not getattr(root, "enabled", True):
+                        repo.complete_owned_event(
+                            event["event_id"], "skipped",
+                            expected_attempt=expected_attempt, error_code="unconfigured_root",
+                        )
+                    else:
+                        _apply_moved_event(
+                            repo, config, event, root,
+                            old_rel=old_norm, new_rel=new_norm, src_key=src_key,
+                            expected_attempt=expected_attempt,
+                        )
             elif (
                 event["source_root_key"] == _VAULT_ROOT_KEY
                 and event["rel_path"]
@@ -2569,8 +2871,14 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                             event_status, event_code = "skipped", disp.skip_code
                 repo.complete_event(event["event_id"], event_status, error_code=event_code)
             processed += 1
-        except Exception as exc:
-            repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+        except Exception as exc:  # noqa: BLE001 - per-event backstop (fail closed)
+            # PB-010: a moved event must NEVER reach the unguarded, event_id-only complete_event() fallback
+            # — a stale attempt could overwrite the current owner's queue state. Delegate to the guarded,
+            # generation-validating backstop helper (an independent last-resort boundary; see C6/C8).
+            if event["event_type"] == "moved":
+                _terminalize_moved_exception(repo, event, exc)
+            else:
+                repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
     if cards_done or summaries_done:
         _logger.info(
             "source_index.drain_generated",

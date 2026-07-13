@@ -18,7 +18,7 @@ import sqlite3
 import uuid
 from collections.abc import Iterable
 from contextlib import suppress
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,35 @@ from .source_skip_codes import normalize_skip_code
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _iso_after(delay_seconds: float) -> str:
+    """``_now()`` shifted forward by ``delay_seconds`` — SAME normalized UTC/ISO representation as every
+    queue timestamp, so lexical SQLite ``next_attempt_at <= ?`` comparisons stay deterministic."""
+    return (datetime.now(timezone.utc) + timedelta(seconds=max(0.0, delay_seconds))).isoformat()
+
+
+def is_sqlite_busy(exc: BaseException) -> bool:
+    """True iff ``exc`` is a SQLite BUSY/LOCKED contention (retryable), masking any *extended* result code
+    (e.g. ``SQLITE_BUSY_SNAPSHOT``) to its primary code with ``& 0xFF``. Only busy/locked is retryable —
+    every other ``OperationalError`` is a real error. Falls back to a narrow message match ONLY when no
+    numeric ``sqlite_errorcode`` is available (older interpreters); never treats an arbitrary error as busy."""
+    code = getattr(exc, "sqlite_errorcode", None)
+    if isinstance(code, int):
+        return (code & 0xFF) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+    if isinstance(exc, sqlite3.OperationalError):
+        msg = str(exc).lower()
+        return "database is locked" in msg or "database table is locked" in msg
+    return False
+
+
+# Bounded-backoff config for retryable 'moved' drain deferrals (Phase B / B4 corrective) — named
+# constants, never magic numbers embedded in the drain. A recoverable condition (stale/unready root,
+# ambiguous mount, dest not yet visible, dest reindex pending) re-queues the SAME move event with a
+# future next_attempt_at; after MOVED_MAX_ATTEMPTS claim cycles the caller applies a terminal disposition.
+MOVED_MAX_ATTEMPTS = 6
+MOVED_BACKOFF_BASE_S = 30
+MOVED_BACKOFF_CAP_S = 1800
 
 
 def _map_disposition(disposition: str | None, extraction_status: str | None) -> str:
@@ -1016,6 +1045,198 @@ class SourceIndexRepository:
         )
         self._mark_generated_notes_stale(c, source_id)
 
+    def _invalidate_content_locked(
+        self, c: sqlite3.Connection, source_id: str, source_kind: str
+    ) -> None:
+        """Fully invalidate a source's CONTENT representation IN PLACE (Phase B / B4 corrective) — WITHOUT
+        deleting the source row — for a move that OVERWRITES an already-indexed destination. Clears every
+        content-derived field the read/search paths consult, so no stale content is served or advertised
+        complete while the destination awaits re-extraction:
+
+          * drops the FTS row (via the CURRENT metadata.fts_rowid — read BEFORE it is nulled) so old body
+            text is no longer searchable;
+          * DELETEs the bounded text excerpt (text_excerpt/full_text_sha256/text_vault_ref) and the chunks;
+          * nulls the metadata content columns (content_sha256/fts_rowid/page_count/paragraph_count/
+            sheet_count/extraction_failure_code/extraction_disposition/content_indexed_at) and sets
+            extraction_status='pending';
+          * stales any generated notes (source cards) for this source (the dest's OWN pre-existing card,
+            which the old→new relink's UNIQUE-collision IGNORE would otherwise leave 'generated').
+
+        Mirrors replace-mode ``_upsert_source_file_locked`` (text/chunks/content_indexed_at) + the FTS drop
+        in ``_mark_deleted_by_source_id_locked``. Idempotent / no-op when the source has no content."""
+        row = c.execute(
+            "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?", (source_id,)
+        ).fetchone()
+        fts_rowid = row[0] if row else None
+        if fts_rowid is not None and self._fts_available(c):
+            fts_table = (
+                "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
+            )
+            c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
+        c.execute("DELETE FROM source_intelligence_text WHERE source_id=?", (source_id,))
+        c.execute("DELETE FROM source_intelligence_chunks WHERE source_id=?", (source_id,))
+        c.execute(
+            "UPDATE source_intelligence_metadata SET content_sha256='', fts_rowid=NULL, "
+            " page_count=NULL, paragraph_count=NULL, sheet_count=NULL, extraction_failure_code=NULL, "
+            " extraction_disposition=NULL, content_indexed_at=NULL, extraction_status='pending' "
+            "WHERE source_id=?",
+            (source_id,),
+        )
+        self._mark_generated_notes_stale(c, source_id)
+
+    def _confirmed_move_locked(
+        self,
+        c: sqlite3.Connection,
+        root_key: str,
+        old_rel_path: str,
+        new_rel_path: str,
+        dest_metadata: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Core same-root rename/move on an OPEN transaction (Phase B / B4). Callers own the txn.
+
+        Invariant: the old row cannot become non-current unless the destination row + lineage are persisted
+        in the SAME transaction. Content trust is NOT carried (a filesystem move does not prove byte
+        identity): the destination's content representation is fully invalidated and extraction set to
+        ``pending``. Returns ``{old_source_id, new_source_id, linked, result}`` where ``result`` is
+        ``move_applied`` / ``move_already_applied`` (both mutate) / ``source_missing`` /
+        ``conflicting_successor`` (both leave the store untouched)."""
+        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
+        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
+        now = _now()
+        old_present = c.execute(
+            "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
+            (old_sid,),
+        ).fetchone() is not None
+        if old_present:
+            result = "move_applied"
+        else:
+            # No current predecessor — distinguish idempotent-retry / conflict / genuinely-missing so a
+            # retried or racing move never fabricates lineage or re-deletes.
+            succ = c.execute(
+                "SELECT source_id FROM source_intelligence_sources "
+                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
+                (old_sid,),
+            ).fetchone()
+            if succ is not None and succ[0] == new_sid:
+                result = "move_already_applied"
+            elif succ is not None:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "conflicting_successor"}
+            else:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "source_missing"}
+
+        lineage = old_sid  # both move_applied and move_already_applied carry lineage
+        # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
+        # COALESCE-preserve lineage on a retry so re-running never nulls an existing predecessor link.
+        c.execute(
+            "INSERT INTO source_intelligence_sources"
+            "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
+            " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
+            "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
+            " renamed_from_source_id=COALESCE(excluded.renamed_from_source_id, "
+            "  source_intelligence_sources.renamed_from_source_id), updated_at=excluded.updated_at",
+            (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
+        )
+        # FULL content invalidation of the destination (drops a pre-existing dest's FTS row via its
+        # CURRENT fts_rowid, text, chunks, content metadata cols, and stales the dest's own card) —
+        # BEFORE the metadata upsert nulls fts_rowid. Fresh dest → no-op.
+        self._invalidate_content_locked(c, new_sid, "external_file")
+        # Destination metadata = current dest stat; content trust invalidated (extraction pending).
+        c.execute(
+            "INSERT INTO source_intelligence_metadata"
+            "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
+            " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
+            "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
+            " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, content_sha256='', "
+            " fts_rowid=NULL, extraction_status='pending', indexed_at=excluded.indexed_at",
+            (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
+             dest_metadata.get("mtime_ns"), "", now),
+        )
+        if old_present:
+            # Inherited-but-unverified: relink the old row's generated notes to the new row as 'stale'
+            # (an explicit status, not an implied null) so they are not advertised as current content.
+            c.execute(
+                "UPDATE OR IGNORE source_intelligence_generated_notes "
+                "SET source_id=?, generation_status='stale', updated_at=? WHERE source_id=?",
+                (new_sid, now, old_sid),
+            )
+            # Old row becomes non-current only now that the destination + lineage are persisted.
+            self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
+        return {"old_source_id": old_sid, "new_source_id": new_sid,
+                "linked": old_present, "result": result}
+
+    def apply_confirmed_same_root_move(
+        self,
+        root_key: str,
+        old_rel_path: str,
+        new_rel_path: str,
+        dest_metadata: dict[str, Any],
+        *,
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any]:
+        """Open a transaction and run :meth:`_confirmed_move_locked` (unguarded — direct/test use)."""
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            return self._confirmed_move_locked(c, root_key, old_rel_path, new_rel_path, dest_metadata)
+
+    def apply_owned_confirmed_same_root_move(
+        self,
+        *,
+        event_id: str,
+        expected_attempt: int,
+        root_key: str,
+        old_relative_path: str,
+        new_relative_path: str,
+        destination_metadata: dict[str, Any],
+        conn: sqlite3.Connection | None = None,
+    ) -> dict[str, Any]:
+        """Ownership-guarded move (Phase B / B4 corrective, PLAN-C4-001). Ownership is proven by a **guarded
+        WRITE as the first statement** — ``UPDATE … SET updated_at=? WHERE event_id=? AND status='processing'
+        AND attempts=?`` — NOT a read-only ``SELECT``. This matters: the shared ``transaction()`` helper never
+        emits ``BEGIN`` and the connection uses ``isolation_level=''`` (implicit ``BEGIN`` fires only before a
+        DML), so a ``SELECT`` would hold no write lock and a reclaim could slip in before the first mutation.
+        The guarded ``UPDATE`` acquires the RESERVED write lock at this first statement, so this connection
+        holds it through ``_confirmed_move_locked`` and the commit — no concurrent reclaim can commit until it
+        finishes — and ``rowcount`` reflects ownership at lock-acquisition time (0 → the event was already
+        reclaimed → ``result='claim_conflict'``, **no source/lineage mutation**). The write also refreshes the
+        stuck-event lease so the event can't be TTL-reclaimed between commit and re-indexing. SQLite
+        BUSY/LOCKED on the guarded write → ``result='db_busy'`` (no lock acquired, no mutation; retryable);
+        any other ``OperationalError`` propagates as a real error."""
+        old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_relative_path)
+        new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_relative_path)
+        with borrow_connection(conn, self.db_path) as c, transaction(c):
+            try:
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (_now(), event_id, int(expected_attempt)),
+                )
+            except sqlite3.OperationalError as e:
+                if is_sqlite_busy(e):
+                    return {"old_source_id": old_sid, "new_source_id": new_sid,
+                            "linked": False, "result": "db_busy"}
+                raise
+            if (cur.rowcount or 0) != 1:
+                return {"old_source_id": old_sid, "new_source_id": new_sid,
+                        "linked": False, "result": "claim_conflict"}
+            return self._confirmed_move_locked(
+                c, root_key, old_relative_path, new_relative_path, destination_metadata
+            )
+
+    def find_successor_source_id(
+        self, source_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> str | None:
+        """Return the current successor of a renamed/moved source (the active row whose
+        ``renamed_from_source_id`` is ``source_id``), or None. Used to answer an old source_ref as
+        ``moved`` rather than a bare deleted/unavailable."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT source_id FROM source_intelligence_sources "
+                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
+                (source_id,),
+            ).fetchone()
+        return row[0] if row else None
+
     # ----- source detail + generated-note tracking (source cards) ----------------------------
     def get_source_detail(
         self, source_id: str, *, conn: sqlite3.Connection | None = None
@@ -1323,13 +1544,27 @@ class SourceIndexRepository:
         rel_path: str | None = None,
         source_root_key: str | None = None,
         source_id: str | None = None,
+        dest_rel_path: str | None = None,
         conn: sqlite3.Connection | None = None,
     ) -> str:
         event_id = uuid.uuid4().hex
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            # Coalesce: if an identical queued event for this path exists, reuse it (debounce backstop).
-            if rel_path is not None:
+            # Coalesce: if an identical queued event exists, reuse it (debounce backstop).
+            if event_type == "moved":
+                # A move's queue identity is BOTH paths + root (source_root_key, rel_path, dest_rel_path):
+                # distinct moves of the same source (A->B vs A->C) must NEVER collapse into one event.
+                # ``IS`` (not ``=``) so a NULL component compares NULL-safe. Ordinary events keep the
+                # (rel_path, event_type) identity below.
+                existing = c.execute(
+                    "SELECT event_id FROM source_intelligence_events "
+                    "WHERE status='queued' AND event_type='moved' "
+                    "AND source_root_key IS ? AND rel_path IS ? AND dest_rel_path IS ?",
+                    (source_root_key, rel_path, dest_rel_path),
+                ).fetchone()
+                if existing is not None:
+                    return str(existing[0])
+            elif rel_path is not None:
                 existing = c.execute(
                     "SELECT event_id FROM source_intelligence_events "
                     "WHERE status='queued' AND rel_path=? AND event_type=?",
@@ -1352,9 +1587,9 @@ class SourceIndexRepository:
                     return str(existing[0])
             c.execute(
                 "INSERT INTO source_intelligence_events "
-                "(event_id, source_id, rel_path, source_root_key, event_type, status, attempts, created_at, updated_at) "
-                "VALUES (?,?,?,?,?,'queued',0,?,?)",
-                (event_id, source_id, rel_path, source_root_key, event_type, now, now),
+                "(event_id, source_id, rel_path, source_root_key, dest_rel_path, event_type, status, attempts, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,'queued',0,?,?)",
+                (event_id, source_id, rel_path, source_root_key, dest_rel_path, event_type, now, now),
             )
         return event_id
 
@@ -1363,10 +1598,15 @@ class SourceIndexRepository:
     ) -> list[dict[str, Any]]:
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
+            # ``next_attempt_at`` gates bounded-backoff deferrals: a deferred event is re-eligible only once
+            # its future timestamp has passed. Ordinary events have NULL → always eligible (behavior
+            # unchanged). Lexical compare is sound because both columns use the same _now() ISO format.
             rows = c.execute(
-                "SELECT event_id, source_id, rel_path, source_root_key, event_type FROM source_intelligence_events "
-                "WHERE status='queued' ORDER BY created_at LIMIT ?",
-                (int(limit),),
+                "SELECT event_id, source_id, rel_path, source_root_key, event_type, attempts, dest_rel_path "
+                "FROM source_intelligence_events "
+                "WHERE status='queued' AND (next_attempt_at IS NULL OR next_attempt_at <= ?) "
+                "ORDER BY created_at LIMIT ?",
+                (now, int(limit)),
             ).fetchall()
             claimed = []
             for r in rows:
@@ -1382,6 +1622,10 @@ class SourceIndexRepository:
                         "rel_path": r[2],
                         "source_root_key": r[3],
                         "event_type": r[4],
+                        # attempts AFTER this claim (the UPDATE above incremented it) — the drain uses this
+                        # to decide defer-vs-exhausted for retryable 'moved' conditions.
+                        "attempts": int(r[5] or 0) + 1,
+                        "dest_rel_path": r[6],
                     }
                 )
             return claimed
@@ -1420,6 +1664,118 @@ class SourceIndexRepository:
                 "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? WHERE event_id=?",
                 (status, error_code, _now(), event_id),
             )
+
+    def defer_event(
+        self,
+        event_id: str,
+        *,
+        error_code: str,
+        expected_attempt: int,
+        conn: sqlite3.Connection | None = None,
+    ) -> str:
+        """Bounded, backoff-based retry for a CLAIMED event (Phase B / B4 corrective), guarded by the
+        **claim generation**.
+
+        ``expected_attempt`` is the ``attempts`` value ``claim_queued`` returned to THIS drain. The guard
+        requires both ``status='processing'`` AND ``attempts=expected_attempt`` so a stale worker whose
+        event was reclaimed (``requeue_stuck`` → another claim bumps ``attempts``) can never re-queue an
+        event it no longer owns. Returns:
+          * ``"deferred"`` — re-queued with a future ``next_attempt_at`` (retryable on a later drain);
+          * ``"exhausted"`` — ``expected_attempt >= MOVED_MAX_ATTEMPTS``; no write, so the caller applies a
+            guarded terminal disposition (a move never loops forever);
+          * ``"conflict"`` — the guarded UPDATE matched 0 rows (not owned / not processing) → fail closed;
+          * ``"db_busy"`` — SQLite BUSY/LOCKED on the guarded write (PLAN-C4-002/C4R5-001): the retry could
+            not be written; the caller must leave the event ``processing`` for ``requeue_stuck`` (fail-closed,
+            never a false terminal). Any other ``OperationalError`` propagates as a real error.
+        """
+        if expected_attempt >= MOVED_MAX_ATTEMPTS:
+            return "exhausted"
+        delay = min(
+            MOVED_BACKOFF_CAP_S, MOVED_BACKOFF_BASE_S * (2 ** max(0, expected_attempt - 1))
+        )
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events "
+                    "SET status='queued', error_code=?, next_attempt_at=?, updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (error_code, _iso_after(delay), _now(), event_id, int(expected_attempt)),
+                )
+                if (cur.rowcount or 0) == 0:
+                    return "conflict"
+            return "deferred"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
+
+    def complete_owned_event(
+        self,
+        event_id: str,
+        status: str,
+        *,
+        expected_attempt: int,
+        error_code: str | None = None,
+        conn: sqlite3.Connection | None = None,
+    ) -> str:
+        """Busy-aware terminal completion guarded by the claim generation (Phase B / B4 corrective,
+        PLAN-C4R6-001). Only the drain that currently owns the claim (``status='processing'`` AND
+        ``attempts=expected_attempt``) may finish it. Returns:
+          * ``"completed"`` — the terminal transition was persisted;
+          * ``"conflict"`` — a stale worker (reclaimed) → no-op;
+          * ``"db_busy"`` — SQLite BUSY/LOCKED on the terminal write: the completion could not be written, so
+            the event is left ``processing`` for ``requeue_stuck`` (fail-closed; NEVER a false terminal and
+            NEVER an unguarded fallback). Any other ``OperationalError`` propagates as a real error."""
+        if status == "skipped":
+            error_code = normalize_skip_code(error_code)
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET status=?, error_code=?, updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (status, error_code, _now(), event_id, int(expected_attempt)),
+                )
+                return "completed" if (cur.rowcount or 0) > 0 else "conflict"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
+
+    def event_is_owned(
+        self, event_id: str, expected_attempt: int, *, conn: sqlite3.Connection | None = None
+    ) -> bool:
+        """True iff the event is still owned by this claim generation (processing + attempts match).
+        Read-only; retained for test assertions. The DRAIN uses :meth:`heartbeat_owned_event` (a guarded
+        WRITE) instead, so the ownership re-check also refreshes the lease and holds a write lock."""
+        with borrow_connection(conn, self.db_path) as c:
+            row = c.execute(
+                "SELECT 1 FROM source_intelligence_events "
+                "WHERE event_id=? AND status='processing' AND attempts=?",
+                (event_id, int(expected_attempt)),
+            ).fetchone()
+        return row is not None
+
+    def heartbeat_owned_event(
+        self, event_id: str, *, expected_attempt: int, conn: sqlite3.Connection | None = None
+    ) -> str:
+        """Guarded ownership heartbeat before EXPENSIVE re-indexing (Phase B / B4 corrective, PLAN-C4-001).
+        A guarded WRITE (not a read-only SELECT) so it both re-proves ownership under the claim generation
+        AND refreshes the stuck-event lease. Returns ``"ok"`` (rowcount==1 — owned, lease refreshed),
+        ``"conflict"`` (reclaimed → the current owner is authoritative; do NOT index), or ``"db_busy"``
+        (SQLite BUSY/LOCKED → leave the event ``processing`` for ``requeue_stuck``; retryable). Any other
+        ``OperationalError`` propagates as a real error."""
+        try:
+            with borrow_connection(conn, self.db_path) as c, transaction(c):
+                cur = c.execute(
+                    "UPDATE source_intelligence_events SET updated_at=? "
+                    "WHERE event_id=? AND status='processing' AND attempts=?",
+                    (_now(), event_id, int(expected_attempt)),
+                )
+                return "ok" if (cur.rowcount or 0) == 1 else "conflict"
+        except sqlite3.OperationalError as e:
+            if is_sqlite_busy(e):
+                return "db_busy"
+            raise
 
     def requeue_stuck(
         self, ttl_seconds: int = 900, *, conn: sqlite3.Connection | None = None

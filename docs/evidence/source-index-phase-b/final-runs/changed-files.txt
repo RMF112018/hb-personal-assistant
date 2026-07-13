@@ -1,0 +1,38 @@
+# Phase B changed files (git status --short, excluding unrelated foreign churn)
+## Starting SHA: 77cf87da392268f42470e5b8aec814815e7c4af1 (origin/main)
+
+## Tracked modifications + new files:
+ M docs/architecture/client-tool-operating-manifest.md
+ M scripts/ci_source_index_gate.sh
+ M src/hb_assistant/nas_mcp/broker.py
+ M src/hb_assistant/nas_mcp/tool_registration.py
+ M src/hb_assistant/obsidian_mcp/config.py
+ M src/hb_assistant/obsidian_mcp/source_connector_models.py
+ M src/hb_assistant/obsidian_mcp/source_connector_service.py
+ M src/hb_assistant/obsidian_mcp/source_content_provider.py
+ M src/hb_assistant/obsidian_mcp/source_index_repository.py
+ M src/hb_assistant/obsidian_mcp/source_watch.py
+ M src/hb_assistant/store/migrator.py
+ M tests/test_source_index_quarantine.py
+?? docs/evidence/source-index-phase-b/
+?? src/hb_assistant/files/parsers/isolated.py
+?? tests/test_migrator_v126_rename_lineage.py
+?? tests/test_source_file_complete_read.py
+?? tests/test_source_file_parser_isolation.py
+?? tests/test_source_file_retrieval_semantics.py
+?? tests/test_source_index_rename_lineage.py
+
+## Diffstat vs origin/main (Phase B only):
+ .../architecture/client-tool-operating-manifest.md |  19 +-
+ scripts/ci_source_index_gate.sh                    |  17 +-
+ src/hb_assistant/nas_mcp/broker.py                 |   2 +
+ src/hb_assistant/nas_mcp/tool_registration.py      |  36 +-
+ src/hb_assistant/obsidian_mcp/config.py            |  11 +
+ .../obsidian_mcp/source_connector_models.py        |  39 ++
+ .../obsidian_mcp/source_connector_service.py       |  17 +-
+ .../obsidian_mcp/source_content_provider.py        | 468 +++++++++++++++++++--
+ .../obsidian_mcp/source_index_repository.py        |  77 ++++
+ src/hb_assistant/obsidian_mcp/source_watch.py      |  54 ++-
+ src/hb_assistant/store/migrator.py                 |  33 +-
+ tests/test_source_index_quarantine.py              |   8 +-
+ 12 files changed, 716 insertions(+), 65 deletions(-)

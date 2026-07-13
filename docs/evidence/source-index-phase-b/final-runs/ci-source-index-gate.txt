@@ -1,0 +1,158 @@
+........................................................................ [ 16%]
+.......FF...FFF......................................................... [ 32%]
+........................................................................ [ 48%]
+.........................F.s......FFFF......FF.......................... [ 65%]
+..........FF............................................................ [ 81%]
+........................................................................ [ 97%]
+...........                                                              [100%]
+=================================== FAILURES ===================================
+___________________ test_bootstrap_succeeds_without_watcher ____________________
+tests/test_source_root_trust.py:552: in test_bootstrap_succeeds_without_watcher
+    assert d.safe_for_watcher_activation is True  # now — and only now — the watcher may activate
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert False is True
+E    +  where False = RootTrustDecision(root_key='work', trust_state='safe', authorization_state='authorized', enabled=True, sensitive=False..._completeness_state='none', watcher_ready=True, unresolved_quarantine_count=0, reason_codes=['structure_data_unready']).safe_for_watcher_activation
+_________________ test_watcher_start_after_bootstrap_succeeds __________________
+tests/test_source_root_trust.py:562: in test_watcher_start_after_bootstrap_succeeds
+    assert w._mode in ("watchdog", "polling")  # NOT degraded — the ready root activates
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AssertionError: assert 'degraded' in ('watchdog', 'polling')
+E    +  where 'degraded' = <hb_assistant.obsidian_mcp.source_watch.SourceWatcher object at 0x10f774e90>._mode
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:131 source_watch.degraded_trust
+________________ test_migration_fresh_creates_quarantine_table _________________
+tests/test_source_index_quarantine.py:106: in test_migration_fresh_creates_quarantine_table
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION == 125
+E   assert 126 == 125
+_________________________ test_migration_is_idempotent _________________________
+tests/test_source_index_quarantine.py:130: in test_migration_is_idempotent
+    assert SQLiteMigrator(db_path=db).apply() == 125
+E   AssertionError: assert 126 == 125
+E    +  where 126 = apply()
+E    +    where apply = <hb_assistant.store.migrator.SQLiteMigrator object at 0x10f952a30>.apply
+E    +      where <hb_assistant.store.migrator.SQLiteMigrator object at 0x10f952a30> = SQLiteMigrator(db_path='/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-538/test_migration_is_idempotent0/idem.db')
+______________ test_migration_upgrade_recreates_quarantine_table _______________
+tests/test_source_index_quarantine.py:158: in test_migration_upgrade_recreates_quarantine_table
+    assert SQLiteMigrator(db_path=db).apply() == 125
+E   AssertionError: assert 126 == 125
+E    +  where 126 = apply()
+E    +    where apply = <hb_assistant.store.migrator.SQLiteMigrator object at 0x10f953e30>.apply
+E    +      where <hb_assistant.store.migrator.SQLiteMigrator object at 0x10f953e30> = SQLiteMigrator(db_path='/private/var/folders/0r/nb8twlsd6pvbcz_k1pc4jlc40000gn/T/pytest-of-bobbyfetting/pytest-538/test_migration_upgrade_recreat0/up.db')
+_______________ test_polling_fallback_when_watchdog_unavailable ________________
+tests/test_obsidian_source_watch.py:87: in test_polling_fallback_when_watchdog_unavailable
+    assert w.status()["mode"] == "polling"
+E   AssertionError: assert 'degraded' == 'polling'
+E     
+E     - polling
+E     + degraded
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:131 source_watch.degraded_trust
+_________________ test_source_watch_status_endpoint_viewer_ok __________________
+tests/test_obsidian_source_watch_lifecycle.py:125: in test_source_watch_status_endpoint_viewer_ok
+    client = _client(tmp_path)
+             ^^^^^^^^^^^^^^^^^
+tests/test_obsidian_source_watch_lifecycle.py:121: in _client
+    return TestClient(create_app(db_path=db))
+                      ^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/analytics/api.py:843: in create_app
+    app = FastAPI(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/applications.py:896: in __init__
+    ] = webhooks or routing.APIRouter()
+                    ^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/routing.py:838: in __init__
+    super().__init__(
+E   TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
+_________________ test_source_watch_mutations_require_operator _________________
+tests/test_obsidian_source_watch_lifecycle.py:132: in test_source_watch_mutations_require_operator
+    client = _client(tmp_path)
+             ^^^^^^^^^^^^^^^^^
+tests/test_obsidian_source_watch_lifecycle.py:121: in _client
+    return TestClient(create_app(db_path=db))
+                      ^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/analytics/api.py:843: in create_app
+    app = FastAPI(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/applications.py:896: in __init__
+    ] = webhooks or routing.APIRouter()
+                    ^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/routing.py:838: in __init__
+    super().__init__(
+E   TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
+___________________ test_source_watch_recover_stuck_operator ___________________
+tests/test_obsidian_source_watch_lifecycle.py:139: in test_source_watch_recover_stuck_operator
+    client = _client(tmp_path)
+             ^^^^^^^^^^^^^^^^^
+tests/test_obsidian_source_watch_lifecycle.py:121: in _client
+    return TestClient(create_app(db_path=db))
+                      ^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/analytics/api.py:843: in create_app
+    app = FastAPI(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/applications.py:896: in __init__
+    ] = webhooks or routing.APIRouter()
+                    ^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/routing.py:838: in __init__
+    super().__init__(
+E   TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
+_________________ test_source_watch_test_event_lazy_constructs _________________
+tests/test_obsidian_source_watch_lifecycle.py:150: in test_source_watch_test_event_lazy_constructs
+    client = _client(tmp_path)
+             ^^^^^^^^^^^^^^^^^
+tests/test_obsidian_source_watch_lifecycle.py:121: in _client
+    return TestClient(create_app(db_path=db))
+                      ^^^^^^^^^^^^^^^^^^^^^^
+src/hb_assistant/construction/analytics/api.py:843: in create_app
+    app = FastAPI(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/applications.py:896: in __init__
+    ] = webhooks or routing.APIRouter()
+                    ^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/routing.py:838: in __init__
+    super().__init__(
+E   TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
+______________________ test_second_watcher_runs_degraded _______________________
+tests/test_obsidian_source_watch_ownership.py:142: in test_second_watcher_runs_degraded
+    assert w1.status()["is_owner"] is True  # w1 stays the active owner
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   assert False is True
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:131 source_watch.degraded_trust
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:220 source_watch.degraded_not_owner
+________________ test_owner_released_on_stop_lets_next_acquire _________________
+tests/test_obsidian_source_watch_ownership.py:154: in test_owner_released_on_stop_lets_next_acquire
+    assert w1.status()["is_owner"] is True
+E   assert False is True
+------------------------------ Captured log call -------------------------------
+WARNING  hb_assistant.obsidian_mcp.source_watch:source_watch.py:131 source_watch.degraded_trust
+________________ test_cli_run_refuses_unbootstrapped_then_runs _________________
+tests/test_source_index_watcher_automated_refresh.py:332: in test_cli_run_refuses_unbootstrapped_then_runs
+    assert json.loads(after.stdout)["roots"][0]["run_state"] == "running"
+E   AssertionError: assert 'backend_unavailable' == 'running'
+E     
+E     - running
+E     + backend_unavailable
+_______________________ test_cli_run_bootstrap_if_needed _______________________
+tests/test_source_index_watcher_automated_refresh.py:340: in test_cli_run_bootstrap_if_needed
+    assert json.loads(res.stdout)["roots"][0]["run_state"] == "running"
+E   AssertionError: assert 'backend_unavailable' == 'running'
+E     
+E     - running
+E     + backend_unavailable
+=============================== warnings summary ===============================
+../../../Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_source_root_trust.py::test_bootstrap_succeeds_without_watcher
+FAILED tests/test_source_root_trust.py::test_watcher_start_after_bootstrap_succeeds
+FAILED tests/test_source_index_quarantine.py::test_migration_fresh_creates_quarantine_table
+FAILED tests/test_source_index_quarantine.py::test_migration_is_idempotent - ...
+FAILED tests/test_source_index_quarantine.py::test_migration_upgrade_recreates_quarantine_table
+FAILED tests/test_obsidian_source_watch.py::test_polling_fallback_when_watchdog_unavailable
+FAILED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_status_endpoint_viewer_ok
+FAILED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_mutations_require_operator
+FAILED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_recover_stuck_operator
+FAILED tests/test_obsidian_source_watch_lifecycle.py::test_source_watch_test_event_lazy_constructs
+FAILED tests/test_obsidian_source_watch_ownership.py::test_second_watcher_runs_degraded
+FAILED tests/test_obsidian_source_watch_ownership.py::test_owner_released_on_stop_lets_next_acquire
+FAILED tests/test_source_index_watcher_automated_refresh.py::test_cli_run_refuses_unbootstrapped_then_runs
+FAILED tests/test_source_index_watcher_automated_refresh.py::test_cli_run_bootstrap_if_needed
