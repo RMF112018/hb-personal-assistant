@@ -1,0 +1,30 @@
+# Phase B pre-E9 git status --short (after testing C8; tested_code_sha: 9182f3d488b737b74bf0447b77cf25b445047d54)
+# Untracked entries are the C8/E9 evidence artifacts about to be committed into E9, prior rounds'
+# detached exports/manifests, and pre-existing foreign churn (docs/implementation/*, frontend/*) NOT staged.
+?? docs/evidence/source-index-phase-b/08-corrective2-committed-tree-identity.md
+?? docs/evidence/source-index-phase-b/13-corrective6-audit-response.md
+?? docs/evidence/source-index-phase-b/14-corrective6-committed-tree-identity.md
+?? docs/evidence/source-index-phase-b/final-runs/E5-detached-manifest.md
+?? docs/evidence/source-index-phase-b/final-runs/E7-detached-manifest.md
+?? docs/evidence/source-index-phase-b/final-runs/c8-no-code-drift.txt
+?? docs/evidence/source-index-phase-b/final-runs/clean-worktree-c8-head-post.txt
+?? docs/evidence/source-index-phase-b/final-runs/clean-worktree-c8-provenance.txt
+?? docs/evidence/source-index-phase-b/final-runs/clean-worktree-c8-status-post.txt
+?? docs/evidence/source-index-phase-b/final-runs/clean-worktree-c8-status-pre.txt
+?? docs/evidence/source-index-phase-b/final-runs/gate-equivalent-c8-9182f3d4.txt
+?? docs/evidence/source-index-phase-b/final-runs/mypy-c8.txt
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective2-0464e347.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective2-0464e347.patch
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective4-e5-8003ca02.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective4-e5-8003ca02.patch
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective5-e7-6adb9fac.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective5-e7-6adb9fac.patch
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective6-c8-9182f3d4.bundle
+?? docs/evidence/source-index-phase-b/final-runs/phase-b-corrective6-c8-9182f3d4.patch
+?? docs/evidence/source-index-phase-b/final-runs/pre-e9-git-status.txt
+?? docs/evidence/source-index-phase-b/final-runs/ruff-c8.txt
+?? docs/evidence/source-index-phase-b/final-runs/worktrees-before.txt
+?? docs/implementation/project-schedule-controls/baseline-repo-truth.md
+?? docs/implementation/project-schedule-controls/canonical-metric-contract.md
+?? docs/implementation/project-schedule-controls/phase-2-api-contract.md
+?? frontend/src/lib/copyHelpers.test.ts

@@ -1,0 +1,5 @@
+source_indexer_file= /private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8/src/hb_assistant/obsidian_mcp/source_indexer.py
+under_WT_C8= True
+repo_module= /private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8/src/hb_assistant/obsidian_mcp/source_index_repository.py
+cfr_file= /private/tmp/claude-501/-Users-bobbyfetting-hb-personal-assistant/f9131bc6-c0c9-459d-a2bc-414e7076a144/scratchpad/wt_c8/subrepos/construction-financial-review/src/construction_financial_review/__init__.py
+cfr_under_WT_C8= True
