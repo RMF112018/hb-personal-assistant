@@ -1,0 +1,4 @@
+# Phase B C6 ruff — tested_code_sha: 3f4a9b2b084bd720a6f9c8a040b2e7a44cc11707
+# command: .venv/bin/python -m ruff check src/hb_assistant/obsidian_mcp/source_indexer.py tests/test_source_index_moved_drain.py
+All checks passed!
+RUFF_EXIT=0

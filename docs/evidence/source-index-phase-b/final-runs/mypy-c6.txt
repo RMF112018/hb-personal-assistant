@@ -1,0 +1,5 @@
+# Phase B C6 mypy — tested_code_sha: 3f4a9b2b084bd720a6f9c8a040b2e7a44cc11707
+# command: .venv/bin/python -m mypy src/hb_assistant/obsidian_mcp/source_indexer.py
+pyproject.toml: note: unused section(s): module = ['hb_assistant.actions.*', 'hb_assistant.automation.*', 'hb_assistant.automation.launchd_manager', 'hb_assistant.cli.actions', 'hb_assistant.cli.automation', 'hb_assistant.cli.launcher', 'hb_assistant.cli.run', 'hb_assistant.cli.scheduler', 'hb_assistant.config.path_policy', 'hb_assistant.construction.second_brain.*', 'hb_assistant.launcher.*', 'hb_assistant.obsidian.*', 'hb_assistant.procore.live_gate', 'hb_assistant.retrieval.context', 'hb_assistant.scheduler.*', 'hb_assistant.source_refresh.*']
+Success: no issues found in 1 source file
+MYPY_EXIT=0
