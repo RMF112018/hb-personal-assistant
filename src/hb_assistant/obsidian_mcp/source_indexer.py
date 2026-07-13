@@ -1459,6 +1459,39 @@ def resolve_destination(root_path: Path, new_rel: str) -> DestinationResolution:
     )
 
 
+def _terminalize_moved_exception(
+    repo: SourceIndexRepository, event: dict[str, Any], exc: Exception
+) -> None:
+    """Last-resort backstop for a moved event whose processing raised (Phase B / B4 corrective — an
+    INDEPENDENT PB-010 boundary, C6/C8). Validates the claim generation with NO default/coercion
+    (``type(x) is not int`` rejects bool/str; ``< 1`` rejects 0/negative); on a verified positive int it
+    attempts the attempt-generation-guarded completion and swallows a failure (leave the event ``processing``
+    for ``requeue_stuck``) — NEVER the unguarded ``complete_event``. Logging carries only safe identifiers
+    (event_id, validated attempt, exception classes) — never messages, paths, root keys, or payload."""
+    raw_attempt = event.get("attempts")
+    if type(raw_attempt) is not int or raw_attempt < 1:
+        # No valid claim generation → invent no ownership; perform NO queue mutation.
+        _logger.warning(
+            "source_index.moved_terminalize_skipped_invalid_generation",
+            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                    "attempt": raw_attempt,
+                                    "exception": type(exc).__name__}},
+        )
+        return
+    try:
+        repo.complete_owned_event(
+            event["event_id"], "error", expected_attempt=raw_attempt, error_code=type(exc).__name__
+        )
+    except Exception as terminal_exc:  # noqa: BLE001 - moved events never fall through to the unguarded path
+        _logger.warning(
+            "source_index.moved_terminalize_failed_left_processing",
+            extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                    "expected_attempt": raw_attempt,
+                                    "exception": type(exc).__name__,
+                                    "terminalize_exception": type(terminal_exc).__name__}},
+        )
+
+
 def _apply_moved_event(
     repo: SourceIndexRepository,
     config: ObsidianMcpConfig,
@@ -2733,7 +2766,20 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 # excluded/deferred/unsupported skip. BOTH paths cross the queue trust boundary and are
                 # canonically validated (no FS access) before any lookup/probe/mutation; terminal-invalid
                 # payloads never mutate. All terminal completions are ownership-guarded (claim generation).
-                expected_attempt = int(event.get("attempts") or 1)
+                # PB-010 (C8): validate the claim generation FIRST — before normalization, root lookup,
+                # dispatch, or ANY terminalization. No default, no coercion (``type(x) is not int`` rejects
+                # bool/str; ``< 1`` rejects 0/negative). An invalid generation performs NO queue mutation:
+                # leave the event 'processing' for requeue_stuck (fail closed). The generic backstop keeps
+                # its own copy of this check as an independent last-resort boundary.
+                raw_attempt = event.get("attempts")
+                if type(raw_attempt) is not int or raw_attempt < 1:
+                    _logger.warning(
+                        "source_index.moved_invalid_claim_generation",
+                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                                "attempt": raw_attempt}},
+                    )
+                    continue
+                expected_attempt = raw_attempt
                 old_norm = normalize_moved_rel_path(event["rel_path"])
                 new_norm = normalize_moved_rel_path(event.get("dest_rel_path"))
                 src_key = event.get("source_root_key")
@@ -2826,33 +2872,11 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                 repo.complete_event(event["event_id"], event_status, error_code=event_code)
             processed += 1
         except Exception as exc:  # noqa: BLE001 - per-event backstop (fail closed)
-            # PB-010 (C6): a moved event must NEVER reach the unguarded, event_id-only complete_event()
-            # fallback — a stale attempt could overwrite the current owner's queue state. Every moved
-            # terminalization is attempt-generation guarded; if the guarded write itself fails (or the
-            # claim generation is invalid), leave the event 'processing' for requeue_stuck (fail closed).
+            # PB-010: a moved event must NEVER reach the unguarded, event_id-only complete_event() fallback
+            # — a stale attempt could overwrite the current owner's queue state. Delegate to the guarded,
+            # generation-validating backstop helper (an independent last-resort boundary; see C6/C8).
             if event["event_type"] == "moved":
-                raw_attempt = event.get("attempts")
-                if type(raw_attempt) is not int or raw_attempt < 1:
-                    # No valid claim generation → invent no ownership; perform NO queue mutation.
-                    _logger.warning(
-                        "source_index.moved_terminalize_skipped_invalid_generation",
-                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
-                                                "attempt": raw_attempt,
-                                                "exception": type(exc).__name__}},
-                    )
-                    continue
-                try:
-                    repo.complete_owned_event(
-                        event["event_id"], "error",
-                        expected_attempt=raw_attempt, error_code=type(exc).__name__,
-                    )
-                except Exception:  # noqa: BLE001 - moved events never fall through to the unguarded path
-                    _logger.warning(
-                        "source_index.moved_terminalize_failed_left_processing",
-                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
-                                                "expected_attempt": raw_attempt,
-                                                "exception": type(exc).__name__}},
-                    )
+                _terminalize_moved_exception(repo, event, exc)
             else:
                 repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
     if cards_done or summaries_done:
