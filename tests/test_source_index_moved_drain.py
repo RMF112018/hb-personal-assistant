@@ -1,4 +1,4 @@
-"""Phase B / B4 corrective — governed 'moved' event drain (PB-005/006/007/010).
+"""Phase B / B4 corrective — governed 'moved' event drain (PB-005/006/007/010; C4 + C6).
 
 Proves the rename/move mutation runs OFF the observer thread, in the readiness-gated, symlink/identity-safe
 drain: a recoverable condition (stale/unready root, lost mount, dest not yet visible, pre/post-mutation
@@ -640,6 +640,169 @@ def test_move_and_heartbeat_refresh_lease_to_controlled_timestamp(tmp_path, monk
     monkeypatch.setattr(R, "_now", lambda: "2099-12-31T00:00:00+00:00")
     assert repo.heartbeat_owned_event(eid, expected_attempt=2) == "conflict"  # wrong generation
     assert _uat() == "2031-06-07T08:09:10+00:00"                 # stale gen did NOT refresh
+
+
+# ---------------- PB-010 (C6): no moved event reaches the generic unguarded complete_event fallback ----------------
+
+def _spy(store: list):
+    def _fn(*a, **k):
+        store.append((a, k))
+    return _fn
+
+
+def test_moved_guarded_terminal_failure_never_reaches_unguarded_fallback(tmp_path, monkeypatch) -> None:
+    """Full escape sequence: attempt 1 processes, a concurrent reclaim bumps to attempt 2, the move raises
+    non-busy, the inner guarded terminalization raises non-busy, and the generic backstop retries the
+    GUARDED completion (attempt 1) — the unguarded complete_event() is NEVER used and attempt 2 stays
+    authoritative."""
+    db, root, config, repo = _env(tmp_path)
+    _patch_trust(monkeypatch, safe=True)
+    old = _index_file(root, "old.txt", "x", repo, config)
+    (root / "new.txt").write_text("x moved")
+    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+                             source_root_key="work")
+
+    ce_calls: list = []
+    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
+    coe_attempts: list = []
+
+    def _raise_coe(event_id, status, *, expected_attempt, error_code=None, conn=None):
+        coe_attempts.append(expected_attempt)
+        raise sqlite3.OperationalError("no such column: bogus")  # NON-busy
+
+    monkeypatch.setattr(repo, "complete_owned_event", _raise_coe)
+
+    def wrap(**kw):
+        # attempt 1 is mid-flight; a concurrent worker reclaims to attempt 2, then this move raises non-busy
+        with sqlite3.connect(db) as c:
+            c.execute("UPDATE source_intelligence_events SET status='queued' WHERE event_id=?",
+                      (kw["event_id"],))
+            c.commit()
+        repo.claim_queued(50)  # attempt 2 now owns it
+        raise sqlite3.OperationalError("no such table: bogus")  # NON-busy
+
+    monkeypatch.setattr(repo, "apply_owned_confirmed_same_root_move", wrap)
+
+    drain_queue(repo, config)  # must NOT raise
+
+    assert len(coe_attempts) >= 2                       # inner handler + generic backstop both reached
+    assert all(a == 1 for a in coe_attempts) and 2 not in coe_attempts  # stale attempt only; never attempt 2
+    assert ce_calls == []                               # unguarded fallback never used for the moved event
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
+                         (eid,)).fetchone() == ("processing", 2)  # attempt 2 authoritative
+    assert _row(db, old)[0] == 0 and repo.find_successor_source_id(old) is None  # stale attempt mutated nothing
+    # recoverable via deterministic stuck recovery (restore real methods first)
+    monkeypatch.undo()
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
+                  "WHERE event_id=?", (eid,))
+        c.commit()
+    assert repo.requeue_stuck(900) == 1
+
+
+def test_moved_invalid_terminalization_failure_reaches_backstop(tmp_path, monkeypatch) -> None:
+    """The `moved_invalid` branch's guarded terminalization raises non-busy → the generic backstop catches
+    it (guarded retry), never the unguarded fallback."""
+    db, root, config, repo = _env(tmp_path)
+    ce_calls: list = []
+    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
+    coe_attempts: list = []
+
+    def _raise_coe(event_id, status, *, expected_attempt, error_code=None, conn=None):
+        coe_attempts.append(expected_attempt)
+        raise sqlite3.OperationalError("no such column: bogus")
+
+    monkeypatch.setattr(repo, "complete_owned_event", _raise_coe)
+    eid = repo.enqueue_event(event_type="moved", rel_path="a.txt", dest_rel_path="a.txt",  # old == new
+                             source_root_key="work")
+    drain_queue(repo, config)  # must NOT raise
+    assert len(coe_attempts) >= 2 and all(a == 1 for a in coe_attempts)  # branch + backstop, claimed attempt
+    assert ce_calls == []
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT status FROM source_intelligence_events WHERE event_id=?",
+                         (eid,)).fetchone()[0] == "processing"
+    monkeypatch.undo()
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
+                  "WHERE event_id=?", (eid,))
+        c.commit()
+    assert repo.requeue_stuck(900) == 1
+
+
+def test_unconfigured_moved_terminalization_failure_reaches_backstop(tmp_path, monkeypatch) -> None:
+    """The `unconfigured_root` branch's guarded terminalization raises non-busy → the generic backstop
+    catches it (guarded retry), never the unguarded fallback."""
+    db, root, config, repo = _env(tmp_path)
+    ce_calls: list = []
+    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
+    coe_attempts: list = []
+
+    def _raise_coe(event_id, status, *, expected_attempt, error_code=None, conn=None):
+        coe_attempts.append(expected_attempt)
+        raise sqlite3.OperationalError("no such column: bogus")
+
+    monkeypatch.setattr(repo, "complete_owned_event", _raise_coe)
+    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+                             source_root_key="ghost")  # not a configured root
+    drain_queue(repo, config)  # must NOT raise
+    assert len(coe_attempts) >= 2 and all(a == 1 for a in coe_attempts)
+    assert ce_calls == []
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT status FROM source_intelligence_events WHERE event_id=?",
+                         (eid,)).fetchone()[0] == "processing"
+    monkeypatch.undo()
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
+                  "WHERE event_id=?", (eid,))
+        c.commit()
+    assert repo.requeue_stuck(900) == 1
+
+
+@pytest.mark.parametrize("bad_attempt", [
+    pytest.param("__MISSING__", id="missing"),
+    pytest.param(None, id="none"),
+    pytest.param(0, id="zero"),
+    pytest.param(-3, id="negative"),
+    pytest.param("x", id="nonnumeric"),
+    pytest.param(True, id="boolean"),
+])
+def test_moved_backstop_invalid_claim_generation_fails_closed(tmp_path, monkeypatch, bad_attempt) -> None:
+    """A moved event reaching the backstop with an invalid claim generation performs NO queue mutation
+    (neither guarded nor unguarded completion) — no fabricated attempt — and stays recoverable."""
+    db, root, config, repo = _env(tmp_path)
+    (root / "old.txt").write_text("x")
+    eid = repo.enqueue_event(event_type="moved", rel_path="old.txt", dest_rel_path="new.txt",
+                             source_root_key="work")
+    repo.claim_queued(50)  # real DB row -> processing, attempts=1
+
+    event = {"event_id": eid, "event_type": "moved", "rel_path": "old.txt",
+             "dest_rel_path": "new.txt", "source_root_key": "work", "source_id": None}
+    if bad_attempt != "__MISSING__":
+        event["attempts"] = bad_attempt
+    monkeypatch.setattr(repo, "claim_queued", lambda *a, **k: [event])
+
+    def _boom(*a, **k):
+        raise sqlite3.OperationalError("no such table: boom")  # NON-busy, forces the backstop
+
+    monkeypatch.setattr(si, "_apply_moved_event", _boom)
+    ce_calls: list = []
+    coe_calls: list = []
+    monkeypatch.setattr(repo, "complete_event", _spy(ce_calls))
+    monkeypatch.setattr(repo, "complete_owned_event", _spy(coe_calls))
+
+    drain_queue(repo, config)  # must NOT raise
+
+    assert ce_calls == [] and coe_calls == []  # invalid generation → NO queue mutation, no fabricated attempt
+    with sqlite3.connect(db) as c:
+        assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
+                         (eid,)).fetchone() == ("processing", 1)  # real row untouched
+    monkeypatch.undo()
+    with sqlite3.connect(db) as c:
+        c.execute("UPDATE source_intelligence_events SET updated_at='2000-01-01T00:00:00+00:00' "
+                  "WHERE event_id=?", (eid,))
+        c.commit()
+    assert repo.requeue_stuck(900) == 1
 
 
 # ---------------- PB-007: two-stage FTS + public-search invalidation through the drain ----------------

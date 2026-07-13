@@ -2825,8 +2825,36 @@ def drain_queue(repo: SourceIndexRepository, config: ObsidianMcpConfig, *, batch
                             event_status, event_code = "skipped", disp.skip_code
                 repo.complete_event(event["event_id"], event_status, error_code=event_code)
             processed += 1
-        except Exception as exc:
-            repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
+        except Exception as exc:  # noqa: BLE001 - per-event backstop (fail closed)
+            # PB-010 (C6): a moved event must NEVER reach the unguarded, event_id-only complete_event()
+            # fallback — a stale attempt could overwrite the current owner's queue state. Every moved
+            # terminalization is attempt-generation guarded; if the guarded write itself fails (or the
+            # claim generation is invalid), leave the event 'processing' for requeue_stuck (fail closed).
+            if event["event_type"] == "moved":
+                raw_attempt = event.get("attempts")
+                if type(raw_attempt) is not int or raw_attempt < 1:
+                    # No valid claim generation → invent no ownership; perform NO queue mutation.
+                    _logger.warning(
+                        "source_index.moved_terminalize_skipped_invalid_generation",
+                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                                "attempt": raw_attempt,
+                                                "exception": type(exc).__name__}},
+                    )
+                    continue
+                try:
+                    repo.complete_owned_event(
+                        event["event_id"], "error",
+                        expected_attempt=raw_attempt, error_code=type(exc).__name__,
+                    )
+                except Exception:  # noqa: BLE001 - moved events never fall through to the unguarded path
+                    _logger.warning(
+                        "source_index.moved_terminalize_failed_left_processing",
+                        extra={"obsidian_mcp": {"event_id": event.get("event_id"),
+                                                "expected_attempt": raw_attempt,
+                                                "exception": type(exc).__name__}},
+                    )
+            else:
+                repo.complete_event(event["event_id"], "error", error_code=type(exc).__name__)
     if cards_done or summaries_done:
         _logger.info(
             "source_index.drain_generated",
