@@ -1,0 +1,13 @@
+# Phase C Stage 1 (corrective r3) — changed files ; branch phase-c-source-index-migration-assurance-stage1 ; base origin/main d110c54f
+M pyproject.toml (mypy strict override, +2)
+A docs/specs/source-index-phase-c-migration-rollback-proof.md
+A docs/evidence/source-index-phase-c/
+A src/hb_assistant/store/source_index_migration_assurance.py
+A tests/support/source_index_expected_inventory.py
+A tests/support/source_index_migration_fixture.py
+A tests/source_index/test_phase_c_fixture.py
+A tests/source_index/test_phase_c_inventory.py
+## pre-existing untracked foreign churn: NOT touched (phase-b evidence, project-schedule-controls, copyHelpers.test.ts)
+## git diff --stat (tracked):
+ pyproject.toml | 2 ++
+ 1 file changed, 2 insertions(+)

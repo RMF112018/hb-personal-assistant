@@ -189,6 +189,8 @@ module = [
   "hb_assistant.scheduler.*",
   "hb_assistant.cli.launcher",
   "hb_assistant.cli.scheduler",
+  # Phase C Stage 1: read-only source-index migration-assurance inventory engine (PCR-004).
+  "hb_assistant.store.source_index_migration_assurance",
 ]
 ignore_errors = false
 follow_imports = "normal"

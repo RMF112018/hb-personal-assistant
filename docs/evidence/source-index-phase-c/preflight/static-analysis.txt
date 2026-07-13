@@ -1,0 +1,14 @@
+# Phase C Stage 1 (corrective r3) — static analysis (PCR-004) — explicit exit codes (S1-AUD-004)
+# runtime: .venv Python 3.14.5 ; ruff 0.15.14
+
+$ ruff check --no-force-exclude <engine>
+All checks passed!
+RUFF_ENGINE_EXIT=0
+
+$ ruff check <support + phase-c tests>
+All checks passed!
+RUFF_SUPPORT_EXIT=0
+
+$ python -m mypy <engine>
+Success: no issues found in 1 source file
+MYPY_ENGINE_EXIT=0

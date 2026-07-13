@@ -1,0 +1,19 @@
+LATEST_SCHEMA_VERSION constant: 127
+apply() returned MAX(version): 127
+ledger row count: 127
+min version: 1 max version: 127
+duplicate versions: []
+--- source-index-relevant ledger names (V115-V127) ---
+V115: v115_source_structure_layered_index
+V116: v116_source_structure_overrides
+V117: v117_source_index_bootstrap
+V118: v118_tool_manifest_semantic_payload
+V119: v119_source_index_bootstrap_runs
+V120: v120_manifest_entry_classification
+V121: v121_manifest_gateway_allowlist
+V122: v122_source_index_scan_generations
+V123: v123_drop_narrow_relpath_index
+V124: v124_index_metadata_fts_rowid
+V125: v125_source_index_scan_quarantine
+V126: v126_source_rename_lineage
+V127: v127_events_moved_dest_backoff
