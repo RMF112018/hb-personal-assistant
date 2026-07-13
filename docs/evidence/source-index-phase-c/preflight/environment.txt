@@ -1,0 +1,11 @@
+# Phase C Stage 1 — environment (raw capture)
+## uname
+Darwin 27.0.0 arm64
+## venv python
+Python 3.14.5
+## sqlite lib
+3.53.1
+## sqlite3 default isolation_level (legacy txn control => DDL is transactional)
+''
+## PYTHONPATH convention (gate-equivalent)
+src:subrepos/construction-financial-review/src

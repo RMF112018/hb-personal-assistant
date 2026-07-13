@@ -1,0 +1,62 @@
+# Phase C Stage 1 (corrective r3) — test identity (S1-AUD-003)
+# runtime: .venv/bin/python 3.14.5 ; base origin/main d110c54f
+
+## exact expanded 140-test regression command:
+PYTHONPATH="src:subrepos/construction-financial-review/src" .venv/bin/python -m pytest \
+  tests/test_migrator_v117_source_index_bootstrap.py tests/test_migrator_v123_relpath_index.py \
+  tests/test_migrator_v126_rename_lineage.py tests/test_migrator_v127_moved_event.py \
+  tests/test_source_index_moved_drain.py tests/source_index/ -p no:cacheprovider
+## result: 140 passed, 0 failed/skipped/deselected/warnings; PC_V3_FULL_EXIT=0
+
+## Phase C Stage 1 collection (per-file; 55 total):
+tests/source_index/test_phase_c_fixture.py: 32
+tests/source_index/test_phase_c_inventory.py: 23
+
+## Migrator-canary collection (85 = 6+4+5+12+58):
+tests/test_migrator_v117_source_index_bootstrap.py: 6
+tests/test_migrator_v123_relpath_index.py: 4
+tests/test_migrator_v126_rename_lineage.py: 5
+tests/test_migrator_v127_moved_event.py: 12
+tests/test_source_index_moved_drain.py: 58
+
+## Phase C test functions:
+tests/source_index/test_phase_c_fixture.py:38:def test_fixture_matches_independent_oracle(tmp_path, origin):
+tests/source_index/test_phase_c_fixture.py:50:def test_fixture_is_deterministic(tmp_path, origin):
+tests/source_index/test_phase_c_fixture.py:59:def test_v121_carries_pre_v123_narrow_index_with_exact_sql(tmp_path):
+tests/source_index/test_phase_c_fixture.py:77:def test_post_v123_origins_have_no_narrow_index(tmp_path, origin):
+tests/source_index/test_phase_c_fixture.py:93:def test_oracle_rejects_narrow_index_injected_into_post_v123_fixture(tmp_path):
+tests/source_index/test_phase_c_fixture.py:117:def test_oracle_rejects_v121_with_narrow_index_removed(tmp_path):
+tests/source_index/test_phase_c_fixture.py:137:def test_head_fixture_carries_all_invariants(tmp_path):
+tests/source_index/test_phase_c_fixture.py:158:def test_v121_has_no_cross_root_duplicates(tmp_path):
+tests/source_index/test_phase_c_fixture.py:167:def test_fixture_runs_in_wal_mode(tmp_path, origin):
+tests/source_index/test_phase_c_fixture.py:179:def test_fresh_fixture_is_empty_head_schema(tmp_path):
+tests/source_index/test_phase_c_fixture.py:203:def test_no_absolute_host_paths_in_data(tmp_path):
+tests/source_index/test_phase_c_fixture.py:229:def test_rejects_destination_outside_rehearsal_root(tmp_path):
+tests/source_index/test_phase_c_fixture.py:234:def test_rejects_symlinked_rehearsal_root(tmp_path):
+tests/source_index/test_phase_c_fixture.py:243:def test_rejects_missing_rehearsal_root(tmp_path):
+tests/source_index/test_phase_c_fixture.py:248:def test_refuses_to_overwrite_unmarked_database(tmp_path):
+tests/source_index/test_phase_c_fixture.py:255:def test_refuses_configured_application_database(tmp_path, monkeypatch):
+tests/source_index/test_phase_c_fixture.py:266:def test_rejects_unsupported_origin(tmp_path):
+tests/source_index/test_phase_c_inventory.py:41:def test_inventory_is_read_only(tmp_path):
+tests/source_index/test_phase_c_inventory.py:50:def test_inventory_creates_no_sidecar_files(tmp_path):
+tests/source_index/test_phase_c_inventory.py:62:def test_inventory_fails_closed_on_missing_path(tmp_path):
+tests/source_index/test_phase_c_inventory.py:69:def test_inventory_rejects_non_regular_file(tmp_path):
+tests/source_index/test_phase_c_inventory.py:76:def test_inventory_rejects_uncheckpointed_wal(tmp_path):
+tests/source_index/test_phase_c_inventory.py:94:def test_logical_hash_is_deterministic_and_matches_builder(tmp_path):
+tests/source_index/test_phase_c_inventory.py:101:def test_logical_hash_differs_across_origins(tmp_path):
+tests/source_index/test_phase_c_inventory.py:112:def test_structural_signature_present(tmp_path):
+tests/source_index/test_phase_c_inventory.py:123:def test_added_column_changes_logical_hash(tmp_path):
+tests/source_index/test_phase_c_inventory.py:134:def test_dropped_index_changes_logical_hash(tmp_path):
+tests/source_index/test_phase_c_inventory.py:145:def test_index_uniqueness_change_changes_logical_hash(tmp_path):
+tests/source_index/test_phase_c_inventory.py:164:def test_deleted_fts_row_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:177:def test_stale_fts_rowid_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:193:def test_changed_text_excerpt_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:207:def test_missing_source_text_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:218:def test_same_rowid_fts_content_corruption_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:240:def test_fts_path_or_aux_corruption_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:254:def test_obsidian_fts_content_corruption_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:269:def test_omitted_structural_table_change_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:281:def test_orphan_fts_row_is_detected(tmp_path):
+tests/source_index/test_phase_c_inventory.py:299:def test_integrity_checks_pass_on_fixture(tmp_path):
+tests/source_index/test_phase_c_inventory.py:307:def test_redacted_report_has_no_path_or_content_values(tmp_path):
+tests/source_index/test_phase_c_inventory.py:319:def test_reports_multi_root_and_fts_parity(tmp_path):

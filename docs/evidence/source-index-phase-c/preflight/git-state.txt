@@ -1,0 +1,21 @@
+# Phase C Stage 1 — git state (raw capture)
+## date (repo-local, git log of HEAD)
+2026-07-13T05:50:25-04:00
+## branch
+phase-c-source-index-migration-assurance-stage1
+## HEAD
+d110c54fa295e9e683afb780d5d0c48728325f5c
+## origin/main
+d110c54fa295e9e683afb780d5d0c48728325f5c
+## stale local main
+77cf87da392268f42470e5b8aec814815e7c4af1
+## phase-b head (c914be4d) is ancestor of origin/main?
+YES
+## origin/main parents (merge commit for PR #311)
+d110c54fa295e9e683afb780d5d0c48728325f5c 77cf87da392268f42470e5b8aec814815e7c4af1 c914be4d467180f42c2fc86fc4232037eac3e9f3
+## commits on this branch beyond origin/main (should be empty pre-implementation)
+## tracked working-tree modifications (staged / unstaged)
+---
+## remotes
+origin	https://github.com/RMF112018/hb-personal-assistant.git (fetch)
+origin	https://github.com/RMF112018/hb-personal-assistant.git (push)

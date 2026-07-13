@@ -1,0 +1,11 @@
+# Phase C Stage 1 (corrective r3) — content-identity manifest (S1-AUD-005)
+# base: origin/main d110c54fa295e9e683afb780d5d0c48728325f5c
+# git-hash-object = git blob SHA-1; sha256 cross-check. pyproject.toml MODIFIED; rest NEW.
+e5301329b1f3a94cc2771cab815e2fa3e9dda210       53ed1020cb5b4105e361642a4f340b534ad541152ac993e04b0ddd6605df3d60 pyproject.toml
+3cf5eae492477efde9d7014d904a4400ce9e5224       850f4b9bc328752d7e71a64053c6e10a5caad71e8e59593d5b611929fa3aa13a docs/specs/source-index-phase-c-migration-rollback-proof.md
+eb07ccb2781e29af08b1a5ff95ab8e1221ad443b       18287e1684d84a213254b5e350a93089b9502d4f8cfd3650b4ff26b90dee5fef src/hb_assistant/store/source_index_migration_assurance.py
+1abb0031838c9f46c27a17c6141da95dd435bc12       1a927598075977641442aa26a5b2054eb32d9232e0725592564eb4fd963d5bf5 tests/support/source_index_expected_inventory.py
+86b2e5f902dea48a71327f588bd9af472612816f       5392024fbf2522fe77eaba1a4ee9e3bd8e1262706745b1252699c5f849d408c5 tests/support/source_index_migration_fixture.py
+3f3a20f9ba560e99626e3bfde64d29e924d038a4       7940f57107fa2a4994c8234f18110e85c9b03bb40c74ca9c40c584362761d9e2 tests/source_index/test_phase_c_fixture.py
+0e771b0689bab9dad7bc8d01f3a7ec092dc1ccd4       c768d0660fe32476c52fedeb14289de157d0f756ac1796421377c495821743be tests/source_index/test_phase_c_inventory.py
+44144ff4470cf6e2d676d20e8996a2e6e583aabb       61c209c581a639f54e8022d22276fa19c8d7eed57959a95fe3c93c7c47133997 docs/evidence/source-index-phase-c/review-package/phase-c-stage1.patch
