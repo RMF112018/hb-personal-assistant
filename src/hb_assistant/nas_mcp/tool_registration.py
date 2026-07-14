@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
+import json
 from typing import Any
 
 from mcp.types import ToolAnnotations
 
+from .capability_registry import (
+    CapabilityProfile,
+    definitions_for_profile,
+    gateway_names_for_profile,
+    resolve_profile,
+)
 from .broker import (
-    ALL_ASSISTANT_TOOLS,
     ASSISTANT_TOOL_GROUPS,
     DENIED_TOOL_NAMES,
-    GATEWAY_ALLOWLIST,
     NasMcpBroker,
     assistant_client_exposure_status,
 )
@@ -145,7 +151,11 @@ def ensure_schema_index_frozen(config: Any) -> None:
     from .broker import NasMcpBroker  # noqa: PLC0415
 
     mcp = FastMCP("hb-nas-mcp-schema-freeze", json_response=True, stateless_http=True)
-    register_nas_mcp_tools(mcp, NasMcpBroker(config))
+    register_nas_mcp_tools(
+        mcp,
+        NasMcpBroker(config),
+        capability_profile=getattr(config, "capability_profile", None),
+    )
 
 
 def derive_tool_arg_meta(name: str, index: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -274,7 +284,59 @@ def _stamp_tool_annotations(mcp: Any) -> None:
         tool.meta = meta
 
 
-def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
+class _ProfileFilteredMcp:
+    """Registration view that exposes only the immutable profile membership set."""
+
+    def __init__(self, mcp: Any, allowed_names: frozenset[str]) -> None:
+        self._mcp = mcp
+        self._allowed_names = allowed_names
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._mcp, name)
+
+    def tool(self, *args: Any, **kwargs: Any) -> Any:
+        real_decorator = self._mcp.tool(*args, **kwargs)
+
+        def decorate(fn: Any) -> Any:
+            registered_name = str(kwargs.get("name") or fn.__name__)
+            if registered_name not in self._allowed_names:
+                return fn
+            return real_decorator(fn)
+
+        return decorate
+
+
+def _validate_registered_schema_bindings(profile: CapabilityProfile) -> None:
+    expected = {item.registered_name: item for item in definitions_for_profile(profile)}
+    actual = live_tool_schema_index()
+    missing = sorted(set(expected) - set(actual))
+    extra = sorted(set(actual) - set(expected))
+    if missing or extra:
+        raise RuntimeError(f"capability registration mismatch: missing={missing}; extra={extra}")
+    for name, schema in actual.items():
+        definition = expected.get(name)
+        if definition is None:
+            raise RuntimeError(f"registered capability outside profile: {name}")
+        payload = json.dumps(schema.get("input_schema") or {}, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(payload.encode()).hexdigest()
+        if digest != definition.schema_sha256:
+            raise RuntimeError(f"capability schema mismatch: {name}:{digest}")
+
+
+def register_nas_mcp_tools(
+    mcp: Any,
+    broker: NasMcpBroker,
+    *,
+    capability_profile: str | CapabilityProfile | None = None,
+) -> None:
+    selected_profile = resolve_profile(capability_profile)
+    broker.select_capability_profile(selected_profile)
+    gateway_allowlist = gateway_names_for_profile(selected_profile)
+    allowed_names = frozenset(
+        item.registered_name
+        for item in definitions_for_profile(selected_profile)
+    )
+    mcp = _ProfileFilteredMcp(mcp, allowed_names)
     @mcp.tool()
     def hb_mcp_status() -> dict[str, Any]:
         payload = broker.dispatch("hb_mcp_status", {})
@@ -1309,10 +1371,24 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         hard-coded 78-tool / 13-group slogan). Optionally filter to one ``group``.
         Read-only; returns no secrets, raw payloads, credentials, or absolute paths.
         """
-        if group is not None and group not in ASSISTANT_TOOL_GROUPS:
+        profile_definitions = definitions_for_profile(selected_profile)
+        assistant_definitions = tuple(
+            item
+            for item in profile_definitions
+            if item.registered_name.startswith("assistant_") and not item.is_alias
+        )
+        profile_groups = {
+            label: tuple(
+                item.registered_name
+                for item in assistant_definitions
+                if item.group == label
+            )
+            for label in sorted({item.group for item in assistant_definitions})
+        }
+        if group is not None and group not in profile_groups:
             raise ValueError(f"unknown_assistant_group:{group}")
         index = _extract_client_tool_index(mcp)
-        scope = {group: ASSISTANT_TOOL_GROUPS[group]} if group else dict(ASSISTANT_TOOL_GROUPS)
+        scope = {group: profile_groups[group]} if group else profile_groups
         group_rows = [
             {"group": label, "tool_count": len(tools), "tools": list(tools)}
             for label, tools in scope.items()
@@ -1320,8 +1396,9 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
         tools_meta = [
             _assistant_tool_meta(name, index) for tools in scope.values() for name in tools
         ]
-        canonical_count = len(ALL_ASSISTANT_TOOLS)
-        group_count = len(ASSISTANT_TOOL_GROUPS)
+        canonical_count = len(assistant_definitions)
+        group_count = len(profile_groups)
+        profile_names = {item.registered_name for item in profile_definitions}
         return {
             "groups": group_rows,
             "group_count": group_count if group is None else 1,
@@ -1332,18 +1409,18 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
             # Non-canonical gateway-reachable write surfaces (operator-authorized expansion). Kept in
             # SEPARATE sections so `tools` remains the canonical assistant inventory; every write still
             # passes the full broker write-gate chain when invoked.
-            "structured_intelligence_tools": [t for t in GATEWAY_ALLOWLIST
+            "structured_intelligence_tools": [t for t in gateway_allowlist
                                               if t.startswith(("pa_artifact_", "pa_session_",
                                                                "pa_canonical_", "pa_tool_manifest_",
                                                                "pa_vault_"))],
-            "client_output_tools": list(ALL_PA_OUTPUT_TOOLS),
-            "ai_output_tools": ["ai_outputs_card_upsert"],
-            "prompt_routing_tools": [t for t in GATEWAY_ALLOWLIST if t.startswith("pa_prompt_")
+            "client_output_tools": sorted(profile_names.intersection(ALL_PA_OUTPUT_TOOLS)),
+            "ai_output_tools": sorted(profile_names.intersection({"ai_outputs_card_upsert"})),
+            "prompt_routing_tools": [t for t in gateway_allowlist if t.startswith("pa_prompt_")
                                      or t in ("pa_tool_family_get", "pa_workflow_recipe_get",
                                               "pa_tool_surface_freshness_check",
                                               "pa_tool_surface_runtime_attestation")],
-            "gateway_allowlist_count": len(GATEWAY_ALLOWLIST),
-            "exposure": assistant_client_exposure_status(),
+            "gateway_allowlist_count": len(gateway_allowlist),
+            "exposure": assistant_client_exposure_status(selected_profile),
             "safety": (
                 f"The `tools` list is the canonical assistant inventory "
                 f"({canonical_count} tools across {group_count} groups when unfiltered). "
@@ -1367,7 +1444,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                 f"denied_tool:{tool_name}",
                 subject_tool=tool_name,
             )
-        if tool_name not in GATEWAY_ALLOWLIST:
+        if tool_name not in gateway_allowlist:
             return _gateway_failure(
                 "hb_assistant_tool_help",
                 f"unknown_or_non_assistant_tool:{tool_name}",
@@ -1400,7 +1477,7 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
                 f"denied_tool:{tool_name}",
                 subject_tool=tool_name,
             )
-        if tool_name not in GATEWAY_ALLOWLIST:
+        if tool_name not in gateway_allowlist:
             return _gateway_failure(
                 "hb_assistant_tool_query",
                 f"not_an_allowlisted_assistant_tool:{tool_name}",
@@ -1836,6 +1913,9 @@ def register_nas_mcp_tools(mcp: Any, broker: NasMcpBroker) -> None:
     # Capture the live tool-schema index once, now that the full surface is registered, so the persisted
     # manifest (built in a handler context without `mcp`) can carry the same purpose/args/limits.
     freeze_registered_schema_index(mcp)
+    manager = getattr(mcp, "_tool_manager", None)
+    if callable(getattr(manager, "list_tools", None)):
+        _validate_registered_schema_bindings(selected_profile)
 
     # NAS internet-facing profile: idempotently materialize the persisted client-tool manifest so
     # pa_tool_manifest_get returns a real active manifest out of the box (get/freshness/status agree).

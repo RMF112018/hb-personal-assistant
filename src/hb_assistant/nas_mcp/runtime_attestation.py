@@ -11,8 +11,13 @@ import time
 from datetime import UTC, datetime
 from typing import Any
 
-from .broker import GATEWAY_ALLOWLIST, runtime_commit
-from .client_output_tools import ASSISTANT_OUTPUT_ALIASES
+from .broker import runtime_commit
+from .capability_registry import (
+    MATRIX_SHA256,
+    definitions_for_profile,
+    gateway_names_for_profile,
+    resolve_profile,
+)
 from .config import NasMcpConfig
 from .exposure_audit import _synthetic_args
 from .live_tool_surface import build_live_tool_surface
@@ -57,7 +62,11 @@ def _build_surface_for_config(config: NasMcpConfig) -> tuple[Any, dict[str, Any]
 
     broker = NasMcpBroker(config)
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(
+        mcp,
+        broker,
+        capability_profile=getattr(config, "capability_profile", None),
+    )
     tools = {t.name: t for t in mcp._tool_manager.list_tools()}
     return broker, tools
 
@@ -144,15 +153,27 @@ def _dry_invoke_ok(
         return False, f"UNEXPECTED: {type(exc).__name__}: {str(exc)[:60]}", False
 
 
-def _gateway_alias_parity(broker: Any, live_tools: dict[str, Any], schema_index: dict[str, Any]) -> dict[str, Any]:
+def _gateway_alias_parity(
+    broker: Any,
+    live_tools: dict[str, Any],
+    schema_index: dict[str, Any],
+    profile_definitions: tuple[Any, ...],
+    gateway: frozenset[str],
+) -> dict[str, Any]:
     mismatches: list[str] = []
     checked = 0
     ok = 0
-    for alias in ASSISTANT_OUTPUT_ALIASES:
-        canonical = "pa_output_" + alias[len("assistant_output_") :]
+    for definition in profile_definitions:
+        if not definition.is_alias:
+            continue
+        alias = definition.registered_name
+        canonical = definition.alias_target
+        if canonical is None:
+            mismatches.append(f"{alias}:missing_target")
+            continue
         checked += 1
-        alias_in_gw = alias in GATEWAY_ALLOWLIST
-        canon_in_gw = canonical in GATEWAY_ALLOWLIST
+        alias_in_gw = alias in gateway
+        canon_in_gw = canonical in gateway
         if not alias_in_gw or not canon_in_gw:
             mismatches.append(f"{alias}<->{canonical}:allowlist")
             continue
@@ -190,6 +211,9 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
     started = time.monotonic()
     commit = runtime_commit()
     broker, live_tools = _build_surface_for_config(config)
+    selected_profile = resolve_profile(getattr(config, "capability_profile", None))
+    profile_definitions = definitions_for_profile(selected_profile)
+    gateway = gateway_names_for_profile(selected_profile)
     surface = build_live_tool_surface(config)
     schema_index = live_tool_schema_index()
     deps = _backend_dependency_state(config)
@@ -198,7 +222,7 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
     passed = failed = skipped = no_fixture = 0
     tested = 0
 
-    alias_skip = set(ASSISTANT_OUTPUT_ALIASES)
+    alias_skip = {item.registered_name for item in profile_definitions if item.is_alias}
     for name in sorted(surface):
         st = surface[name]
         if name in alias_skip:
@@ -231,7 +255,7 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
         tested += 1
         schema_load = name in live_tools or name in schema_index
         direct_disc = st.directly_exposed
-        gateway_resolves = (not st.gateway_allowlisted) or (name in GATEWAY_ALLOWLIST)
+        gateway_resolves = (not st.gateway_allowlisted) or (name in gateway)
         dependency_ok = st.profile_enabled and deps["database_reachable"] and deps["schema_index_frozen"]
 
         dry_ok, dry_note, is_no_fixture = _dry_invoke_ok(
@@ -264,7 +288,7 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
             "notes": dry_note,
         })
 
-    parity = _gateway_alias_parity(broker, live_tools, schema_index)
+    parity = _gateway_alias_parity(broker, live_tools, schema_index, profile_definitions, gateway)
     manifest_version = _active_manifest_version(config)
     all_passed = failed == 0 and tested > 0
     now_iso = _iso_now()
@@ -277,6 +301,11 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
     report = {
         "generated_by": "runtime-tool-surface-attestation",
         "runtime_commit": commit,
+        "capability_profile": selected_profile.value,
+        "capability_matrix_sha256": MATRIX_SHA256,
+        "registered_tool_count": len(live_tools),
+        "profile_definition_count": len(profile_definitions),
+        "gateway_allowlist_count": len(gateway),
         "manifest_version": manifest_version,
         "tested_tool_count": tested,
         "passed_count": passed,

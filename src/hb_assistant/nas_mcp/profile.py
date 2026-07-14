@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import os
 
+from .capability_registry import CapabilityProfile, resolve_profile
+
 # Tier-4 broad Obsidian vault-mutation tools.
 LEGACY_VAULT_WRITE_TOOLS = frozenset(
     {
@@ -44,6 +46,11 @@ PROFILE_REMOTE_CLOUDFLARE = "remote_cloudflare"
 PROFILE_LOCAL_TRUSTED = "local_trusted"
 KNOWN_PROFILES = (PROFILE_REMOTE_CLOUDFLARE, PROFILE_LOCAL_TRUSTED)
 DEFAULT_PROFILE = PROFILE_REMOTE_CLOUDFLARE
+
+
+def active_capability_profile() -> CapabilityProfile:
+    """Startup-static public capability profile, separate from the transport/security profile."""
+    return resolve_profile()
 
 
 def active_profile() -> str:
@@ -393,6 +400,7 @@ def blocked_write_tools() -> frozenset[str]:
 def gate_status() -> dict[str, object]:
     return {
         "profile": active_profile(),
+        "capability_profile": active_capability_profile().value,
         "ai_outputs_write_enabled": ai_outputs_write_enabled(),
         "client_output_write_enabled": client_output_write_enabled(),
         "local_scratch_output_write_enabled": scratch_output_write_enabled(),

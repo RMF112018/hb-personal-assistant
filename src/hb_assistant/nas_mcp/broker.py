@@ -18,6 +18,13 @@ from .artifact_tools import (
     dispatch_artifact_tool,
 )
 from .audit import NasMcpAuditWriter
+from .capability_registry import (
+    CapabilityProfile,
+    build_capability_registry,
+    definitions_for_profile,
+    gateway_names_for_profile,
+    resolve_profile,
+)
 from .client_output_tools import (
     ALL_PA_OUTPUT_TOOLS,
     ASSISTANT_OUTPUT_ALIASES,
@@ -335,7 +342,9 @@ ASSISTANT_GROUP_GATES = {
 # NOTE: the 3 N8C-22 client-bridge helper tools (hb_assistant_catalog / _tool_help / _tool_query) are
 # deliberately NOT in here — they are helpers, not canonical assistant tools.
 ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
-    sorted({tool for tools in ASSISTANT_TOOL_GROUPS.values() for tool in tools})
+    item.registered_name
+    for item in build_capability_registry().definitions
+    if item.registered_name.startswith("assistant_") and not item.is_alias
 )
 
 # GATEWAY_ALLOWLIST — the set of tools reachable via the N8C-22 helper gateway (hb_assistant_tool_query /
@@ -343,14 +352,7 @@ ALL_ASSISTANT_TOOLS: tuple[str, ...] = tuple(
 # the canonical client-exposed set PLUS every structured-intelligence + output + AI-output WRITE surface. Denied tools,
 # root/db tools, legacy hb_output_* and any non-allowlisted name stay rejected, and every gateway-routed
 # write still passes the full broker gate chain (safe-mode, per-tool gate, approval, idempotency, path).
-GATEWAY_ALLOWLIST: frozenset[str] = frozenset(
-    set(ALL_ASSISTANT_TOOLS)
-    | set(ALL_PA_TOOLS)
-    | set(ALL_PA_OUTPUT_TOOLS)
-    | set(ASSISTANT_OUTPUT_ALIASES)
-    | set(PROMPT_ROUTING_TOOLS)
-    | {AI_OUTPUTS_WRITE_TOOL}
-)
+GATEWAY_ALLOWLIST: frozenset[str] = gateway_names_for_profile(resolve_profile())
 
 
 def runtime_identity() -> Any:
@@ -431,7 +433,9 @@ def runtime_commit() -> str:
         return "unknown"
 
 
-def assistant_client_exposure_status() -> dict[str, Any]:
+def assistant_client_exposure_status(
+    profile: str | CapabilityProfile | None = None,
+) -> dict[str, Any]:
     """N8C-22 client-exposure summary for hb_mcp_status.
 
     Reports how many of the canonical assistant tools are currently exposed to connected clients
@@ -440,22 +444,28 @@ def assistant_client_exposure_status() -> dict[str, Any]:
     neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
     both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
     """
-    groups_enabled = {label: gate() for label, gate in ASSISTANT_GROUP_GATES.items()}
-    exposed = sorted(
-        tool
-        for label, tools in ASSISTANT_TOOL_GROUPS.items()
-        if groups_enabled[label]
-        for tool in tools
+    selected = resolve_profile(profile)
+    exposed_definitions = tuple(
+        item
+        for item in definitions_for_profile(selected)
+        if item.registered_name.startswith("assistant_") and not item.is_alias
     )
-    canonical = len(ALL_ASSISTANT_TOOLS)
+    canonical_definitions = tuple(
+        item
+        for item in build_capability_registry().definitions
+        if selected in item.profile_membership
+        and item.registered_name.startswith("assistant_")
+        and not item.is_alias
+    )
+    exposed = sorted(item.registered_name for item in exposed_definitions)
+    exposed_groups = sorted({item.group for item in exposed_definitions})
+    canonical = len(canonical_definitions)
     return {
         "assistant_client_exposure_enabled": True,
         "assistant_client_exposure_mode": "direct+gateway",
         "assistant_client_exposed_tool_count": len(exposed),
         "assistant_client_missing_tool_count": canonical - len(exposed),
-        "assistant_client_exposure_groups": sorted(
-            label for label, on in groups_enabled.items() if on
-        ),
+        "assistant_client_exposure_groups": exposed_groups,
         "runtime_commit": runtime_commit(),
         **runtime_identity().to_dict(),
     }
@@ -542,11 +552,19 @@ def _capability_tier(tool_name: str, write_attempted: bool) -> int:
 class NasMcpBroker:
     def __init__(self, config: NasMcpConfig) -> None:
         self._config = config
+        self._capability_profile = resolve_profile()
         self._audit = NasMcpAuditWriter(config.audit_dir)
         self._concurrency = limits.ConcurrencyLimiter(limits.max_concurrent_calls(config))
         self._override_store: OverrideStore | None = (
             OverrideStore(config.override_store_path) if config.override_store_path else None
         )
+
+    def select_capability_profile(self, profile: str | CapabilityProfile) -> None:
+        """Pin the startup profile used by status and registration-derived consumers."""
+        global GATEWAY_ALLOWLIST
+        self._capability_profile = resolve_profile(profile)
+        self._config.capability_profile = self._capability_profile
+        GATEWAY_ALLOWLIST = gateway_names_for_profile(self._capability_profile)
 
     def dispatch(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         started = time.perf_counter()
@@ -811,7 +829,7 @@ class NasMcpBroker:
                 "port_policy": "127.0.0.1:8765 host publish only",
                 # N8C-22 client-exposure summary (87 client-exposed default / 87 installed; 14 groups;
                 # source_structure default-ON; per-group kill-switch aware).
-                **assistant_client_exposure_status(),
+                **assistant_client_exposure_status(self._capability_profile),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),
                 **client_output_status(cfg),

@@ -118,7 +118,11 @@ def test_live_freshness_auto_freezes_schema_index(tmp_path) -> None:
     from tests.n8c23_helpers import make_env
 
     env = make_env(tmp_path)
-    register_nas_mcp_tools(FastMCP("freshness-auto-freeze"), NasMcpBroker(env["config"]))
+    register_nas_mcp_tools(
+        FastMCP("freshness-auto-freeze"),
+        NasMcpBroker(env["config"]),
+        capability_profile="legacy-v12",
+    )
     repo = ClientToolManifestRepository(env["db"])
     m = build_manifest(
         _build_tool_index(env["config"], for_manifest=True),
@@ -145,7 +149,11 @@ def test_persisted_manifest_agrees_with_live_surface_freshness(tmp_path) -> None
     from tests.n8c23_helpers import make_env
 
     env = make_env(tmp_path)
-    register_nas_mcp_tools(FastMCP("freshness-parity"), NasMcpBroker(env["config"]))
+    register_nas_mcp_tools(
+        FastMCP("freshness-parity"),
+        NasMcpBroker(env["config"]),
+        capability_profile="legacy-v12",
+    )
     repo = ClientToolManifestRepository(env["db"])
     m = build_manifest(
         _build_tool_index(env["config"], for_manifest=True),
