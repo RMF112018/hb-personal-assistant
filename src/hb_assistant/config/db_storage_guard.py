@@ -260,12 +260,11 @@ def classify_storage_class(db_path: str | Path) -> DatabaseStorageClass:
 def _is_temp_fixture(resolved: Path) -> bool:
     """True when ``resolved`` lives under a system temp root (test/rehearsal fixtures). Bounded — not
     a general 'any local path' rule."""
+    import contextlib  # noqa: PLC0415
     import tempfile  # noqa: PLC0415
 
     roots = {"/tmp", "/private/tmp", "/private/var/folders", "/var/folders"}
-    try:
+    with contextlib.suppress(Exception):
         roots.add(str(Path(tempfile.gettempdir()).resolve()))
-    except Exception:
-        pass
     rs = str(resolved)
     return any(rs == r or rs.startswith(r + "/") for r in roots)
