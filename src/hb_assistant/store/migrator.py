@@ -13,12 +13,27 @@ from typing import TYPE_CHECKING
 from .connection import get_connection, open_connection, transaction
 
 if TYPE_CHECKING:
-    from .migration_authorization import MigrationAuthorization
+    from .migration_authorization import MigrationAuthorization, OpenedDatabaseIdentity
 
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
 LATEST_SCHEMA_VERSION = 127
+
+
+def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
+    """Ordinary-caller schema readiness (NF-F-001 / NF-AUD-003): the read-only alternative to
+    ``SQLiteMigrator(db_path).apply()`` for code that merely needs the schema to be present.
+
+    For a MANAGED target (production or local) this NEVER migrates — it performs a read-only readiness
+    assertion, raising ``SchemaVersionBehind`` / ``SchemaStructureInvalid`` with operator guidance when
+    behind. A non-managed dev/rehearsal/workspace target self-heals ambiently (RC-1). Returns the
+    schema version. Migration of a managed database happens only through the authorized routes
+    (operator startup / admin migrate / automatic local app bootstrap), never here.
+    """
+    from .schema_readiness import assert_ready_for_use  # noqa: PLC0415
+
+    return assert_ready_for_use(db_path, require_schedule_schema=require_schedule_schema)
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7677,43 +7692,48 @@ class SQLiteMigrator:
         *,
         owned: bool,
     ) -> int:
-        """Run the migration body on ``conn`` within one atomic transaction (Phase C invariant).
+        """Establish the opened-target identity (retaining a read-only guard FD) and run the guarded
+        migration, deterministically closing the guard FD on every path (NF-AUD-005)."""
+        import os as _os  # noqa: PLC0415
 
-        Validates the migration authorization against the ACTUAL opened database identity before any
-        DDL/write transaction, and (for a borrowed connection) refuses one already inside a
-        transaction so apply() remains the exclusive commit/rollback owner (RC-3).
-        """
         from .database_identity import describe_opened_database  # noqa: PLC0415
+
+        opened = describe_opened_database(conn, self._db_path)
+        try:
+            return self._run_guarded_migration(
+                conn, opened, authorization, require_backup_receipt, owned=owned
+            )
+        finally:
+            if opened.guard_fd is not None:
+                _os.close(opened.guard_fd)
+
+    def _run_guarded_migration(
+        self,
+        conn: sqlite3.Connection,
+        opened: "OpenedDatabaseIdentity",
+        authorization: MigrationAuthorization | None,
+        require_backup_receipt: bool,
+        *,
+        owned: bool,
+    ) -> int:
+        """Validate authorization against the opened identity, run the migration body in one atomic
+        transaction, and revalidate identity at the commit boundary.
+
+        NF-AUD-003: there is NO managed at-head bypass — every managed invocation is validated
+        (ordinary callers use the read-only readiness API instead of calling ``apply()``). RC-3: a
+        borrowed connection already in a transaction is refused so apply() is the exclusive
+        commit/rollback owner.
+        """
         from .errors import MigrationAuthorizationError, MigrationAuthorizationInvalid  # noqa: PLC0415
         from .migration_audit import emit_migration_event  # noqa: PLC0415
         from .migration_authorization import (  # noqa: PLC0415
             assert_origin_version,
-            migration_requires_authorization,
+            revalidate_opened_identity,
             validate_authorization,
         )
 
-        opened = describe_opened_database(conn, self._db_path)
         _op = authorization.operation.value if authorization is not None else None
-
-        # A managed target that is ALREADY at head is an ordinary no-op: no version advance, so no
-        # schema mutation occurs. Return without running any DDL and without requiring authorization
-        # — the ownership boundary gates a real *migration*, not a redundant at-head call (this keeps
-        # the many downstream store/CLI apply() sites working once the DB is at head, while a genuine
-        # behind-head managed migration still fails closed below without an authorization).
         origin = self._current_version_on(conn)
-        if (
-            authorization is None
-            and origin >= LATEST_SCHEMA_VERSION
-            and migration_requires_authorization(opened.storage_class)
-        ):
-            emit_migration_event(
-                "managed_at_head_noop",
-                storage_class=opened.storage_class.value,
-                outcome="noop",
-                origin_version=origin,
-                target_version=LATEST_SCHEMA_VERSION,
-            )
-            return origin
 
         try:
             validate_authorization(
@@ -9415,6 +9435,11 @@ class SQLiteMigrator:
                     "VALUES (127, 'v127_events_moved_dest_backoff', ?)",
                     (now,),
                 )
+
+            # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
+            # drifted (path swapped to a different inode) before this single migration transaction
+            # commits. A failure here raises and rolls the entire migration back.
+            revalidate_opened_identity(opened)
 
 
         # Return latest version. Connection closure is owned by apply(): an owned connection is

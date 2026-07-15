@@ -181,14 +181,14 @@ def bootstrap_managed_local_if_behind(db_path: Path | str | None = None) -> int 
         if current >= LATEST_SCHEMA_VERSION:
             return None
         from .migration_authorization import (  # noqa: PLC0415
-            execution_id_default,
-            issue_local_app_bootstrap_authorization,
+            acquire_local_bootstrap_capability,
+            authorize_migration,
         )
         from .migrator import SQLiteMigrator  # noqa: PLC0415
 
-        authorization = issue_local_app_bootstrap_authorization(
+        authorization = authorize_migration(
+            acquire_local_bootstrap_capability(),
             resolved_path=str(path),
-            execution_id=execution_id_default(),
             expected_origin_version=current,
             target_version=LATEST_SCHEMA_VERSION,
         )

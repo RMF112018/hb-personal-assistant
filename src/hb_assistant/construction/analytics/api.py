@@ -4403,19 +4403,18 @@ def create_app(*, db_path: str | None = None) -> Any:
         schema_db = _admin_schema_db_path()
         before = _schema_version(schema_db)
         physical_before = _schedule_v65_physical_status(schema_db)
-        # NF-F-001 (N-A2): the admin migrate route is the RBAC-gated authorized managed-migration
-        # entry. Bind an explicit ADMIN authorization to the resolved target (managed-production or
-        # the automatic managed-local bootstrap); a non-managed target self-heals ambiently.
+        # NF-F-001 (N-A2) / NF-AUD-004: the admin migrate route mints an authorization from an
+        # ENFORCED ADMIN capability. ``acquire_admin_capability`` re-verifies the admin role itself
+        # (raising if not admin), so the authority is not merely caller-asserted; ``authorize_migration``
+        # binds it to the resolved target + device/inode, returning ``None`` for a non-managed target.
         from hb_assistant.store.migration_authorization import (
-            MigrationOperation,
-            authorize_managed_migration,
+            acquire_admin_capability,
+            authorize_migration,
         )
 
-        _migrate_auth = authorize_managed_migration(
+        _migrate_auth = authorize_migration(
+            acquire_admin_capability(role),
             resolved_path=str(schema_db),
-            production_operation=MigrationOperation.ADMIN,
-            actor_class="admin",
-            route_class="admin_schema_migrate",
             expected_origin_version=before,
             target_version=LATEST_SCHEMA_VERSION,
         )
