@@ -71,7 +71,13 @@ def ensure_schedule_schema(db_path: str) -> None:
         conn.close()
 
     if needs_apply:
-        migrator.apply()
+        # NF-F-001 (N-A3): an ordinary schedule request must NOT ambiently migrate the managed
+        # database. Self-heal only a non-managed dev/rehearsal/workspace DB; for a managed target the
+        # re-verification below raises the structured schedule_schema_not_ready error, directing the
+        # operator to the authorized migration route instead of silently migrating on read.
+        from hb_assistant.store.schema_readiness import self_heal_if_non_managed
+
+        self_heal_if_non_managed(db_path)
 
     conn2 = get_connection(db_path)
     try:

@@ -104,3 +104,47 @@ def verify_schema_ready(
                 guidance=_MIGRATE_GUIDANCE,
             )
     return version
+
+
+# Storage classes whose migration remains ambient self-heal (RC-1): dev/CLI/test flows that point at
+# a non-managed database keep the current "construct = migrate if behind" UX. A managed target
+# (production or local), a read-only snapshot, or a blocked/unknown path is NEVER migrated ambiently
+# — it must go through an authorized migration route (operator startup / admin migrate, or the
+# automatic local app/CLI bootstrap at the entry point).
+def self_heal_if_non_managed(db_path: Path | str | None = None) -> int | None:
+    """Run ambient self-heal ``SQLiteMigrator.apply()`` ONLY for a non-managed dev / rehearsal /
+    workspace target; a no-op (returns ``None``) for managed / snapshot / blocked targets.
+
+    ``apply()`` re-derives the opened-target identity and will still refuse if the file actually
+    opened turns out to be managed, so this can never become an ambient managed-migration bypass.
+    Returns the resulting schema version when a migration ran, else ``None``.
+    """
+    from ..config.db_storage_guard import DatabaseStorageClass as SC  # noqa: PLC0415
+    from ..config.db_storage_guard import classify_storage_class  # noqa: PLC0415
+
+    path = Path(db_path) if db_path is not None else PathPolicy().get_db_path()
+    if classify_storage_class(path) in (
+        SC.ISOLATED_WORKSPACE,
+        SC.DISPOSABLE_REHEARSAL,
+        SC.EXPLICIT_DEVELOPMENT,
+    ):
+        from .migrator import SQLiteMigrator  # noqa: PLC0415
+
+        return SQLiteMigrator(str(path)).apply()
+    return None
+
+
+def assert_ready_for_use(
+    db_path: Path | str | None = None, *, require_schedule_schema: bool = False
+) -> int:
+    """Constructor/service readiness contract (NF-F-001).
+
+    Non-managed targets self-heal (RC-1, ambient apply preserved). Managed / snapshot targets get a
+    READ-ONLY readiness assertion — never migrated here — raising ``SchemaVersionBehind`` /
+    ``SchemaStructureInvalid`` with operator guidance when behind or structurally invalid. Returns
+    the resulting schema version.
+    """
+    healed = self_heal_if_non_managed(db_path)
+    if healed is not None:
+        return healed
+    return verify_schema_ready(db_path, require_schedule_schema=require_schedule_schema)
