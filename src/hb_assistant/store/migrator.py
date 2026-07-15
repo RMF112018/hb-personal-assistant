@@ -7687,10 +7687,25 @@ class SQLiteMigrator:
         from .errors import MigrationAuthorizationInvalid  # noqa: PLC0415
         from .migration_authorization import (  # noqa: PLC0415
             assert_origin_version,
+            migration_requires_authorization,
             validate_authorization,
         )
 
         opened = describe_opened_database(conn, self._db_path)
+
+        # A managed target that is ALREADY at head is an ordinary no-op: no version advance, so no
+        # schema mutation occurs. Return without running any DDL and without requiring authorization
+        # — the ownership boundary gates a real *migration*, not a redundant at-head call (this keeps
+        # the many downstream store/CLI apply() sites working once the DB is at head, while a genuine
+        # behind-head managed migration still fails closed below without an authorization).
+        origin = self._current_version_on(conn)
+        if (
+            authorization is None
+            and origin >= LATEST_SCHEMA_VERSION
+            and migration_requires_authorization(opened.storage_class)
+        ):
+            return origin
+
         validate_authorization(authorization, opened, require_backup_receipt=require_backup_receipt)
 
         if not owned and conn.in_transaction:
@@ -7700,7 +7715,7 @@ class SQLiteMigrator:
             )
 
         if authorization is not None:
-            assert_origin_version(authorization, self._current_version_on(conn))
+            assert_origin_version(authorization, origin)
 
         with transaction(conn):
             # Ensure migrations table exists (first statement is self-contained)

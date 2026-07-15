@@ -4403,7 +4403,23 @@ def create_app(*, db_path: str | None = None) -> Any:
         schema_db = _admin_schema_db_path()
         before = _schema_version(schema_db)
         physical_before = _schedule_v65_physical_status(schema_db)
-        after = int(SQLiteMigrator(db_path=schema_db).apply())
+        # NF-F-001 (N-A2): the admin migrate route is the RBAC-gated authorized managed-migration
+        # entry. Bind an explicit ADMIN authorization to the resolved target (managed-production or
+        # the automatic managed-local bootstrap); a non-managed target self-heals ambiently.
+        from hb_assistant.store.migration_authorization import (
+            MigrationOperation,
+            authorize_managed_migration,
+        )
+
+        _migrate_auth = authorize_managed_migration(
+            resolved_path=str(schema_db),
+            production_operation=MigrationOperation.ADMIN,
+            actor_class="admin",
+            route_class="admin_schema_migrate",
+            expected_origin_version=before,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
+        after = int(SQLiteMigrator(db_path=schema_db).apply(authorization=_migrate_auth))
         physical_after = _schedule_v65_physical_status(schema_db)
         counts = _admin_schema_object_counts(schema_db)
         return {

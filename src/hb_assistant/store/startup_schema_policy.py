@@ -163,7 +163,42 @@ def apply_startup_schema_policy(db_path: str | Path) -> dict[str, Any]:
             "policy_reason": decision.reason,
         }
 
-    version = int(SQLiteMigrator(db_path=str(path)).apply())
+    # NF-F-001 (N-A1): a managed startup migration must carry an explicit, target-bound
+    # authorization validated before any DDL. The policy above already enforced the operator flag +
+    # validated backup receipt for a behind managed-production DB; bind that receipt into the
+    # authorization. A managed-LOCAL (Mac) target gets the automatic local bootstrap; a non-managed
+    # dev/rehearsal target self-heals ambiently (authorization None).
+    from hb_assistant.store.migration_authorization import (
+        ValidatedBackupReceipt,
+        authorize_managed_migration,
+    )
+    from hb_assistant.store.migration_authorization import (
+        MigrationOperation as _Op,
+    )
+
+    receipt_obj: ValidatedBackupReceipt | None = None
+    receipt_path = _startup_migration_backup_receipt_path()
+    if receipt_path is not None and receipt_path.is_file():
+        payload = validate_startup_migration_backup_receipt(receipt_path)
+        receipt_obj = ValidatedBackupReceipt(
+            schema_version=int(payload.get("schema_version", 0) or 0),
+            generated_utc=str(payload.get("generated_utc", "")),
+            backup_digest=str(payload.get("backup_digest") or payload.get("backup_path") or ""),
+        )
+    authorization = authorize_managed_migration(
+        resolved_path=str(path),
+        production_operation=_Op.STARTUP,
+        actor_class="startup",
+        route_class="startup_schema_policy",
+        expected_origin_version=decision.current_version,
+        target_version=decision.expected_version,
+        backup_receipt=receipt_obj,
+    )
+    version = int(
+        SQLiteMigrator(db_path=str(path)).apply(
+            authorization=authorization, require_backup_receipt=True
+        )
+    )
     return {
         "managed": True,
         "migrated": True,

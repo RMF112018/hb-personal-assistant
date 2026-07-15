@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
-from hb_assistant.config.db_storage_guard import DatabaseStorageClass
+from hb_assistant.config.db_storage_guard import DatabaseStorageClass, classify_storage_class
 
 from .errors import (
     MigrationAuthorizationExpired,
@@ -85,6 +85,14 @@ _ALLOWED_OPERATIONS: dict[DatabaseStorageClass, frozenset[MigrationOperation]] =
     DatabaseStorageClass.EXPLICIT_DEVELOPMENT: frozenset({MigrationOperation.DEVELOPMENT}),
     # READ_ONLY_SNAPSHOT and BLOCKED intentionally absent -> migration always denied.
 }
+
+
+def migration_requires_authorization(storage_class: DatabaseStorageClass) -> bool:
+    """True when *advancing* the schema of ``storage_class`` requires an explicit authorization
+    (the managed-database ownership boundary). A no-op call against an already-at-head managed DB is
+    NOT a migration and does not require authorization; the migrator applies this predicate only when
+    a real version advance is pending."""
+    return storage_class in _MIGRATION_REQUIRES_AUTHORIZATION
 
 
 @dataclass(frozen=True)
@@ -275,8 +283,6 @@ def issue_local_app_bootstrap_authorization(
     app-support canonical) DB. Fails closed unless the path classifies EXACTLY as MANAGED_LOCAL — it
     can never authorize the NAS managed DB, a snapshot, a workspace DB, or an unknown/blocked path.
     """
-    from hb_assistant.config.db_storage_guard import classify_storage_class  # noqa: PLC0415
-
     if classify_storage_class(resolved_path) is not DatabaseStorageClass.MANAGED_LOCAL:
         raise MigrationStorageClassDenied(
             "local-app bootstrap authorization refused: target is not the canonical local app DB"
@@ -348,6 +354,48 @@ def issue_non_managed_bootstrap_authorization(
         issued_at=_now(),
         expires_at=None,
     )
+
+
+def authorize_managed_migration(
+    *,
+    resolved_path: str,
+    production_operation: MigrationOperation,
+    actor_class: str,
+    route_class: str,
+    expected_origin_version: int,
+    target_version: int,
+    backup_receipt: ValidatedBackupReceipt | None = None,
+) -> MigrationAuthorization | None:
+    """Return the authorization appropriate to the resolved managed target, or ``None``.
+
+    - MANAGED_PRODUCTION (NAS canonical): a strict operator migration bound to ``production_operation``
+      (and its backup receipt, when supplied).
+    - MANAGED_LOCAL (Mac app-support canonical): the automatic local app/CLI bootstrap catch-up.
+    - anything else (non-managed / snapshot / blocked): ``None`` — the migrator handles non-managed
+      targets ambiently and no-ops an already-at-head managed target, so no authorization is minted.
+
+    Callers pass the result straight to ``SQLiteMigrator.apply(authorization=...)``.
+    """
+    cls = classify_storage_class(resolved_path)
+    if cls is DatabaseStorageClass.MANAGED_PRODUCTION:
+        return issue_managed_authorization(
+            operation=production_operation,
+            resolved_path=resolved_path,
+            actor_class=actor_class,
+            route_class=route_class,
+            execution_id=execution_id_default(),
+            expected_origin_version=expected_origin_version,
+            target_version=target_version,
+            backup_receipt=backup_receipt,
+        )
+    if cls is DatabaseStorageClass.MANAGED_LOCAL:
+        return issue_local_app_bootstrap_authorization(
+            resolved_path=resolved_path,
+            execution_id=execution_id_default(),
+            expected_origin_version=expected_origin_version,
+            target_version=target_version,
+        )
+    return None
 
 
 def execution_id_default() -> str:
@@ -433,8 +481,13 @@ def validate_authorization(
         # declared origin/target so the migrator can compare (see migrator.apply()).
         pass
 
-    # Backup receipt requirement (managed startup/live-refresh).
-    if require_backup_receipt and authorization.backup_receipt is None:
+    # Backup receipt requirement — a *production* control only. A managed-LOCAL bootstrap migration
+    # needs no receipt, so the flag bites solely for MANAGED_PRODUCTION.
+    if (
+        require_backup_receipt
+        and storage_class is DatabaseStorageClass.MANAGED_PRODUCTION
+        and authorization.backup_receipt is None
+    ):
         from .errors import MigrationBackupReceiptRequired  # noqa: PLC0415
 
         raise MigrationBackupReceiptRequired("a validated backup receipt is required for this migration")

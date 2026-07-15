@@ -148,3 +148,50 @@ def assert_ready_for_use(
     if healed is not None:
         return healed
     return verify_schema_ready(db_path, require_schedule_schema=require_schedule_schema)
+
+
+def bootstrap_managed_local_if_behind(db_path: Path | str | None = None) -> int | None:
+    """Automatic Mac/CLI-entry self-heal for the canonical MANAGED_LOCAL database ONLY (NF-F-001,
+    operator RC-1 decision).
+
+    Resolves and classifies the target; if — and only if — it is exactly the canonical local
+    app-support DB and behind head, mints a narrowly-scoped ``LOCAL_APP_BOOTSTRAP`` authorization and
+    migrates it to head before any command runs, replacing the removed ambient constructor migration.
+    A no-op for a managed-production (NAS), read-only snapshot, workspace, explicit-dev, rehearsal, or
+    unknown target. Returns the new version if it migrated, else ``None``.
+
+    Best-effort and hermetic: never raises (invoked at process entry), and is a no-op under pytest so
+    it can never touch the real developer database during tests (fixtures self-heal via their own
+    ``/tmp`` targets). Returns ``None`` on any error — the command's own readiness gate then reports
+    the real problem.
+    """
+    import os  # noqa: PLC0415
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None
+
+    from ..config.db_storage_guard import DatabaseStorageClass as SC  # noqa: PLC0415
+    from ..config.db_storage_guard import classify_storage_class  # noqa: PLC0415
+
+    try:
+        path = Path(db_path) if db_path is not None else PathPolicy().get_db_path()
+        if classify_storage_class(path) is not SC.MANAGED_LOCAL:
+            return None
+        current = read_schema_version(path)
+        if current >= LATEST_SCHEMA_VERSION:
+            return None
+        from .migration_authorization import (  # noqa: PLC0415
+            execution_id_default,
+            issue_local_app_bootstrap_authorization,
+        )
+        from .migrator import SQLiteMigrator  # noqa: PLC0415
+
+        authorization = issue_local_app_bootstrap_authorization(
+            resolved_path=str(path),
+            execution_id=execution_id_default(),
+            expected_origin_version=current,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
+        return int(SQLiteMigrator(str(path)).apply(authorization=authorization))
+    except Exception:  # noqa: BLE001 — best-effort entry hook; readiness gate reports real failures
+        return None

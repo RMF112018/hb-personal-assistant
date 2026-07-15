@@ -21,7 +21,6 @@ from typing import Any, Callable, Optional
 
 from hb_assistant.normalize.redaction import hash_value
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
 
 
 def _utc_now() -> str:
