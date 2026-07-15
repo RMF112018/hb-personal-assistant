@@ -295,10 +295,10 @@ def _seed_proof_fixtures(tmp: str) -> str:
     """Build a temp DB with one accepted packet + one apply brief + source refs + handoff lines.
     Return the db path. Only for proof; never touches operator DB.
     """
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     db = str(Path(tmp) / "gen_out_loader_proof.db")
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
 
     conn = sqlite3.connect(db)
     try:

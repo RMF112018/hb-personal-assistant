@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 if TYPE_CHECKING:
     from .models import ResearchPacket
@@ -32,7 +32,7 @@ def write_research_packet_receipt(
 
     Local-only, additive, metadata-only. Guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 table exists (idempotent)
 
     packet_id = packet.packet_id or uuid.uuid4().hex
     coverage_warnings_json = json.dumps(packet.coverage_warnings, sort_keys=True)

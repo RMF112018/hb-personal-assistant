@@ -42,6 +42,7 @@ from hb_assistant.procore import (
 from hb_assistant.procore.errors import ProcoreAPIError, ProcoreRateLimitError
 from hb_assistant.procore.models import EndpointAuditRunReceipt
 from hb_assistant.procore.pagination import RetryPolicy
+from hb_assistant.store.migrator import ensure_schema_ready
 
 app = typer.Typer(help="Procore foundation: read-only endpoint audit (dry-run only).")
 auth_app = typer.Typer(help="Procore auth status (no live call).")
@@ -146,7 +147,7 @@ def analytics_reprocess(
         backfill_from_live_records,
         backfill_from_raw_payloads,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     if source not in {"auto", "full", "legacy"}:
         _emit(
@@ -177,7 +178,7 @@ def analytics_reprocess(
         )
         return
     if apply:
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
 
     do_apply = apply and not dry_run
     db_arg = _analytics_db(db)
@@ -363,7 +364,6 @@ def analytics_projection_reprocess(
         UnknownProjectionPath,
         backfill_endpoint_specific_from_raw_payloads,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     if apply and dry_run:
         dry_run = False
@@ -381,7 +381,7 @@ def analytics_projection_reprocess(
         )
         return
     if apply:
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
 
     do_apply = apply and not dry_run
     try:
@@ -1540,7 +1540,6 @@ def live_seed_budget_details(
         target_code_summary,
     )
     from hb_assistant.procore.live_sync import run_live_sync
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     if apply_local_db and dry_run:
         _emit(
@@ -1598,7 +1597,7 @@ def live_seed_budget_details(
     receipts: list[dict[str, Any]] = []
 
     if do_apply:
-        SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
+        ensure_schema_ready(str(db_path) if db_path is not None else None)
 
     view_receipt = run_live_sync(
         project_key=project,
@@ -2208,7 +2207,6 @@ def live_history(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Reconstruct one record's history (snapshots + field-level change events). Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_history import get_procore_changes, get_procore_record_history
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
@@ -2226,7 +2224,7 @@ def live_history(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     record_key = "|".join([project, endpoint_id, parent_id or "", str(record_id)])
     snapshots = get_procore_record_history(record_key=record_key)
     changes = get_procore_changes(project_key=project, record_key=record_key)
@@ -2277,7 +2275,6 @@ def live_changes(
 ) -> None:
     """List field-level change events for a project since a time. Local SQLite only."""
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_history import get_procore_changes
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
@@ -2301,7 +2298,7 @@ def live_changes(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     record_key = (
         "|".join([project, endpoint_id, "", str(record_id)])
         if (endpoint_id and record_id)
@@ -2339,7 +2336,6 @@ def live_timeline(
 ) -> None:
     """List assistant-ready timeline events for a project since a time. Local SQLite only."""
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_history import get_procore_timeline
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
@@ -2363,7 +2359,7 @@ def live_timeline(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = get_procore_timeline(
         project_key=project, since_utc=since_utc, until_utc=until_utc, endpoint_id=endpoint_id
     )
@@ -2398,7 +2394,6 @@ def live_actions(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """List open/relevant action signals for a project. Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_enrichment import get_procore_action_signals
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
@@ -2416,7 +2411,7 @@ def live_actions(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = get_procore_action_signals(
         project_key=project,
         signal_status=status,
@@ -2454,10 +2449,9 @@ def live_project_health(
     compliance signal counts, and relationship-quality indicators. Review-required and
     high-risk facts are listed explicitly (never hidden behind a single score). Read-only;
     no network, no DB writes, no raw values, no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_project_health import build_project_health
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_project_health(project, now_utc=_query_now().isoformat(), stale_days=stale_days)
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -2472,10 +2466,9 @@ def live_stale(
     endpoint, with recommended sync commands for stale operational endpoints (Phase 06B Prompt 07).
     Read-only over local SQLite (watermarks / sync runs / record timestamps); no network, no writes.
     Held (fail-closed) endpoints are never counted as stale operational endpoints."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_freshness import build_freshness_report
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_freshness_report(
         project, now_utc=_query_now().isoformat(), stale_days=stale_days
     )
@@ -2499,10 +2492,9 @@ def live_status(
 
     from hb_assistant.config.path_policy import PathPolicy
     from hb_assistant.procore.live_gate import live_env_active
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_freshness import build_freshness_report
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     db_path = PathPolicy().get_db_path()
     now_iso = _query_now().isoformat()
 
@@ -2619,9 +2611,8 @@ def live_monitor(
         build_procore_monitoring_report,
         render_procore_monitoring_markdown,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     db_path = db or str(PathPolicy().get_db_path())
     now_iso = _query_now().isoformat()
     if project:
@@ -2771,7 +2762,6 @@ def live_overdue(
     due date + overdue status, importance, owner/responsible-party key, review flag, reason
     codes, dimensions, and exposure-fact NAMES. Read-only over local SQLite; no network, no DB
     writes, no raw values, no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_action_queue import build_overdue_queue
 
     endpoint_id, reasons = _resolve_endpoint_id(endpoint)
@@ -2789,7 +2779,7 @@ def live_overdue(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_overdue_queue(
         project,
         now_utc=_query_now().isoformat(),
@@ -2814,10 +2804,9 @@ def live_responsible_party_gaps(
     partial_gap / not_observed per (endpoint, relationship); a relationship never seen on an
     endpoint is not_observed (never a fabricated gap). Read-only over local SQLite; no network,
     no DB writes, no raw values, no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_relationship_quality import build_responsible_party_gaps
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_responsible_party_gaps(
         project,
         now_utc=_query_now().isoformat(),
@@ -2836,10 +2825,9 @@ def live_relationship_quality(
     linkage coverage, and commitment/PO duplicate warnings. Linkage that cannot be inferred is
     reported unknown (never guessed); dedupe covers only repo-supported commitment/PO surfaces.
     Read-only over local SQLite; no network, no DB writes, no raw values, no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_relationship_quality import build_relationship_quality
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_relationship_quality(
         project,
         now_utc=_query_now().isoformat(),
@@ -2861,7 +2849,6 @@ def live_digest(
     and relationship-quality read models. Optional --since adds a windowed changes count. Local
     SQLite only; read-only; no live call, no DB writes, no raw values, no determinations."""
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_operational import build_operational_digest
 
     cmd = "hb-assistant procore live digest"
@@ -2883,7 +2870,7 @@ def live_digest(
                 exit_code=3,
             )
             return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_operational_digest(
         project, now_utc=_query_now().isoformat(), since_utc=since_utc
     )
@@ -2900,10 +2887,9 @@ def live_risks(
     carry a cost/schedule/safety-quality/overdue dimension, ordered high-importance-first with
     per-dimension counts. Local SQLite only; read-only; no live call, no DB writes, no raw values,
     no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_operational import build_risks
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_risks(project, now_utc=_query_now().isoformat(), max_items=max_items)
     _emit({**report, "guardrails": _GUARDRAILS}, json_out=json_out)
 
@@ -2920,10 +2906,9 @@ def live_retrieval_ready(
     blocked-reason counts, redacted samples, and the embedding-corpus readiness probe. Raw free
     text, payload bodies, and change values are never embedded. Local SQLite only; read-only; no
     live call, no DB writes, no determinations."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_operational import build_retrieval_readiness
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_retrieval_readiness(
         project, now_utc=_query_now().isoformat(), max_samples=max_samples
     )
@@ -2940,10 +2925,9 @@ def live_no_writeback_proof(
     SQLite raw_body_persisted guardrails, and scans the evidence outputs for token/secret/signed-URL
     patterns. Local SQLite only; read-only; no live call, no determinations. Fail-closed: exits 3 if
     the proof does not pass."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_no_writeback_proof import build_no_writeback_proof
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_no_writeback_proof(project, now_utc=_query_now().isoformat())
     _emit(
         {**report, "guardrails": _GUARDRAILS},
@@ -2976,7 +2960,6 @@ def live_financial_summary(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Financial roll-up: contract summary + per-family counts. Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_enrichment import get_procore_action_signals
     from hb_assistant.store.procore_financials import (
         read_financial_budget_changes,
@@ -2986,7 +2969,7 @@ def live_financial_summary(
         read_financial_subcontractor_invoices,
     )
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     contracts = read_financial_contract_summary(project_key=project)
     families: dict[str, int] = {}
     for c in contracts:
@@ -3025,10 +3008,9 @@ def live_financial_contracts(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """List financial contracts (optionally filtered by family). Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_financials import read_financial_contract_summary
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = read_financial_contract_summary(project_key=project)
     if contract_type is not None:
         rows = [r for r in rows if r.get("contract_family") == contract_type]
@@ -3054,7 +3036,6 @@ def live_financial_changes(
     """Financial change history within a window (field-level). Local SQLite only."""
     from hb_assistant.procore.financial_register import _FINANCIAL_ENDPOINTS
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_history import get_procore_changes
 
     now = datetime.now(timezone.utc)
@@ -3074,7 +3055,7 @@ def live_financial_changes(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = [
         c
         for c in get_procore_changes(project_key=project, since_utc=since_utc)
@@ -3102,10 +3083,9 @@ def live_financial_invoices(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """List subcontractor invoices (optionally filtered by status). Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_financials import read_financial_subcontractor_invoices
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = read_financial_subcontractor_invoices(project_key=project, status=status)
     payload = {
         "command": "hb-assistant procore live financial invoices",
@@ -3127,14 +3107,13 @@ def live_financial_budget(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Budget detail rows + changes (optionally one view). Local SQLite only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_financial_projection import record_key
     from hb_assistant.store.procore_financials import (
         read_financial_budget_changes,
         read_financial_budget_rows,
     )
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     budget_view_key = (
         record_key(project, "budget-views", None, view_id) if view_id is not None else None
     )
@@ -3159,10 +3138,9 @@ def live_financial_risk(
     json_out: bool = typer.Option(True, "--json"),
 ) -> None:
     """Derived financial risk view (unexecuted contracts / unpaid change orders)."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_financials import read_financial_risk_view
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     rows = read_financial_risk_view(project_key=project)
     payload = {
         "command": "hb-assistant procore live financial risk",
@@ -3197,10 +3175,9 @@ def live_financial_exposure(
     amounts, source link, and a review-required flag on high-sensitivity items. Advisory/review aid
     only — no entitlement/liability/contractual determinations; amounts are never summed. Read-only
     over local SQLite; no network, no DB writes, no raw values."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_cost_exposure import build_cost_exposure
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_cost_exposure(
         project,
         now_utc=_query_now().isoformat(),
@@ -3322,10 +3299,9 @@ def live_schedule_exposure(
     review-required flag on high-sensitivity items. Advisory/review aid only — never asserts delay
     entitlement, responsibility, or schedule-impact determinations. Read-only over local SQLite;
     no network, no DB writes, no raw values."""
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_schedule_exposure import build_schedule_exposure
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     report = build_schedule_exposure(
         project,
         now_utc=_query_now().isoformat(),
@@ -3344,7 +3320,6 @@ def live_records_count(
 ) -> None:
     """Read-only count of procore_live_records rows for (project, endpoint)."""
     from hb_assistant.procore import endpoints as ep_registry
-    from hb_assistant.store.migrator import SQLiteMigrator
     from hb_assistant.store.procore_repositories import count_procore_live_records
 
     adapter = ep_registry.get(endpoint)
@@ -3363,7 +3338,7 @@ def live_records_count(
         _emit(payload, json_out=json_out, exit_code=3)
         return
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     count = count_procore_live_records(project_key=project, endpoint_id=adapter.endpoint_id)
     payload = {
         "command": "hb-assistant procore live records count",
@@ -3597,7 +3572,6 @@ def obsidian_financial(
         build_financial_register,
     )
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     now = datetime.now(timezone.utc)
     try:
@@ -3617,7 +3591,7 @@ def obsidian_financial(
         )
         return
     now_utc = now.isoformat().replace("+00:00", "Z")
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
 
     if apply:
         result = apply_financial_register(project, now_utc=now_utc, since_utc=since_utc)
@@ -3752,9 +3726,8 @@ def obsidian_project_health(
         apply_project_health_note,
         build_project_health_note,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     now_utc = _query_now().isoformat()
     cmd = "hb-assistant procore obsidian project-health"
     if apply:
@@ -3795,7 +3768,6 @@ def obsidian_meeting_prep(
     _obsidian_ops_confirm(apply, confirm, "procore-meeting-prep.md")
     from hb_assistant.procore.obsidian_operational import apply_meeting_prep, build_meeting_prep
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     cmd = "hb-assistant procore obsidian meeting-prep"
     now = datetime.now(timezone.utc)
@@ -3815,7 +3787,7 @@ def obsidian_meeting_prep(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     now_utc = now.isoformat()
     if apply:
         result = apply_meeting_prep(project, since_utc=since_utc, now_utc=now_utc)
@@ -3857,7 +3829,6 @@ def obsidian_daily_digest(
     _obsidian_ops_confirm(apply, confirm, "procore-daily-digest.md")
     from hb_assistant.procore.obsidian_operational import apply_daily_digest, build_daily_digest
     from hb_assistant.procore.time_window import parse_since
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     cmd = "hb-assistant procore obsidian daily-digest"
     now = datetime.now(timezone.utc)
@@ -3877,7 +3848,7 @@ def obsidian_daily_digest(
             exit_code=3,
         )
         return
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     now_utc = now.isoformat()
     if apply:
         result = apply_daily_digest(project, since_utc=since_utc, now_utc=now_utc)

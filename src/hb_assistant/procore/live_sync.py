@@ -994,9 +994,9 @@ def run_live_sync(
     if will_write_db:
         # Apply schema only on the local-write path. Dry-run/live-read mode must
         # perform zero SQLite writes.
-        from hb_assistant.store.migrator import SQLiteMigrator
+        from hb_assistant.store.migrator import ensure_schema_ready
 
-        SQLiteMigrator(db_path=str(db_path) if db_path is not None else None).apply()
+        ensure_schema_ready(str(db_path) if db_path is not None else None)
         record_sync_run_start(
             sync_run_id=sync_run_id,
             endpoint_id=adapter.endpoint_id,

@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from hb_assistant.store.connection import get_connection
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator, ensure_schema_ready
 
 from .agents import (
     build_agent_model_profile_proof,
@@ -181,7 +181,7 @@ def evaluate_phase_08a_data_quality_gates(*, db_path: str | None = None) -> dict
     # writer uses), then read the resolved version.
     config = load_second_brain_config()
     try:
-        SQLiteMigrator(db_path).apply()
+        ensure_schema_ready(db_path)
         schema_version = SQLiteMigrator(db_path).current_version()
     except Exception:  # pragma: no cover - defensive; readiness must not crash
         schema_version = 0
@@ -420,7 +420,7 @@ def evaluate_phase_08b_data_quality_gates(*, db_path: str | None = None) -> dict
     """
     generated = datetime.now(timezone.utc).isoformat()
     try:
-        SQLiteMigrator(db_path).apply()
+        ensure_schema_ready(db_path)
         schema_version = SQLiteMigrator(db_path).current_version()
         conn = get_connection(db_path)
     except Exception:  # pragma: no cover - defensive; readiness must not crash
@@ -1140,7 +1140,7 @@ def evaluate_phase_08d_data_quality_gates(*, db_path: str | None = None) -> dict
 
     # Schema: apply the idempotent additive migrator, then read the resolved version.
     try:
-        SQLiteMigrator(db_path).apply()
+        ensure_schema_ready(db_path)
         schema_version = SQLiteMigrator(db_path).current_version()
     except Exception:  # pragma: no cover - defensive; readiness must not crash
         schema_version = 0

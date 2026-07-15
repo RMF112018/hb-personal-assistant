@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from ..financial_review_routing import _assert_no_raw
 from .embedding_policy import (
@@ -198,13 +199,13 @@ def build_reviewed_memory_loader_report(
 
 def _seed_proof_db(tmp: str, accepted: bool) -> str:
     """Build a temp DB with one accepted (or one pending) memory; return the db path."""
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     from ..memory.models import MemoryItem
     from ..memory.store import write_memory_item
 
     db = str(Path(tmp) / ("accepted.db" if accepted else "pending.db"))
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
     write_memory_item(
         MemoryItem(
             memory_id="m-proof-1",
@@ -353,13 +354,12 @@ def build_reviewed_memory_loader_proof(
 
 def _seed_accepted_system_config_memory(tmp: str) -> str:
     """Build a temp DB with exactly one accepted system/config-fact memory item (low-risk, explicit 'accepted', safe source ref only). Return the db path. Never writes to prod DB."""
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     from ..memory.models import MemoryItem
     from ..memory.store import write_memory_item
 
     db = str(Path(tmp) / "accepted_system_config.db")
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
     write_memory_item(
         MemoryItem(
             memory_id="sys-mem-v39-001",
@@ -378,13 +378,12 @@ def _seed_accepted_system_config_memory(tmp: str) -> str:
 
 def _seed_unreviewed_memory(tmp: str, status: str) -> str:
     """Build a temp DB with one memory item carrying an unreviewed status (pending_review|rejected|superseded). Return the db path. Used only to prove exclusion."""
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     from ..memory.models import MemoryItem
     from ..memory.store import write_memory_item
 
     db = str(Path(tmp) / f"unreviewed_{status}.db")
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
     write_memory_item(
         MemoryItem(
             memory_id=f"sys-mem-unrev-{status[:3]}",

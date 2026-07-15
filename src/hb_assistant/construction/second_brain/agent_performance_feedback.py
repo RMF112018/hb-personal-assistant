@@ -469,11 +469,11 @@ def build_agent_performance_feedback_proof(
     only; no raw feedback reason is emitted."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "apf.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         _seed_proof_db(db)
 
         before = _run_rows(db)

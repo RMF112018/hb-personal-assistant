@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 if TYPE_CHECKING:
     from .models import (
@@ -43,7 +43,7 @@ def write_daily_brief_run(
     ``evaluation_run_id`` links the Output Evaluation Agent (A05) row; the
     ``output_path_*`` pair is recorded only when an approved local output was written.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V26 tables exist (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 tables exist (idempotent)
 
     brief_run_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -102,7 +102,7 @@ def read_latest_daily_brief_runs(
     *, db_path: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return the most recent daily-brief run rows (metadata only)."""
-    SQLiteMigrator(db_path).apply()  # ensure V26 tables exist (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 tables exist (idempotent)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         """
@@ -135,7 +135,7 @@ def write_daily_brief_handoff_lines(
     """
     from .models import HANDOFF_SECTIONS, _reject_forbidden_refs
 
-    SQLiteMigrator(db_path).apply()  # ensure V27 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V27 table exists (idempotent)
 
     conn = get_connection(Path(db_path) if db_path is not None else None)
     written = 0
@@ -184,7 +184,7 @@ def read_daily_brief_handoff(
         NotificationSummary,
     )
 
-    SQLiteMigrator(db_path).apply()  # ensure V27 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V27 table exists (idempotent)
     conn = get_connection(Path(db_path) if db_path is not None else None)
 
     run = conn.execute(
@@ -269,7 +269,7 @@ def write_launchd_schedule_preview(
     Dry-run only by construction (the table enforces ``mode = 'dry_run'``). No plist is
     written and ``launchctl`` is never invoked. Guard column stays at 0 via the DB CHECK.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 table exists (idempotent)
 
     preview_id = uuid.uuid4().hex
     schedule_json = json.dumps(
@@ -308,7 +308,7 @@ def read_latest_launchd_schedule_previews(
     *, db_path: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return the most recent launchd schedule-preview rows (metadata only)."""
-    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 table exists (idempotent)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         """

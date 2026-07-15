@@ -767,10 +767,10 @@ def _mock_vector_writer(
 
 def _empty_migrated_db(tmp: str) -> str:
     """A schema-current but empty DB (no approved sources) — exercises the blocked apply path."""
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     db = str(Path(tmp) / "empty.sqlite")
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
     return db
 
 

@@ -19,6 +19,8 @@ from typing import Any
 
 import typer
 
+from hb_assistant.store.migrator import ensure_schema_ready
+
 app = typer.Typer(
     name="second-brain",
     help="Local-first second-brain runtime (Phase 08A).",
@@ -372,7 +374,10 @@ def status(
     """Report second-brain runtime config posture (offline-safe)."""
     from hb_assistant.construction.second_brain.config import load_second_brain_config
     from hb_assistant.construction.second_brain.contracts import load_phase_08a_contract
-    from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+    from hb_assistant.store.migrator import (
+        LATEST_SCHEMA_VERSION,
+        SQLiteMigrator,
+    )
 
     config = load_second_brain_config()
     runtime_contract = load_phase_08a_contract("second_brain_runtime_contract")
@@ -5129,9 +5134,8 @@ def financial_readiness(
 ) -> None:
     """Financial readiness snapshot (V35 tables + contracts; advisory, read-only)."""
     from hb_assistant.construction.second_brain.contracts import load_phase_08c_contract
-    from hb_assistant.store.migrator import SQLiteMigrator
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     contract = load_phase_08c_contract("financial_fact_contract")
     from hb_assistant.construction.second_brain.financial_completeness import (
         run_financial_fact_readiness_agent,
@@ -5280,9 +5284,8 @@ def financial_review_items(
     from hb_assistant.construction.second_brain.financial_review_routing import (
         build_financial_review_required_proof,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     proof = build_financial_review_required_proof(project_key=project)
     payload = {
         "command": "second-brain financial review-items",
@@ -8610,9 +8613,8 @@ def financial_no_writeback_proof(
     from hb_assistant.construction.second_brain.financial_no_writeback import (
         build_financial_no_writeback_proof,
     )
-    from hb_assistant.store.migrator import SQLiteMigrator
 
-    SQLiteMigrator().apply()
+    ensure_schema_ready()
     proof = build_financial_no_writeback_proof(project_key=project)
     checks = {k: v.get("passed") for k, v in proof.get("checks_detail", {}).items()}
     payload = {

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 if TYPE_CHECKING:
     from .models import EvaluationPreview
@@ -40,7 +40,7 @@ def write_evaluation_run(
 
     Local-only, additive, metadata-only. Guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 table exists (idempotent)
 
     evaluation_run_id = uuid.uuid4().hex
     checklist_json = json.dumps(evaluation.checklist, sort_keys=True)

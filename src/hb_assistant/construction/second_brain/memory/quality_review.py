@@ -446,11 +446,11 @@ def build_memory_quality_review_proof(
     run row is guard-clean + metadata-only, no determination is made, and no raw statement is emitted."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "mqr.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         _seed_proof_db(db)
 
         # read-only default persists nothing

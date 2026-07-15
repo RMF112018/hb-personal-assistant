@@ -33,7 +33,7 @@ from pydantic import BaseModel, field_validator
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from .automation_policy import load_phase_08b_automation_policy_seed
 
@@ -405,7 +405,7 @@ def register_run(
     """Insert one metadata-only run-registry row (V29). Returns the ``run_registry_id`` or None."""
     if not emit:
         return None
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     run_registry_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
@@ -446,7 +446,7 @@ def record_run_step(
     """Insert one metadata-only run-step row (V29) and bump the registry ``step_count``."""
     if detail and any(t in detail for t in _FORBIDDEN_TOKENS):
         raise ValueError("run-step detail must not carry raw/forbidden tokens")
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     run_step_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
@@ -487,7 +487,7 @@ def finish_run(
     db_path: str | None = None,
 ) -> None:
     """Mark a registry run finished (status + reason code + finished_utc)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     now = datetime.now(timezone.utc).isoformat()
     with transaction(conn):
@@ -502,7 +502,7 @@ def read_latest_run_registry(
     *, db_path: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return the most recent run-registry rows (metadata only)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         """
@@ -519,7 +519,7 @@ def read_latest_run_registry(
 
 def read_run_steps(run_registry_id: str, *, db_path: str | None = None) -> list[dict[str, Any]]:
     """Return the steps for a registry run in order (metadata only)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         """

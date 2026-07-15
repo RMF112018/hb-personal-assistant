@@ -149,10 +149,10 @@ def _repo_sha() -> str:
 def _proof_db(tmp: str) -> str:
     """A schema-current temp DB seeded with eligible read-model rows across 5 families plus one planted
     review-required (tier-3) item that the eligibility filter must reject. Proof/test only."""
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     db = str(Path(tmp) / "read_model_proof.sqlite3")
-    SQLiteMigrator(db_path=db).apply()
+    ensure_schema_ready(db)
     store = ConstructionStore(db)
     ref = json.dumps({"project_key": "P1"})
     store.upsert_cross_source_relationship(

@@ -33,7 +33,7 @@ from pydantic import BaseModel, field_validator
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator, ensure_schema_ready
 
 from .automation_policy import load_phase_08b_automation_policy_seed
 from .daily_brief.store import read_daily_brief_handoff, read_latest_daily_brief_runs
@@ -182,7 +182,7 @@ def _select_run(runs: list[dict[str, Any]], brief_date: str | None) -> dict[str,
 
 def _prior_emitted(brief_run_id: str | None, brief_date: str | None, db_path: str | None) -> bool:
     """True when a V33 receipt already records an emitted notification for this brief."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     if brief_run_id is not None:
         row = conn.execute(
@@ -246,7 +246,7 @@ def write_daily_brief_notification_receipt(
     Local-only, additive. ``channel`` is fixed to ``local_macos`` (DB CHECK); only counts + a title
     HASH are stored (never raw text); the no-raw / no-writeback guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V33 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V33 table exists (idempotent)
     receipt_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):

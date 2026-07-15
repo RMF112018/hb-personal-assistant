@@ -30,9 +30,9 @@ class Store:
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
         # Ensure schema on first use (cheap idempotent call)
-        from .migrator import SQLiteMigrator
+        from .migrator import ensure_schema_ready
 
-        SQLiteMigrator(db_path).apply()
+        ensure_schema_ready(db_path)
 
     # --- Source records (universal) ---
 

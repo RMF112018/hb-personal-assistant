@@ -423,11 +423,11 @@ def build_memory_consolidation_preview_proof(
     (no auto-delete/supersede), the singleton is not proposed, and no raw statement is emitted."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "mcons.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         _seed_proof_db(db)
 
         before_fp = _memory_items_fingerprint(db)

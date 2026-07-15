@@ -18,7 +18,7 @@ from typing import Any
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from .models import Mode, ObsidianIndexEntry, ObsidianIndexManifest
 from .policy import (
@@ -174,7 +174,7 @@ def build_index(
 
 def write_index_manifest(manifest: ObsidianIndexManifest, *, db_path: str | None = None) -> str:
     """Persist the manifest + entries (local metadata only; guard columns 0)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):
         conn.execute(
