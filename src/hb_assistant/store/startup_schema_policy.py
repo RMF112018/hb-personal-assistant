@@ -164,17 +164,24 @@ def apply_startup_schema_policy(db_path: str | Path) -> dict[str, Any]:
         }
 
     # NF-F-001 (N-A1) / NF-AUD-004: a managed startup migration must carry an authorization minted
-    # from an ENFORCED capability. ``acquire_startup_capability()`` itself re-verifies the operator
-    # flag and validates+binds the backup receipt (it raises if the operator control is not satisfied),
-    # so the authority is not merely caller-asserted. ``authorize_migration`` binds the capability to
-    # the resolved target and its device/inode; it returns ``None`` for a non-managed target (which
-    # then self-heals ambiently in the migrator).
+    # from an ENFORCED capability. Two distinct migrate reasons map to two capabilities:
+    #  - ``schema_behind_operator_authorized`` (a behind managed-production DB) -> the STARTUP
+    #    capability, which re-verifies the operator flag and validates+binds the backup receipt.
+    #  - ``db_missing_dev_bootstrap`` (a fresh local DB on a non-NAS host; NAS db-missing already
+    #    fails closed in evaluate_startup_schema) -> the automatic LOCAL bootstrap capability (no
+    #    operator flag), which is scoped to MANAGED_LOCAL and returns ``None`` for a non-managed dev
+    #    target (self-heal). ``authorize_migration`` binds the chosen capability to the resolved
+    #    target and its device/inode.
     from hb_assistant.store.migration_authorization import (
+        acquire_local_bootstrap_capability,
         acquire_startup_capability,
         authorize_migration,
     )
 
-    capability = acquire_startup_capability()
+    operator_authorized = decision.reason == "schema_behind_operator_authorized"
+    capability = (
+        acquire_startup_capability() if operator_authorized else acquire_local_bootstrap_capability()
+    )
     authorization = authorize_migration(
         capability,
         resolved_path=str(path),
@@ -183,7 +190,7 @@ def apply_startup_schema_policy(db_path: str | Path) -> dict[str, Any]:
     )
     version = int(
         SQLiteMigrator(db_path=str(path)).apply(
-            authorization=authorization, require_backup_receipt=True
+            authorization=authorization, require_backup_receipt=operator_authorized
         )
     )
     return {
