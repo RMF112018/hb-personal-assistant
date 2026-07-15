@@ -8,6 +8,7 @@ are permitted. ``HB_DB_STORAGE_GUARD=permissive`` is ignored when ``HB_NAS_RUNTI
 from __future__ import annotations
 
 import os
+from enum import Enum
 from pathlib import Path
 
 from hb_assistant.config.db_path_guard import is_under_clean_db_copy
@@ -16,8 +17,34 @@ NAS_VOLUME_PREFIX = "/volume2/personal-assistant/"
 NAS_DEFAULT_DB_PATH = (
     "/volume2/personal-assistant/app-support/db/hb-personal-assistant.sqlite"
 )
+# The internet-facing NAS MCP reads a bind-mounted read-only snapshot of the managed DB at this
+# path (mcp-snapshot), and routes connected-client staging writes to a separate writable workspace
+# DB (mcp-workspace). These share the NAS prefix + ``db`` parent + managed filename with the managed
+# production DB, so filename/parent pattern-matching cannot tell them apart (NF-F-001 RC-2) — the
+# authorization storage-class classifier below uses EXACT-PATH equality against the configured roots.
+NAS_SNAPSHOT_DB_PATH = (
+    "/volume2/personal-assistant/app-support/mcp-snapshot/db/hb-personal-assistant.sqlite"
+)
 MANAGED_DB_FILENAME = "hb-personal-assistant.sqlite"
 MAC_APP_SUPPORT_NAME = "HB Personal Assistant"
+
+
+class DatabaseStorageClass(str, Enum):
+    """Non-interchangeable storage classes for the migration-ownership boundary (NF-F-001).
+
+    Distinct from the legacy locality labels returned by ``classify_db_storage`` (which answer
+    "is this an allowed place to open a DB?"). These answer "what *kind* of managed target is this,
+    for authorization?" and are bound into ``MigrationAuthorization``. Classification is by
+    EXACT-PATH equality against the configured managed/workspace/snapshot roots (RC-2) so a
+    workspace- or snapshot-shaped path can never be authorized as managed production.
+    """
+
+    MANAGED_PRODUCTION = "managed_production"
+    ISOLATED_WORKSPACE = "isolated_workspace"
+    READ_ONLY_SNAPSHOT = "read_only_snapshot"
+    DISPOSABLE_REHEARSAL = "disposable_rehearsal"
+    EXPLICIT_DEVELOPMENT = "explicit_development"
+    BLOCKED = "blocked"
 
 
 class DbStorageGuardError(Exception):
@@ -169,3 +196,58 @@ def assert_db_storage_allowed(db_path: str | Path, *, context: str = "db_open") 
 
 def nas_default_db_path() -> Path:
     return Path(NAS_DEFAULT_DB_PATH)
+
+
+def snapshot_db_path() -> Path:
+    """Resolve the read-only snapshot DB path (``HB_ASSISTANT_SNAPSHOT_DB`` or the NAS default).
+
+    RC-2: an explicit accessor for the read-only snapshot root so the storage-class classifier can
+    distinguish it from the managed production DB by exact path rather than by shared filename/parent.
+    Optional env override (unset on dev hosts; the NAS compose pins the mount path via mcp config).
+    """
+    raw = os.environ.get("HB_ASSISTANT_SNAPSHOT_DB", "").strip()
+    return Path(raw) if raw else Path(NAS_SNAPSHOT_DB_PATH)
+
+
+def _same_path(a: Path, b: Path) -> bool:
+    try:
+        return a.resolve() == b.resolve()
+    except Exception:
+        return False
+
+
+def classify_storage_class(db_path: str | Path) -> DatabaseStorageClass:
+    """Classify ``db_path`` into a ``DatabaseStorageClass`` for the migration-ownership boundary.
+
+    EXACT-PATH equality against the configured managed / workspace / snapshot roots (RC-2) — a
+    workspace- or snapshot-shaped path is NEVER classified as managed production. Fails closed:
+    universally-denied paths → ``BLOCKED``; unknown NAS-runtime paths → ``BLOCKED``. Managed is
+    matched first, so a development/rehearsal path can never shadow the managed target.
+    """
+    raw = str(db_path)
+    resolved = _resolve_path(db_path)
+    if _universal_deny_reason(raw, resolved) is not None:
+        return DatabaseStorageClass.BLOCKED
+    assert resolved is not None
+
+    # Exact-path equality against the configured roots (import workspace lazily to avoid the
+    # store.workspace -> migrator -> connection -> db_storage_guard import cycle).
+    from hb_assistant.store.workspace import workspace_db_path  # noqa: PLC0415
+
+    if _same_path(resolved, nas_default_db_path()) or _same_path(resolved, _mac_managed_db_path()):
+        return DatabaseStorageClass.MANAGED_PRODUCTION
+    if _same_path(resolved, workspace_db_path()):
+        return DatabaseStorageClass.ISOLATED_WORKSPACE
+    if _same_path(resolved, snapshot_db_path()):
+        return DatabaseStorageClass.READ_ONLY_SNAPSHOT
+    if is_under_clean_db_copy(resolved):
+        return DatabaseStorageClass.DISPOSABLE_REHEARSAL
+
+    # Under NAS runtime nothing outside the exact managed/workspace/snapshot roots is a legitimate
+    # managed target — fail closed rather than infer a class.
+    if is_nas_runtime():
+        return DatabaseStorageClass.BLOCKED
+
+    # Off-NAS: any other allowed local path is explicit development (never managed — managed was
+    # matched above by exact path, so this branch cannot be the managed DB).
+    return DatabaseStorageClass.EXPLICIT_DEVELOPMENT
