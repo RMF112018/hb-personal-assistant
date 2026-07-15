@@ -128,7 +128,7 @@ def test_live_freshness_auto_freezes_schema_index(tmp_path) -> None:
         _build_tool_index(env["config"], for_manifest=True),
         runtime_commit=runtime_commit(),
         now="2026-07-10T00:00:00+00:00",
-        **_runtime_manifest_build_kwargs(),
+        **_runtime_manifest_build_kwargs(env["config"]),
     )
     repo.save_manifest(m)
     seed_frozen_schema_index({})
@@ -159,7 +159,7 @@ def test_persisted_manifest_agrees_with_live_surface_freshness(tmp_path) -> None
         _build_tool_index(env["config"], for_manifest=True),
         runtime_commit=runtime_commit(),
         now="2026-07-10T00:00:00+00:00",
-        **_runtime_manifest_build_kwargs(),
+        **_runtime_manifest_build_kwargs(env["config"]),
     )
     repo.save_manifest(m)
     fr = live_freshness(env["config"])
