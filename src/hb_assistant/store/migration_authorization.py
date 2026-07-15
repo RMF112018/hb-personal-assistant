@@ -9,15 +9,25 @@ verifies its own governing control:
 - ``acquire_admin_capability(role)`` — verifies the admin RBAC role.
 - ``acquire_local_bootstrap_capability()`` — scoped to the canonical MANAGED_LOCAL target only.
 
-There is NO public factory that mints a managed authorization from caller-asserted actor/route/operation.
-Operation, actor, and route come from the capability, not the caller. So incidental in-process code
-cannot mint a valid managed authorization merely by importing a function and supplying plausible fields
-— it must first satisfy the governing gate inside an acquirer.
+Operation, actor, and route come from the capability, not the caller. There is no public factory that
+mints a managed authorization from caller-asserted fields.
+
+Enforcement boundary and its honest limits (Corrective-2, RC-A/RC-B). The capability sentinel and the
+integrity secret are **closure-captured** inside ``_build_trust_core()`` — they are NOT module globals,
+so ``from ...migration_authorization import _CAP_KEY`` / ``_PROCESS_SECRET`` does not exist and there is
+no importable function that mints a capability without a gate or that signs an arbitrary payload. This
+defeats casual and incidental in-process minting/forgery by name import. It is NOT an absolute in-process
+trust boundary: Python cannot prevent a *determined* in-process actor from reaching a function's
+``__closure__`` cells or reading process memory. That residual is inherent to running trusted and
+untrusted code in one interpreter; the design goal here is to make illegitimate minting require
+deliberate, conspicuous reflection rather than an ordinary import — not to claim impossibility.
 
 Integrity + FD-stable identity (NF-AUD-005): each authorization carries an HMAC(process-local secret)
-tag over its canonical fields INCLUDING the opened-target device/inode when available, is validated
-against the identity of the database ACTUALLY opened (derived from a retained read-only guard FD)
-before any DDL, and is revalidated at the migration boundary. Device/inode mismatch fails closed.
+tag over its canonical fields INCLUDING the opened-target device/inode, is validated against the identity
+of the database ACTUALLY opened (derived from a retained read-only guard FD) before any DDL, and is
+revalidated at the migration boundary. A managed authorization is always bound to a real device/inode
+(RC-C): the target is required to exist at mint (managed-local bootstrap creates it), so validation never
+degrades to path-string equality for a managed target.
 """
 
 from __future__ import annotations
@@ -41,12 +51,6 @@ from .errors import (
     MigrationTargetMismatch,
     MigrationVersionMismatch,
 )
-
-# Process-local integrity secret. Regenerated every process start; never persisted or logged.
-_PROCESS_SECRET = os.urandom(32)
-
-# Process-local sentinel proving a MigrationCapability was constructed in-module by an acquirer.
-_CAP_KEY = object()
 
 _MANAGED = (DatabaseStorageClass.MANAGED_PRODUCTION, DatabaseStorageClass.MANAGED_LOCAL)
 
@@ -102,10 +106,10 @@ class ValidatedBackupReceipt:
 class AuthorizedTargetIdentity:
     """The database target an authorization is bound to.
 
-    ``device``/``inode`` are captured at mint time when the target file exists (NF-AUD-005), binding
-    the authorization to the strongest-supported opened-target identity; ``None`` for a target that
-    does not yet exist (a fresh DB), in which case the migrator's retained-FD revalidation stabilizes
-    identity from creation through the migration boundary.
+    ``device``/``inode`` bind the authorization to the strongest-supported opened-target identity
+    (NF-AUD-005). For a MANAGED target these are always populated (RC-C: the target is required to exist
+    at mint), so validation never falls back to path-string equality for a managed migration. ``None`` is
+    only possible for a non-managed target, whose migration does not require an authorization at all.
     """
 
     resolved_path: str
@@ -132,27 +136,6 @@ class OpenedDatabaseIdentity:
 
 
 @dataclass(frozen=True)
-class MigrationCapability:
-    """Proof that a governing gate was satisfied. Constructible ONLY by the acquirers below (each of
-    which verifies its own control); direct construction is rejected. Carries the authoritative
-    operation/actor/route — a caller cannot self-assert these (NF-AUD-004)."""
-
-    operation: MigrationOperation
-    actor_class: str
-    route_class: str
-    allowed_storage_classes: frozenset[DatabaseStorageClass]
-    backup_receipt: ValidatedBackupReceipt | None
-    require_production_receipt: bool = False
-    _key: object = field(default=None, repr=False, compare=False)
-
-    def __post_init__(self) -> None:
-        if self._key is not _CAP_KEY:
-            raise MigrationAuthorizationInvalid(
-                "MigrationCapability must be obtained from an acquirer, not constructed directly"
-            )
-
-
-@dataclass(frozen=True)
 class MigrationAuthorization:
     authorization_id: str
     execution_id: str
@@ -167,72 +150,6 @@ class MigrationAuthorization:
     issued_at: datetime
     expires_at: datetime | None
     integrity_tag: str
-
-
-# --- Capability acquirers (each verifies its governing control) ------------------------------------
-
-
-def acquire_startup_capability() -> MigrationCapability:
-    """Acquire the STARTUP capability. Verifies the operator flag itself; validates and carries the
-    backup receipt when one is configured. Raises if the operator control is not satisfied."""
-    from .startup_schema_policy import (  # noqa: PLC0415
-        _allow_startup_migrations,
-        _startup_migration_backup_receipt_path,
-        validate_startup_migration_backup_receipt,
-    )
-
-    if not _allow_startup_migrations():
-        raise MigrationAuthorizationRequired(
-            "startup migration not enabled (operator must set HB_ALLOW_STARTUP_MIGRATIONS=1)"
-        )
-    receipt: ValidatedBackupReceipt | None = None
-    receipt_path = _startup_migration_backup_receipt_path()
-    if receipt_path is not None:
-        payload = validate_startup_migration_backup_receipt(receipt_path)
-        receipt = ValidatedBackupReceipt(
-            schema_version=int(payload.get("schema_version", 0) or 0),
-            generated_utc=str(payload.get("generated_utc", "")),
-            backup_digest=str(payload.get("backup_digest") or payload.get("backup_path") or ""),
-        )
-    return MigrationCapability(
-        operation=MigrationOperation.STARTUP,
-        actor_class="startup",
-        route_class="startup_schema_policy",
-        allowed_storage_classes=frozenset(_MANAGED),
-        backup_receipt=receipt,
-        require_production_receipt=True,
-        _key=_CAP_KEY,
-    )
-
-
-def acquire_admin_capability(role: dict[str, str]) -> MigrationCapability:
-    """Acquire the ADMIN capability. Verifies the admin RBAC role itself (raises if not admin)."""
-    if not isinstance(role, dict) or role.get("role") != "admin":
-        raise MigrationAuthorizationRequired("admin role required to authorize a managed migration")
-    return MigrationCapability(
-        operation=MigrationOperation.ADMIN,
-        actor_class="admin",
-        route_class="admin_schema_migrate",
-        allowed_storage_classes=frozenset(_MANAGED),
-        backup_receipt=None,
-        _key=_CAP_KEY,
-    )
-
-
-def acquire_local_bootstrap_capability() -> MigrationCapability:
-    """Acquire the automatic local app/CLI-entry bootstrap capability, scoped to MANAGED_LOCAL only —
-    it can never target the NAS managed-production DB, a snapshot, a workspace, or an unknown path."""
-    return MigrationCapability(
-        operation=MigrationOperation.LOCAL_APP_BOOTSTRAP,
-        actor_class="local_app",
-        route_class="app_entry_bootstrap",
-        allowed_storage_classes=frozenset({DatabaseStorageClass.MANAGED_LOCAL}),
-        backup_receipt=None,
-        _key=_CAP_KEY,
-    )
-
-
-# --- Minting (capability-gated) -------------------------------------------------------------------
 
 
 def _canonical_payload(
@@ -250,6 +167,8 @@ def _canonical_payload(
     issued_at: datetime,
     expires_at: datetime | None,
 ) -> bytes:
+    """Serialize the canonical, to-be-signed bytes. Knowing this format does not enable forgery — the
+    integrity secret needed to compute the tag is closure-captured and never importable by name."""
     receipt = (
         f"{backup_receipt.schema_version}|{backup_receipt.generated_utc}|{backup_receipt.backup_digest}"
         if backup_receipt is not None
@@ -276,10 +195,6 @@ def _canonical_payload(
     return "\x1f".join(parts).encode("utf-8")
 
 
-def _integrity_tag(payload: bytes) -> str:
-    return hmac.new(_PROCESS_SECRET, payload, hashlib.sha256).hexdigest()
-
-
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -301,175 +216,351 @@ def _stat_identity(resolved_path: str) -> tuple[int | None, int | None]:
     return st.st_dev, st.st_ino
 
 
-def authorize_migration(
-    capability: MigrationCapability,
-    *,
-    resolved_path: str,
-    expected_origin_version: int,
-    target_version: int,
-    execution_id: str | None = None,
-    expires_at: datetime | None = None,
-) -> MigrationAuthorization | None:
-    """Mint a managed-migration authorization from a verified ``capability``, bound to the resolved
-    target and its strongest-supported identity (device/inode when the file exists).
+def _bind_managed_target_identity(
+    resolved: str, storage_class: DatabaseStorageClass
+) -> tuple[int, int]:
+    """Return a real (device, inode) for a MANAGED migration target, binding its identity (RC-C).
 
-    Returns ``None`` for a NON-managed target (the migrator handles those: snapshot/blocked denied,
-    workspace/rehearsal/dev self-heal) — so authorized callers can pass the result straight to
-    ``apply(authorization=...)`` regardless of the resolved class. Raises when the capability does not
-    cover the resolved managed class, when a required production backup receipt is absent, or when the
-    capability's operation is not permitted for the class.
+    A managed authorization must never be minted with an unbound (``None``) identity — that would let
+    ``validate_authorization`` degrade to path-string equality (NF-AUD-005 residual). MANAGED_PRODUCTION
+    must already exist (refuse to fabricate it — e.g. an unmounted volume); MANAGED_LOCAL first-run
+    bootstrap creates the empty target so its inode can be pinned before SQLite opens it.
     """
-    if not isinstance(capability, MigrationCapability):
-        raise MigrationAuthorizationInvalid("a MigrationCapability is required to authorize a migration")
-
-    resolved = str(Path(resolved_path).resolve())
-    storage_class = classify_storage_class(resolved)
-
-    if storage_class not in _MANAGED:
-        return None  # migrator handles non-managed / snapshot / blocked
-
-    if storage_class not in capability.allowed_storage_classes:
-        raise MigrationStorageClassDenied(
-            f"capability for {capability.operation.value} may not target {storage_class.value}"
-        )
-    if capability.operation not in _ALLOWED_OPERATIONS.get(storage_class, frozenset()):
-        raise MigrationStorageClassDenied(
-            f"operation {capability.operation.value} not permitted for {storage_class.value}"
-        )
-    if (
-        storage_class is DatabaseStorageClass.MANAGED_PRODUCTION
-        and capability.require_production_receipt
-        and capability.backup_receipt is None
-    ):
-        raise MigrationBackupReceiptRequired(
-            "a validated backup receipt is required to migrate the managed-production database"
-        )
-
     device, inode = _stat_identity(resolved)
-    target_identity = AuthorizedTargetIdentity(
-        resolved_path=resolved, storage_class=storage_class, device=device, inode=inode
-    )
-    issued_at = _now()
-    authorization_id = _new_id("mauth")
-    exec_id = execution_id or execution_id_default()
-    payload = _canonical_payload(
-        authorization_id=authorization_id,
-        execution_id=exec_id,
-        actor_class=capability.actor_class,
-        route_class=capability.route_class,
-        operation=capability.operation,
-        storage_class=storage_class,
-        expected_origin_version=expected_origin_version,
-        target_version=target_version,
-        target_identity=target_identity,
-        backup_receipt=capability.backup_receipt,
-        issued_at=issued_at,
-        expires_at=expires_at,
-    )
-    return MigrationAuthorization(
-        authorization_id=authorization_id,
-        execution_id=exec_id,
-        actor_class=capability.actor_class,
-        route_class=capability.route_class,
-        operation=capability.operation,
-        storage_class=storage_class,
-        expected_origin_version=expected_origin_version,
-        target_version=target_version,
-        target_identity=target_identity,
-        backup_receipt=capability.backup_receipt,
-        issued_at=issued_at,
-        expires_at=expires_at,
-        integrity_tag=_integrity_tag(payload),
-    )
+    if device is None or inode is None:
+        if storage_class is DatabaseStorageClass.MANAGED_PRODUCTION:
+            raise MigrationTargetMismatch(
+                "managed-production migration target does not exist; refusing to mint an "
+                "identity-unbound authorization (is the volume mounted?)"
+            )
+        # MANAGED_LOCAL bootstrap: create the empty target so its identity can be bound.
+        Path(resolved).parent.mkdir(parents=True, exist_ok=True)
+        try:
+            fd = os.open(resolved, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            os.close(fd)
+        except FileExistsError:
+            pass
+        device, inode = _stat_identity(resolved)
+        if device is None or inode is None:
+            raise MigrationTargetMismatch(
+                "managed-local migration target could not be identity-bound"
+            )
+    return device, inode
 
 
-# --- Validation (called by the migrator before any DDL) -------------------------------------------
+# --- Trust core (closure-encapsulated: sentinel + integrity secret are not module globals) ----------
 
 
-def validate_authorization(
-    authorization: MigrationAuthorization | None,
-    opened: OpenedDatabaseIdentity,
-    *,
-    require_backup_receipt: bool = False,
-) -> None:
-    """Validate ``authorization`` against the ACTUAL opened database identity. Raises a typed error
-    before any migration DDL when invalid.
+def _build_trust_core():
+    """Build the capability/authorization trust core with a closure-captured sentinel and secret.
 
-    A ``None`` authorization for a MANAGED target is a hard failure; snapshot/blocked are always
-    denied. Non-managed targets permit ``None`` (ambient self-heal). When an authorization is
-    supplied it must be integrity-valid, unexpired, class/operation/path-matched, and — when its
-    target identity carries device/inode — device/inode must match the opened file (NF-AUD-005).
+    Nothing returned exposes the sentinel or the secret; the only ways out are the three gate-verifying
+    acquirers, ``authorize_migration`` (which requires a capability), and ``validate_authorization``.
+    See the module docstring for the honest limits of this boundary in a single interpreter.
     """
-    storage_class = opened.storage_class
+    # Process-local sentinel proving a MigrationCapability was constructed by an acquirer.
+    _cap_key = object()
+    # Process-local integrity secret. Regenerated every process start; never persisted or logged.
+    _process_secret = os.urandom(32)
 
-    if storage_class is DatabaseStorageClass.READ_ONLY_SNAPSHOT:
-        raise MigrationStorageClassDenied("migration is never permitted against a read-only snapshot")
-    if storage_class is DatabaseStorageClass.BLOCKED:
-        raise MigrationStorageClassDenied("migration target is a blocked/unclassified storage location")
+    @dataclass(frozen=True)
+    class MigrationCapability:
+        """Proof that a governing gate was satisfied. Obtainable ONLY from an acquirer below (each of
+        which verifies its own control); direct construction is rejected because the sentinel is
+        closure-captured and not importable. Carries the authoritative operation/actor/route — a caller
+        cannot self-assert these (NF-AUD-004)."""
 
-    if authorization is None:
-        if storage_class in _MIGRATION_REQUIRES_AUTHORIZATION:
+        operation: MigrationOperation
+        actor_class: str
+        route_class: str
+        allowed_storage_classes: frozenset[DatabaseStorageClass]
+        backup_receipt: ValidatedBackupReceipt | None
+        # RC-B: default to REQUIRING a production receipt; acquirers that legitimately skip it (admin
+        # RBAC route, local-only bootstrap) opt out explicitly. A directly-constructed capability cannot
+        # exist (sentinel gate), so this default is defense-in-depth, not the primary control.
+        require_production_receipt: bool = True
+        _key: object = field(default=None, repr=False, compare=False)
+
+        def __post_init__(self) -> None:
+            if self._key is not _cap_key:
+                raise MigrationAuthorizationInvalid(
+                    "MigrationCapability must be obtained from an acquirer, not constructed directly"
+                )
+
+    def _integrity_tag(payload: bytes) -> str:
+        return hmac.new(_process_secret, payload, hashlib.sha256).hexdigest()
+
+    def acquire_startup_capability() -> MigrationCapability:
+        """Acquire the STARTUP capability. Verifies the operator flag itself; validates and carries the
+        backup receipt when one is configured. Raises if the operator control is not satisfied."""
+        from .startup_schema_policy import (  # noqa: PLC0415
+            _allow_startup_migrations,
+            _startup_migration_backup_receipt_path,
+            validate_startup_migration_backup_receipt,
+        )
+
+        if not _allow_startup_migrations():
             raise MigrationAuthorizationRequired(
-                f"migration of {storage_class.value} storage requires a validated authorization"
+                "startup migration not enabled (operator must set HB_ALLOW_STARTUP_MIGRATIONS=1)"
             )
-        return  # non-managed target: ambient self-heal permitted
+        receipt: ValidatedBackupReceipt | None = None
+        receipt_path = _startup_migration_backup_receipt_path()
+        if receipt_path is not None:
+            payload = validate_startup_migration_backup_receipt(receipt_path)
+            receipt = ValidatedBackupReceipt(
+                schema_version=int(payload.get("schema_version", 0) or 0),
+                generated_utc=str(payload.get("generated_utc", "")),
+                backup_digest=str(payload.get("backup_digest") or payload.get("backup_path") or ""),
+            )
+        return MigrationCapability(
+            operation=MigrationOperation.STARTUP,
+            actor_class="startup",
+            route_class="startup_schema_policy",
+            allowed_storage_classes=frozenset(_MANAGED),
+            backup_receipt=receipt,
+            require_production_receipt=True,
+            _key=_cap_key,
+        )
 
-    payload = _canonical_payload(
-        authorization_id=authorization.authorization_id,
-        execution_id=authorization.execution_id,
-        actor_class=authorization.actor_class,
-        route_class=authorization.route_class,
-        operation=authorization.operation,
-        storage_class=authorization.storage_class,
-        expected_origin_version=authorization.expected_origin_version,
-        target_version=authorization.target_version,
-        target_identity=authorization.target_identity,
-        backup_receipt=authorization.backup_receipt,
-        issued_at=authorization.issued_at,
-        expires_at=authorization.expires_at,
+    def acquire_admin_capability(role: dict[str, str]) -> MigrationCapability:
+        """Acquire the ADMIN capability. Verifies the admin RBAC role itself (raises if not admin).
+
+        By approved design (R1 corrective) the admin route is RBAC-gated and does not additionally
+        require a backup receipt, so ``require_production_receipt`` is explicitly opted out here."""
+        if not isinstance(role, dict) or role.get("role") != "admin":
+            raise MigrationAuthorizationRequired("admin role required to authorize a managed migration")
+        return MigrationCapability(
+            operation=MigrationOperation.ADMIN,
+            actor_class="admin",
+            route_class="admin_schema_migrate",
+            allowed_storage_classes=frozenset(_MANAGED),
+            backup_receipt=None,
+            require_production_receipt=False,
+            _key=_cap_key,
+        )
+
+    def acquire_local_bootstrap_capability() -> MigrationCapability:
+        """Acquire the automatic local app/CLI-entry bootstrap capability, scoped to MANAGED_LOCAL only —
+        it can never target the NAS managed-production DB, a snapshot, a workspace, or an unknown path.
+        A production receipt is not applicable (it never touches production)."""
+        return MigrationCapability(
+            operation=MigrationOperation.LOCAL_APP_BOOTSTRAP,
+            actor_class="local_app",
+            route_class="app_entry_bootstrap",
+            allowed_storage_classes=frozenset({DatabaseStorageClass.MANAGED_LOCAL}),
+            backup_receipt=None,
+            require_production_receipt=False,
+            _key=_cap_key,
+        )
+
+    def authorize_migration(
+        capability: MigrationCapability,
+        *,
+        resolved_path: str,
+        expected_origin_version: int,
+        target_version: int,
+        execution_id: str | None = None,
+        expires_at: datetime | None = None,
+    ) -> MigrationAuthorization | None:
+        """Mint a managed-migration authorization from a verified ``capability``, bound to the resolved
+        target and its real device/inode identity (RC-C: managed targets are always identity-bound).
+
+        Returns ``None`` for a NON-managed target (the migrator handles those: snapshot/blocked denied,
+        workspace/rehearsal/dev self-heal) — so authorized callers can pass the result straight to
+        ``apply(authorization=...)`` regardless of the resolved class. Raises when the capability does
+        not cover the resolved managed class, when a required production backup receipt is absent, when
+        the capability's operation is not permitted for the class, or when a managed target cannot be
+        identity-bound.
+        """
+        if not isinstance(capability, MigrationCapability):
+            raise MigrationAuthorizationInvalid(
+                "a MigrationCapability is required to authorize a migration"
+            )
+
+        resolved = str(Path(resolved_path).resolve())
+        storage_class = classify_storage_class(resolved)
+
+        if storage_class not in _MANAGED:
+            return None  # migrator handles non-managed / snapshot / blocked
+
+        if storage_class not in capability.allowed_storage_classes:
+            raise MigrationStorageClassDenied(
+                f"capability for {capability.operation.value} may not target {storage_class.value}"
+            )
+        if capability.operation not in _ALLOWED_OPERATIONS.get(storage_class, frozenset()):
+            raise MigrationStorageClassDenied(
+                f"operation {capability.operation.value} not permitted for {storage_class.value}"
+            )
+        if (
+            storage_class is DatabaseStorageClass.MANAGED_PRODUCTION
+            and capability.require_production_receipt
+            and capability.backup_receipt is None
+        ):
+            raise MigrationBackupReceiptRequired(
+                "a validated backup receipt is required to migrate the managed-production database"
+            )
+
+        device, inode = _bind_managed_target_identity(resolved, storage_class)
+        target_identity = AuthorizedTargetIdentity(
+            resolved_path=resolved, storage_class=storage_class, device=device, inode=inode
+        )
+        issued_at = _now()
+        authorization_id = _new_id("mauth")
+        exec_id = execution_id or execution_id_default()
+        payload = _canonical_payload(
+            authorization_id=authorization_id,
+            execution_id=exec_id,
+            actor_class=capability.actor_class,
+            route_class=capability.route_class,
+            operation=capability.operation,
+            storage_class=storage_class,
+            expected_origin_version=expected_origin_version,
+            target_version=target_version,
+            target_identity=target_identity,
+            backup_receipt=capability.backup_receipt,
+            issued_at=issued_at,
+            expires_at=expires_at,
+        )
+        return MigrationAuthorization(
+            authorization_id=authorization_id,
+            execution_id=exec_id,
+            actor_class=capability.actor_class,
+            route_class=capability.route_class,
+            operation=capability.operation,
+            storage_class=storage_class,
+            expected_origin_version=expected_origin_version,
+            target_version=target_version,
+            target_identity=target_identity,
+            backup_receipt=capability.backup_receipt,
+            issued_at=issued_at,
+            expires_at=expires_at,
+            integrity_tag=_integrity_tag(payload),
+        )
+
+    def validate_authorization(
+        authorization: MigrationAuthorization | None,
+        opened: OpenedDatabaseIdentity,
+        *,
+        require_backup_receipt: bool = False,
+    ) -> None:
+        """Validate ``authorization`` against the ACTUAL opened database identity. Raises a typed error
+        before any migration DDL when invalid.
+
+        A ``None`` authorization for a MANAGED target is a hard failure; snapshot/blocked are always
+        denied. Non-managed targets permit ``None`` (ambient self-heal). A supplied authorization must be
+        integrity-valid, unexpired, class/operation/path-matched, and — for a MANAGED target — carry a
+        bound device/inode that matches the opened file (RC-C: no path-string fallback for managed).
+        """
+        storage_class = opened.storage_class
+
+        if storage_class is DatabaseStorageClass.READ_ONLY_SNAPSHOT:
+            raise MigrationStorageClassDenied(
+                "migration is never permitted against a read-only snapshot"
+            )
+        if storage_class is DatabaseStorageClass.BLOCKED:
+            raise MigrationStorageClassDenied(
+                "migration target is a blocked/unclassified storage location"
+            )
+
+        if authorization is None:
+            if storage_class in _MIGRATION_REQUIRES_AUTHORIZATION:
+                raise MigrationAuthorizationRequired(
+                    f"migration of {storage_class.value} storage requires a validated authorization"
+                )
+            return  # non-managed target: ambient self-heal permitted
+
+        payload = _canonical_payload(
+            authorization_id=authorization.authorization_id,
+            execution_id=authorization.execution_id,
+            actor_class=authorization.actor_class,
+            route_class=authorization.route_class,
+            operation=authorization.operation,
+            storage_class=authorization.storage_class,
+            expected_origin_version=authorization.expected_origin_version,
+            target_version=authorization.target_version,
+            target_identity=authorization.target_identity,
+            backup_receipt=authorization.backup_receipt,
+            issued_at=authorization.issued_at,
+            expires_at=authorization.expires_at,
+        )
+        if not hmac.compare_digest(_integrity_tag(payload), authorization.integrity_tag):
+            raise MigrationAuthorizationInvalid(
+                "authorization integrity check failed (forged or altered)"
+            )
+
+        if authorization.expires_at is not None and _now() > authorization.expires_at:
+            raise MigrationAuthorizationExpired("authorization has expired")
+
+        if authorization.storage_class is not storage_class:
+            raise MigrationStorageClassDenied(
+                f"authorization storage class {authorization.storage_class.value} != opened "
+                f"{storage_class.value}"
+            )
+        if authorization.target_identity.storage_class is not storage_class:
+            raise MigrationStorageClassDenied("authorization target storage class mismatch")
+
+        if authorization.operation not in _ALLOWED_OPERATIONS.get(storage_class, frozenset()):
+            raise MigrationStorageClassDenied(
+                f"operation {authorization.operation.value} not permitted for {storage_class.value}"
+            )
+
+        if authorization.target_identity.resolved_path != opened.resolved_path:
+            raise MigrationTargetMismatch("authorization target does not match the opened database")
+
+        # RC-C: a managed migration MUST carry a bound identity — never degrade to path-string equality.
+        if storage_class in _MIGRATION_REQUIRES_AUTHORIZATION and (
+            authorization.target_identity.device is None
+            or authorization.target_identity.inode is None
+        ):
+            raise MigrationTargetMismatch(
+                "managed migration authorization has no bound device/inode identity"
+            )
+
+        # NF-AUD-005: FD-stable identity. When the authorization bound a device/inode, the opened file
+        # MUST present the same device/inode; a rename/replace/inode-drift is a hard failure. Fail closed
+        # if the bound identity cannot be confirmed against the opened file.
+        auth_dev = authorization.target_identity.device
+        auth_ino = authorization.target_identity.inode
+        if auth_dev is not None or auth_ino is not None:
+            if opened.device is None or opened.inode is None:
+                raise MigrationTargetMismatch(
+                    "opened database identity (device/inode) unavailable to confirm authorized target"
+                )
+            if opened.device != auth_dev or opened.inode != auth_ino:
+                raise MigrationTargetMismatch(
+                    "opened database device/inode does not match the authorized target (substitution)"
+                )
+
+        if (
+            require_backup_receipt
+            and storage_class is DatabaseStorageClass.MANAGED_PRODUCTION
+            and authorization.backup_receipt is None
+        ):
+            raise MigrationBackupReceiptRequired(
+                "a validated backup receipt is required for this migration"
+            )
+
+    return (
+        MigrationCapability,
+        acquire_startup_capability,
+        acquire_admin_capability,
+        acquire_local_bootstrap_capability,
+        authorize_migration,
+        validate_authorization,
     )
-    if not hmac.compare_digest(_integrity_tag(payload), authorization.integrity_tag):
-        raise MigrationAuthorizationInvalid("authorization integrity check failed (forged or altered)")
 
-    if authorization.expires_at is not None and _now() > authorization.expires_at:
-        raise MigrationAuthorizationExpired("authorization has expired")
 
-    if authorization.storage_class is not storage_class:
-        raise MigrationStorageClassDenied(
-            f"authorization storage class {authorization.storage_class.value} != opened {storage_class.value}"
-        )
-    if authorization.target_identity.storage_class is not storage_class:
-        raise MigrationStorageClassDenied("authorization target storage class mismatch")
+(
+    MigrationCapability,
+    acquire_startup_capability,
+    acquire_admin_capability,
+    acquire_local_bootstrap_capability,
+    authorize_migration,
+    validate_authorization,
+) = _build_trust_core()
 
-    if authorization.operation not in _ALLOWED_OPERATIONS.get(storage_class, frozenset()):
-        raise MigrationStorageClassDenied(
-            f"operation {authorization.operation.value} not permitted for {storage_class.value}"
-        )
 
-    if authorization.target_identity.resolved_path != opened.resolved_path:
-        raise MigrationTargetMismatch("authorization target does not match the opened database")
-
-    # NF-AUD-005: FD-stable identity. When the authorization bound a device/inode (the target existed
-    # at mint), the opened file MUST present the same device/inode; a rename/replace/inode-drift is a
-    # hard failure. Fail closed if the bound identity cannot be confirmed against the opened file.
-    auth_dev = authorization.target_identity.device
-    auth_ino = authorization.target_identity.inode
-    if auth_dev is not None or auth_ino is not None:
-        if opened.device is None or opened.inode is None:
-            raise MigrationTargetMismatch(
-                "opened database identity (device/inode) unavailable to confirm authorized target"
-            )
-        if opened.device != auth_dev or opened.inode != auth_ino:
-            raise MigrationTargetMismatch(
-                "opened database device/inode does not match the authorized target (substitution)"
-            )
-
-    if (
-        require_backup_receipt
-        and storage_class is DatabaseStorageClass.MANAGED_PRODUCTION
-        and authorization.backup_receipt is None
-    ):
-        raise MigrationBackupReceiptRequired("a validated backup receipt is required for this migration")
+# --- Origin binding + FD-stable revalidation (no integrity secret needed) --------------------------
 
 
 def assert_origin_version(authorization: MigrationAuthorization, actual_origin: int) -> None:

@@ -32,6 +32,7 @@ def _admin_auth(db, *, origin):
 def _managed_fixture(tmp_path, monkeypatch):
     db = (tmp_path / "managed" / "db" / "hb-personal-assistant.sqlite").resolve()
     db.parent.mkdir(parents=True, exist_ok=True)
+    db.touch()  # RC-C: the managed-production DB exists in reality; bind identity at mint
     monkeypatch.setattr(g, "nas_default_db_path", lambda: db)
     monkeypatch.setattr(g, "_mac_managed_db_path", lambda: (tmp_path / "no-mac").resolve())
     monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)

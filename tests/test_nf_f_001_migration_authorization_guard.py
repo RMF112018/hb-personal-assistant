@@ -36,6 +36,10 @@ from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 def managed_db(tmp_path, monkeypatch):
     db = (tmp_path / "managed" / "db" / "hb-personal-assistant.sqlite").resolve()
     db.parent.mkdir(parents=True, exist_ok=True)
+    # The managed-production DB always EXISTS in reality (the live NAS DB). RC-C requires a managed
+    # target to be identity-bound at mint (refusing to fabricate a missing production DB), so the
+    # fixture represents an existing — initially empty, schema v0 — production database.
+    db.touch()
     monkeypatch.setattr(g, "nas_default_db_path", lambda: db)
     monkeypatch.setattr(g, "_mac_managed_db_path", lambda: (tmp_path / "no-mac").resolve())
     monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
@@ -210,8 +214,12 @@ def test_snapshot_is_never_migrated(tmp_path, monkeypatch):
 
 
 def test_authorization_binds_device_inode_when_target_exists(managed_db):
-    # First migration creates the file; a subsequent authorization (file now exists) binds device/inode.
-    SQLiteMigrator(str(managed_db)).apply(authorization=_admin_auth(managed_db, origin=0))
+    # A managed authorization is always bound to a real device/inode (RC-C); the fixture's managed DB
+    # exists, so even the origin=0 authorization carries a bound identity.
+    auth0 = _admin_auth(managed_db, origin=0)
+    assert auth0.target_identity.device is not None
+    assert auth0.target_identity.inode is not None
+    SQLiteMigrator(str(managed_db)).apply(authorization=auth0)
     auth = _admin_auth(managed_db, origin=LATEST_SCHEMA_VERSION)
     assert auth.target_identity.device is not None
     assert auth.target_identity.inode is not None
@@ -316,3 +324,104 @@ def test_no_fd_growth_under_repeated_rejected_calls(managed_db):
 def test_non_managed_temp_fixture_still_self_heals(tmp_path):
     db = tmp_path / "fixture.sqlite"
     assert SQLiteMigrator(str(db)).apply() == LATEST_SCHEMA_VERSION
+
+
+# --- Corrective-2 RC-B: closure-captured sentinel + secret (not importable) ------------------------
+
+
+def test_sentinel_and_secret_are_not_importable_module_globals():
+    # The capability sentinel, the integrity secret, and the signer are closure-captured — not module
+    # globals — so incidental code cannot import them to construct a capability or forge a tag by name.
+    assert not hasattr(ma, "_CAP_KEY")
+    assert not hasattr(ma, "_PROCESS_SECRET")
+    assert not hasattr(ma, "_integrity_tag")
+
+
+def test_capability_rejects_an_arbitrary_key():
+    # Even supplying an arbitrary object as the key is rejected; there is no importable key that would
+    # satisfy __post_init__ (Path A closed).
+    with pytest.raises(MigrationAuthorizationInvalid):
+        ma.MigrationCapability(
+            operation=ma.MigrationOperation.STARTUP,
+            actor_class="startup",
+            route_class="r",
+            allowed_storage_classes=frozenset(),
+            backup_receipt=None,
+            _key=object(),
+        )
+
+
+def test_admin_capability_needs_no_production_receipt_despite_default_true():
+    # RC-B flipped the field default to require_production_receipt=True; the admin acquirer opts out
+    # explicitly (RBAC-gated), so an admin authorization for managed-production still mints with no
+    # receipt. Regression guard for the default flip.
+    cap = ma.acquire_admin_capability({"role": "admin"})
+    assert cap.require_production_receipt is False
+
+
+# --- Corrective-2 RC-C: a managed authorization is always identity-bound ---------------------------
+
+
+def _managed_local(tmp_path, monkeypatch):
+    local = (tmp_path / "app-support" / "db" / "hb-personal-assistant.sqlite").resolve()
+    local.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(g, "_mac_managed_db_path", lambda: local)
+    monkeypatch.setattr(g, "nas_default_db_path", lambda: (tmp_path / "no-nas").resolve())
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    assert g.classify_storage_class(local) is SC.MANAGED_LOCAL
+    return local
+
+
+def test_managed_local_bootstrap_creates_and_binds_absent_target(tmp_path, monkeypatch):
+    # A MANAGED_LOCAL target absent at mint is created and identity-bound (RC-C), so validation never
+    # degrades to path-string equality for a fresh local bootstrap.
+    local = _managed_local(tmp_path, monkeypatch)
+    assert not local.exists()
+    auth = ma.authorize_migration(
+        ma.acquire_local_bootstrap_capability(),
+        resolved_path=str(local),
+        expected_origin_version=0,
+        target_version=LATEST_SCHEMA_VERSION,
+    )
+    assert local.exists()  # created to pin identity
+    assert auth.target_identity.device is not None
+    assert auth.target_identity.inode is not None
+
+
+def test_managed_production_absent_refuses_to_mint(tmp_path, monkeypatch):
+    # RC-C: a MANAGED_PRODUCTION target that does not exist is NOT fabricated — minting fails closed
+    # (e.g. an unmounted volume) rather than producing an identity-unbound authorization.
+    prod = (tmp_path / "nas" / "db" / "hb-personal-assistant.sqlite").resolve()
+    prod.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(g, "nas_default_db_path", lambda: prod)
+    monkeypatch.setattr(g, "_mac_managed_db_path", lambda: (tmp_path / "no-mac").resolve())
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    assert g.classify_storage_class(prod) is SC.MANAGED_PRODUCTION
+    assert not prod.exists()
+    with pytest.raises(MigrationTargetMismatch):
+        ma.authorize_migration(
+            ma.acquire_admin_capability({"role": "admin"}),
+            resolved_path=str(prod),
+            expected_origin_version=0,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
+
+
+def test_stripping_bound_identity_cannot_downgrade_to_path_equality(managed_db):
+    # A managed authorization cannot be downgraded to path-string-only by stripping its bound
+    # device/inode: the identity is part of the SIGNED payload, so tampering fails the integrity check;
+    # the RC-C managed-none-identity check is the belt-and-suspenders backstop behind it.
+    good = _admin_auth(managed_db, origin=0)
+    stripped = dataclasses.replace(
+        good,
+        target_identity=dataclasses.replace(good.target_identity, device=None, inode=None),
+    )
+    con = get_connection(str(managed_db))
+    opened = describe_opened_database(con, str(managed_db))
+    try:
+        with pytest.raises((MigrationAuthorizationInvalid, MigrationTargetMismatch)):
+            ma.validate_authorization(stripped, opened)
+    finally:
+        if opened.guard_fd is not None:
+            os.close(opened.guard_fd)
+        con.close()

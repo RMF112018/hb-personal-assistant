@@ -16,12 +16,16 @@ from hb_assistant.store.startup_schema_policy import (
 
 
 def _write_receipt(path: Path, *, schema_version: int = LATEST_SCHEMA_VERSION - 1) -> None:
+    # RC-B: the validator now confirms the referenced backup file exists and is non-empty, so the
+    # receipt must point at a real (test) backup rather than a fabricated path.
+    backup = path.parent / "backup.sqlite"
+    backup.write_bytes(b"SQLite format 3\x00" + b"\x00" * 16)
     path.write_text(
         json.dumps(
             {
                 "generated_utc": "2026-07-04T00:00:00Z",
                 "schema_version": schema_version,
-                "backup_path": "/volume2/personal-assistant/app-support/db/backups/test.sqlite",
+                "backup_path": str(backup),
             }
         ),
         encoding="utf-8",
@@ -147,6 +151,49 @@ def test_schema_behind_with_flag_and_receipt_migrates(
     report = apply_startup_schema_policy(db)
     assert report["migration_performed"] is True
     assert report["schema_version"] == LATEST_SCHEMA_VERSION
+
+
+def test_receipt_with_absent_backup_is_rejected(tmp_path: Path) -> None:
+    # RC-B: the receipt validator now confirms the referenced backup exists and is non-empty, not just
+    # that the field is present.
+    from hb_assistant.store.startup_schema_policy import validate_startup_migration_backup_receipt
+
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "generated_utc": "2026-07-04T00:00:00Z",
+                "schema_version": LATEST_SCHEMA_VERSION - 1,
+                "backup_path": str(tmp_path / "does-not-exist.sqlite"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(StartupSchemaPolicyError) as exc:
+        validate_startup_migration_backup_receipt(receipt)
+    assert exc.value.reason == "backup_receipt_backup_absent"
+
+
+def test_receipt_with_empty_backup_is_rejected(tmp_path: Path) -> None:
+    # RC-B: an existing but ZERO-byte backup is also rejected.
+    from hb_assistant.store.startup_schema_policy import validate_startup_migration_backup_receipt
+
+    empty_backup = tmp_path / "empty.sqlite"
+    empty_backup.touch()
+    receipt = tmp_path / "receipt.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "generated_utc": "2026-07-04T00:00:00Z",
+                "schema_version": LATEST_SCHEMA_VERSION - 1,
+                "backup_path": str(empty_backup),
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(StartupSchemaPolicyError) as exc:
+        validate_startup_migration_backup_receipt(receipt)
+    assert exc.value.reason == "backup_receipt_backup_absent"
 
 
 def test_missing_db_fails_on_nas_runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

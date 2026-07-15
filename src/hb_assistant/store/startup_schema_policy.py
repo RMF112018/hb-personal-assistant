@@ -69,6 +69,39 @@ def validate_startup_migration_backup_receipt(receipt_path: Path) -> dict[str, A
                 reason="backup_receipt_incomplete",
                 details={"receipt_path": str(receipt_path), "missing_field": key},
             )
+    # RC-B: validate values, not merely presence, and confirm the referenced backup actually exists
+    # (a non-empty file). This is the strongest check achievable without the backup's own digest;
+    # full content/digest verification remains a NAS-side concern (see the receipt generator).
+    if not isinstance(payload["schema_version"], int) or payload["schema_version"] < 0:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt schema_version must be a non-negative integer",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    if not str(payload["generated_utc"]).strip():
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt generated_utc must be non-empty",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    backup_path = str(payload["backup_path"]).strip()
+    if not backup_path:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt backup_path must be non-empty",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    backup_file = Path(backup_path).expanduser()
+    try:
+        backup_ok = backup_file.is_file() and backup_file.stat().st_size > 0
+    except OSError:
+        backup_ok = False
+    if not backup_ok:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt references a missing or empty backup file",
+            reason="backup_receipt_backup_absent",
+            details={"receipt_path": str(receipt_path), "backup_path": backup_path},
+        )
     return payload
 
 
