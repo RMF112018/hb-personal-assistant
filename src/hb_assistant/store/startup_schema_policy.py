@@ -69,6 +69,39 @@ def validate_startup_migration_backup_receipt(receipt_path: Path) -> dict[str, A
                 reason="backup_receipt_incomplete",
                 details={"receipt_path": str(receipt_path), "missing_field": key},
             )
+    # RC-B: validate values, not merely presence, and confirm the referenced backup actually exists
+    # (a non-empty file). This is the strongest check achievable without the backup's own digest;
+    # full content/digest verification remains a NAS-side concern (see the receipt generator).
+    if not isinstance(payload["schema_version"], int) or payload["schema_version"] < 0:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt schema_version must be a non-negative integer",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    if not str(payload["generated_utc"]).strip():
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt generated_utc must be non-empty",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    backup_path = str(payload["backup_path"]).strip()
+    if not backup_path:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt backup_path must be non-empty",
+            reason="backup_receipt_invalid",
+            details={"receipt_path": str(receipt_path)},
+        )
+    backup_file = Path(backup_path).expanduser()
+    try:
+        backup_ok = backup_file.is_file() and backup_file.stat().st_size > 0
+    except OSError:
+        backup_ok = False
+    if not backup_ok:
+        raise StartupSchemaPolicyError(
+            "startup migration backup receipt references a missing or empty backup file",
+            reason="backup_receipt_backup_absent",
+            details={"receipt_path": str(receipt_path), "backup_path": backup_path},
+        )
     return payload
 
 
@@ -163,7 +196,36 @@ def apply_startup_schema_policy(db_path: str | Path) -> dict[str, Any]:
             "policy_reason": decision.reason,
         }
 
-    version = int(SQLiteMigrator(db_path=str(path)).apply())
+    # NF-F-001 (N-A1) / NF-AUD-004: a managed startup migration must carry an authorization minted
+    # from an ENFORCED capability. Two distinct migrate reasons map to two capabilities:
+    #  - ``schema_behind_operator_authorized`` (a behind managed-production DB) -> the STARTUP
+    #    capability, which re-verifies the operator flag and validates+binds the backup receipt.
+    #  - ``db_missing_dev_bootstrap`` (a fresh local DB on a non-NAS host; NAS db-missing already
+    #    fails closed in evaluate_startup_schema) -> the automatic LOCAL bootstrap capability (no
+    #    operator flag), which is scoped to MANAGED_LOCAL and returns ``None`` for a non-managed dev
+    #    target (self-heal). ``authorize_migration`` binds the chosen capability to the resolved
+    #    target and its device/inode.
+    from hb_assistant.store.migration_authorization import (
+        acquire_local_bootstrap_capability,
+        acquire_startup_capability,
+        authorize_migration,
+    )
+
+    operator_authorized = decision.reason == "schema_behind_operator_authorized"
+    capability = (
+        acquire_startup_capability() if operator_authorized else acquire_local_bootstrap_capability()
+    )
+    authorization = authorize_migration(
+        capability,
+        resolved_path=str(path),
+        expected_origin_version=decision.current_version,
+        target_version=decision.expected_version,
+    )
+    version = int(
+        SQLiteMigrator(db_path=str(path)).apply(
+            authorization=authorization, require_backup_receipt=operator_authorized
+        )
+    )
     return {
         "managed": True,
         "migrated": True,

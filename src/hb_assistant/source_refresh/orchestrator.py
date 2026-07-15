@@ -364,10 +364,17 @@ class SourceRefreshOrchestrator:
         # Operator decision: auto-migrate only under apply+confirm.
         if options.apply and options.confirm and not schema_ok:
             try:
-                SQLiteMigrator(self.db_path).apply()
+                # NF-F-001 (N-A5a): the refresh is an ordinary data path, not a migration-authority
+                # route. Self-heal only a non-managed dev/rehearsal/workspace DB; a behind managed
+                # DB is NOT migrated ambiently here — it degrades below and must be migrated via the
+                # authorized startup/admin route.
+                from hb_assistant.store.schema_readiness import self_heal_if_non_managed
+
+                before_version = current
+                self_heal_if_non_managed(self.db_path)
                 current = self._schema_version()
                 schema_ok = current >= LATEST_SCHEMA_VERSION
-                migrated = True
+                migrated = current > before_version
             except Exception as exc:  # noqa: BLE001
                 self._acc.degraded = True
                 self._acc.failures.append(
@@ -887,7 +894,12 @@ class SourceRefreshOrchestrator:
                 "reason": "raw_full_payload_freshness_missing",
             }
 
-        SQLiteMigrator(self.db_path).apply()
+        # NF-F-001 (N-A5b): ordinary projection path — never ambiently migrate a managed DB. Self-heal
+        # only a non-managed target; a behind managed DB is surfaced by the schema audit below (which
+        # degrades the run) rather than silently migrated on the projection path.
+        from hb_assistant.store.schema_readiness import self_heal_if_non_managed
+
+        self_heal_if_non_managed(self.db_path)
         schema = projection_schema_audit(db_path=self.db_path)
         base["projection_schema_audit"] = self._summarize_projection_schema_audit(schema)
         if not schema.get("ok"):

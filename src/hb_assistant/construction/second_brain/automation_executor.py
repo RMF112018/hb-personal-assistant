@@ -1885,7 +1885,7 @@ def build_duplicate_prevention_proof() -> dict[str, Any]:
 
     from hb_assistant.construction.store import ConstructionStore
     from hb_assistant.store.connection import get_connection, transaction
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     target_date = "2026-06-08"
     target_now = dt(2026, 6, 8, 11, 0, tzinfo=tz.utc)
@@ -1896,7 +1896,7 @@ def build_duplicate_prevention_proof() -> dict[str, Any]:
         locks = str(Path(td) / "locks")
 
         # pre-pop a prior successful run for dup detection (V29 table)
-        SQLiteMigrator(db).apply()
+        ensure_schema_ready(db)
         conn = get_connection(Path(db))
         prior_id = uuid.uuid4().hex
         with transaction(conn):

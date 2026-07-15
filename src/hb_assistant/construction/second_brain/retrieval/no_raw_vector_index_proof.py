@@ -266,12 +266,12 @@ def _non_vacuity_check() -> bool:
     text column and a temp evidence file, and confirm both scanners flag it."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     synthetic = "https://x.example/a" + "?sig=" + "Z" * 24  # signed-URL shape, runtime-assembled
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "plant.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         conn = sqlite3.connect(db)
         try:
             conn.execute(

@@ -42,7 +42,7 @@ from hb_assistant.construction.data_quality.safety import (
     _scan_table_contents,
 )
 from hb_assistant.store.connection import get_connection
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 from hb_assistant.store.procore_no_writeback_proof import _scan_text_for_secrets
 
 # The sanctioned model boundary: the only outbound external call in the second-brain runtime
@@ -262,7 +262,7 @@ def build_second_brain_no_writeback_proof(*, db_path: str | None = None) -> dict
     sha = _get_git_sha()
     # Ensure the V26 schema exists (idempotent, additive DDL only — the same posture every
     # second-brain module uses) so the guard-column probe is deterministic.
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     schema_version = _get_schema_version(db_path)
     conn = get_connection(db_path)
 
@@ -618,7 +618,7 @@ def build_phase_08c_no_writeback_no_raw_financial_output_proof(
     generated_utc = _now()
     repo_root = PathPolicy().resolve_repo_root()
     sha = _get_git_sha()
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     schema_version = _get_schema_version(db_path)
     conn = get_connection(db_path)
 

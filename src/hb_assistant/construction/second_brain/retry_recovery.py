@@ -24,7 +24,7 @@ from typing import Any
 from pydantic import BaseModel, field_validator
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from .automation_policy import load_phase_08b_automation_policy_seed
 from .run_registry import (
@@ -233,7 +233,7 @@ def record_retry_attempt(
     """Insert one metadata-only retry receipt (V30). Returns the ``retry_receipt_id`` or None."""
     if not emit:
         return None
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     retry_receipt_id = uuid.uuid4().hex
     now = datetime.now(timezone.utc).isoformat()
@@ -265,7 +265,7 @@ def read_latest_retry_receipts(
     *, db_path: str | None = None, limit: int = 50
 ) -> list[dict[str, Any]]:
     """Return the most recent retry receipts (metadata only)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         """
@@ -291,7 +291,7 @@ def _orphan_status() -> str:
 
 def _orphaned_run_ids(db_path: str | None) -> list[str]:
     """V29 registry rows left in the non-terminal orphan status (read-only)."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     cur = conn.execute(
         "SELECT run_registry_id FROM second_brain_run_registry WHERE status = ? "

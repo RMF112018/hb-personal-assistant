@@ -31,7 +31,7 @@ from pydantic import BaseModel, field_validator
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator, ensure_schema_ready
 
 from .automation_policy import load_phase_08b_automation_policy_seed
 from .daily_brief.output import resolve_brief_path
@@ -229,7 +229,7 @@ def _resolve_target_path(
 
 
 def _conn(db_path: str | None) -> Any:
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     return get_connection(Path(db_path) if db_path is not None else None)
 
 
@@ -315,7 +315,7 @@ def write_daily_brief_open_receipt(
     Local-only, additive. ``open_target`` is constrained to vault|html (DB CHECK); only a redacted
     path + a path HASH are stored (never raw content); guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     receipt_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):

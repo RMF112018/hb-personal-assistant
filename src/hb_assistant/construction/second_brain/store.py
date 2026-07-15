@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from .config import SecondBrainConfig
 from .contracts import load_phase_08a_contract
@@ -44,7 +44,7 @@ def write_config_receipt(
 
     Local-only, additive, metadata-only. All guard columns stay at 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V26 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V26 table exists (idempotent)
 
     receipt_id = uuid.uuid4().hex
     dependency_status_json = json.dumps(config.dependency_status(), sort_keys=True)
@@ -81,7 +81,7 @@ def write_agent_run_receipt(
     Local-only, additive, metadata-only (status + structured reason code + counts). The nine
     no-raw / no-writeback guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V28 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V28 table exists (idempotent)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):
         conn.execute(
@@ -118,7 +118,7 @@ def write_agent_model_receipt(
     Local-only, additive, metadata-only (content hashes + token counts + reason code; never the
     raw prompt/response). The nine no-raw / no-writeback guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V28 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V28 table exists (idempotent)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):
         conn.execute(

@@ -21,7 +21,6 @@ from typing import Any, Callable, Optional
 
 from hb_assistant.normalize.redaction import hash_value
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
 
 
 def _utc_now() -> str:
@@ -134,7 +133,13 @@ class ConstructionStore:
 
     def __init__(self, db_path: str | None = None) -> None:
         self._db_path = db_path
-        SQLiteMigrator(db_path).apply()
+        # NF-F-001 (N-A4): the constructor must NOT ambiently migrate a managed database. It asserts
+        # read-only readiness for a managed/local/snapshot target (raising with operator guidance
+        # when behind) and only self-heals a non-managed dev/rehearsal/workspace DB (RC-1), so
+        # ordinary analytics requests can never migrate the managed DB by merely constructing a store.
+        from hb_assistant.store.schema_readiness import assert_ready_for_use
+
+        assert_ready_for_use(db_path)
 
     # --- source resolutions -------------------------------------------------
 

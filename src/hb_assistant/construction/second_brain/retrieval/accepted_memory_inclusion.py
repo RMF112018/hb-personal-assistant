@@ -109,7 +109,7 @@ def build_accepted_memory_loader_proof(
 ) -> dict[str, Any]:
     """Prove an accepted item appears in the deterministic reader, reviewed-memory loader, and the
     approved-source manifest, while pending/rejected/superseded items are excluded."""
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     from ..memory.store import write_memory_item
     from .memory_loader import build_reviewed_memory_loader_report, load_reviewed_memory_nodes
@@ -118,7 +118,7 @@ def build_accepted_memory_loader_proof(
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "loader.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         write_memory_item(_accepted_item("acc-mem-1"), db_path=db)
         for mid, status in (
             ("pend-1", "pending_review"),

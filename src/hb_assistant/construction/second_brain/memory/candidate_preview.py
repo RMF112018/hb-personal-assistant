@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from hb_assistant.config.path_policy import PathPolicy
+from hb_assistant.store.migrator import ensure_schema_ready
 
 from ..financial_review_routing import _assert_no_raw
 
@@ -671,7 +672,6 @@ def build_memory_candidate_preview_proof(
     preview-only and never accepted, no accepted memory is written, and evidence is metadata-only."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
 
     seed = load_memory_candidate_preview_seed()
     determination_terms = [str(t).lower() for t in seed.get("determination_terms", [])]
@@ -679,7 +679,7 @@ def build_memory_candidate_preview_proof(
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "mcp.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         _seed_proof_db(db)
 
         ltm_before = _ltm_count(db)
@@ -952,8 +952,6 @@ def build_memory_candidate_stage_proof(
     import sqlite3
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
-
     from .acceptance import accept_memory_candidate
     from .store import read_memory_candidate
 
@@ -986,7 +984,7 @@ def build_memory_candidate_stage_proof(
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "stage.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
 
         preview = build_memory_candidate_preview(db, write_evidence=False)
         tier1 = next((c for c in preview["candidates"] if int(c["review_tier"]) == 1), None)

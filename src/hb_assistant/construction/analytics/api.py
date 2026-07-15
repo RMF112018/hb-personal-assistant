@@ -4403,7 +4403,22 @@ def create_app(*, db_path: str | None = None) -> Any:
         schema_db = _admin_schema_db_path()
         before = _schema_version(schema_db)
         physical_before = _schedule_v65_physical_status(schema_db)
-        after = int(SQLiteMigrator(db_path=schema_db).apply())
+        # NF-F-001 (N-A2) / NF-AUD-004: the admin migrate route mints an authorization from an
+        # ENFORCED ADMIN capability. ``acquire_admin_capability`` re-verifies the admin role itself
+        # (raising if not admin), so the authority is not merely caller-asserted; ``authorize_migration``
+        # binds it to the resolved target + device/inode, returning ``None`` for a non-managed target.
+        from hb_assistant.store.migration_authorization import (
+            acquire_admin_capability,
+            authorize_migration,
+        )
+
+        _migrate_auth = authorize_migration(
+            acquire_admin_capability(role),
+            resolved_path=str(schema_db),
+            expected_origin_version=before,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
+        after = int(SQLiteMigrator(db_path=schema_db).apply(authorization=_migrate_auth))
         physical_after = _schedule_v65_physical_status(schema_db)
         counts = _admin_schema_object_counts(schema_db)
         return {

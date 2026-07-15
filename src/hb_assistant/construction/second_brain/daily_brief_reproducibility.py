@@ -367,12 +367,12 @@ def build_daily_brief_reproducibility_proof(
     DB is never touched)."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     if db_path is None:
         with tempfile.TemporaryDirectory() as tmp:
             gate_db = str(Path(tmp) / "gate.sqlite")
-            SQLiteMigrator(db_path=gate_db).apply()
+            ensure_schema_ready(gate_db)
             result = build_daily_brief_reproducibility(gate_db)
     else:
         result = build_daily_brief_reproducibility(db_path)

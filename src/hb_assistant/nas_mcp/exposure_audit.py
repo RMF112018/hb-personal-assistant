@@ -96,11 +96,11 @@ def build_exposure_audit(db_path: str | None = None) -> dict[str, Any]:
     (never mutates production). Returns a JSON-serialisable dict with the per-tool matrix + summary."""
     tmp: tempfile.TemporaryDirectory[str] | None = None
     if db_path is None:
-        from ..store.migrator import SQLiteMigrator  # noqa: PLC0415
+        from ..store.migrator import ensure_schema_ready  # noqa: PLC0415
 
         tmp = tempfile.TemporaryDirectory(prefix="n8c22-audit-")
         db_path = str(Path(tmp.name) / "db.sqlite")
-        SQLiteMigrator(db_path=db_path).apply()
+        ensure_schema_ready(db_path)
 
     try:
         broker, tools = _build_surface(db_path)

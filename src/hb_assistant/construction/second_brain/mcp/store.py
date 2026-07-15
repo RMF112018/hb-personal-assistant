@@ -6,7 +6,7 @@ twenty ``CHECK(col = 0)`` no-raw / no-writeback / no-direct-api / no-determinati
 columns at the DB layer; these writers leave every guard at 0 and persist only metadata
 (hashes, counts, transport, redacted command, policy/schema version, evidence path).
 
-Reuses the canonical store idiom (``SQLiteMigrator().apply()`` + ``get_connection`` +
+Reuses the canonical store idiom (``ensure_schema_ready()`` + ``get_connection`` +
 ``transaction``), mirroring ``second_brain/store.py``.
 """
 
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, ensure_schema_ready
 
 
 def _now() -> str:
@@ -37,7 +37,7 @@ def write_mcp_server_config_snapshot(
 
     Local-only, additive, metadata-only. All guard columns stay at 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     snapshot_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -71,7 +71,7 @@ def write_mcp_claude_desktop_config_preview(
     Persists only the redacted command, the argv list, and the env *key names* (never
     env values) plus a content hash. Local-only, additive, metadata-only.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     preview_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -113,7 +113,7 @@ def write_mcp_resource_registry_snapshot(
 
     Local-only, additive, metadata-only (count + hash + versions). All guard columns 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     snapshot_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -149,7 +149,7 @@ def write_mcp_tool_registry_snapshot(
 
     Local-only, additive, metadata-only (counts + hash + versions). All guard columns 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     snapshot_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -188,7 +188,7 @@ def write_mcp_permission_audit_run(
     ``checks_json`` is the metadata-only check report (names/booleans/short reason codes) —
     never raw content. All guard columns 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     audit_run_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -225,7 +225,7 @@ def write_mcp_prompt_registry_snapshot(
 
     Local-only, additive, metadata-only (count + hash + versions). All guard columns 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     snapshot_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -270,7 +270,7 @@ def write_mcp_tool_call_receipt(
     Persists hashes/counts/classification only — never raw arguments or results. All
     twenty guard columns stay at 0 (DB CHECK enforced).
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     receipt_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
@@ -320,7 +320,7 @@ def write_mcp_denial_receipt(
     requested content. ``decision`` is pinned to ``denied`` (DB CHECK). All twenty guard
     columns stay at 0.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V37 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V37 table exists (idempotent)
 
     receipt_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)

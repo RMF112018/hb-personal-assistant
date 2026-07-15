@@ -8,13 +8,32 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from .connection import get_connection, open_connection, transaction
+
+if TYPE_CHECKING:
+    from .migration_authorization import MigrationAuthorization, OpenedDatabaseIdentity
 
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
 LATEST_SCHEMA_VERSION = 127
+
+
+def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
+    """Ordinary-caller schema readiness (NF-F-001 / NF-AUD-003): the read-only alternative to
+    ``SQLiteMigrator(db_path).apply()`` for code that merely needs the schema to be present.
+
+    For a MANAGED target (production or local) this NEVER migrates — it performs a read-only readiness
+    assertion, raising ``SchemaVersionBehind`` / ``SchemaStructureInvalid`` with operator guidance when
+    behind. A non-managed dev/rehearsal/workspace target self-heals ambiently (RC-1). Returns the
+    schema version. Migration of a managed database happens only through the authorized routes
+    (operator startup / admin migrate / automatic local app bootstrap), never here.
+    """
+    from .schema_readiness import assert_ready_for_use  # noqa: PLC0415
+
+    return assert_ready_for_use(db_path, require_schedule_schema=require_schedule_schema)
 
 
 class StaffingMigrationError(RuntimeError):
@@ -7635,9 +7654,130 @@ class SQLiteMigrator:
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
-    def apply(self) -> int:
-        """Apply all pending migrations (idempotent). Returns current schema version."""
-        conn = get_connection(self._db_path)
+    def apply(
+        self,
+        *,
+        conn: sqlite3.Connection | None = None,
+        authorization: MigrationAuthorization | None = None,
+        require_backup_receipt: bool = False,
+    ) -> int:
+        """Apply all pending migrations (idempotent). Returns current schema version.
+
+        NF-F-001 migration-ownership guard: every migration of a managed database MUST carry an
+        explicit ``authorization`` bound to the actual opened target; it is validated (and, for a
+        borrowed connection, its transaction state checked) BEFORE any DDL. When ``conn`` is
+        provided the caller owns it (it must have no pending transaction — RC-3); otherwise apply()
+        opens and deterministically closes its own connection.
+        """
+        if conn is not None:
+            return self._apply_on_connection(
+                conn, authorization, require_backup_receipt, owned=False
+            )
+        owned_conn = get_connection(self._db_path)
+        try:
+            return self._apply_on_connection(
+                owned_conn, authorization, require_backup_receipt, owned=True
+            )
+        finally:
+            # Deterministic WAL-connection closure: a left-open WAL handle only checkpoints on GC,
+            # non-deterministically flushing -wal into the main file and perturbing byte-compare
+            # readers. Close the owned connection exactly once, here.
+            owned_conn.close()
+
+    def _apply_on_connection(
+        self,
+        conn: sqlite3.Connection,
+        authorization: MigrationAuthorization | None,
+        require_backup_receipt: bool,
+        *,
+        owned: bool,
+    ) -> int:
+        """Establish the opened-target identity (retaining a read-only guard FD) and run the guarded
+        migration, deterministically closing the guard FD on every path (NF-AUD-005)."""
+        import os as _os  # noqa: PLC0415
+
+        from .database_identity import describe_opened_database  # noqa: PLC0415
+
+        opened = describe_opened_database(conn, self._db_path)
+        try:
+            return self._run_guarded_migration(
+                conn, opened, authorization, require_backup_receipt, owned=owned
+            )
+        finally:
+            if opened.guard_fd is not None:
+                _os.close(opened.guard_fd)
+
+    def _run_guarded_migration(
+        self,
+        conn: sqlite3.Connection,
+        opened: "OpenedDatabaseIdentity",
+        authorization: MigrationAuthorization | None,
+        require_backup_receipt: bool,
+        *,
+        owned: bool,
+    ) -> int:
+        """Validate authorization against the opened identity, run the migration body in one atomic
+        transaction, and revalidate identity at the commit boundary.
+
+        NF-AUD-003: there is NO managed at-head bypass — every managed invocation is validated
+        (ordinary callers use the read-only readiness API instead of calling ``apply()``). RC-3: a
+        borrowed connection already in a transaction is refused so apply() is the exclusive
+        commit/rollback owner.
+        """
+        from .errors import MigrationAuthorizationError, MigrationAuthorizationInvalid  # noqa: PLC0415
+        from .migration_audit import emit_migration_event  # noqa: PLC0415
+        from .migration_authorization import (  # noqa: PLC0415
+            assert_origin_version,
+            revalidate_opened_identity,
+            validate_authorization,
+        )
+
+        _op = authorization.operation.value if authorization is not None else None
+        origin = self._current_version_on(conn)
+
+        try:
+            validate_authorization(
+                authorization, opened, require_backup_receipt=require_backup_receipt
+            )
+        except MigrationAuthorizationError as exc:
+            emit_migration_event(
+                "migration_rejected",
+                storage_class=opened.storage_class.value,
+                operation=_op,
+                outcome="rejected",
+                reason=getattr(exc, "reason", type(exc).__name__),
+                origin_version=origin,
+                target_version=LATEST_SCHEMA_VERSION,
+            )
+            raise
+
+        if not owned and conn.in_transaction:
+            emit_migration_event(
+                "migration_rejected",
+                storage_class=opened.storage_class.value,
+                operation=_op,
+                outcome="rejected",
+                reason="borrowed_connection_in_transaction",
+            )
+            raise MigrationAuthorizationInvalid(
+                "apply(conn=...) requires a connection with no pending transaction so apply() is "
+                "the exclusive commit/rollback owner for the migration (RC-3)"
+            )
+
+        if authorization is not None:
+            assert_origin_version(authorization, origin)
+
+        emit_migration_event(
+            "migration_started",
+            storage_class=opened.storage_class.value,
+            operation=_op,
+            actor_class=(authorization.actor_class if authorization is not None else None),
+            route_class=(authorization.route_class if authorization is not None else None),
+            outcome="started",
+            origin_version=origin,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
+
         with transaction(conn):
             # Ensure migrations table exists (first statement is self-contained)
             for stmt in self.V1_STATEMENTS:
@@ -9296,15 +9436,27 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
+            # drifted (path swapped to a different inode) before this single migration transaction
+            # commits. A failure here raises and rolls the entire migration back.
+            revalidate_opened_identity(opened)
 
-        # Return latest version, then release the migration connection. get_connection's
-        # contract is that the caller closes it; left open, this WAL connection is only
-        # checkpointed when Python GC finalizes it, which non-deterministically flushes the
-        # -wal into the main DB file and perturbs read-only callers that byte-compare the file.
+
+        # Return latest version. Connection closure is owned by apply(): an owned connection is
+        # closed exactly once in apply()'s finally; a borrowed connection stays the caller's to
+        # close. Never close here, so a borrowed connection remains usable and byte-compare readers
+        # are not perturbed by a non-deterministic GC-time WAL checkpoint.
         cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         version = int(row[0]) if row and row[0] is not None else 0
-        conn.close()
+        emit_migration_event(
+            "migration_completed",
+            storage_class=opened.storage_class.value,
+            operation=_op,
+            outcome="completed",
+            origin_version=origin,
+            target_version=version,
+        )
         return version
 
     @staticmethod
@@ -10249,4 +10401,15 @@ class SQLiteMigrator:
                 return int(row[0]) if row and row[0] is not None else 0
         except sqlite3.OperationalError:
             # Table does not exist yet
+            return 0
+
+    @staticmethod
+    def _current_version_on(conn: sqlite3.Connection) -> int:
+        """Read the applied schema version from an already-open connection (0 if the ledger is
+        absent). Used to bind an authorization's declared origin to the DB's actual version before
+        any migration DDL."""
+        try:
+            row = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+            return int(row[0]) if row and row[0] is not None else 0
+        except sqlite3.OperationalError:
             return 0

@@ -75,7 +75,13 @@ def main(
     ),
 ) -> None:
     """HB Personal Assistant CLI."""
-    pass  # pragma: no cover
+    # NF-F-001 (operator RC-1): automatic local app/CLI bootstrap. Self-heals ONLY the canonical
+    # MANAGED_LOCAL database at entry — replacing the removed ambient constructor migration — so
+    # normal Mac CLI stays self-healing. A no-op for NAS/managed-production, dev, and explicit-path
+    # targets, and under pytest (never touches the real developer DB in tests). Best-effort.
+    from hb_assistant.store.schema_readiness import bootstrap_managed_local_if_behind
+
+    bootstrap_managed_local_if_behind()
 
 
 app.add_typer(auth_mod.app, name="auth")

@@ -2185,16 +2185,25 @@ def index_status(
 
 
 def _validate_schema() -> dict[str, Any]:
-    # apply() is idempotent and matches what every other CLI command implicitly
-    # does when it instantiates ConstructionStore(). Treats schema readiness as
-    # part of the validate health check.
-    v = SQLiteMigrator().apply()
-    ok = v >= 4
+    # NF-F-001: a health check must NOT ambiently migrate the managed DB. assert_ready_for_use()
+    # self-heals only a non-managed dev/rehearsal/workspace DB and performs a read-only readiness
+    # assertion for a managed target — reported here as not-ok (with guidance) rather than migrated.
+    from hb_assistant.store.errors import SchemaReadinessError
+    from hb_assistant.store.schema_readiness import assert_ready_for_use, read_schema_version
+
+    try:
+        v = assert_ready_for_use()
+        ok = v >= 4
+        err = None if ok else f"schema below v4 (got {v})"
+    except SchemaReadinessError as exc:
+        v = read_schema_version()
+        ok = False
+        err = str(exc)
     return {
         "name": "schema",
         "ok": ok,
         "detail": f"schema_version={v}",
-        "error": None if ok else f"schema below v4 (got {v})",
+        "error": err,
     }
 
 

@@ -33,7 +33,7 @@ from pydantic import BaseModel, field_validator
 
 from hb_assistant.config.path_policy import PathPolicy
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator, ensure_schema_ready
 
 from .automation_policy import load_phase_08b_automation_policy_seed
 from .daily_brief.models import HANDOFF_SECTIONS
@@ -172,7 +172,7 @@ def _select_run(runs: list[dict[str, Any]], brief_date: str | None) -> dict[str,
 
 def _prior_delivered(brief_run_id: str | None, brief_date: str | None, db_path: str | None) -> bool:
     """True when a V31 receipt already records a completed delivery for this brief."""
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     conn = get_connection(Path(db_path) if db_path is not None else None)
     if brief_run_id is not None:
         row = conn.execute(
@@ -207,7 +207,7 @@ def write_daily_brief_delivery_receipt(
     Local-only, additive. ``delivery_channel`` is fixed to ``obsidian_vault`` (DB CHECK enforces
     it); the no-raw / no-writeback guard columns stay at 0 via DB CHECKs.
     """
-    SQLiteMigrator(db_path).apply()  # ensure V31 table exists (idempotent)
+    ensure_schema_ready(db_path)  # ensure V31 table exists (idempotent)
     receipt_id = uuid.uuid4().hex
     conn = get_connection(Path(db_path) if db_path is not None else None)
     with transaction(conn):

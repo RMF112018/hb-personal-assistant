@@ -532,14 +532,14 @@ def build_memory_acceptance_proof(
     """Fail-closed proof of the explicit acceptance workflow over a deterministic fixture."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     from ..retrieval.memory_loader import load_reviewed_memory_nodes
     from .store import read_memory_candidate
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "acc.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
         ids = _seed_proof_db(db)
 
         # dry-run (no confirm) persists nothing

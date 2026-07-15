@@ -411,7 +411,7 @@ def build_memory_quality_controls_proof(
     """Fail-closed proof of the five quality controls over a deterministic fixture."""
     import tempfile
 
-    from hb_assistant.store.migrator import SQLiteMigrator
+    from hb_assistant.store.migrator import ensure_schema_ready
 
     from ..retrieval.memory_loader import load_reviewed_memory_nodes
 
@@ -419,7 +419,7 @@ def build_memory_quality_controls_proof(
 
     with tempfile.TemporaryDirectory() as tmp:
         db = str(Path(tmp) / "qc.sqlite")
-        SQLiteMigrator(db_path=db).apply()
+        ensure_schema_ready(db)
 
         # (1) duplicate detection: two equivalent accepted items share a fingerprint.
         _seed_accepted(db, "mem-orig", "Submittal turnaround is tracked locally.")

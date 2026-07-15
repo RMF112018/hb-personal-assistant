@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from hb_assistant.store.connection import get_connection, transaction
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import ensure_schema_ready
 
 if TYPE_CHECKING:
     from .models import (
@@ -34,7 +34,7 @@ def _utc() -> str:
 
 
 def _conn(db_path: str | None):  # type: ignore[no-untyped-def]
-    SQLiteMigrator(db_path).apply()
+    ensure_schema_ready(db_path)
     return get_connection(Path(db_path) if db_path is not None else None)
 
 

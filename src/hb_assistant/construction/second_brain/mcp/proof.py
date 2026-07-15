@@ -14,6 +14,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from hb_assistant.store.migrator import ensure_schema_ready
+
 from ..financial_review_routing import _assert_no_raw
 from .broker import (
     REASON_ACTION_DENIED,
@@ -840,11 +842,11 @@ def _scan_no_raw(label: str, payload: Any) -> dict[str, Any]:
 
 def _receipts_no_raw(*, db_path: str | None = None) -> dict[str, Any]:
     """Structurally prove the receipt tables expose no raw content (self-contained temp DB)."""
-    from hb_assistant.store.migrator import SQLiteMigrator  # noqa: PLC0415
+    from hb_assistant.store.migrator import ensure_schema_ready  # noqa: PLC0415
 
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "receipts.db")
-        SQLiteMigrator(db).apply()
+        ensure_schema_ready(db)
         conn = sqlite3.connect(db)
         call_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
@@ -1052,11 +1054,10 @@ def build_no_raw_mcp_access_proof(
 
 def _receipts_no_writeback(*, db_path: str | None = None) -> dict[str, Any]:
     """Structurally prove the receipt tables record no writeback (self-contained temp DB)."""
-    from hb_assistant.store.migrator import SQLiteMigrator  # noqa: PLC0415
 
     with tempfile.TemporaryDirectory() as td:
         db = str(Path(td) / "receipts.db")
-        SQLiteMigrator(db).apply()
+        ensure_schema_ready(db)
         conn = sqlite3.connect(db)
         call_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(second_brain_mcp_tool_call_receipts)")
