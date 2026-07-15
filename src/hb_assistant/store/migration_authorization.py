@@ -48,13 +48,15 @@ class MigrationOperation(str, Enum):
     ADMIN = "admin"
     LOCAL_REFRESH = "local_refresh"
     LIVE_REFRESH = "live_refresh"
+    LOCAL_APP_BOOTSTRAP = "local_app_bootstrap"
     WORKSPACE_INITIALIZE = "workspace_initialize"
     REHEARSAL = "rehearsal"
     DEVELOPMENT = "development"
 
 
 # Operations permitted per storage class. Managed production is reachable only by genuine migration
-# operations; workspace-init can ONLY target isolated workspace; snapshot never migrates.
+# operations; managed-local by the automatic app/CLI-entry bootstrap; workspace-init can ONLY target
+# isolated workspace; snapshot never migrates.
 _ALLOWED_OPERATIONS: dict[DatabaseStorageClass, frozenset[MigrationOperation]] = {
     DatabaseStorageClass.MANAGED_PRODUCTION: frozenset(
         {
@@ -63,6 +65,9 @@ _ALLOWED_OPERATIONS: dict[DatabaseStorageClass, frozenset[MigrationOperation]] =
             MigrationOperation.LOCAL_REFRESH,
             MigrationOperation.LIVE_REFRESH,
         }
+    ),
+    DatabaseStorageClass.MANAGED_LOCAL: frozenset(
+        {MigrationOperation.LOCAL_APP_BOOTSTRAP, MigrationOperation.ADMIN}
     ),
     DatabaseStorageClass.ISOLATED_WORKSPACE: frozenset({MigrationOperation.WORKSPACE_INITIALIZE}),
     DatabaseStorageClass.DISPOSABLE_REHEARSAL: frozenset({MigrationOperation.REHEARSAL}),
@@ -247,6 +252,34 @@ def issue_managed_authorization(
         expected_origin_version=expected_origin_version,
         target_version=target_version,
         backup_receipt=backup_receipt,
+        issued_at=_now(),
+        expires_at=None,
+    )
+
+
+def issue_local_app_bootstrap_authorization(
+    *, resolved_path: str, execution_id: str, expected_origin_version: int, target_version: int
+) -> MigrationAuthorization:
+    """Mint the automatic app/CLI-entry bootstrap authorization for the MANAGED_LOCAL (Mac
+    app-support canonical) DB. Fails closed unless the path classifies EXACTLY as MANAGED_LOCAL — it
+    can never authorize the NAS managed DB, a snapshot, a workspace DB, or an unknown/blocked path.
+    """
+    from hb_assistant.config.db_storage_guard import classify_storage_class  # noqa: PLC0415
+
+    if classify_storage_class(resolved_path) is not DatabaseStorageClass.MANAGED_LOCAL:
+        raise MigrationStorageClassDenied(
+            "local-app bootstrap authorization refused: target is not the canonical local app DB"
+        )
+    return _issue(
+        authorization_id=_new_id("lauth"),
+        execution_id=execution_id,
+        actor_class="local_app",
+        route_class="app_entry_bootstrap",
+        operation=MigrationOperation.LOCAL_APP_BOOTSTRAP,
+        target_identity=_target_for(resolved_path, DatabaseStorageClass.MANAGED_LOCAL),
+        expected_origin_version=expected_origin_version,
+        target_version=target_version,
+        backup_receipt=None,
         issued_at=_now(),
         expires_at=None,
     )

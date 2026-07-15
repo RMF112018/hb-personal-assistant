@@ -10,6 +10,8 @@ managed production.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from hb_assistant.config import db_storage_guard as g
@@ -68,3 +70,34 @@ def test_network_and_volumes_paths_blocked(monkeypatch):
     monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
     assert g.classify_storage_class("/Volumes/share/db.sqlite") == SC.BLOCKED
     assert g.classify_storage_class("smb://server/db.sqlite") == SC.BLOCKED
+
+
+def test_mac_managed_path_is_managed_local(monkeypatch):
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    mac = g._mac_managed_db_path()
+    assert g.classify_storage_class(mac) == SC.MANAGED_LOCAL
+    # ... and never managed_production (that is the NAS canonical DB only).
+    assert g.classify_storage_class(mac) is not SC.MANAGED_PRODUCTION
+
+
+def test_temp_fixture_is_disposable_rehearsal(monkeypatch, tmp_path):
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    assert g.classify_storage_class(str(tmp_path / "fixture.sqlite")) == SC.DISPOSABLE_REHEARSAL
+
+
+def test_unknown_local_path_is_blocked_not_dev(monkeypatch):
+    # EXPLICIT_DEVELOPMENT is never inferred from a path merely being local (fail closed).
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    monkeypatch.delenv("HB_ASSISTANT_DEV_DB", raising=False)
+    assert g.classify_storage_class(str(Path.home() / "random_local.sqlite")) == SC.BLOCKED
+
+
+def test_explicit_dev_db_requires_explicit_selection(monkeypatch):
+    monkeypatch.delenv("HB_NAS_RUNTIME", raising=False)
+    # A non-temp local path (temp roots classify as DISPOSABLE_REHEARSAL before the dev check).
+    dev = Path.home() / "hbdev_explicitly_selected.sqlite"
+    # Not selected -> blocked; explicitly selected via env -> explicit development.
+    monkeypatch.delenv("HB_ASSISTANT_DEV_DB", raising=False)
+    assert g.classify_storage_class(str(dev)) == SC.BLOCKED
+    monkeypatch.setenv("HB_ASSISTANT_DEV_DB", str(dev))
+    assert g.classify_storage_class(str(dev)) == SC.EXPLICIT_DEVELOPMENT

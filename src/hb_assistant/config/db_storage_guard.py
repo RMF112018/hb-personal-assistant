@@ -39,11 +39,12 @@ class DatabaseStorageClass(str, Enum):
     workspace- or snapshot-shaped path can never be authorized as managed production.
     """
 
-    MANAGED_PRODUCTION = "managed_production"
+    MANAGED_PRODUCTION = "managed_production"  # NAS canonical DB — strict operator authorization
+    MANAGED_LOCAL = "managed_local"  # Mac app-support canonical DB — auto local-bootstrap at entry
     ISOLATED_WORKSPACE = "isolated_workspace"
     READ_ONLY_SNAPSHOT = "read_only_snapshot"
     DISPOSABLE_REHEARSAL = "disposable_rehearsal"
-    EXPLICIT_DEVELOPMENT = "explicit_development"
+    EXPLICIT_DEVELOPMENT = "explicit_development"  # ONLY an explicitly-selected dev DB — never inferred
     BLOCKED = "blocked"
 
 
@@ -231,23 +232,40 @@ def classify_storage_class(db_path: str | Path) -> DatabaseStorageClass:
     assert resolved is not None
 
     # Exact-path equality against the configured roots (import workspace lazily to avoid the
-    # store.workspace -> migrator -> connection -> db_storage_guard import cycle).
+    # store.workspace -> migrator -> connection -> db_storage_guard import cycle). Managed classes
+    # are matched FIRST so a dev/rehearsal path can never shadow a managed target.
     from hb_assistant.store.workspace import workspace_db_path  # noqa: PLC0415
 
-    if _same_path(resolved, nas_default_db_path()) or _same_path(resolved, _mac_managed_db_path()):
+    if _same_path(resolved, nas_default_db_path()):
         return DatabaseStorageClass.MANAGED_PRODUCTION
+    if _same_path(resolved, _mac_managed_db_path()):
+        return DatabaseStorageClass.MANAGED_LOCAL
     if _same_path(resolved, workspace_db_path()):
         return DatabaseStorageClass.ISOLATED_WORKSPACE
     if _same_path(resolved, snapshot_db_path()):
         return DatabaseStorageClass.READ_ONLY_SNAPSHOT
-    if is_under_clean_db_copy(resolved):
+    if is_under_clean_db_copy(resolved) or _is_temp_fixture(resolved):
         return DatabaseStorageClass.DISPOSABLE_REHEARSAL
 
-    # Under NAS runtime nothing outside the exact managed/workspace/snapshot roots is a legitimate
-    # managed target — fail closed rather than infer a class.
-    if is_nas_runtime():
-        return DatabaseStorageClass.BLOCKED
+    # EXPLICIT_DEVELOPMENT is NEVER inferred merely because a path is local — it must be the DB the
+    # operator explicitly selected via HB_ASSISTANT_DEV_DB (exact match).
+    dev = os.environ.get("HB_ASSISTANT_DEV_DB", "").strip()
+    if dev and _same_path(resolved, Path(dev)):
+        return DatabaseStorageClass.EXPLICIT_DEVELOPMENT
 
-    # Off-NAS: any other allowed local path is explicit development (never managed — managed was
-    # matched above by exact path, so this branch cannot be the managed DB).
-    return DatabaseStorageClass.EXPLICIT_DEVELOPMENT
+    # Anything else fails closed — no broad local exception that could become an authorization bypass.
+    return DatabaseStorageClass.BLOCKED
+
+
+def _is_temp_fixture(resolved: Path) -> bool:
+    """True when ``resolved`` lives under a system temp root (test/rehearsal fixtures). Bounded — not
+    a general 'any local path' rule."""
+    import tempfile  # noqa: PLC0415
+
+    roots = {"/tmp", "/private/tmp", "/private/var/folders", "/var/folders"}
+    try:
+        roots.add(str(Path(tempfile.gettempdir()).resolve()))
+    except Exception:
+        pass
+    rs = str(resolved)
+    return any(rs == r or rs.startswith(r + "/") for r in roots)
