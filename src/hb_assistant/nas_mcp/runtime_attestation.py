@@ -15,6 +15,7 @@ from .broker import runtime_commit
 from .capability_registry import (
     MATRIX_SHA256,
     definitions_for_profile,
+    direct_names_for_profile,
     gateway_names_for_profile,
     resolve_profile,
 )
@@ -212,7 +213,12 @@ def _build_runtime_attestation_body(config: NasMcpConfig) -> dict[str, Any]:
     commit = runtime_commit()
     broker, live_tools = _build_surface_for_config(config)
     selected_profile = resolve_profile(getattr(config, "capability_profile", None))
-    profile_definitions = definitions_for_profile(selected_profile)
+    direct_names = direct_names_for_profile(selected_profile)
+    profile_definitions = tuple(
+        item
+        for item in definitions_for_profile(selected_profile)
+        if item.registered_name in direct_names
+    )
     gateway = gateway_names_for_profile(selected_profile)
     surface = build_live_tool_surface(config)
     schema_index = live_tool_schema_index()

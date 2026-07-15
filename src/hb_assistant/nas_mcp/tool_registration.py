@@ -5,21 +5,23 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+from pathlib import Path
 from typing import Any
 
 from mcp.types import ToolAnnotations
 
-from .capability_registry import (
-    CapabilityProfile,
-    definitions_for_profile,
-    gateway_names_for_profile,
-    resolve_profile,
-)
 from .broker import (
     ASSISTANT_TOOL_GROUPS,
     DENIED_TOOL_NAMES,
     NasMcpBroker,
     assistant_client_exposure_status,
+)
+from .capability_registry import (
+    CapabilityProfile,
+    definitions_for_profile,
+    direct_names_for_profile,
+    gateway_names_for_profile,
+    resolve_profile,
 )
 from .client_output_tools import ALL_PA_OUTPUT_TOOLS
 from .obsidian_adapter import NAS_OBSIDIAN_BLOCKED, list_nas_obsidian_tool_names
@@ -50,7 +52,7 @@ from .profile import (
 
 # N8C-22 client-exposure bridge helper tools. NOT part of the canonical assistant inventory — they are
 # read-only meta/gateway helpers named ``hb_assistant_*`` (never ``assistant_*``) so they stay outside
-# the exact-78 inventory invariant and the ``assistant_``-prefixed finality guard. Names carry no
+# the profile-derived assistant inventory and the ``assistant_``-prefixed finality guard. Names carry no
 # finality/write verb (catalog / tool_help / tool_query).
 CLIENT_BRIDGE_HELPER_TOOLS = (
     "hb_assistant_catalog",
@@ -285,7 +287,7 @@ def _stamp_tool_annotations(mcp: Any) -> None:
 
 
 class _ProfileFilteredMcp:
-    """Registration view that exposes only the immutable profile membership set."""
+    """Registration view that exposes only the profile's explicit direct set."""
 
     def __init__(self, mcp: Any, allowed_names: frozenset[str]) -> None:
         self._mcp = mcp
@@ -306,13 +308,35 @@ class _ProfileFilteredMcp:
         return decorate
 
 
-def _validate_registered_schema_bindings(profile: CapabilityProfile) -> None:
-    expected = {item.registered_name: item for item in definitions_for_profile(profile)}
+def registered_tool_binding_map(mcp: Any) -> dict[str, Any]:
+    """Actual FastMCP registered-name to callable map."""
+    manager = getattr(mcp, "_tool_manager", None)
+    lister = getattr(manager, "list_tools", None)
+    if not callable(lister):
+        return {}
+    bindings: dict[str, Any] = {}
+    for tool in lister():
+        name = str(getattr(tool, "name", ""))
+        fn = getattr(tool, "fn", None)
+        if not name or not callable(fn) or name in bindings:
+            raise RuntimeError(f"invalid registered callable binding: {name or '<missing>'}")
+        bindings[name] = fn
+    return bindings
+
+
+def _validate_registered_schema_bindings(mcp: Any, profile: CapabilityProfile) -> None:
+    registry_definitions = {item.registered_name: item for item in definitions_for_profile(profile)}
+    expected_names = set(direct_names_for_profile(profile))
+    expected = {name: registry_definitions[name] for name in expected_names}
     actual = live_tool_schema_index()
     missing = sorted(set(expected) - set(actual))
     extra = sorted(set(actual) - set(expected))
     if missing or extra:
         raise RuntimeError(f"capability registration mismatch: missing={missing}; extra={extra}")
+    bindings = registered_tool_binding_map(mcp)
+    if set(bindings) != expected_names:
+        raise RuntimeError("registered callable binding set does not match direct profile set")
+    callable_owners: dict[int, str] = {}
     for name, schema in actual.items():
         definition = expected.get(name)
         if definition is None:
@@ -321,6 +345,21 @@ def _validate_registered_schema_bindings(profile: CapabilityProfile) -> None:
         digest = hashlib.sha256(payload.encode()).hexdigest()
         if digest != definition.schema_sha256:
             raise RuntimeError(f"capability schema mismatch: {name}:{digest}")
+        fn = bindings[name]
+        owner = callable_owners.setdefault(id(fn), name)
+        if owner != name:
+            raise RuntimeError(f"duplicate callable binding: {owner}:{name}")
+        source = inspect.getsourcefile(fn)
+        if source is None or Path(source).resolve() != Path(__file__).resolve():
+            raise RuntimeError(f"handler module mismatch: {name}:{source}")
+        prefix = "register_nas_mcp_tools.<locals>."
+        if not fn.__qualname__.startswith(prefix):
+            raise RuntimeError(f"handler scope mismatch: {name}:{fn.__qualname__}")
+        actual_symbol = fn.__qualname__.removeprefix(prefix)
+        if actual_symbol != definition.handler_symbol:
+            raise RuntimeError(
+                f"handler symbol mismatch: {name}:{actual_symbol}:{definition.handler_symbol}"
+            )
 
 
 def register_nas_mcp_tools(
@@ -332,10 +371,7 @@ def register_nas_mcp_tools(
     selected_profile = resolve_profile(capability_profile)
     broker.select_capability_profile(selected_profile)
     gateway_allowlist = gateway_names_for_profile(selected_profile)
-    allowed_names = frozenset(
-        item.registered_name
-        for item in definitions_for_profile(selected_profile)
-    )
+    allowed_names = direct_names_for_profile(selected_profile)
     mcp = _ProfileFilteredMcp(mcp, allowed_names)
     @mcp.tool()
     def hb_mcp_status() -> dict[str, Any]:
@@ -1497,7 +1533,9 @@ def register_nas_mcp_tools(
                 arg_err,
                 subject_tool=tool_name,
             )
-        from hb_assistant.obsidian_mcp.prompt_id_parser import validate_tool_argument_ids  # noqa: PLC0415
+        from hb_assistant.obsidian_mcp.prompt_id_parser import (
+            validate_tool_argument_ids,  # noqa: PLC0415
+        )
 
         id_errors = validate_tool_argument_ids(tool_name, arguments)
         if id_errors:
@@ -1915,7 +1953,7 @@ def register_nas_mcp_tools(
     freeze_registered_schema_index(mcp)
     manager = getattr(mcp, "_tool_manager", None)
     if callable(getattr(manager, "list_tools", None)):
-        _validate_registered_schema_bindings(selected_profile)
+        _validate_registered_schema_bindings(mcp, selected_profile)
 
     # NAS internet-facing profile: idempotently materialize the persisted client-tool manifest so
     # pa_tool_manifest_get returns a real active manifest out of the box (get/freshness/status agree).

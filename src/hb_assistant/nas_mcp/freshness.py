@@ -352,7 +352,7 @@ def capability_mode(config: NasMcpConfig, override_summary: dict[str, Any] | Non
     return {
         "surface": "nas_mcp",
         "generated_at": _now().isoformat(),
-        "exposure_profile": gate_status(),
+        "exposure_profile": gate_status(getattr(config, "capability_profile", None)),
         "active_override_count": summary.get("active_count", 0),
         "active_overrides": summary.get("active", []),
     }

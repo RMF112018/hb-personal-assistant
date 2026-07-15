@@ -293,7 +293,8 @@ ASSISTANT_SOURCE_STRUCTURE_TOOLS = (
 )
 
 # N8C-22 — canonical aggregate registry: the single source of truth for the 14 read-only assistant
-# groups / 87 tools. The client-exposure bridge (catalog / help / gateway helper tools) and the
+# groups / tools from the resolved capability profile. Historical N8C counts are not current profile
+# assertions. The client-exposure bridge (catalog / help / gateway helper tools) and the
 # hb_mcp_status exposure fields derive from these — do NOT hand-maintain a second list. This does not
 # add any tool; it only names the union that already existed implicitly across the group tuples.
 # Exposure follows the per-group gates. ``source_structure`` (7 tools) is **default-ON** (kill-switch
@@ -439,7 +440,7 @@ def assistant_client_exposure_status(
     """N8C-22 client-exposure summary for hb_mcp_status.
 
     Reports how many of the canonical assistant tools are currently exposed to connected clients
-    (87 by default across 14 groups; structure is default-ON; kill-switch drops structure's 7 tools).
+    for the resolved capability profile; historical 87-tool/14-group counts describe legacy evidence.
     Exposure follows the per-group kill switches: a group turned off by ``HB_MCP_ASSISTANT_*=0`` is
     neither registered nor dispatchable, so its tools count as *missing* here. ``direct+gateway`` means
     both the direct per-tool client wrappers and the fallback catalog/help/query gateway are present.
@@ -552,7 +553,8 @@ def _capability_tier(tool_name: str, write_attempted: bool) -> int:
 class NasMcpBroker:
     def __init__(self, config: NasMcpConfig) -> None:
         self._config = config
-        self._capability_profile = resolve_profile()
+        self._capability_profile = resolve_profile(getattr(config, "capability_profile", None))
+        self._config.capability_profile = self._capability_profile
         self._audit = NasMcpAuditWriter(config.audit_dir)
         self._concurrency = limits.ConcurrencyLimiter(limits.max_concurrent_calls(config))
         self._override_store: OverrideStore | None = (
@@ -766,7 +768,7 @@ class NasMcpBroker:
                 "configured_roots": {k: v.mode for k, v in cfg.roots.items()},
                 "obsidian_tools_enabled": enabled,
                 "obsidian_tools_blocked": blocked,
-                "exposure_profile": gate_status(),
+                "exposure_profile": gate_status(self._capability_profile),
                 "assistant_nav_enabled": assistant_nav_enabled(),
                 "assistant_nav_tools": list(ASSISTANT_NAV_TOOLS) if assistant_nav_enabled() else [],
                 "assistant_context_packs_enabled": assistant_context_packs_enabled(),
@@ -827,8 +829,8 @@ class NasMcpBroker:
                     self._override_store.active_summary()["active_count"] if self._override_store else 0
                 ),
                 "port_policy": "127.0.0.1:8765 host publish only",
-                # N8C-22 client-exposure summary (87 client-exposed default / 87 installed; 14 groups;
-                # source_structure default-ON; per-group kill-switch aware).
+                # N8C-22 client-exposure summary, derived from the resolved capability profile and
+                # per-group kill switches (historical fixed counts are not runtime assertions).
                 **assistant_client_exposure_status(self._capability_profile),
                 # N8C-23 artifact workspace + client tool operating manifest (fail-safe if empty/absent).
                 **artifact_workspace_status(cfg),

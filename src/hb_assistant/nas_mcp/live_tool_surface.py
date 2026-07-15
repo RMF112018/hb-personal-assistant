@@ -16,8 +16,7 @@ from hb_assistant.obsidian_mcp.canonical_tool_specs import (
 from hb_assistant.obsidian_mcp.tool_metadata_types import SurfaceToolState
 
 from .capability_registry import (
-    CapabilityProfile,
-    definitions_for_profile,
+    direct_names_for_profile,
     gateway_names_for_profile,
     resolve_profile,
 )
@@ -63,10 +62,7 @@ def _profile_group_enabled(group: str | None) -> bool:
 def installed_tool_names(config: Any) -> set[str]:
     """All tools known to the client-facing universe for this config (surface installed set)."""
     selected = resolve_profile(getattr(config, "capability_profile", None))
-    return {
-        item.registered_name
-        for item in definitions_for_profile(selected)
-    }
+    return set(direct_names_for_profile(selected))
 
 
 def tool_group_for(name: str, assistant_groups: dict[str, str] | None = None) -> str | None:
@@ -91,14 +87,13 @@ def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[
 
     ag = _assistant_group_map()
     selected = resolve_profile(getattr(config, "capability_profile", None))
-    definitions = {item.registered_name: item for item in definitions_for_profile(selected)}
+    direct_names = set(direct_names_for_profile(selected))
     gateway = set(gateway_names_for_profile(selected))
     schema_index = live_tool_schema_index()
     out: dict[str, SurfaceToolState] = {}
     for name in sorted(installed_tool_names(config)):
         group = tool_group_for(name, ag)
         profile_on = _profile_group_enabled(group)
-        definition = definitions[name]
         spec = resolve_tool_spec(name, group)
         meta = derive_tool_arg_meta(name, schema_index)
         if for_manifest:
@@ -116,10 +111,7 @@ def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[
             optional_args = tuple(meta.get("optional_args") or spec.optional_args)
             limits = dict(meta.get("limits") or spec.limits or {})
         gateway_ok = name in gateway
-        # Direct exposure: registered when profile gate on (assistant groups) or always for helpers.
-        direct = profile_on and (
-            definition.direct_exposure or selected is CapabilityProfile.LEGACY_V12
-        )
+        direct = profile_on and name in direct_names
         server_policy_available = profile_on and (direct or gateway_ok)
         blocked: str | None = None
         if not profile_on:
