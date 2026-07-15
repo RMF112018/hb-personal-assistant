@@ -14,12 +14,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from hb_assistant.obsidian_mcp.prompt_preflight import route_prompt  # noqa: E402
 from route_proof_lib import evaluate_route_expectations, route_actual  # noqa: E402
+
+from hb_assistant.obsidian_mcp.prompt_preflight import route_prompt  # noqa: E402
 
 _CORPUS_PATH = ROOT / "tests" / "fixtures" / "prompt_routing_audit_corpus_v1.json"
 _CORPUS: dict = json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
 _CASES: list[dict] = _CORPUS["cases"]
+
+
+@pytest.fixture(autouse=True)
+def _legacy_compatibility_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The versioned audit corpus describes the complete legacy-v12 routing surface."""
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "legacy-v12")
 
 
 def _route_case(case: dict) -> tuple[dict, dict]:
@@ -87,6 +94,7 @@ def broker_route_fn():
         obsidian=NasObsidianConfig(vault_root=vault, backup_dir=d / "bk", support_dir=d / "sup"),
     )
     broker = NasMcpBroker(cfg)
+    broker.select_capability_profile("legacy-v12")
 
     def route(prompt: str, **kwargs: object) -> dict:
         payload = {"prompt": prompt, **kwargs}

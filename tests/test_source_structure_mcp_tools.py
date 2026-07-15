@@ -45,11 +45,13 @@ def _seed(db: str) -> None:
 @pytest.fixture()
 def gate_off(monkeypatch):
     # Kill-switch OFF (structure group disabled). Default is ON when env is unset.
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "legacy-v12")
     monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "0")
 
 
 @pytest.fixture()
 def gate_on(monkeypatch):
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "legacy-v12")
     monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "1")
 
 

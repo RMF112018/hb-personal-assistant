@@ -90,8 +90,8 @@ def test_token_scope_denied_blocks_execution() -> None:
     assert auth["execution_blocked_reason"] == "token_scope_denied"
 
 
-def test_direct_status_tool_executable_without_gateway_allowlist() -> None:
-    """Audit row 1 / F-009: hb_mcp_status is direct MCP — not gateway_denied."""
+def test_dual_exposed_status_tool_prefers_direct_call_mode() -> None:
+    """Audit row 1 / F-009: dual-exposed hb_mcp_status deterministically prefers direct."""
     plan = route_prompt(
         "Conduct a read-only repo-truth audit.\n"
         "Do not write, stage, promote, refresh, index, deploy, or mutate anything."
@@ -102,7 +102,7 @@ def test_direct_status_tool_executable_without_gateway_allowlist() -> None:
     assert plan["recommended_call_mode"] == "direct"
     assert auth["recommended_call_mode"] == "direct"
     assert auth["runtime_policy_permission"]["directly_exposed"] is True
-    assert auth["runtime_policy_permission"]["gateway_allowlisted"] is False
+    assert auth["runtime_policy_permission"]["gateway_allowlisted"] is True
     assert auth["currently_executable"] is True
     assert auth["execution_blocked_reason"] is None
 
