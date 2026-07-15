@@ -96,6 +96,15 @@ def test_authorized_managed_migration_reaches_head(managed_db):
     assert v == LATEST_SCHEMA_VERSION
 
 
+def test_replay_of_used_authorization_is_rejected(managed_db):
+    # Origin binding gives replay protection for non-expiring authorizations: an authorization minted
+    # for origin 0 cannot be replayed once the DB has advanced (its actual origin no longer matches).
+    auth = _admin_auth(managed_db, origin=0)
+    assert SQLiteMigrator(str(managed_db)).apply(authorization=auth) == LATEST_SCHEMA_VERSION
+    with pytest.raises(MigrationVersionMismatch):
+        SQLiteMigrator(str(managed_db)).apply(authorization=auth)  # replay -> origin is now head
+
+
 def test_ensure_schema_ready_does_not_migrate_managed(managed_db):
     from hb_assistant.store.errors import SchemaVersionBehind
     from hb_assistant.store.migrator import ensure_schema_ready
