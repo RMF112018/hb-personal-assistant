@@ -15,13 +15,18 @@ import pytest
 from hb_assistant.config import db_storage_guard as g
 from hb_assistant.config.db_storage_guard import DatabaseStorageClass as SC
 from hb_assistant.construction.store.repositories import ConstructionStore
+from hb_assistant.store import migration_authorization as ma
 from hb_assistant.store.errors import SchemaVersionBehind
-from hb_assistant.store.migration_authorization import (
-    MigrationOperation,
-    ValidatedBackupReceipt,
-    issue_managed_authorization,
-)
 from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+
+
+def _admin_auth(db, *, origin):
+    return ma.authorize_migration(
+        ma.acquire_admin_capability({"role": "admin"}),
+        resolved_path=str(db),
+        expected_origin_version=origin,
+        target_version=LATEST_SCHEMA_VERSION,
+    )
 
 
 def _managed_fixture(tmp_path, monkeypatch):
@@ -46,17 +51,8 @@ def test_constructor_on_behind_managed_db_performs_zero_migrations(tmp_path, mon
     db = _managed_fixture(tmp_path, monkeypatch)
     # Bring the managed fixture to head-1 by authorizing a real migration, then rewind the ledger to
     # simulate a behind managed DB.
-    auth = issue_managed_authorization(
-        operation=MigrationOperation.STARTUP,
-        resolved_path=str(db),
-        actor_class="startup",
-        route_class="r",
-        execution_id="e",
-        expected_origin_version=0,
-        target_version=LATEST_SCHEMA_VERSION,
-        backup_receipt=ValidatedBackupReceipt(0, "u", "d"),
-    )
-    SQLiteMigrator(str(db)).apply(authorization=auth, require_backup_receipt=True)
+    auth = _admin_auth(db, origin=0)
+    SQLiteMigrator(str(db)).apply(authorization=auth)
     import sqlite3
 
     con = sqlite3.connect(str(db))
@@ -75,17 +71,8 @@ def test_constructor_on_behind_managed_db_performs_zero_migrations(tmp_path, mon
 
 def test_constructor_on_at_head_managed_db_is_ready_without_migration(tmp_path, monkeypatch, caplog):
     db = _managed_fixture(tmp_path, monkeypatch)
-    auth = issue_managed_authorization(
-        operation=MigrationOperation.STARTUP,
-        resolved_path=str(db),
-        actor_class="startup",
-        route_class="r",
-        execution_id="e",
-        expected_origin_version=0,
-        target_version=LATEST_SCHEMA_VERSION,
-        backup_receipt=ValidatedBackupReceipt(0, "u", "d"),
-    )
-    SQLiteMigrator(str(db)).apply(authorization=auth, require_backup_receipt=True)
+    auth = _admin_auth(db, origin=0)
+    SQLiteMigrator(str(db)).apply(authorization=auth)
 
     with caplog.at_level(logging.INFO, logger="hb_assistant.store.migration_audit"):
         ConstructionStore(str(db))  # at head -> readiness passes, no migration
