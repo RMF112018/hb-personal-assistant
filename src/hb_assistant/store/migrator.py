@@ -7684,7 +7684,8 @@ class SQLiteMigrator:
         transaction so apply() remains the exclusive commit/rollback owner (RC-3).
         """
         from .database_identity import describe_opened_database  # noqa: PLC0415
-        from .errors import MigrationAuthorizationInvalid  # noqa: PLC0415
+        from .errors import MigrationAuthorizationError, MigrationAuthorizationInvalid  # noqa: PLC0415
+        from .migration_audit import emit_migration_event  # noqa: PLC0415
         from .migration_authorization import (  # noqa: PLC0415
             assert_origin_version,
             migration_requires_authorization,
@@ -7692,6 +7693,7 @@ class SQLiteMigrator:
         )
 
         opened = describe_opened_database(conn, self._db_path)
+        _op = authorization.operation.value if authorization is not None else None
 
         # A managed target that is ALREADY at head is an ordinary no-op: no version advance, so no
         # schema mutation occurs. Return without running any DDL and without requiring authorization
@@ -7704,11 +7706,39 @@ class SQLiteMigrator:
             and origin >= LATEST_SCHEMA_VERSION
             and migration_requires_authorization(opened.storage_class)
         ):
+            emit_migration_event(
+                "managed_at_head_noop",
+                storage_class=opened.storage_class.value,
+                outcome="noop",
+                origin_version=origin,
+                target_version=LATEST_SCHEMA_VERSION,
+            )
             return origin
 
-        validate_authorization(authorization, opened, require_backup_receipt=require_backup_receipt)
+        try:
+            validate_authorization(
+                authorization, opened, require_backup_receipt=require_backup_receipt
+            )
+        except MigrationAuthorizationError as exc:
+            emit_migration_event(
+                "migration_rejected",
+                storage_class=opened.storage_class.value,
+                operation=_op,
+                outcome="rejected",
+                reason=getattr(exc, "reason", type(exc).__name__),
+                origin_version=origin,
+                target_version=LATEST_SCHEMA_VERSION,
+            )
+            raise
 
         if not owned and conn.in_transaction:
+            emit_migration_event(
+                "migration_rejected",
+                storage_class=opened.storage_class.value,
+                operation=_op,
+                outcome="rejected",
+                reason="borrowed_connection_in_transaction",
+            )
             raise MigrationAuthorizationInvalid(
                 "apply(conn=...) requires a connection with no pending transaction so apply() is "
                 "the exclusive commit/rollback owner for the migration (RC-3)"
@@ -7716,6 +7746,17 @@ class SQLiteMigrator:
 
         if authorization is not None:
             assert_origin_version(authorization, origin)
+
+        emit_migration_event(
+            "migration_started",
+            storage_class=opened.storage_class.value,
+            operation=_op,
+            actor_class=(authorization.actor_class if authorization is not None else None),
+            route_class=(authorization.route_class if authorization is not None else None),
+            outcome="started",
+            origin_version=origin,
+            target_version=LATEST_SCHEMA_VERSION,
+        )
 
         with transaction(conn):
             # Ensure migrations table exists (first statement is self-contained)
@@ -9383,6 +9424,14 @@ class SQLiteMigrator:
         cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         version = int(row[0]) if row and row[0] is not None else 0
+        emit_migration_event(
+            "migration_completed",
+            storage_class=opened.storage_class.value,
+            operation=_op,
+            outcome="completed",
+            origin_version=origin,
+            target_version=version,
+        )
         return version
 
     @staticmethod
