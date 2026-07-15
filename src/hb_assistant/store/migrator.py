@@ -8,8 +8,12 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from .connection import get_connection, open_connection, transaction
+
+if TYPE_CHECKING:
+    from .migration_authorization import MigrationAuthorization
 
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
@@ -7635,9 +7639,69 @@ class SQLiteMigrator:
     def __init__(self, db_path: str | None = None):
         self._db_path = db_path
 
-    def apply(self) -> int:
-        """Apply all pending migrations (idempotent). Returns current schema version."""
-        conn = get_connection(self._db_path)
+    def apply(
+        self,
+        *,
+        conn: sqlite3.Connection | None = None,
+        authorization: MigrationAuthorization | None = None,
+        require_backup_receipt: bool = False,
+    ) -> int:
+        """Apply all pending migrations (idempotent). Returns current schema version.
+
+        NF-F-001 migration-ownership guard: every migration of a managed database MUST carry an
+        explicit ``authorization`` bound to the actual opened target; it is validated (and, for a
+        borrowed connection, its transaction state checked) BEFORE any DDL. When ``conn`` is
+        provided the caller owns it (it must have no pending transaction — RC-3); otherwise apply()
+        opens and deterministically closes its own connection.
+        """
+        if conn is not None:
+            return self._apply_on_connection(
+                conn, authorization, require_backup_receipt, owned=False
+            )
+        owned_conn = get_connection(self._db_path)
+        try:
+            return self._apply_on_connection(
+                owned_conn, authorization, require_backup_receipt, owned=True
+            )
+        finally:
+            # Deterministic WAL-connection closure: a left-open WAL handle only checkpoints on GC,
+            # non-deterministically flushing -wal into the main file and perturbing byte-compare
+            # readers. Close the owned connection exactly once, here.
+            owned_conn.close()
+
+    def _apply_on_connection(
+        self,
+        conn: sqlite3.Connection,
+        authorization: MigrationAuthorization | None,
+        require_backup_receipt: bool,
+        *,
+        owned: bool,
+    ) -> int:
+        """Run the migration body on ``conn`` within one atomic transaction (Phase C invariant).
+
+        Validates the migration authorization against the ACTUAL opened database identity before any
+        DDL/write transaction, and (for a borrowed connection) refuses one already inside a
+        transaction so apply() remains the exclusive commit/rollback owner (RC-3).
+        """
+        from .database_identity import describe_opened_database  # noqa: PLC0415
+        from .errors import MigrationAuthorizationInvalid  # noqa: PLC0415
+        from .migration_authorization import (  # noqa: PLC0415
+            assert_origin_version,
+            validate_authorization,
+        )
+
+        opened = describe_opened_database(conn, self._db_path)
+        validate_authorization(authorization, opened, require_backup_receipt=require_backup_receipt)
+
+        if not owned and conn.in_transaction:
+            raise MigrationAuthorizationInvalid(
+                "apply(conn=...) requires a connection with no pending transaction so apply() is "
+                "the exclusive commit/rollback owner for the migration (RC-3)"
+            )
+
+        if authorization is not None:
+            assert_origin_version(authorization, self._current_version_on(conn))
+
         with transaction(conn):
             # Ensure migrations table exists (first statement is self-contained)
             for stmt in self.V1_STATEMENTS:
@@ -9297,14 +9361,13 @@ class SQLiteMigrator:
                 )
 
 
-        # Return latest version, then release the migration connection. get_connection's
-        # contract is that the caller closes it; left open, this WAL connection is only
-        # checkpointed when Python GC finalizes it, which non-deterministically flushes the
-        # -wal into the main DB file and perturbs read-only callers that byte-compare the file.
+        # Return latest version. Connection closure is owned by apply(): an owned connection is
+        # closed exactly once in apply()'s finally; a borrowed connection stays the caller's to
+        # close. Never close here, so a borrowed connection remains usable and byte-compare readers
+        # are not perturbed by a non-deterministic GC-time WAL checkpoint.
         cur = conn.execute("SELECT MAX(version) FROM schema_migrations")
         row = cur.fetchone()
         version = int(row[0]) if row and row[0] is not None else 0
-        conn.close()
         return version
 
     @staticmethod
@@ -10249,4 +10312,15 @@ class SQLiteMigrator:
                 return int(row[0]) if row and row[0] is not None else 0
         except sqlite3.OperationalError:
             # Table does not exist yet
+            return 0
+
+    @staticmethod
+    def _current_version_on(conn: sqlite3.Connection) -> int:
+        """Read the applied schema version from an already-open connection (0 if the ledger is
+        absent). Used to bind an authorization's declared origin to the DB's actual version before
+        any migration DDL."""
+        try:
+            row = conn.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+            return int(row[0]) if row and row[0] is not None else 0
+        except sqlite3.OperationalError:
             return 0

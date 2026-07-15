@@ -54,6 +54,17 @@ class MigrationOperation(str, Enum):
     DEVELOPMENT = "development"
 
 
+# Storage classes whose migration is the *managed*-database ownership boundary (NF-F-001 Invariant
+# #3, scoped per RC-1 + the operator MANAGED_LOCAL decision): a migration of one of these REQUIRES an
+# explicit, target-bound authorization — a ``None`` authorization is a hard failure. Non-managed
+# classes (isolated workspace / disposable rehearsal / explicit development) retain ambient self-heal
+# (``None`` authorization permitted) so dev/CLI/test call sites are unaffected; read-only snapshot and
+# blocked are always denied regardless of authorization.
+_MIGRATION_REQUIRES_AUTHORIZATION: frozenset[DatabaseStorageClass] = frozenset(
+    {DatabaseStorageClass.MANAGED_PRODUCTION, DatabaseStorageClass.MANAGED_LOCAL}
+)
+
+
 # Operations permitted per storage class. Managed production is reachable only by genuine migration
 # operations; managed-local by the automatic app/CLI-entry bootstrap; workspace-init can ONLY target
 # isolated workspace; snapshot never migrates.
@@ -355,8 +366,10 @@ def validate_authorization(
     """Validate ``authorization`` against the ACTUAL opened database identity. Raises a typed error
     (all subclasses of the store error hierarchy) before any migration DDL when invalid.
 
-    A ``None`` authorization for a managed/snapshot target is a hard failure. Read-only snapshot is
-    always denied. Workspace/dev/rehearsal targets require an authorization of the matching class.
+    A ``None`` authorization for a MANAGED target (production or local) is a hard failure; read-only
+    snapshot and blocked are always denied. Non-managed targets (isolated workspace / disposable
+    rehearsal / explicit development) permit a ``None`` authorization (ambient self-heal preserved);
+    when an authorization IS supplied it must be valid and match the opened target's class.
     """
     storage_class = opened.storage_class
 
@@ -366,9 +379,12 @@ def validate_authorization(
         raise MigrationStorageClassDenied("migration target is a blocked/unclassified storage location")
 
     if authorization is None:
-        raise MigrationAuthorizationRequired(
-            f"migration of {storage_class.value} storage requires a validated authorization"
-        )
+        if storage_class in _MIGRATION_REQUIRES_AUTHORIZATION:
+            raise MigrationAuthorizationRequired(
+                f"migration of {storage_class.value} storage requires a validated authorization"
+            )
+        # Non-managed target: ambient self-heal permitted with no authorization.
+        return
 
     # Integrity: recompute the HMAC; a forged/deserialized auth cannot match the process secret.
     payload = _canonical_payload(
