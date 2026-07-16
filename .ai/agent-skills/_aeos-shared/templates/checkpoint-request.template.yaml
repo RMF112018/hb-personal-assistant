@@ -1,0 +1,22 @@
+schema_version: 1
+checkpoint_id: GATE-REPLACE-ME
+goal_id: GOAL-REPLACE-ME
+current_state: REPLACE_ME
+disposition: READY_FOR_EXTERNAL_REVIEW
+repository:
+  path: null
+  branch: null
+  baseline_sha: null
+  current_sha: null
+  dirty: null
+artifacts: []
+claims:
+  verified: []
+  claimed_not_verified: []
+  assumptions: []
+  unknowns: []
+deviations: []
+unresolved_findings: []
+requested_next_state: null
+operator_action_required: true
+created_at: null

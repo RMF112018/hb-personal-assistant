@@ -1,0 +1,18 @@
+schema_version: 1
+authorization_id: AUTH-REPLACE-ME
+goal_id: GOAL-REPLACE-ME
+checkpoint_id: GATE-REPLACE-ME
+approved_artifact_hash: null
+authorized_transition:
+  from: REPLACE_ME
+  to: REPLACE_ME
+authorized_work_items: []
+required_changes: []
+constraints: []
+prohibited_actions: []
+repository:
+  expected_branch: null
+  expected_head_sha: null
+expires_on_repository_drift: true
+issued_by: operator
+issued_at: null

@@ -1,0 +1,13 @@
+schema_version: 1
+review_id: REVIEW-REPLACE-ME
+goal_id: GOAL-REPLACE-ME
+checkpoint_id: GATE-REPLACE-ME
+reviewer_context: independent
+review_disposition: REVISE
+required_changes: []
+recommendations: []
+findings: []
+evidence_reviewed: []
+limitations: []
+operator_decision: PENDING
+created_at: null

@@ -1,0 +1,29 @@
+schema_version: 1
+goal_id: GOAL-REPLACE-ME
+repository:
+  path: /absolute/path/recorded-at-runtime
+  remote: owner/repository
+governing_sources:
+  - CLAUDE.md
+  - AGENTS.md
+  - .ai/project-sources/00_AEOS_MASTER_INDEX.md
+authority_order:
+  - current_repository_and_runtime_evidence
+  - approved_repository_specific_specifications
+  - repository_local_policies
+  - aeos_governance
+  - current_operator_instruction
+  - prior_context
+prohibited_without_explicit_authorization:
+  - push
+  - merge
+  - force_push
+  - rewrite_history
+  - reset_hard
+  - delete_branch
+  - delete_worktree
+  - deploy
+  - modify_secrets
+  - irreversible_migration
+  - weaken_tests_or_thresholds
+  - accept_risk

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "skills_version": "1.0.0",
+  "canonical_root": ".ai/agent-skills",
+  "harnesses": {
+    "claude": ".claude/skills",
+    "codex": ".agents/skills",
+    "grok": ".ai/agent-harnesses/grok"
+  },
+  "skills": [
+    "aeos-goal-controller",
+    "aeos-repository-truth",
+    "aeos-checkpoint-manager",
+    "aeos-implementation-planner",
+    "aeos-work-package-executor",
+    "aeos-evidence-packager",
+    "aeos-independent-auditor",
+    "aeos-finding-reconciler"
+  ],
+  "rules": {
+    "canonical_skill_content_only_under": ".ai/agent-skills",
+    "harness_adapters_must_not_duplicate_skill_content": true,
+    "operator_controls_state_transitions": true
+  }
+}

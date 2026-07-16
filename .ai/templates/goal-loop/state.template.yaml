@@ -1,0 +1,20 @@
+schema_version: 1
+goal_id: GOAL-REPLACE-ME
+state: GOVERNANCE_INITIALIZATION
+status: NOT_STARTED
+iteration: 0
+repository:
+  baseline_sha: null
+  current_sha: null
+  branch: null
+authorization:
+  required: true
+  authorization_id: null
+  authorized_state: null
+  artifact_hash: null
+  expires_on_repository_drift: true
+current_work_item: null
+expected_artifacts: []
+last_checkpoint: null
+requested_next_state: null
+updated_at: null

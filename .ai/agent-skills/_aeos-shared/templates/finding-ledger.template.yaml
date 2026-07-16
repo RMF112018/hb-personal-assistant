@@ -1,0 +1,13 @@
+schema_version: 1
+goal_id: GOAL-REPLACE-ME
+audit_id: AUDIT-REPLACE-ME
+findings:
+  - finding_id: FIND-001
+    title: Replace me
+    severity: MEDIUM
+    status: OPEN
+    original_statement: ""
+    evidence: []
+    affected_acceptance_criteria: []
+    authorized_for_correction: false
+    disposition_history: []

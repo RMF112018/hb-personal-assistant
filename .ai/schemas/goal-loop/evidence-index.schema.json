@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Evidence Index",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "goal_id",
+    "repository",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "branch",
+        "baseline_sha",
+        "current_sha"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "path",
+          "kind",
+          "sha256",
+          "claim_ids"
+        ]
+      }
+    }
+  },
+  "additionalProperties": true
+}

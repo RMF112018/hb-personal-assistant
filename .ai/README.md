@@ -1,47 +1,66 @@
-# AEOS Governance Documents v1.0
+# HB Personal Assistant `.ai/` Control Plane
 
-This package contains a complete AEOS governance source set suitable for:
+This directory contains repository-local AEOS governance, reusable agent skills,
+harness adapters, goal state, templates, schemas, and reference material.
 
-- ChatGPT Project sources;
-- repository `.ai/` governance documents;
-- local coding-agent operating contracts;
-- evidence, audit, and Go/No-Go templates;
-- initial schema validation.
+## Canonical paths
 
-## Recommended Installation
+| Purpose | Canonical path |
+|---|---|
+| AEOS normative sources | `.ai/project-sources/` |
+| Shared agent skills | `.ai/agent-skills/` |
+| Harness adapters | `.ai/agent-harnesses/` |
+| Goal state and authorizations | `.ai/aeos/goals/` |
+| Deterministic AEOS utilities | `.ai/aeos/bin/` |
+| Schemas | `.ai/schemas/` |
+| Templates | `.ai/templates/` |
+| Convenience combined manual | `.ai/reference-bundles/` |
 
-Copy files as follows:
+## Authority and duplication
 
-```text
-project-sources/*.md  →  ChatGPT Project source files and/or repo .ai/
-repo-root/AGENTS.md  →  repository root
-repo-root/AI_OPERATING_MANUAL.md  →  repository root
-templates/  →  docs/templates/ or .ai/templates/
-schemas/  →  .ai/schemas/
-examples/  →  docs/examples/ or .ai/examples/
+`project-sources/` is the canonical AEOS source set. The combined manual under
+`reference-bundles/` is a convenience artifact and must not override or replace
+the individual normative sources.
+
+The canonical skill corpus exists only under `agent-skills/`. Global Claude
+and repository-local Codex receive symlinks; Grok receives thin loader adapters. Do not maintain independent
+copies per harness.
+
+## Install harness links
+
+```bash
+python3 scripts/install_agent_harness_architecture.py --repo "$PWD" --apply
 ```
 
-## Recommended Repository Layout
+The installer never replaces real directories. Use `--replace` only to refresh
+existing symlinks.
 
-```text
-.ai/
-  00_AEOS_MASTER_INDEX.md
-  01_AEOS_OPERATING_MANUAL.md
-  ...
-  templates/
-  schemas/
-docs/
-  architecture/
-  decisions/
-  specs/
-  implementation-plans/
-  evidence/
-  audits/
-  go-no-go/
-AGENTS.md
-AI_OPERATING_MANUAL.md
+## Validate
+
+```bash
+python3 .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py
+python3 .ai/aeos/bin/validate_ai_layout.py
 ```
 
-## Use
+## Start a goal
 
-Begin every substantive session by reading `00_AEOS_MASTER_INDEX.md`.
+Create a governed package under:
+
+```text
+.ai/aeos/goals/<goal-id>/
+```
+
+Use the templates under `.ai/templates/goal-loop/`.
+
+Then invoke the harness-specific goal controller. The model may complete only
+the currently authorized state and must stop at the next external-review gate.
+
+## Root instruction alignment required
+
+Repository-root instruction files should consistently reference:
+
+```text
+.ai/project-sources/00_AEOS_MASTER_INDEX.md
+```
+
+Do not alternate between `.ai/00_AEOS_MASTER_INDEX.md` and the canonical path.
