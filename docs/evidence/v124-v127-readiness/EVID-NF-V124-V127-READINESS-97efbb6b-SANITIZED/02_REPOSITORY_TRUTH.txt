@@ -1,0 +1,31 @@
+# 02 REPOSITORY TRUTH — SANITIZED (public tier)
+generated_utc: 2026-07-16
+command_class: LOCAL_REPOSITORY_READ_ONLY
+NOTE (sanitization): the exhaustive local worktree/branch dump (≈170 entries with local scratch paths and
+session identifiers) is REDACTED as sensitive operational detail; the raw listing is retained private. Only the
+repo-identity + divergence facts needed for the readiness claims are kept.
+
+## identity
+toplevel:      <user-home>/hb-personal-assistant
+repo_remote:   https://github.com/RMF112018/hb-personal-assistant.git
+default_branch(origin/HEAD): origin/main
+current_branch (capture host): phase-c-source-index-migration-assurance-stage1 (unrelated to this evidence)
+HEAD (capture host): 9f730e6883b5b6555abfd331e39dea26cc028ec5
+origin/main (at capture): 97efbb6bc4992e26c0d07a3735256fd98d77461b
+shallow:       false
+submodules:    0 entries
+
+## divergence: capture-host HEAD vs origin/main
+ahead(HEAD not in main): 0
+behind(main not in HEAD): 19   (capture host was on an unrelated branch; the release worktree is a CLEAN checkout at 97efbb6b)
+merge-base: 9f730e6883b5b6555abfd331e39dea26cc028ec5
+
+## worktree status (porcelain; untracked shown by category count)
+  23 ?? (pre-existing untracked evidence artifacts; not this evidence's changes)
+tracked-modified/staged lines: 0
+
+## active worktrees (summarized)
+A large number of local git worktrees (≈170) exist on the capture host across prior sessions (schedule/forecast/
+obsidian/procore/source-index/mcp work). Their local paths, session identifiers, and internal branch names are
+out-of-scope operational detail and are REDACTED here. The release artifact was built from an isolated CLEAN
+worktree checked out at 97efbb6b — see 00/07. Raw listing retained private.

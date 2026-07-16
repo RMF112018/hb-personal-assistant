@@ -1,0 +1,19 @@
+# 09b — Live DB schema probe — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-09B-SCHEMA-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-09B
+Private evidence-artifact SHA-256: 60d775d1d0ddae9a9e0d979b564551d5eabd6ba9c0522441b28bc360962e1c53
+Supported claim: A read-only schema probe (immutable open, consistent read) of the managed production database
+  reported the applied schema version as V124.
+Related acceptance criteria: V127-AC-11 (live managed DB schema established read-only); V127-AC-12 (live schema == V124)
+Observation time: 2026-07-16 UTC
+Result: Applied schema version V124 confirmed by read-only probe. Supports AC-11/AC-12 at partially_trusted.
+Limitations: The raw probe output (migration ledger, per-migration names and application chronology, page/size
+  counters) is retained in the private tier only. The probe is a reconstructed receipt and is not independently
+  reproducible; AC-11/AC-12 evidence trust stays partially_trusted.
+Independent verification: Required

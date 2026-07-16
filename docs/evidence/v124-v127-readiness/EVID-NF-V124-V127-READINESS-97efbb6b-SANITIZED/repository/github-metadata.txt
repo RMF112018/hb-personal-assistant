@@ -1,0 +1,32 @@
+# GitHub metadata (read-only) — 2026-07-16
+gh auth:   ✓ Logged in to github.com account RMF112018 (keyring)
+
+=== PR #313 state + merge ===
+Unknown JSON field: "merged"
+Available fields:
+  additions
+  assignees
+  author
+  autoMergeRequest
+  baseRefName
+  baseRefOid
+  body
+  changedFiles
+  closed
+  closedAt
+  closingIssuesReferences
+  comments
+  commits
+  createdAt
+  deletions
+  files
+  fullDatabaseId
+  headRefName
+
+=== branch protection on main ===
+{"message":"Branch not protected","documentation_url":"https://docs.github.com/rest/branches/branch-protection#get-branch-protection","status":"404"}gh: Branch not protected (HTTP 404)
+
+=== rulesets ===
+[]
+=== PR #313 (valid fields) ===
+{"baseRefName":"main","headRefName":"fix/nf-f-001-ambient-migration-ownership","mergeCommit":{"oid":"97efbb6bc4992e26c0d07a3735256fd98d77461b"},"mergedAt":"2026-07-15","number":313,"state":"MERGED"}

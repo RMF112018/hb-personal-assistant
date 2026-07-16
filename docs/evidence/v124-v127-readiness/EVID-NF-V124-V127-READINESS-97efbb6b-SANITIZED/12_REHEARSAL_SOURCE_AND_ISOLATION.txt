@@ -1,0 +1,20 @@
+# 12 — Rehearsal source + isolation — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-12-REHEARSAL-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-12
+Private evidence-artifact SHA-256: 26d2c62523c70b4d93c224c79805067e6dd300876bc5706c4c82f9bb01db3673
+Supported claim: The migration rehearsal source was derived from an evidence-backed V124 copy and executed outside
+  production, in an isolated environment, against a production-derived copy — never against the live managed target.
+Related acceptance criteria: V127-AC-15 (V124→V127 migration succeeds on a production-derived copy)
+Observation time: 2026-07-16 UTC
+Result: Isolated rehearsal source established from a production-derived V124 copy. Supports AC-15 at
+  partially_trusted.
+Limitations: AC-15 is PARTIAL — migration-engine rehearsal (shared SQLiteMigrator.apply(), EXPLICIT_DEVELOPMENT
+  target) = PASS; integrated MANAGED_PRODUCTION operator-route rehearsal = NOT VERIFIED (exact-path binding cannot be
+  reproduced off-production). Raw source paths/sizes are private. Independent deployment-gate execution required.
+Independent verification: Required

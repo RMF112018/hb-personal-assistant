@@ -1,0 +1,41 @@
+# 04 — Historical Evidence Authentication
+
+generated_utc: 2026-07-16
+command_class: LOCAL_REPOSITORY_READ_ONLY
+
+## Required historical inputs (handoff §1 / §8.3)
+1. EVID-NF-F-001-ALL-REVIEW-CLOSURE-51ce5f28-<closure-ts>.tar.gz  (expected SHA-256 8f784e9f…445d)
+2. REVIEW-NF-F-001-PR313-ALL-REVIEW-CLOSURE-v1.2.md                   (expected SHA-256 1bbceefb…c971)
+
+## Authentication results
+### (1) Original closure tarball — ABSENT → REBUILT (operator decision #1)
+- Filesystem search (repo, external governance sources, scratch): the original tarball, its .sha256 sidecar, and the
+  -RECONSTRUCTION.txt receipt are NOT PRESENT. Root cause: the prior session built them in an EPHEMERAL
+  ephemeral session scratch directory, which does not persist; the artifacts were lost when that
+  session ended. (This is the exact failure mode that motivated the durable-worktree evidence workspace
+  used by this engagement.)
+- §8.3 handling: a missing required historical artifact is normally a STOP — INSUFFICIENT EVIDENCE. The
+  operator explicitly directed REBUILD-FIRST rather than halt (the merge it attested is now independently
+  git-verifiable). The rebuilt package:
+    path:    docs/evidence/v124-v127-readiness/stage-R-closure-rebuild/
+             EVID-NF-F-001-ALL-REVIEW-CLOSURE-REBUILD-<workspace-ts>(.tar.gz)
+    archive_sha256: 1c5d262e9a4bcb5e01d8fc5a1dd842f462a2d58d215e9945c7fc93fb5a6ece39
+    reconstruction: PASS (external hash OK; 20 regular members; no absolute/traversal/symlink/hardlink/
+                    device/socket/fifo/dup; internal MANIFEST verify OK; coverage EXACT)
+    contents: git identity+diff (55 files, +2301/−198, diff --check clean); tests (forecasting 1166 passed,
+              NF-F-001+startup+storage 62 passed, schedule 2 PRE-EXISTING failures identical on base e247ad08);
+              static delta 0 (ruff 572=572, mypy 2=2); review v1.2 authenticated.
+- LIMITATION (named): the rebuilt package has a NEW identity; byte-identity with the lost original SHA
+  8f784e9f…445d is UNATTAINABLE (different build time/host). This is documented, not a hash failure. The
+  rebuilt package independently re-establishes the authenticable core, so it satisfies §8.3 as the historical input.
+
+### (2) Superseding review v1.2 — AUTHENTICATED
+- artifact: REVIEW-NF-F-001-PR313-ALL-REVIEW-CLOSURE-v1.2 (external governance workspace; location redacted)
+- actual SHA-256:   1bbceefb8194122bfa46fabfae5b2e5cc51d8f9ef3a36ab5077c86736785c971
+- expected SHA-256: 1bbceefb8194122bfa46fabfae5b2e5cc51d8f9ef3a36ab5077c86736785c971  → MATCH
+- A copy is included in the rebuilt closure package (review/) and re-hashed there.
+
+## Disposition
+Historical-evidence authentication: PASS WITH NAMED LIMITATION. The superseding review v1.2 is hash-authenticated;
+the missing original tarball is superseded by a reconstruction-verified rebuilt closure package (new identity).
+No unauthenticated artifact was used as a basis for any readiness conclusion.

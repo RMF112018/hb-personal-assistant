@@ -1,0 +1,21 @@
+# 13 — Backup receipt + restore proof — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-13-BACKUP-RESTORE-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-13
+Private evidence-artifact SHA-256: dfcac9c4b1402966a1481032dd168615deb5e7afbf01783f4fbd9532424f7214
+Supported claim: In the isolated rehearsal, backup creation, backup-receipt validation, restore to a new path, and
+  representative parity checks all succeeded; the restored copy was confirmed at schema V124.
+Related acceptance criteria: V127-AC-19 (backup created, nonempty, hashed; restore to a new path verified);
+  V127-AC-23 (recovery demonstrated — restore V124 backup to a new path)
+Observation time: 2026-07-16 UTC
+Result: Backup/receipt/restore/parity succeeded in the isolated rehearsal; restore verified at V124. Supports
+  AC-19/AC-23 at partially_trusted.
+Limitations: Raw backup/restore sizes, filenames, and content hashes are retained in the private tier only. The
+  rehearsal is a reconstructed receipt (not independently reproducible); forward-recovery via the V127 image is
+  documented, not run. AC-19/AC-23 evidence trust stays partially_trusted.
+Independent verification: Required

@@ -1,0 +1,69 @@
+# 10 — NF-ENV-001: Live opened-connection classification (current-main code)
+
+Disposition: NF-ENV-001 OPEN; V127-AC-22 PARTIAL. The two observations here are NOT a single live canonical-path
+proof: Part A opened the LIVE file (real dev/ino) at a SHORT mount and classified BLOCKED; Part C proved canonical
+MANAGED_PRODUCTION + spoof defense on the LOCAL candidate image only. Combining them is inference, not a single live
+observation. The read-only, zero-mutation facts below stand. No point is claimed "PROVEN" for the live target;
+independent verification required.
+
+generated_utc: 2026-07-16
+finding_id: NF-ENV-001 (evidence-agent status recorded in 18 — NOT "VERIFIED FIXED")
+command_class: READ_ONLY_PRODUCTION (live parts) + NON_PRODUCTION (local Part C)
+authorization: operator explicitly authorized loading the candidate image to the NAS (in-session, 2026-07-16).
+image: hb-personal-assistant:v127-candidate-97efbb6b (revision 97efbb6b, amd64; NAS code proof LATEST_SCHEMA_VERSION=127).
+safety: every live step used --rm --network none, LIVE DB bind-mounted :ro, connection mode=ro(&immutable=1),
+        and called ONLY describe_opened_database / classify_storage_class / validate_authorization — never apply(),
+        never minted an authorization, never ran DDL. Before/after live stat is byte-identical (invariance below).
+
+## NF-ENV-001 required points -> evidence (status corrected per CORR-AUD-003; NONE marked "PROVEN" for the live combined claim)
+1. connection actually opens the live managed SQLite file .......... SUPPORTED, partially_trusted (Part A live short-mount, reconstructed receipt)
+2. opened-target identity derived from the live connection ........ SUPPORTED, partially_trusted (Part A guard_fd / PRAGMA database_list, not the declared arg)
+3. identity includes device/inode binding ......................... SUPPORTED, partially_trusted (Part A guard_fd fstat bound the live inode)
+4. declared-path spoofing cannot substitute another target ........ SUPPORTED (Part C, LOCAL candidate image — declared=CANON, real main=/spoof -> BLOCKED)
+5. live target classifies as MANAGED_PRODUCTION ................... NOT VERIFIED LIVE (the live short-mount classified BLOCKED; canonical MANAGED_PRODUCTION shown only LOCALLY in Part C). Combined claim = INFERENCE.
+6. no migration authority acquired ................................ SUPPORTED (validate_authorization(None) DENIED; no authorize_migration/acquire_* called)
+7. no DDL executed ................................................ SUPPORTED (only PRAGMA/os.open/os.fstat; :ro mount blocks writes)
+8. no schema mutation ............................................. SUPPORTED, partially_trusted (invariance: live size/mtime/dev/ino unchanged before/after)
+9. before/after production state unchanged ....................... SUPPORTED, partially_trusted (invariance section)
+
+=> NF-ENV-001 = OPEN. V127-AC-22 = PARTIAL. Live opened-file identity: supported (partially_trusted).
+   Live canonical MANAGED_PRODUCTION classification: NOT VERIFIED. Combined claim: inference only.
+   No point above is claimed "PROVEN" for the live target; independent verification required.
+
+CAVEAT (why status is EVIDENCE COLLECTED, not VERIFIED FIXED, and why points 3+5 are split across two live/local calls):
+This host container platform (<docker-version>, kernel <kernel-version>) yields an EMPTY mount when a bind destination is a deep <nas-vol2>/... path,
+so a single live call that both (a) opens the live file AT its canonical path and (b) returns MANAGED_PRODUCTION could
+not run on the NAS. Instead: Part A binds the LIVE file's real dev/ino via a short-path mount (classified BLOCKED
+at that mount); Part C shows the canonical-path MANAGED_PRODUCTION classification + spoof defense on LOCAL docker
+only. The two do NOT combine into a single live canonical observation (inference); independent corrective review
+owns the VERIFIED-FIXED determination.
+
+## 10.1 Classification of the real live/snapshot paths (candidate image)
+classify('<managed-root>/app-support/db/hb-personal-assistant.sqlite')              = MANAGED_PRODUCTION
+classify('<managed-root>/app-support/mcp-snapshot/db/hb-personal-assistant.sqlite') = READ_ONLY_SNAPSHOT
+(RC-2: snapshot shares NAS prefix + db-parent + managed filename with prod; separated ONLY by exact-path equality —
+ a snapshot-shaped path can never classify managed, so migration is always denied on it.)
+
+## Part A — LIVE opened-connection identity binding (NAS, current-main code, read-only)
+LIVE-file guard_fd dev/ino = <dev> <ino>   (== live file real identity, Stage-1 09a: dev=<dev> ino=<ino>)
+LIVE schema via this connection = 124
+opened storage_class at short mount = BLOCKED (only because mounted at /probe, not the canonical path)
+validate_authorization(None, opened) -> DENIED  reason = migration_storage_class_denied
+
+## Part C — Canonical-path opened-connection semantics (LOCAL candidate image; deep mounts behave)
+CANON opened storage_class = MANAGED_PRODUCTION   guard_fd = True
+CANON validate_authorization(None) -> DENIED  reason = migration_authorization_required
+SPOOF (declared=CANON managed, real main=/spoof/other.sqlite) -> derived storage_class = BLOCKED
+   => declared path cannot elevate; identity comes from the actual attached main file, not the caller's string.
+
+## Invariance (live DB unchanged across ALL NF-ENV-001 probes)
+BEFORE db size=<db-size-bytes> dev=<dev> ino=<ino> mtime=<mtime> ctime=<ctime>
+AFTER  db size=<db-size-bytes> dev=<dev> ino=<ino> mtime=<mtime> ctime=<ctime>
+=> IDENTICAL. No mutation. NF-ENV-001 inspection was strictly read-only.
+
+## Evidence-agent disposition
+NF-ENV-001: OPEN — EVIDENCE COLLECTED, INDEPENDENT VERIFICATION REQUIRED (partially_trusted).
+The live managed target's real device/inode identity was bound by current-main code (Part A, short mount, where it
+classified BLOCKED), declared-path spoofing was defeated and unauthorized migration denied (Part C, LOCAL), all
+with zero live mutation. The live canonical-path MANAGED_PRODUCTION classification was **NOT obtained live** (a
+host-docker deep-mount quirk); it was shown only locally. The combined claim is inference. AC-22 = PARTIAL.

@@ -1,0 +1,35 @@
+# 01 GOVERNANCE AUTHENTICATION
+generated_utc: 2026-07-16
+classification: Audits
+command_class: LOCAL_REPOSITORY_READ_ONLY
+
+## In-repo governing sources (git blob SHA @ HEAD of checked-out tree 9f730e68)
+AGENTS.md                                                        blob=052fbb9a920a53397f48ec9424e2aae80fd819e7 file-sha256=4f5be2f489f341349b41a9561054434942b80bb1d5229d935c2ffbbeb6aa0247
+AI_OPERATING_MANUAL.md                                           blob=f6cc6382a6b9986a5b3c2fdeab972d5a5d6624ed file-sha256=2edd2003e2cb4e60dc7b7e3265b4bfcf8a7c5b3b2d5e3a64afccf5cf0577cb5c
+CLAUDE.md                                                        blob=f939efde5fcc85c610998577efc5fb7191674263 file-sha256=779184e94a0082c1e764cc3a26424da25b044033bfb0093a747e831d5d2e29cd
+.ai/project-sources/00_AEOS_MASTER_INDEX.md                      blob=e6e7f816d5b89b077bee644cbff96803b6dae530 file-sha256=8a53d3c92e0186767570953c4aa8b5774d91f0f172b43f3f81c8319163f8beaf
+.ai/project-sources/01_AEOS_OPERATING_MANUAL.md                  blob=0184d1dbd2a286a543b16c7355a89544198ae8ab file-sha256=54f16460af4687704e910d9b6ba64e2b41e8c7beae00241b8a41d5030e6d916c
+.ai/project-sources/02_AEOS_WORKFLOW_STANDARD.md                 blob=b12580eb8da3d21093d78b8456aac4e348dab64d file-sha256=1d4ccd91e5acc263240a72a743cbe8e8f760fe992a69145e7b0d8a610f163879
+.ai/project-sources/03_AEOS_ARTIFACT_STANDARD.md                 blob=626d52a0ec9f9b8db2e9c9fe21a41fa9fa6200a8 file-sha256=d8cd438fb0664db3fe29e34115a389d38fcc42f1bf66fb17533fb20e49cf1e7e
+.ai/project-sources/04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md       blob=d4736e3d14127c9d233497c8007938f190b14377 file-sha256=7069a6750f3475103bcf08b177f1965e52591cee8de2187e68b6a93c64f08268
+.ai/project-sources/05_AEOS_REVIEW_AND_AUDIT_STANDARD.md         blob=fa960a52da47a5c04a7c37ba0c588db95f118df2 file-sha256=7cfa3b27c426bd03ea4fb4108101765a8f89159c0809066ca691dba34ce87e4a
+.ai/project-sources/06_AEOS_PRODUCTION_READINESS_STANDARD.md     blob=2f4cdc26acc966572541f2c316f72a48692f2827 file-sha256=d1ba39b21610aa223309d933cfe0a5d218afd6c227d6b6cd7abc13187a2c5423
+.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md    blob=59dc9c02a2f905b43926403c58ed56d462cab34b file-sha256=6a1bea39c6d190f37b57c5e18688d6274f6e64a8615a9a12c57559aaac807eab
+.ai/project-sources/08_AEOS_VOCABULARY_AND_TAXONOMY.md           blob=e685952b1e8da5627aec11abaecd91460f6a710c file-sha256=19305c83405063cc598643065b660eaa1c09bda43a3dea7cb04b06e0179da2ff
+.ai/project-sources/09_AEOS_PATTERN_LANGUAGE.md                  blob=657736bd0171d413a937aaccc4b75c4c56b65a07 file-sha256=6e7cd1207d888694e3cbabbce382fb16782771aea4810e549610965d38e054c8
+.ai/project-sources/10_AEOS_PROMPT_ENTRY_POINTS.md               blob=6382d5d56b8f7fbef14a57a38c7fc540a157cdea file-sha256=b921fb0ce43b02be22cb1b951dea5c782aa7ebf996481e03e9bb9f9e98299dd7
+
+## External governance templates (authenticated by SHA-256 only; not in repo)
+Storage location redacted (external governance workspace); authentication is by content hash, not location.
+GOV-TEMPLATE-AUDITS   file-sha256=4bff4e45507d549ca99a20c098356080867f00e1bee78ec0b45723b0cca235bc
+GOV-TEMPLATE-PLANS    file-sha256=e661e7babefde00fe63c9cf7c6ca9986afd1cb1189fead5375b4d7167861fc73
+
+## Superseding review (authenticate by hash)
+artifact: REVIEW-NF-F-001-PR313-ALL-REVIEW-CLOSURE-v1.2 (external governance workspace; location redacted)
+actual-sha256:   1bbceefb8194122bfa46fabfae5b2e5cc51d8f9ef3a36ab5077c86736785c971
+expected-sha256: 1bbceefb8194122bfa46fabfae5b2e5cc51d8f9ef3a36ab5077c86736785c971
+
+## Authority-resolution note
+AGENTS.md / AI_OPERATING_MANUAL.md instruct opening '.ai/00_AEOS_MASTER_INDEX.md';
+the actual file lives at '.ai/project-sources/00_AEOS_MASTER_INDEX.md' (one dir deeper).
+Recorded as documentation-pointer finding; the deeper path is authoritative per repo truth.

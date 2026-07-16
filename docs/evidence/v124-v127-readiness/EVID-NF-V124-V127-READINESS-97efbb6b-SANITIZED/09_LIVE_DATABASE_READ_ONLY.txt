@@ -1,0 +1,19 @@
+# 09 — Live database (read-only) — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-09-LIVEDB-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-09
+Private evidence-artifact SHA-256: 90d807bf83e1dea3b087754f31e89d0e8db33847b73e4da87de3971560d8f611
+Supported claim: The managed production database was observed at schema V124 through a read-only probe (immutable
+  open, no write path, no integrity full-scan). No mutation of the live database occurred.
+Related acceptance criteria: V127-AC-11 (live managed DB identity + schema established read-only)
+Observation time: 2026-07-16 UTC
+Result: Managed database confirmed at schema V124 via read-only probe. Supports AC-11 at partially_trusted
+  (reconstructed receipt).
+Limitations: The probe chain is a reconstructed receipt and is not independently reproducible; AC-11 evidence trust
+  stays partially_trusted. Detailed identity/schema captures are held privately (09a/09b).
+Independent verification: Required
