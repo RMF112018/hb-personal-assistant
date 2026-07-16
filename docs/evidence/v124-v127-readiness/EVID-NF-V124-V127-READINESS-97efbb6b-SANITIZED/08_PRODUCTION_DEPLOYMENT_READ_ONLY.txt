@@ -1,0 +1,20 @@
+# 08 — Production deployment (read-only) — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-08-DEPLOY-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-08
+Private evidence-artifact SHA-256: 1305244925c5ff8c6a6562063b1789a781ef2ee08402fb0c7bc49f46cf1c6b5d
+Supported claim: A production runtime was observed using the previously deployed image and configuration through a
+  read-only probe; no production service, container, or configuration was modified during evidence collection. The
+  deployed artifact was anchored to a source commit for identity purposes.
+Related acceptance criteria: V127-AC-10 (deployed production image identity captured; anchored at a source commit)
+Observation time: 2026-07-16 UTC
+Result: Deployed production image identity established by read-only observation and anchored to the source commit.
+  Supports AC-10 at partially_trusted (reconstructed receipt; see the private tier command receipts).
+Limitations: Deployed-artifact identity is not registry-attested (NF-IMG-001, Medium, OPEN). The underlying probe is
+  a reconstructed receipt (not independently reproducible); AC-10 evidence trust stays partially_trusted.
+Independent verification: Required

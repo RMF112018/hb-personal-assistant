@@ -1,0 +1,20 @@
+# 09c — After-state + invariance — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-09C-INVARIANCE-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-09C
+Private evidence-artifact SHA-256: 566d15c8ab13a864be36a2cd9731cfdb6c12ed6be94ce9ff8a1f4f3cc16b4449
+Supported claim: A before/after comparison across the read-only probe sequence detected no change to the live
+  managed database; all read-only inspection was non-mutating.
+Related acceptance criteria: V127-AC-13 (read-only inspection caused no live mutation; before/after invariance)
+Observation time: 2026-07-16 UTC
+Result: No detected difference between before-state and after-state; invariance holds. Supports AC-13 at
+  partially_trusted.
+Limitations: Raw before/after identity fields (size, inode, timestamps) are retained in the private tier only. The
+  command chain is a reconstructed receipt and is not independently reproducible; AC-13 evidence trust stays
+  partially_trusted.
+Independent verification: Required

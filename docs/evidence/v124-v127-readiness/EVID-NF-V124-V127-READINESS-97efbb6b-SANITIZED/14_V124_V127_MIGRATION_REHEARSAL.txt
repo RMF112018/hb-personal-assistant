@@ -1,0 +1,20 @@
+# 14 — V124→V127 Migration Rehearsal (candidate image, isolated production-derived copy)
+command_class: NON_PRODUCTION_MUTATING (isolated rehearsal copy only)
+raw: PRIV-EVID-V124V127-REH-14 (private tier; SHA-256 in PRIVATE_EVIDENCE_REFERENCES.md)
+
+Target: isolated V124 copy of the production-derived snapshot (12), classified EXPLICIT_DEVELOPMENT.
+Executor: candidate image hb-personal-assistant:v127-candidate-97efbb6b (amd64, revision 97efbb6b), --rm --network none.
+Migration engine: SQLiteMigrator.apply() — the SAME engine the operator routes call (single atomic transaction).
+NOTE (EVID-AUD-004): this exercises the migration ENGINE, not the integrated MANAGED_PRODUCTION
+operator route (exact-path bound to the real NAS DB, not reproducible off-production). AC-15 = PARTIAL: engine
+rehearsal PASS here; integrated operator-route rehearsal NOT VERIFIED (deployment-gate scope).
+
+RESULT:
+- pre_version = 124 ; head = 127
+- post_version = 127            (V124 -> V127 succeeded)
+- elapsed = 5.7 s               (on the full <db-size> DB, under amd64 emulation)
+- idempotent rerun -> 127 in 0.1 s (no-op; safe to re-run)
+- exit 0
+
+The three applied migrations (V125 quarantine table, V126 rename-lineage column+index, V127 events rebuild)
+ran inside one transaction. Post-state validated in 16. Authorization/route mechanics evidenced in 10/13/15.

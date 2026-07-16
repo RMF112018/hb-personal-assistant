@@ -1,0 +1,10 @@
+# MCP runtime config — SANITIZED (public tier)
+generated_utc: 2026-07-16  command_class: READ_ONLY_PRODUCTION
+NOTE (remediation): the raw MCP config (actor identity, container mount topology, per-root read/write modes,
+obsidian backup/support paths) is retained PRIVATE. Only the evidentiary posture is kept here.
+
+Sanitized summary:
+- Deterministic summarization backend; no secrets present (secrets are redacted to <REDACTED> by policy).
+- The MCP reads the READ-ONLY snapshot DB; it does not open the live managed DB.
+- Bounded limits are enforced (max excerpt/list/rows/response/write/output sizes).
+- Internal container mount points, per-root modes, and external workspace paths are REDACTED as operational topology.

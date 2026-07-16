@@ -1,0 +1,19 @@
+# 16 — Post-Migration Validation (migrated rehearsal copy)
+command_class: NON_PRODUCTION (read-only checks on the migrated copy)
+raw: PRIV-EVID-V124V127-REH-PRE (V124 before) + PRIV-EVID-V124V127-REH-16 (V127 after) (private tier; SHAs in PRIVATE_EVIDENCE_REFERENCES.md)
+
+V124 BEFORE -> V127 AFTER (all checks PASS):
+- schema_migrations MAX: 124 -> 127
+- new ledger rows: (125 v125_source_index_scan_quarantine), (126 v126_source_rename_lineage), (127 v127_events_moved_dest_backoff)
+- source_intelligence_events columns: gained dest_rel_path + next_attempt_at (V127)
+- events CHECK now accepts 'moved' : True (was False at V124)
+- source_intelligence_sources.renamed_from_source_id : present (V126)
+- source_index_scan_quarantine table : present (V125)
+- ROW PARITY (no data loss across the events table rebuild):
+    events   <n-rows> -> <n-rows>
+    sources  <n-rows> -> <n-rows>
+    metadata <n-rows> -> <n-rows>
+- PRAGMA quick_check : ok
+- PRAGMA foreign_key_check : 0 violation rows
+- expected indexes present (idx_si_metadata_fts_rowid V124, idx_si_sources_renamed_from V126) : 2
+- no unexpected DDL beyond V125/V126/V127; ordinary-route refusal + no-secret-leakage covered in 10/15.

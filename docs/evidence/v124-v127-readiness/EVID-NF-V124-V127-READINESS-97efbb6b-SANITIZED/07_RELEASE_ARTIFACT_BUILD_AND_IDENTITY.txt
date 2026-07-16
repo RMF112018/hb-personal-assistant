@@ -1,0 +1,20 @@
+# 07 — Release Artifact Build & Identity — SANITIZED (public tier)
+
+command_class: NON_PRODUCTION (local build) + operator-authorized image load
+public_summary: image/CANDIDATE_IMAGE_SUMMARY.md ; raw build/inspect/load logs retained private (referenced by SHA-256)
+
+TARGET RELEASE COMMIT: origin/main 97efbb6b (clean git archive context; NOT the dirty working tree).
+BUILD: git archive origin/main | docker buildx --platform linux/amd64 -f deploy/nas/Dockerfile
+       --build-arg <source-sha-arg>=97efbb6b --build-arg <commit-verified-arg>=1 --load
+
+CANDIDATE IMAGE IDENTITY:
+- tag: hb-personal-assistant:v127-candidate-97efbb6b
+- image_id (multi-arch index digest): <candidate-index-digest>
+- amd64 manifest digest: <candidate-amd64-manifest-digest> ; amd64 config digest: <candidate-amd64-config-digest>
+- arch/os: amd64/linux (matches the production target architecture)
+- labels: org.opencontainers.image.revision=97efbb6bc4992e26c0d07a3735256fd98d77461b ; source=github.com/RMF112018/hb-personal-assistant
+- provenance env: source-SHA build-arg=97efbb6b, commit-verified build-arg=1 (env-var names + full build/runtime env retained private)
+- CODE-IN-IMAGE PROOF: LATEST_SCHEMA_VERSION=127 ; authorize_migration/describe_opened_database/classify_storage_class present ; DatabaseStorageClass has all 7 members ; pkg 1.3.0
+- NAS-loaded amd64 config digest (operator-authorized): <candidate-amd64-config-digest> (docker save/load config digest ≠ buildx index id; SAME revision + code — NF-IMG-001, clarified as index-vs-config digest levels)
+- repo_digests: none (not pushed to a registry; identity = image_id)
+NOT pushed, NOT deployed. Local tag ≠ immutable registry identity (noted; NF-IMG-001 Medium/OPEN).

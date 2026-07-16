@@ -1,0 +1,26 @@
+# 15 — Failure, Negative, and Recovery Rehearsal
+command_class: NON_PRODUCTION_MUTATING (rehearsal copies) + current-main code
+raw: PRIV-EVID-V124V127-REH-15 + PRIV-EVID-V124V127-REH-15B + PRIV-EVID-V124V127-REH-13B (private tier; SHAs in PRIVATE_EVIDENCE_REFERENCES.md); cross-ref 10_NF_ENV_001
+
+ATOMICITY / ROLLBACK (15b — deterministic injection):
+- injected a V127-invalid row (NULL event_id) into a V124 copy (valid under V124's CHECK)
+- apply() FAILED with RuntimeError v127_events_invalid_existing_rows
+- DB ROLLED BACK to V124: schema_migrations MAX = 124, events CHECK still lacks 'moved',
+  V125/V126/V127 ABSENT from the ledger (0 rows >=125), quick_check ok
+  => the WHOLE migration (not just V127) rolls back in one transaction — no partial schema, no lost rows.
+
+AUTHORIZATION / NEGATIVE PATHS:
+- unauthorized migration on the live MANAGED_PRODUCTION target -> DENIED (10: migration_storage_class_denied / migration_authorization_required)
+- declared-path spoof cannot elevate a non-managed target to managed (10)
+- backup-receipt required for MANAGED_PRODUCTION, with 4 negative rejections (13b)
+- replay/origin-binding + ordinary-route refusal: release-code suite (15-failure-atomicity-tests.log):
+    tests/test_nf_f_001_reachability.py (ordinary paths perform 0 managed migrations; replay-rejection via origin binding),
+    plus tests/test_migrator_v127_moved_event.py (events rebuild atomicity/preservation), v126/v125/moved-drain/quarantine.
+
+RECOVERY:
+- rollback-by-restore proven (13): restore the validated V124 backup to a new path -> clean V124, quick_check ok,
+  row parity preserved, sha256 identical to backup.
+- old-image compatibility caveat (from migrator.py:9417-9419 source comment): after V127, OLD application code
+  cannot read/insert 'moved' rows -> a CODE rollback after schema advancement requires DB RESTORE, not image-swap
+  alone. A prior rollback image (<prior-rollback-image>) exists on the NAS image store (08).
+  Forward-recovery: re-run the V127 image against a repaired/restored DB.

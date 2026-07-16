@@ -1,0 +1,39 @@
+# 03 PR313 AND GIT HISTORY
+generated_utc: 2026-07-16
+command_class: LOCAL_REPOSITORY_READ_ONLY
+
+## merge commit 97efbb6b
+commit=97efbb6bc4992e26c0d07a3735256fd98d77461b
+subject=Merge pull request #313 from RMF112018/fix/nf-f-001-ambient-migration-ownership
+committed=2026-07-15
+author=RMF
+parents=e247ad08fe96a8cf8d39b72852f8caba4f75e010 51ce5f2800e8b3e24acb6f2ff04ed5efcf798393
+
+expected_parent1_base:      e247ad08fe96a8cf8d39b72852f8caba4f75e010
+expected_parent2_candidate: 51ce5f2800e8b3e24acb6f2ff04ed5efcf798393
+
+## main advanced past merge? (CORRECTED — CORR-AUD-004)
+AT CAPTURE TIME (2026-07-16): origin/main == 97efbb6b, 0 commits after.
+AT INDEPENDENT REVIEW: origin/main has advanced to e0f3650b (PR #314, AEOS governance/control-plane).
+The release evidence subject remains 97efbb6b, which is still in origin/main history (an ancestor of e0f3650b).
+This file records capture-time state; it is NOT a claim about current remote main.
+
+## candidate 51ce5f28 is ancestor of origin/main?
+YES
+
+## deployed anchor <deployed-revision> position
+commit=<deployed-revision>
+subject=Merge pull request #303 from RMF112018/feat/connector-p3-quality
+committed=2026-07-12
+anchor ancestor of origin/main: YES
+main ahead of anchor by: 37 commits
+
+## NF-F-001 auth modules present on origin/main tree?
+src/hb_assistant/config/db_storage_guard.py
+src/hb_assistant/store/database_identity.py
+src/hb_assistant/store/migration_audit.py
+src/hb_assistant/store/migration_authorization.py
+src/hb_assistant/store/schema_readiness.py
+
+## LATEST_SCHEMA_VERSION on origin/main
+21:LATEST_SCHEMA_VERSION = 127

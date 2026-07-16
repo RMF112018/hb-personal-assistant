@@ -1,0 +1,20 @@
+# 09a — Live DB discovery + before-state — BOUNDED PUBLIC SUMMARY
+
+Evidence ID: EVID-09A-BEFORE-SUMMARY
+Evidence type: BOUNDED PUBLIC SUMMARY
+Summary artifact trust: trusted
+Underlying execution evidence trust: partially_trusted
+Trust does not transfer: Yes
+Raw evidence location: Private tier
+Private artifact ID: PRIV-EVID-V124V127-09A
+Private evidence-artifact SHA-256: cd8b85486da8d992b8773f72b0ecb40d200a1cc8d81ec3d711c60dea028b688c
+Supported claim: A consistent pre-migration before-state of the managed production database was captured read-only
+  (kernel-enforced read-only mount, no write path), establishing the baseline identity used for the invariance
+  comparison in 09c.
+Related acceptance criteria: V127-AC-11 (live managed DB identity established read-only)
+Observation time: 2026-07-16 UTC
+Result: Before-state baseline captured with no mutation. Supports AC-11 at partially_trusted.
+Limitations: Raw discovery listing (paths, sizes, ownership, inode identity, backup inventory) is retained in the
+  private tier only. The capture is a reconstructed receipt and is not independently reproducible; AC-11 evidence
+  trust stays partially_trusted.
+Independent verification: Required
