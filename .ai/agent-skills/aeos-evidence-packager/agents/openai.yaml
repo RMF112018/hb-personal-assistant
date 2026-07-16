@@ -1,0 +1,10 @@
+interface:
+  display_name: "AEOS Evidence Packager"
+  short_description: "Package machine-verifiable evidence"
+  default_prompt: >
+    Read AGENTS.md, the AEOS Master Index, the shared AEOS skill operating
+    contract, and this skill. Execute only the currently authorized goal
+    state and stop at the required checkpoint.
+
+policy:
+  allow_implicit_invocation: true

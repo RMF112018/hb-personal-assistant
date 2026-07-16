@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Finding Ledger",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "goal_id",
+    "audit_id",
+    "findings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "finding_id",
+          "title",
+          "severity",
+          "status",
+          "original_statement",
+          "disposition_history"
+        ],
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "INFO"
+            ]
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "VERIFIED_FIXED",
+              "CLAIMED_NOT_VERIFIED",
+              "DEFERRED_ACCEPTED_RISK",
+              "REJECTED",
+              "NOT_REPRODUCIBLE"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

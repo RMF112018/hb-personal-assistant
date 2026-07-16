@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Checkpoint Request",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "checkpoint_id",
+    "goal_id",
+    "current_state",
+    "disposition",
+    "repository",
+    "artifacts",
+    "operator_action_required"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "checkpoint_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "current_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "disposition": {
+      "enum": [
+        "READY_FOR_EXTERNAL_REVIEW",
+        "IMPLEMENTATION_COMPLETE_PENDING_AUDIT",
+        "CORRECTIVE_WORK_READY_FOR_REAUDIT",
+        "BLOCKED",
+        "INSUFFICIENT_EVIDENCE",
+        "ENVIRONMENT_INVALID",
+        "FAILED_BOUNDED",
+        "OPERATOR_AUTHORIZATION_REQUIRED"
+      ]
+    },
+    "repository": {
+      "type": "object"
+    },
+    "artifacts": {
+      "type": "array"
+    },
+    "operator_action_required": {
+      "const": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,10 @@
+interface:
+  display_name: "AEOS Repository Truth"
+  short_description: "Establish evidence-backed repository truth"
+  default_prompt: >
+    Read AGENTS.md, the AEOS Master Index, the shared AEOS skill operating
+    contract, and this skill. Execute only the currently authorized goal
+    state and stop at the required checkpoint.
+
+policy:
+  allow_implicit_invocation: true

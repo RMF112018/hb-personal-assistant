@@ -1,0 +1,15 @@
+schema_version: 1
+goal_id: GOAL-REPLACE-ME
+work_items:
+  - work_item_id: WP-001
+    title: Replace me
+    status: PROPOSED
+    prerequisites: []
+    scope: []
+    out_of_scope: []
+    acceptance_criteria: []
+    required_tests: []
+    required_evidence: []
+    retry_limit: 3
+    stop_conditions: []
+    disposition: null

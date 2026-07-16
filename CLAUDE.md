@@ -32,6 +32,49 @@ Repository-specific guidance below remains authoritative for Claude Code executi
 5. Current user instruction
 6. Prior conversation context
 
+## Canonical AEOS Skills and Goal Execution
+
+The canonical cross-harness AEOS skills are stored in:
+
+```text
+.ai/agent-skills/
+```
+
+Claude discovers the governed skills through global links under:
+
+```text
+~/.claude/skills/
+```
+
+The global discovery links must point to this repository's canonical skill
+folders. Do not edit the linked skill content under `~/.claude/skills/`; edit
+and review the canonical repository files instead.
+
+For an AEOS-governed goal:
+
+1. Use `aeos-goal-controller` as the entry skill.
+2. Validate the goal package, repository state, checkpoint, and authorization.
+3. Execute exactly one currently authorized workflow state.
+4. Use the matching canonical subordinate skill.
+5. Generate the required artifacts and evidence.
+6. Close the state through `aeos-checkpoint-manager`.
+7. Stop for external review.
+8. Do not activate the next state without a new validated operator
+   authorization.
+
+A broad goal prompt does not authorize all lifecycle stages. Claude must not
+approve its own plan, audit its own implementation, accept risk, or waive
+acceptance criteria.
+
+Goal records live under:
+
+```text
+.ai/aeos/goals/<goal-id>/
+```
+
+Repository implementation evidence remains under the established
+`docs/evidence/` structure.
+
 ---
 
 # CLAUDE.md

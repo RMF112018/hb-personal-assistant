@@ -1,0 +1,10 @@
+interface:
+  display_name: "AEOS Independent Auditor"
+  short_description: "Audit implementation without editing it"
+  default_prompt: >
+    Read AGENTS.md, the AEOS Master Index, the shared AEOS skill operating
+    contract, and this skill. Execute only the currently authorized goal
+    state and stop at the required checkpoint.
+
+policy:
+  allow_implicit_invocation: false
