@@ -635,29 +635,28 @@ def compare_migration_parity(before: InventoryReport, after: InventoryReport) ->
             ok=(after.duplicate_relpath_across_roots == before.duplicate_relpath_across_roots),
         )
     )
-    if before.generation_counts_by_status:
-        diffs.append(
-            ParityDiff(
-                "generation_counts_by_status", PARITY_EXACT,
-                before.generation_counts_by_status, after.generation_counts_by_status,
-                ok=(after.generation_counts_by_status == before.generation_counts_by_status),
-            )
+    # Always compared, never truthiness-gated: a zero/absent origin state that gains fabricated rows
+    # during migration must fail (PC-WI01-EXT-REV-F-004).
+    diffs.append(
+        ParityDiff(
+            "generation_counts_by_status", PARITY_EXACT,
+            before.generation_counts_by_status, after.generation_counts_by_status,
+            ok=(after.generation_counts_by_status == before.generation_counts_by_status),
         )
-    if before.quarantine_unresolved_count:
-        diffs.append(
-            ParityDiff(
-                "quarantine_unresolved_count", PARITY_EXACT,
-                before.quarantine_unresolved_count, after.quarantine_unresolved_count,
-                ok=(after.quarantine_unresolved_count == before.quarantine_unresolved_count),
-            )
+    )
+    diffs.append(
+        ParityDiff(
+            "quarantine_unresolved_count", PARITY_EXACT,
+            before.quarantine_unresolved_count, after.quarantine_unresolved_count,
+            ok=(after.quarantine_unresolved_count == before.quarantine_unresolved_count),
         )
-    if before.lineage_count:
-        diffs.append(
-            ParityDiff(
-                "lineage_count", PARITY_EXACT, before.lineage_count, after.lineage_count,
-                ok=(after.lineage_count == before.lineage_count),
-            )
+    )
+    diffs.append(
+        ParityDiff(
+            "lineage_count", PARITY_EXACT, before.lineage_count, after.lineage_count,
+            ok=(after.lineage_count == before.lineage_count),
         )
+    )
     diffs.append(
         ParityDiff(
             "fts_parity.dangling", PARITY_EXACT, before.fts_parity.dangling,
@@ -725,7 +724,17 @@ def source_index_structural_signature(conn: sqlite3.Connection) -> dict[str, obj
         ).fetchall()
         if r["tbl_name"] in scoped_tables
     }
-    return {"tables": tables, "indexes": _scoped_indexes(conn), "triggers": triggers}
+    # Views: source-index-named only (PC-AC-017 requires view parity; the source-index schema
+    # currently defines none, so this is normally the empty set — asserted explicitly, not omitted).
+    views = {
+        r["name"]: _normalize_sql(r["sql"])
+        for r in conn.execute(
+            "SELECT name, sql FROM sqlite_master WHERE type = 'view' AND name NOT LIKE 'sqlite_%' "
+            "ORDER BY name"
+        ).fetchall()
+        if str(r["name"]).startswith(_SOURCE_INDEX_OBJECT_PREFIXES)
+    }
+    return {"tables": tables, "indexes": _scoped_indexes(conn), "triggers": triggers, "views": views}
 
 
 def source_index_structure(db_path: Path) -> dict[str, object]:
@@ -748,13 +757,14 @@ def source_index_logical_hash(db_path: Path) -> str:
     conn = _open_readonly(Path(db_path))
     try:
         table_rows: dict[str, list[str]] = {}
-        for table in _LOGICAL_HASH_TABLES:
+        for table in _SCOPED_HASH_TABLES:
             if not _table_exists(conn, table):
                 continue
+            volatile = _VOLATILE_HASH_COLUMNS | _SCOPED_VOLATILE_BY_TABLE.get(table, frozenset())
             rows = conn.execute(f"SELECT * FROM {table}").fetchall()
             table_rows[table] = sorted(
                 json.dumps(
-                    {k: v for k, v in dict(row).items() if k not in _VOLATILE_HASH_COLUMNS},
+                    {k: v for k, v in dict(row).items() if k not in volatile},
                     sort_keys=True,
                     default=str,
                 )
@@ -782,7 +792,7 @@ def compare_source_index_structure(migrated_db: Path, reference_db: Path) -> Par
     migrated_sig = source_index_structure(migrated_db)
     reference_sig = source_index_structure(reference_db)
     diffs: list[ParityDiff] = []
-    for key in ("tables", "indexes", "triggers"):
+    for key in ("tables", "indexes", "triggers", "views"):
         equal = migrated_sig.get(key) == reference_sig.get(key)
         diffs.append(
             ParityDiff(
@@ -834,3 +844,267 @@ def plan_has_unindexed_scan(plan: list[str]) -> bool:
         ):
             return True
     return False
+
+
+# --- Semantic parity oracle (Phase C Stage 2, PC-WI-01 corrective R2) ---------------------------
+#
+# Aggregate counts cannot prove event/FTS/authority/lineage/link semantics (PC-AC-020..025). These
+# helpers build a redacted, deterministic semantic inventory (per-row identity digests + derived
+# validity facts) so an origin snapshot can be compared against its migrated-head snapshot with
+# explicit, origin-aware equality (never truthiness-gated). Raw paths/content are hashed, never emitted.
+
+# Generation statuses that count as an "active" generation (matches the partial-unique index
+# ``idx_source_index_scan_generations_active`` predicate: one active generation per root).
+_ACTIVE_GENERATION_STATUSES: frozenset[str] = frozenset({"running", "partial", "reconcile_pending"})
+
+# Complete protected-data table set for the scoped idempotency hash: the schema ledger plus every
+# inventoried source-index table (fixes the earlier omission of source_intelligence_state,
+# source_index_bootstrap_state / _reconciliation_runs, source_structure_roots / _folders — PC-AC-016).
+_SCOPED_HASH_TABLES: tuple[str, ...] = ("schema_migrations", *SOURCE_INDEX_TABLES)
+
+# Per-table volatile columns excluded from the scoped hash: the migrator idempotently re-asserts the
+# ``source_intelligence_state`` ``fts_available`` row with a fresh ``updated_at`` on every apply, so that
+# timestamp is bookkeeping (like ``schema_migrations.applied_at``), not a protected-data change. The
+# row's ``state_key``/``state_value`` remain hashed, so real content changes are still detected.
+_SCOPED_VOLATILE_BY_TABLE: dict[str, frozenset[str]] = {
+    "source_intelligence_state": frozenset({"updated_at"}),
+}
+
+# Name prefixes identifying source-index views/objects (PC-AC-017 view parity is scoped to these; the
+# source-index schema currently defines no views, so the scoped view set is normally empty).
+_SOURCE_INDEX_OBJECT_PREFIXES: tuple[str, ...] = (
+    "source_intelligence", "source_index", "source_structure", "obsidian_note",
+)
+
+# Per-table semantic identity columns (folded into a per-row digest). Timestamps and V127-added
+# nullable columns are excluded so a legacy origin's rows preserve their digest across migration
+# (the migration-transformed columns don't perturb identity).
+_SEMANTIC_IDENTITY_COLUMNS: dict[str, tuple[str, ...]] = {
+    "source_intelligence_events": (
+        "event_id", "source_id", "rel_path", "source_root_key", "event_type", "status",
+        "error_code", "attempts",
+    ),
+    "source_intelligence_generated_notes": (
+        "generated_note_id", "source_id", "note_rel_path", "generation_status",
+    ),
+    # generation_id is added at V122 (NULL for pre-V122 rows), so it is migration-transformed and
+    # excluded from the cross-origin identity digest; run identity is (run_id, root_key, mode, phase, status).
+    "source_index_bootstrap_runs": ("run_id", "root_key", "mode", "phase", "status"),
+    "source_index_scan_quarantine": (
+        "quarantine_id", "source_root_key", "generation_id", "source_id", "rel_path", "status",
+        "resolution_state",
+    ),
+    "source_intelligence_relationships": (
+        "relationship_id", "src_source_id", "dst_kind", "dst_ref", "relation",
+    ),
+}
+
+
+@dataclass
+class SemanticInventory:
+    events_by_status: dict[str, int]
+    events_by_type: dict[str, int]
+    event_digests: list[str]
+    card_digests: list[str]
+    pass_run_digests: list[str]
+    relationship_digests: list[str]
+    quarantine_unresolved_count: int
+    quarantine_digests: list[str]
+    fts_present: int
+    fts_missing: int
+    fts_matched: int
+    fts_dangling: int
+    fts_orphan: int
+    fts_content_digests: list[str]
+    generation_authority_per_root: dict[str, list[str]]
+    generation_roots_multi_active: int
+    lineage_edges: list[str]
+    lineage_all_predecessors_exist: bool
+    lineage_acyclic: bool
+
+
+def _count_where(conn: sqlite3.Connection, table: str, predicate: str) -> int:
+    if not _table_exists(conn, table):
+        return 0
+    row = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {predicate}").fetchone()
+    return int(row[0]) if row else 0
+
+
+def _redacted_row_digests(
+    conn: sqlite3.Connection, table: str, columns: tuple[str, ...]
+) -> list[str]:
+    """Sorted per-row sha256 digests over identity columns present in ``table`` (raw values hashed)."""
+    if not _table_exists(conn, table):
+        return []
+    present = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    cols = [c for c in columns if c in present]
+    if not cols:
+        return []
+    col_sql = ", ".join(cols)
+    digests: list[str] = []
+    for row in conn.execute(f"SELECT {col_sql} FROM {table}").fetchall():
+        payload = "\x1f".join([table, *["" if v is None else str(v) for v in row]])
+        digests.append(hashlib.sha256(payload.encode("utf-8")).hexdigest())
+    return sorted(digests)
+
+
+def _generation_authority(conn: sqlite3.Connection) -> tuple[dict[str, list[str]], int]:
+    """Per-root generation-authority digests and the number of roots with >1 active generation."""
+    if not _table_exists(conn, "source_index_scan_generations"):
+        return {}, 0
+    per_root: dict[str, list[str]] = {}
+    active_counts: dict[str, int] = {}
+    for row in conn.execute(
+        "SELECT root_key, generation_id, status, active_run_id FROM source_index_scan_generations"
+    ).fetchall():
+        root = "" if row["root_key"] is None else str(row["root_key"])
+        digest = hashlib.sha256(
+            "\x1f".join(
+                "" if row[k] is None else str(row[k])
+                for k in ("generation_id", "status", "active_run_id")
+            ).encode("utf-8")
+        ).hexdigest()
+        per_root.setdefault(root, []).append(digest)
+        if str(row["status"]) in _ACTIVE_GENERATION_STATUSES:
+            active_counts[root] = active_counts.get(root, 0) + 1
+    return ({k: sorted(v) for k, v in per_root.items()}, sum(1 for n in active_counts.values() if n > 1))
+
+
+def _lineage_facts(conn: sqlite3.Connection) -> tuple[list[str], bool, bool]:
+    """Redacted lineage edge digests + (all predecessors exist, acyclic)."""
+    if not _column_exists(conn, "source_intelligence_sources", "renamed_from_source_id"):
+        return [], True, True
+    edges: dict[str, str] = {}
+    ids: set[str] = set()
+    for row in conn.execute(
+        "SELECT source_id, renamed_from_source_id FROM source_intelligence_sources"
+    ).fetchall():
+        ids.add(str(row["source_id"]))
+        if row["renamed_from_source_id"] is not None:
+            edges[str(row["source_id"])] = str(row["renamed_from_source_id"])
+    all_exist = all(pred in ids for pred in edges.values())
+    acyclic = True
+    for start in edges:
+        seen: set[str] = set()
+        cur: str | None = start
+        while cur is not None and cur in edges:
+            if cur in seen:
+                acyclic = False
+                break
+            seen.add(cur)
+            cur = edges[cur]
+    edge_digests = sorted(
+        hashlib.sha256(f"{src}\x1f{dst}".encode("utf-8")).hexdigest() for src, dst in edges.items()
+    )
+    return edge_digests, all_exist, acyclic
+
+
+def source_index_semantic_inventory(db_path: Path) -> SemanticInventory:
+    """Redacted, serializable semantic inventory for migration parity (PC-AC-020..025), read-only.
+
+    Holds per-row identity digests (raw paths/content hashed, never emitted) plus derived validity
+    facts (generation authority, lineage validity/acyclicity) so an origin snapshot can be compared
+    to its migrated-head snapshot for semantic preservation.
+    """
+    conn = _open_readonly(Path(db_path))
+    try:
+        by_status, by_type, _ = _events_breakdown(conn)
+        parity = fts_parity(conn)
+        gen_per_root, gen_multi_active = _generation_authority(conn)
+        lineage_edges, predecessors_exist, acyclic = _lineage_facts(conn)
+        return SemanticInventory(
+            events_by_status=by_status,
+            events_by_type=by_type,
+            event_digests=_redacted_row_digests(
+                conn, "source_intelligence_events",
+                _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_events"],
+            ),
+            card_digests=_redacted_row_digests(
+                conn, "source_intelligence_generated_notes",
+                _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_generated_notes"],
+            ),
+            pass_run_digests=_redacted_row_digests(
+                conn, "source_index_bootstrap_runs",
+                _SEMANTIC_IDENTITY_COLUMNS["source_index_bootstrap_runs"],
+            ),
+            relationship_digests=_redacted_row_digests(
+                conn, "source_intelligence_relationships",
+                _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_relationships"],
+            ),
+            quarantine_unresolved_count=_count_where(
+                conn, "source_index_scan_quarantine", "resolution_state = 'unresolved'"
+            ),
+            quarantine_digests=_redacted_row_digests(
+                conn, "source_index_scan_quarantine",
+                _SEMANTIC_IDENTITY_COLUMNS["source_index_scan_quarantine"],
+            ),
+            fts_present=_count_where(conn, "source_intelligence_metadata", "fts_rowid IS NOT NULL"),
+            fts_missing=_count_where(conn, "source_intelligence_metadata", "fts_rowid IS NULL"),
+            fts_matched=parity.matched,
+            fts_dangling=parity.dangling,
+            fts_orphan=parity.orphan,
+            fts_content_digests=fts_content_digests(conn),
+            generation_authority_per_root=gen_per_root,
+            generation_roots_multi_active=gen_multi_active,
+            lineage_edges=lineage_edges,
+            lineage_all_predecessors_exist=predecessors_exist,
+            lineage_acyclic=acyclic,
+        )
+    finally:
+        conn.close()
+
+
+def compare_semantic_inventories(
+    before: SemanticInventory, after: SemanticInventory
+) -> ParityResult:
+    """Compare an origin semantic inventory to its migrated-head inventory (PC-AC-020..025).
+
+    Identity digest sets are **exact** (rows/fields preserved); event type map is
+    migration-transformed but rows are preserved; FTS present/missing/matched/content are exact and no
+    dangling/orphan may be introduced; generation-authority-per-root and lineage edges are exact; and
+    the migrated database must independently satisfy the validity invariants (single active generation
+    per root, acyclic lineage, all lineage predecessors present).
+    """
+    diffs: list[ParityDiff] = [
+        ParityDiff("events.identity_digests", PARITY_EXACT, before.event_digests, after.event_digests,
+                   ok=(after.event_digests == before.event_digests)),
+        ParityDiff("events.by_status", PARITY_EXACT, before.events_by_status, after.events_by_status,
+                   ok=(after.events_by_status == before.events_by_status)),
+        ParityDiff("events.by_type", PARITY_MIGRATION_TRANSFORMED, before.events_by_type,
+                   after.events_by_type, ok=(after.events_by_type == before.events_by_type)),
+        ParityDiff("cards.identity_digests", PARITY_EXACT, before.card_digests, after.card_digests,
+                   ok=(after.card_digests == before.card_digests)),
+        ParityDiff("pass_runs.identity_digests", PARITY_EXACT, before.pass_run_digests,
+                   after.pass_run_digests, ok=(after.pass_run_digests == before.pass_run_digests)),
+        ParityDiff("relationships.identity_digests", PARITY_EXACT, before.relationship_digests,
+                   after.relationship_digests, ok=(after.relationship_digests == before.relationship_digests)),
+        ParityDiff("quarantine.unresolved_count", PARITY_EXACT, before.quarantine_unresolved_count,
+                   after.quarantine_unresolved_count,
+                   ok=(after.quarantine_unresolved_count == before.quarantine_unresolved_count)),
+        ParityDiff("quarantine.identity_digests", PARITY_EXACT, before.quarantine_digests,
+                   after.quarantine_digests, ok=(after.quarantine_digests == before.quarantine_digests)),
+        ParityDiff("fts.present", PARITY_EXACT, before.fts_present, after.fts_present,
+                   ok=(after.fts_present == before.fts_present)),
+        ParityDiff("fts.missing", PARITY_EXACT, before.fts_missing, after.fts_missing,
+                   ok=(after.fts_missing == before.fts_missing)),
+        ParityDiff("fts.matched", PARITY_EXACT, before.fts_matched, after.fts_matched,
+                   ok=(after.fts_matched == before.fts_matched)),
+        ParityDiff("fts.content_digests", PARITY_EXACT, before.fts_content_digests,
+                   after.fts_content_digests, ok=(after.fts_content_digests == before.fts_content_digests)),
+        ParityDiff("fts.dangling", PARITY_EXACT, before.fts_dangling, after.fts_dangling,
+                   ok=(after.fts_dangling == 0)),
+        ParityDiff("fts.orphan", PARITY_EXACT, before.fts_orphan, after.fts_orphan,
+                   ok=(after.fts_orphan == 0)),
+        ParityDiff("generation_authority.per_root", PARITY_EXACT,
+                   before.generation_authority_per_root, after.generation_authority_per_root,
+                   ok=(after.generation_authority_per_root == before.generation_authority_per_root)),
+        ParityDiff("generation_authority.single_active_per_root", PARITY_EXACT, 0,
+                   after.generation_roots_multi_active, ok=(after.generation_roots_multi_active == 0)),
+        ParityDiff("lineage.edges", PARITY_EXACT, before.lineage_edges, after.lineage_edges,
+                   ok=(after.lineage_edges == before.lineage_edges)),
+        ParityDiff("lineage.acyclic", PARITY_EXACT, True, after.lineage_acyclic,
+                   ok=after.lineage_acyclic),
+        ParityDiff("lineage.all_predecessors_exist", PARITY_EXACT, True,
+                   after.lineage_all_predecessors_exist, ok=after.lineage_all_predecessors_exist),
+    ]
+    return ParityResult(ok=all(d.ok for d in diffs), diffs=diffs)
