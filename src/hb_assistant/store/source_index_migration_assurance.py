@@ -34,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -523,3 +524,313 @@ def to_redacted_dict(report: InventoryReport) -> dict[str, object]:
     enforcement point that tests can assert against.
     """
     return asdict(report)
+
+
+# --- Migration parity comparison + query plans (Phase C Stage 2, PC-WI-01) ----------------------
+#
+# These helpers compare two already-collected inventories (an origin fixture and its migrated head, or
+# a migrated head and a fresh head) and classify the differences per the spec §5 parity model. They add
+# no new database access to the inventory path and preserve the read-only, fail-closed contract
+# (``query_plan`` reuses ``_open_readonly``; nothing here writes, migrates, or repairs).
+
+# Parity classification vocabulary (Phase C spec §5).
+PARITY_EXACT = "exact"
+PARITY_MONOTONIC = "monotonic"
+PARITY_MIGRATION_TRANSFORMED = "migration-transformed"
+PARITY_ALLOWED_DIFFERENCE = "allowed-difference"
+PARITY_INFORMATIONAL = "informational"
+
+# Source-content tables whose row counts must be preserved across migration (present at every supported
+# origin >= V121). A migration must never drop or fabricate their rows.
+_DATA_PRESERVED_TABLES: tuple[str, ...] = (
+    "source_intelligence_sources",
+    "source_intelligence_metadata",
+    "source_intelligence_text",
+    "source_intelligence_chunks",
+    "source_intelligence_relationships",
+    "source_intelligence_generated_notes",
+    "source_intelligence_summaries",
+    "source_index_bootstrap_runs",
+)
+
+
+@dataclass
+class ParityDiff:
+    field: str
+    classification: str
+    before: object
+    after: object
+    ok: bool
+    detail: str = ""
+
+
+@dataclass
+class ParityResult:
+    ok: bool
+    diffs: list[ParityDiff]
+
+    def failures(self) -> list[ParityDiff]:
+        return [d for d in self.diffs if not d.ok]
+
+
+def ledger_complete(report: InventoryReport) -> tuple[bool, str]:
+    """PC-AC-015: ``schema_migrations`` holds every version 1..head exactly once, no gaps/duplicates."""
+    versions = report.schema_versions
+    if not versions or report.schema_head is None:
+        return False, "no schema versions present"
+    expected = list(range(1, report.schema_head + 1))
+    if versions == expected:
+        return True, ""
+    counts = Counter(versions)
+    dups = sorted(v for v, n in counts.items() if n > 1)
+    missing = [v for v in expected if v not in counts]
+    return False, f"gaps={missing} duplicates={dups}"
+
+
+def compare_migration_parity(before: InventoryReport, after: InventoryReport) -> ParityResult:
+    """Classify origin(``before``) -> migrated-head(``after``) differences per the spec §5 model.
+
+    - schema head is **monotonic** (must not regress);
+    - each source-content table present at the origin keeps an **exact** row count (no data lost or
+      fabricated);
+    - root count and cross-root duplicate relpaths are **exact** (root-scoped identity preserved);
+    - generation / quarantine / lineage counts are **exact** when the origin already carried them;
+    - no dangling/orphan FTS linkage is introduced (**exact** zero);
+    - file size is **informational**.
+    """
+    diffs: list[ParityDiff] = [
+        ParityDiff(
+            "schema_head",
+            PARITY_MONOTONIC,
+            before.schema_head,
+            after.schema_head,
+            ok=(
+                before.schema_head is not None
+                and after.schema_head is not None
+                and after.schema_head >= before.schema_head
+            ),
+        )
+    ]
+    for table in _DATA_PRESERVED_TABLES:
+        origin_count = before.row_counts.get(table)
+        if origin_count is None:
+            continue  # table absent at this origin -> not a preservation target
+        head_count = after.row_counts.get(table)
+        diffs.append(
+            ParityDiff(
+                f"row_count[{table}]", PARITY_EXACT, origin_count, head_count,
+                ok=(head_count == origin_count),
+            )
+        )
+    diffs.append(
+        ParityDiff(
+            "root_count", PARITY_EXACT, before.root_count, after.root_count,
+            ok=(after.root_count == before.root_count),
+        )
+    )
+    diffs.append(
+        ParityDiff(
+            "duplicate_relpath_across_roots", PARITY_EXACT,
+            before.duplicate_relpath_across_roots, after.duplicate_relpath_across_roots,
+            ok=(after.duplicate_relpath_across_roots == before.duplicate_relpath_across_roots),
+        )
+    )
+    if before.generation_counts_by_status:
+        diffs.append(
+            ParityDiff(
+                "generation_counts_by_status", PARITY_EXACT,
+                before.generation_counts_by_status, after.generation_counts_by_status,
+                ok=(after.generation_counts_by_status == before.generation_counts_by_status),
+            )
+        )
+    if before.quarantine_unresolved_count:
+        diffs.append(
+            ParityDiff(
+                "quarantine_unresolved_count", PARITY_EXACT,
+                before.quarantine_unresolved_count, after.quarantine_unresolved_count,
+                ok=(after.quarantine_unresolved_count == before.quarantine_unresolved_count),
+            )
+        )
+    if before.lineage_count:
+        diffs.append(
+            ParityDiff(
+                "lineage_count", PARITY_EXACT, before.lineage_count, after.lineage_count,
+                ok=(after.lineage_count == before.lineage_count),
+            )
+        )
+    diffs.append(
+        ParityDiff(
+            "fts_parity.dangling", PARITY_EXACT, before.fts_parity.dangling,
+            after.fts_parity.dangling, ok=(after.fts_parity.dangling == 0),
+        )
+    )
+    diffs.append(
+        ParityDiff(
+            "fts_parity.orphan", PARITY_EXACT, before.fts_parity.orphan,
+            after.fts_parity.orphan, ok=(after.fts_parity.orphan == 0),
+        )
+    )
+    diffs.append(
+        ParityDiff(
+            "file_size_bytes", PARITY_INFORMATIONAL, before.file_size_bytes,
+            after.file_size_bytes, ok=True,
+        )
+    )
+    return ParityResult(ok=all(d.ok for d in diffs), diffs=diffs)
+
+
+def _scoped_indexes(conn: sqlite3.Connection) -> dict[str, dict[str, object]]:
+    """Index details, restricted to indexes defined ON a source-index structural table.
+
+    ``index_structure`` returns *every* index in the database; for source-index parity we compare only
+    indexes attached to the source-index / FTS tables (``sqlite_master.tbl_name``), so unrelated domains
+    (e.g. schedule) cannot mask a real source-index difference or manufacture a false one.
+    """
+    scoped_tables = set(_STRUCTURAL_TABLES)
+    result: dict[str, dict[str, object]] = {}
+    for name in _objects(conn, "index"):
+        owner = conn.execute(
+            "SELECT tbl_name FROM sqlite_master WHERE type = 'index' AND name = ?", (name,)
+        ).fetchone()
+        if owner is None or owner["tbl_name"] not in scoped_tables:
+            continue
+        sql_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?", (name,)
+        ).fetchone()
+        sql = _normalize_sql(sql_row["sql"] if sql_row else None)
+        cols = [r["name"] for r in conn.execute(f"PRAGMA index_info({name})").fetchall()]
+        result[name] = {
+            "unique": "UNIQUE" in sql.upper(),
+            "partial": " WHERE " in f" {sql.upper()} ",
+            "columns": cols,
+            "sql": sql,
+        }
+    return result
+
+
+def source_index_structural_signature(conn: sqlite3.Connection) -> dict[str, object]:
+    """Source-index-scoped structural signature (tables/indexes/triggers on source-index tables only).
+
+    Like ``structural_signature`` but restricted to the source-index + FTS tables and the indexes and
+    triggers attached to them, so the Phase C migration/parity comparison is not polluted by other
+    domains' schema. Views are omitted (the source-index schema defines none).
+    """
+    scoped_tables = set(_STRUCTURAL_TABLES)
+    tables = {t: table_structure(conn, t) for t in _STRUCTURAL_TABLES if _table_exists(conn, t)}
+    triggers = {
+        r["name"]: _normalize_sql(r["sql"])
+        for r in conn.execute(
+            "SELECT name, sql, tbl_name FROM sqlite_master WHERE type = 'trigger' "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        ).fetchall()
+        if r["tbl_name"] in scoped_tables
+    }
+    return {"tables": tables, "indexes": _scoped_indexes(conn), "triggers": triggers}
+
+
+def source_index_structure(db_path: Path) -> dict[str, object]:
+    """Read-only, fail-closed source-index-scoped structural signature at ``db_path``."""
+    conn = _open_readonly(Path(db_path))
+    try:
+        return source_index_structural_signature(conn)
+    finally:
+        conn.close()
+
+
+def source_index_logical_hash(db_path: Path) -> str:
+    """Source-index-scoped logical hash: source-index row content + scoped structure + FTS parity/content.
+
+    A source-index-only analogue of ``logical_inventory_hash`` (whose structural component is
+    database-wide). Two databases with identical source-index logical + source-index structural + FTS
+    state hash identically, regardless of unrelated domains' schema. Used to assert source-index
+    idempotency (PC-AC-016) without coupling to other domains.
+    """
+    conn = _open_readonly(Path(db_path))
+    try:
+        table_rows: dict[str, list[str]] = {}
+        for table in _LOGICAL_HASH_TABLES:
+            if not _table_exists(conn, table):
+                continue
+            rows = conn.execute(f"SELECT * FROM {table}").fetchall()
+            table_rows[table] = sorted(
+                json.dumps(
+                    {k: v for k, v in dict(row).items() if k not in _VOLATILE_HASH_COLUMNS},
+                    sort_keys=True,
+                    default=str,
+                )
+                for row in rows
+            )
+        parity = fts_parity(conn)
+        material: dict[str, object] = {
+            "rows": table_rows,
+            "structure": source_index_structural_signature(conn),
+            "fts_parity": {"matched": parity.matched, "dangling": parity.dangling, "orphan": parity.orphan},
+            "fts_content": fts_content_digests(conn),
+        }
+        return hashlib.sha256(json.dumps(material, sort_keys=True).encode("utf-8")).hexdigest()
+    finally:
+        conn.close()
+
+
+def compare_source_index_structure(migrated_db: Path, reference_db: Path) -> ParityResult:
+    """PC-AC-017: a migrated database's *source-index* structure must equal a fresh head database's.
+
+    Compares the source-index-scoped structural signature (tables/columns/FKs/DDL, indexes and triggers
+    on source-index tables). After migration to head, source-index structure is canonical regardless of
+    origin — any difference is a failure.
+    """
+    migrated_sig = source_index_structure(migrated_db)
+    reference_sig = source_index_structure(reference_db)
+    diffs: list[ParityDiff] = []
+    for key in ("tables", "indexes", "triggers"):
+        equal = migrated_sig.get(key) == reference_sig.get(key)
+        diffs.append(
+            ParityDiff(
+                f"structure[{key}]", PARITY_EXACT, "reference-head", "migrated",
+                ok=equal,
+                detail="" if equal else _describe_key_diff(reference_sig.get(key), migrated_sig.get(key)),
+            )
+        )
+    return ParityResult(ok=all(d.ok for d in diffs), diffs=diffs)
+
+
+def _describe_key_diff(reference: object, migrated: object) -> str:
+    """Compact description of the first differing sub-key (redacted; object names only)."""
+    if isinstance(reference, dict) and isinstance(migrated, dict):
+        only_ref = sorted(set(reference) - set(migrated))
+        only_mig = sorted(set(migrated) - set(reference))
+        changed = sorted(k for k in set(reference) & set(migrated) if reference[k] != migrated[k])
+        return f"only_in_reference={only_ref} only_in_migrated={only_mig} changed={changed}"
+    return "values differ"
+
+
+def query_plan(db_path: Path, sql: str, params: tuple[object, ...] = ()) -> list[str]:
+    """Capture ``EXPLAIN QUERY PLAN`` detail lines for a query, read-only and fail-closed (PC-AC-026)."""
+    conn = _open_readonly(Path(db_path))
+    try:
+        rows = conn.execute(f"EXPLAIN QUERY PLAN {sql}", params).fetchall()
+        return [str(row["detail"]) for row in rows]
+    finally:
+        conn.close()
+
+
+def plan_uses_index(plan: list[str], index_name: str | None = None) -> bool:
+    """True if the plan uses an index (optionally a specific named index) rather than scanning."""
+    joined = " ".join(plan).upper()
+    if index_name is not None:
+        needle = index_name.upper()
+        return f"USING INDEX {needle}" in joined or f"USING COVERING INDEX {needle}" in joined
+    return ("USING INDEX" in joined) or ("USING COVERING INDEX" in joined)
+
+
+def plan_has_unindexed_scan(plan: list[str]) -> bool:
+    """True if the plan contains a full-table SCAN not backed by an index."""
+    for line in plan:
+        upper = line.upper()
+        if (
+            upper.startswith("SCAN")
+            and "USING INDEX" not in upper
+            and "USING COVERING INDEX" not in upper
+        ):
+            return True
+    return False
