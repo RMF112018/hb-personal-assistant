@@ -26,6 +26,15 @@ HANDLER_SOURCE_DECLARATION = (
     "src/hb_assistant/nas_mcp/tool_registration/register_nas_mcp_tools.py"
 )
 GENERATED_OBSIDIAN_HANDLER_SYMBOL = "_make_obsidian_tool.<locals>._obsidian_tool"
+_PROMPT_PREFLIGHT_COMPATIBILITY_EXCLUSIONS = frozenset(
+    {
+        "hb_assistant_catalog",
+        "hb_assistant_tool_help",
+        "hb_capability_mode",
+        "hb_data_freshness",
+        "hb_mcp_status",
+    }
+)
 
 
 class Authorization(StrEnum):
@@ -238,6 +247,22 @@ def gateway_names_for_profile(
     )
 
 
+def prompt_preflight_compatibility_names() -> frozenset[str]:
+    """Return the context-free historical tool surface used by prompt preflight.
+
+    This compatibility contract is static registry metadata. It intentionally
+    does not consult the selected runtime profile, feature gates, or broker.
+    Explicit startup-pinned surface inputs remain authoritative when supplied.
+    """
+    return frozenset(
+        item.registered_name
+        for item in build_capability_registry().definitions
+        if item.gateway_exposure
+        and CapabilityProfile.LEGACY_V12 in item.profile_membership
+        and item.registered_name not in _PROMPT_PREFLIGHT_COMPATIBILITY_EXCLUSIONS
+    )
+
+
 def direct_names_for_profile(
     profile: str | CapabilityProfile,
     environment: Mapping[str, bool] | None = None,
@@ -334,6 +359,7 @@ __all__ = [
     "definitions_for_profile",
     "direct_names_for_profile",
     "gateway_names_for_profile",
+    "prompt_preflight_compatibility_names",
     "resolve_profile",
     "validate_registry",
 ]

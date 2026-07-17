@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+
+from hb_assistant.nas_mcp.capability_registry import prompt_preflight_compatibility_names
 from hb_assistant.obsidian_mcp.prompt_preflight import route_prompt
 
 
@@ -22,6 +25,34 @@ def test_authorization_schema_includes_runtime_policy_and_capability_gates() -> 
     assert auth["capability_gates"]["index"]["allowed"] is True
     assert "argument_extraction" in auth
     assert "write_blocked_by_staleness" in auth
+
+
+def test_context_free_preflight_compatibility_set_has_exact_static_identity() -> None:
+    names = sorted(prompt_preflight_compatibility_names())
+    payload = ("\n".join(names) + "\n").encode()
+
+    assert len(names) == 140
+    assert hashlib.sha256(payload).hexdigest() == (
+        "4610b61c7edf19c496fe3d491ee46a714aac9a38d870730795dd9455c10ae3cf"
+    )
+    assert {
+        "hb_assistant_catalog",
+        "hb_assistant_tool_help",
+        "hb_capability_mode",
+        "hb_data_freshness",
+        "hb_mcp_status",
+    }.isdisjoint(names)
+
+
+def test_context_free_preflight_ignores_ambient_profile_and_feature_gates(monkeypatch) -> None:
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "frontier-v1")
+    monkeypatch.setenv("HB_MCP_ASSISTANT_DECISION_MEMORY", "0")
+
+    auth = _auth("Get decision decision_abc12345")
+
+    assert auth["runtime_policy_permission"]["directly_exposed"] is True
+    assert auth["currently_executable"] is True
+    assert auth["execution_blocked_reason"] is None
 
 
 def test_read_route_executable_when_surface_stale() -> None:

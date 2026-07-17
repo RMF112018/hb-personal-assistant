@@ -1219,11 +1219,14 @@ def _tool_surface_signals(
             gateway_allowlisted = tool_name in GATEWAY_ALLOWLIST
             if rp.get("directly_exposed") is None:
                 from hb_assistant.nas_mcp.capability_registry import (  # noqa: PLC0415
-                    direct_names_for_profile,
-                    resolve_profile,
+                    build_capability_registry,
+                    prompt_preflight_compatibility_names,
                 )
 
-                directly_exposed = tool_name in direct_names_for_profile(resolve_profile())
+                definition = build_capability_registry().get(tool_name)
+                directly_exposed = bool(definition and definition.direct_exposure) or (
+                    tool_name in prompt_preflight_compatibility_names()
+                )
         except Exception:  # noqa: BLE001
             gateway_allowlisted = True
             directly_exposed = True
