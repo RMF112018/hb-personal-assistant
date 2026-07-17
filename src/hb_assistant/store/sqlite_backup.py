@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -100,8 +102,49 @@ def _validated_dest_dir(dest_dir: Path, rehearsal_root: Path) -> Path:
     return resolved
 
 
+def _assert_under_root(path: Path, root_resolved: Path) -> None:
+    """Fail closed if ``path``'s resolved location is not under the rehearsal root."""
+    resolved = path.parent.resolve() / path.name
+    if resolved != root_resolved and root_resolved not in resolved.parents:
+        raise BackupError(f"destination escapes the rehearsal root {root_resolved}: {path}")
+
+
+def _create_nofollow(path: Path, root_resolved: Path) -> None:
+    """Atomically create a NEW regular file under the rehearsal root, symlink-safe (PC-WI02-EXT-REV-F-001).
+
+    ``O_CREAT | O_EXCL | O_NOFOLLOW`` fails closed when the final component is an existing/dangling
+    symlink or an already-existing file, so a symlinked destination cannot redirect the write outside
+    the rehearsal root. The containment check is applied first as defence in depth.
+    """
+    _assert_under_root(path, root_resolved)
+    try:
+        fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    except FileExistsError as exc:
+        raise BackupError(f"destination already exists (fail-closed): {path}") from exc
+    except OSError as exc:  # ELOOP when the final component is a symlink under O_NOFOLLOW
+        raise BackupError(f"destination is a symlink or unusable (fail-closed): {path}") from exc
+    os.close(fd)
+
+
+def _write_text_nofollow(path: Path, text: str, root_resolved: Path) -> None:
+    _assert_under_root(path, root_resolved)
+    try:
+        fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    except FileExistsError as exc:
+        raise BackupError(f"receipt destination already exists (fail-closed): {path}") from exc
+    except OSError as exc:
+        raise BackupError(f"receipt destination is a symlink or unusable (fail-closed): {path}") from exc
+    try:
+        os.write(fd, text.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
 def _online_backup(source_db: Path, dest_file: Path) -> None:
-    """Consistent online backup over a read-only source URI; leaves no WAL on the destination."""
+    """Consistent online backup over a read-only source URI; leaves no WAL on the destination.
+
+    ``dest_file`` must be a pre-created (0-byte) regular file made symlink-safe by ``_create_nofollow``.
+    """
     src = sqlite3.connect(f"file:{source_db}?mode=ro", uri=True)
     dst = sqlite3.connect(str(dest_file))
     try:
@@ -113,20 +156,43 @@ def _online_backup(source_db: Path, dest_file: Path) -> None:
         src.close()
 
 
-def backup_database(source_db: Path, dest_dir: Path, *, rehearsal_root: Path) -> BackupResult:
-    """Create a consistent online backup of ``source_db`` under ``dest_dir`` with a durable receipt."""
+def backup_database(
+    source_db: Path,
+    dest_dir: Path,
+    *,
+    rehearsal_root: Path,
+    _after_snapshot: Callable[[], None] | None = None,
+) -> BackupResult:
+    """Create a consistent online backup of ``source_db`` under ``dest_dir`` with a durable receipt.
+
+    The receipt's identity is bound to the **backup snapshot**: ``backup_logical_hash`` is the
+    authoritative snapshot state, and ``status`` is ``"complete"`` only when the live source still
+    equals the snapshot. If the source advanced after the snapshot (``source_logical_hash !=
+    backup_logical_hash``), ``status`` is ``"source_advanced_during_backup"`` so the receipt never
+    silently describes two different database states (PC-WI02-EXT-REV-F-003). ``_after_snapshot`` is a
+    test-only injectable hook fired right after the snapshot completes.
+    """
     source = Path(source_db)
     if not source.is_file():
         raise BackupError(f"source database does not exist (fail-closed): {source}")
     _refuse_app_db(source)
+    root_resolved = _validated_rehearsal_root(rehearsal_root)
     dest = _validated_dest_dir(dest_dir, rehearsal_root)
 
     backup_path = dest / (source.name + ".backup")
+    _create_nofollow(backup_path, root_resolved)  # symlink-safe, fail-closed
     _online_backup(source, backup_path)
+
+    if _after_snapshot is not None:
+        _after_snapshot()
 
     schema_head = collect_inventory(backup_path).schema_head
     if schema_head is None:
         raise BackupError(f"backup has no schema_migrations head: {backup_path}")
+
+    snapshot_logical = source_index_logical_hash(backup_path)  # authoritative snapshot identity
+    live_source_logical = source_index_logical_hash(source)
+    status = "complete" if live_source_logical == snapshot_logical else "source_advanced_during_backup"
 
     receipt = BackupReceipt(
         generated_utc=_now_utc(),
@@ -134,13 +200,13 @@ def backup_database(source_db: Path, dest_dir: Path, *, rehearsal_root: Path) ->
         backup_path=str(backup_path.resolve()),
         backup_sha256=_sha256(backup_path),
         byte_size=backup_path.stat().st_size,
-        source_logical_hash=source_index_logical_hash(source),
-        backup_logical_hash=source_index_logical_hash(backup_path),
-        status="complete",
+        source_logical_hash=live_source_logical,
+        backup_logical_hash=snapshot_logical,
+        status=status,
     )
     receipt_path = dest / (backup_path.name + ".receipt.json")
-    receipt_path.write_text(
-        json.dumps(asdict(receipt), indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    _write_text_nofollow(
+        receipt_path, json.dumps(asdict(receipt), indent=2, sort_keys=True) + "\n", root_resolved
     )
     return BackupResult(backup_path=backup_path, receipt_path=receipt_path, receipt=receipt)
 
@@ -174,10 +240,12 @@ def restore_backup(backup_path: Path, dest_path: Path, *, rehearsal_root: Path) 
     if not backup.is_file():
         raise BackupError(f"backup does not exist (fail-closed): {backup}")
     target = Path(dest_path)
+    root_resolved = _validated_rehearsal_root(rehearsal_root)
     _validated_dest_dir(target.parent, rehearsal_root)
     _refuse_app_db(target)
-    if target.exists():
-        raise BackupError(f"restore destination already exists (fail-closed): {target}")
+    # symlink-safe, fail-closed creation of the restore target (rejects existing/dangling symlinks and
+    # pre-existing files) so a symlinked target cannot redirect the restore outside the rehearsal root.
+    _create_nofollow(target, root_resolved)
     _online_backup(backup, target)
     return target
 

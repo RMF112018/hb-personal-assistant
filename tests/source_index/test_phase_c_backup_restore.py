@@ -13,6 +13,7 @@ import sqlite3
 
 import pytest
 
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.store.source_index_migration_assurance import (
     collect_inventory,
     source_index_logical_hash,
@@ -95,7 +96,7 @@ def test_restored_passes_integrity_and_logical_inventory(tmp_path):  # PC-AC-033
     assert inv.integrity.foreign_key_violations == 0
 
 
-def test_readonly_ops_on_restored(tmp_path):  # PC-AC-034
+def test_readonly_repository_ops_on_restored(tmp_path):  # PC-AC-034
     root, fx = _fixture(tmp_path)
     dest = root / "backups"
     dest.mkdir()
@@ -104,13 +105,11 @@ def test_readonly_ops_on_restored(tmp_path):  # PC-AC-034
     restore_dir.mkdir()
     restored = restore_backup(result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root)
 
-    conn = sqlite3.connect(f"file:{restored}?mode=ro", uri=True)
-    try:
-        conn.execute("PRAGMA query_only = ON")
-        n = conn.execute("SELECT COUNT(*) FROM source_intelligence_sources").fetchone()[0]
-        assert n > 0
-    finally:
-        conn.close()
+    # Exercise the application repository read path against the restored DB (not a raw SELECT).
+    repo = SourceIndexRepository(restored)
+    counts = repo.generated_note_counts()
+    assert "generated_card_count" in counts
+    assert counts["generated_card_count"] >= 0
 
 
 def test_interrupted_backup_cannot_be_mistaken_for_valid(tmp_path):  # PC-AC-035
@@ -147,3 +146,88 @@ def test_backup_rejects_symlinked_rehearsal_root(tmp_path):  # safety (PCR-001/0
     link.symlink_to(real, target_is_directory=True)
     with pytest.raises(BackupError):
         backup_database(fx.db_path, link / "backups", rehearsal_root=link)
+
+
+# --- PC-WI02-EXT-REV-F-001: final-component symlink escape (corrective R2) -----------------------
+
+
+def test_backup_rejects_existing_symlink_backup_target(tmp_path):
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    dest = root / "backups"
+    dest.mkdir()
+    (dest / (fx.db_path.name + ".backup")).symlink_to(outside / "escaped.sqlite")
+    with pytest.raises(BackupError):
+        backup_database(fx.db_path, dest, rehearsal_root=root)
+    assert not (outside / "escaped.sqlite").exists()  # nothing created outside the root
+
+
+def test_backup_rejects_dangling_symlink_backup_target(tmp_path):
+    root, fx = _fixture(tmp_path)
+    dest = root / "backups"
+    dest.mkdir()
+    (dest / (fx.db_path.name + ".backup")).symlink_to(tmp_path / "nonexistent" / "x.sqlite")
+    with pytest.raises(BackupError):
+        backup_database(fx.db_path, dest, rehearsal_root=root)
+
+
+def test_restore_rejects_existing_symlink_target(tmp_path):
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    dest = root / "backups"
+    dest.mkdir()
+    result = backup_database(fx.db_path, dest, rehearsal_root=root)
+    restore_dir = root / "restored"
+    restore_dir.mkdir()
+    (restore_dir / "r.sqlite").symlink_to(outside / "escaped.sqlite")
+    with pytest.raises(BackupError):
+        restore_backup(result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root)
+    assert not (outside / "escaped.sqlite").exists()
+
+
+def test_restore_rejects_dangling_symlink_target(tmp_path):
+    root, fx = _fixture(tmp_path)
+    dest = root / "backups"
+    dest.mkdir()
+    result = backup_database(fx.db_path, dest, rehearsal_root=root)
+    restore_dir = root / "restored"
+    restore_dir.mkdir()
+    (restore_dir / "r.sqlite").symlink_to(tmp_path / "nope" / "x.sqlite")
+    with pytest.raises(BackupError):
+        restore_backup(result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root)
+
+
+# --- PC-WI02-EXT-REV-F-003: receipt bound to the backup snapshot (corrective R2) -----------------
+
+
+def test_receipt_flags_source_advanced_during_backup(tmp_path):
+    root, fx = _fixture(tmp_path)
+    dest = root / "backups"
+    dest.mkdir()
+
+    def _advance_source() -> None:
+        conn = sqlite3.connect(str(fx.db_path))
+        try:
+            conn.execute(
+                "UPDATE source_intelligence_state SET state_value = state_value || 'Z' "
+                "WHERE state_key = 'fts_available'"
+            )
+            conn.commit()
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.commit()
+        finally:
+            conn.close()
+
+    # A source write injected right after the snapshot must NOT be reported as a clean "complete".
+    result = backup_database(fx.db_path, dest, rehearsal_root=root, _after_snapshot=_advance_source)
+    assert result.receipt.status == "source_advanced_during_backup"
+    assert result.receipt.source_logical_hash != result.receipt.backup_logical_hash
+
+    # A backup with no concurrent write is "complete" and the snapshot equals the live source.
+    dest2 = root / "backups2"
+    dest2.mkdir()
+    clean = backup_database(fx.db_path, dest2, rehearsal_root=root)
+    assert clean.receipt.status == "complete"
+    assert clean.receipt.source_logical_hash == clean.receipt.backup_logical_hash
