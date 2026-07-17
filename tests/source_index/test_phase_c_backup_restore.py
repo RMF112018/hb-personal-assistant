@@ -199,6 +199,43 @@ def test_restore_rejects_dangling_symlink_target(tmp_path):
         restore_backup(result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root)
 
 
+def test_backup_write_is_race_resistant(tmp_path):  # F-001 R3 — TOCTOU: target swapped just before write
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    dest = root / "backups"
+    dest.mkdir()
+
+    def _swap_target_to_symlink() -> None:
+        # simulate an attacker replacing the target with a symlink during the operation
+        (dest / (fx.db_path.name + ".backup")).symlink_to(outside / "escaped.sqlite")
+
+    with pytest.raises(BackupError):
+        backup_database(fx.db_path, dest, rehearsal_root=root, _before_write=_swap_target_to_symlink)
+    assert not (outside / "escaped.sqlite").exists()  # write rejected; nothing created outside root
+
+
+def test_restore_write_is_race_resistant(tmp_path):  # F-001 R3 — TOCTOU on the restore target
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    dest = root / "backups"
+    dest.mkdir()
+    result = backup_database(fx.db_path, dest, rehearsal_root=root)
+    restore_dir = root / "restored"
+    restore_dir.mkdir()
+
+    def _swap_target_to_symlink() -> None:
+        (restore_dir / "r.sqlite").symlink_to(outside / "escaped.sqlite")
+
+    with pytest.raises(BackupError):
+        restore_backup(
+            result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root,
+            _before_write=_swap_target_to_symlink,
+        )
+    assert not (outside / "escaped.sqlite").exists()
+
+
 # --- PC-WI02-EXT-REV-F-003: receipt bound to the backup snapshot (corrective R2) -----------------
 
 
