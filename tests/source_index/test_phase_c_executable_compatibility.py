@@ -85,6 +85,11 @@ def _env_path() -> str:
     return os.environ.get("PATH", "")
 
 
+def _as_str_list(value: object) -> list[str]:
+    assert isinstance(value, list) and all(isinstance(v, str) for v in value), value
+    return value
+
+
 def test_prior_executable_reads_prior_restored_database(  # PC-AC-041
     prior_exec_worktree: Path, tmp_path: Path
 ) -> None:
@@ -104,10 +109,14 @@ def test_prior_executable_reads_prior_restored_database(  # PC-AC-041
     assert probe["prior_latest_schema_version"] == _PRIOR_EXEC_LATEST  # genuinely the prior executable
     assert probe["read_ok"] is True, probe["error"]
     assert probe["current_version_read"] == _PRIOR_EXEC_LATEST  # prior exec sees its own head
-    assert isinstance(probe["representative_row_count"], int)  # a real bounded DAO read ran
+    # genuine prior repository DAO operation against the prior-restored database
+    counts = probe["repo_generated_note_counts"]
+    assert isinstance(counts, dict) and "generated_card_count" in counts
+    # its own database carries only event types it knows — nothing unrecognized
+    assert probe["unknown_event_types"] == []
 
 
-def test_old_executable_against_new_database_is_forward_read_compatible(  # PC-AC-040
+def test_old_executable_new_database_reads_generation_path_only_not_moved_queue(  # PC-AC-040
     prior_exec_worktree: Path, tmp_path: Path
 ) -> None:
     root = tmp_path / "rehearsal"
@@ -115,12 +124,40 @@ def test_old_executable_against_new_database_is_forward_read_compatible(  # PC-A
     fx = build_fixture(root, 127, row_count=6, filename="new_v127.sqlite")
 
     probe = _run_prior_probe(prior_exec_worktree, fx.db_path, tmp_path / "probe_v127.json")
-    # Classification: the prior V124 executable opens and reads the newer additive V127 database at the
-    # DB-access layer; it does not fail-closed on the higher head, and a V124-known table stays readable.
-    assert probe["prior_latest_schema_version"] == _PRIOR_EXEC_LATEST  # it IS the old executable
-    assert probe["read_ok"] is True, probe["error"]  # opened + read the newer database
-    assert probe["current_version_read"] == 127  # read the newer head via the prior connection layer
-    assert isinstance(probe["representative_row_count"], int)  # V124-known table still readable at V127
+    assert probe["prior_latest_schema_version"] == _PRIOR_EXEC_LATEST  # it IS the old (V124) executable
+
+    # NARROW classification: the ONLY forward-read compatibility proven is the read-only generation-table
+    # path — the prior executable's repository DAO still returns generation counts against a V127 database.
+    assert probe["read_ok"] is True, probe["error"]
+    assert probe["current_version_read"] == 127
+    counts = probe["repo_generated_note_counts"]
+    assert isinstance(counts, dict) and "generated_card_count" in counts
+
+    # NOT general forward compatibility: V127 rebuilds source_intelligence_events and adds the governed
+    # 'moved' event type, which the prior V124 executable has no knowledge of. It therefore cannot safely
+    # process the event queue against a V127 database.
+    known = _as_str_list(probe["known_event_types"])
+    present = _as_str_list(probe["present_event_types"])
+    unknown = _as_str_list(probe["unknown_event_types"])
+    assert "moved" not in known  # prior executable does not understand 'moved'
+    assert "moved" in present  # but the V127 database contains a 'moved' event
+    assert "moved" in unknown  # -> an event the prior executable cannot interpret
+
+
+def test_prior_executable_cannot_interpret_v127_moved_event(  # PC-AC-040 (semantic coverage)
+    prior_exec_worktree: Path, tmp_path: Path
+) -> None:
+    root = tmp_path / "rehearsal"
+    root.mkdir()
+    fx = build_fixture(root, 127, row_count=6, filename="moved_probe_v127.sqlite")
+
+    probe = _run_prior_probe(prior_exec_worktree, fx.db_path, tmp_path / "probe_moved.json")
+    assert probe["read_ok"] is True, probe["error"]
+    # The prior V124 executable's known event-type vocabulary excludes 'moved'; a V127 database presents a
+    # 'moved' row it would misclassify. This proves the classification is read-only generation-path only,
+    # never safe queue processing or write operation under the prior executable against V127.
+    assert probe["known_event_types"] == ["created", "deleted", "modified", "rebuild", "reindex_requested"]
+    assert "moved" in _as_str_list(probe["unknown_event_types"])
 
 
 def test_schema_downgrade_is_documented_unsupported() -> None:  # PC-AC-042
