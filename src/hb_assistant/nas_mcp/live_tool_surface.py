@@ -15,6 +15,12 @@ from hb_assistant.obsidian_mcp.canonical_tool_specs import (
 )
 from hb_assistant.obsidian_mcp.tool_metadata_types import SurfaceToolState
 
+from .capability_registry import (
+    direct_names_for_profile,
+    gateway_names_for_profile,
+    resolve_profile,
+)
+
 # Prompt-routing tool names (mirror of PROMPT_ROUTING_TOOLS without importing prompt_routing_tools).
 _PROMPT_ROUTING_NAMES: tuple[str, ...] = tuple(PROMPT_ROUTING_TOOL_SPECS.keys())
 
@@ -55,36 +61,8 @@ def _profile_group_enabled(group: str | None) -> bool:
 
 def installed_tool_names(config: Any) -> set[str]:
     """All tools known to the client-facing universe for this config (surface installed set)."""
-    # Import PA tool *name tuples* only (avoid cycle with artifact_tools.current_tool_names).
-    from .artifact_tools import PA_ARTIFACT_TOOLS, PA_MANIFEST_TOOLS  # noqa: PLC0415
-    from .broker import ALL_ASSISTANT_TOOLS  # noqa: PLC0415
-    from .client_output_tools import PA_OUTPUT_READ_TOOLS, PA_OUTPUT_WRITE_TOOLS  # noqa: PLC0415
-    from .profile import (  # noqa: PLC0415
-        ai_outputs_write_enabled,
-        client_output_write_enabled,
-        prompt_preflight_enabled,
-    )
-    from .tool_registration import CLIENT_BRIDGE_HELPER_TOOLS  # noqa: PLC0415
-
-    names: set[str] = (
-        set(ALL_ASSISTANT_TOOLS) | set(CLIENT_BRIDGE_HELPER_TOOLS)
-        | set(PA_ARTIFACT_TOOLS) | set(PA_MANIFEST_TOOLS)
-    )
-
-    names |= {
-        "hb_mcp_status", "hb_data_freshness", "hb_queue_status", "hb_recent_failures",
-        "hb_last_successful_runs", "hb_capability_mode", "hb_db_select", "hb_root_list", "hb_root_stat",
-        "hb_root_search", "hb_root_read_file", "hb_root_read_excerpt", "hb_output_list", "hb_output_stat",
-        "hb_output_read",
-    }
-    names |= set(PA_OUTPUT_READ_TOOLS)
-    if client_output_write_enabled():
-        names |= set(PA_OUTPUT_WRITE_TOOLS)
-    if ai_outputs_write_enabled():
-        names.add("ai_outputs_card_upsert")
-    if prompt_preflight_enabled():
-        names |= set(_PROMPT_ROUTING_NAMES)
-    return names
+    selected = resolve_profile(getattr(config, "capability_profile", None))
+    return set(direct_names_for_profile(selected))
 
 
 def tool_group_for(name: str, assistant_groups: dict[str, str] | None = None) -> str | None:
@@ -105,11 +83,12 @@ def tool_group_map(config: Any) -> dict[str, str | None]:
 
 def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[str, SurfaceToolState]:
     """Surface-level state for every installed tool name. No request-level fields."""
-    from .broker import GATEWAY_ALLOWLIST  # noqa: PLC0415
     from .tool_registration import derive_tool_arg_meta, live_tool_schema_index  # noqa: PLC0415
 
     ag = _assistant_group_map()
-    gateway = set(GATEWAY_ALLOWLIST)
+    selected = resolve_profile(getattr(config, "capability_profile", None))
+    direct_names = set(direct_names_for_profile(selected))
+    gateway = set(gateway_names_for_profile(selected))
     schema_index = live_tool_schema_index()
     out: dict[str, SurfaceToolState] = {}
     for name in sorted(installed_tool_names(config)):
@@ -132,10 +111,7 @@ def build_live_tool_surface(config: Any, *, for_manifest: bool = False) -> dict[
             optional_args = tuple(meta.get("optional_args") or spec.optional_args)
             limits = dict(meta.get("limits") or spec.limits or {})
         gateway_ok = name in gateway
-        # Direct exposure: registered when profile gate on (assistant groups) or always for helpers.
-        direct = profile_on
-        if group == "prompt_routing":
-            direct = profile_on
+        direct = profile_on and name in direct_names
         server_policy_available = profile_on and (direct or gateway_ok)
         blocked: str | None = None
         if not profile_on:
@@ -281,10 +257,11 @@ def gate_state_snapshot() -> dict[str, bool]:
     }
 
 
-def surface_profile_label() -> str:
+def surface_profile_label(config: Any | None = None) -> str:
     from .profile import active_profile  # noqa: PLC0415
 
     try:
-        return str(active_profile())
+        capability = resolve_profile(getattr(config, "capability_profile", None)).value
+        return f"{active_profile()}+{capability}"
     except Exception:  # noqa: BLE001
         return "unknown"

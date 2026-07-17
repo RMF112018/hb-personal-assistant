@@ -86,7 +86,7 @@ def source_docs(tmp_path):
                                    support_dir=tmp_path / "sp"),
     )
     (tmp_path / "v").mkdir()
-    register_nas_mcp_tools(mcp, NasMcpBroker(cfg))
+    register_nas_mcp_tools(mcp, NasMcpBroker(cfg), capability_profile="legacy-v12")
     return {name: mcp.docs[name] for name in ASSISTANT_SOURCE_CONNECTOR_TOOLS}
 
 

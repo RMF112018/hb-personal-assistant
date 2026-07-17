@@ -132,7 +132,7 @@ def test_reads_are_not_writes_safe_mode(mcp_env, monkeypatch: pytest.MonkeyPatch
 
 def test_no_memory_write_tool_registered(mcp_env) -> None:
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assistant = [n for n in mcp.names if n.startswith("assistant_")]
     # nav (12) + context-pack (4) + memory (4) preserved; nothing implying a write/compile/apply.
     assert set(ASSISTANT_NAV_TOOLS) <= set(assistant)

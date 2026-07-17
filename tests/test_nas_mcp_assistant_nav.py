@@ -172,7 +172,7 @@ def test_registration_adds_12_assistant_tools_when_enabled(mcp_env) -> None:
     from hb_assistant.nas_mcp.broker import ASSISTANT_CONTEXT_PACK_TOOLS
 
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assistant = [n for n in mcp.names if n.startswith("assistant_")]
     # The 12 N8C-3 nav tools are preserved (clarification #3); the N8C-6 read-only context-pack
     # tools are additive (both gates default-ON).
@@ -187,6 +187,6 @@ def test_registration_adds_12_assistant_tools_when_enabled(mcp_env) -> None:
 def test_registration_omits_nav_tools_when_disabled(mcp_env, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HB_MCP_ASSISTANT_NAV", "0")
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assert not [n for n in mcp.names if n in ASSISTANT_NAV_TOOLS]  # nav kill switch honored
     assert "hb_data_freshness" in mcp.names        # unrelated tools unaffected

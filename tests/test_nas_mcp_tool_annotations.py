@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -29,7 +30,8 @@ def surface() -> dict[str, object]:
     tmp = tempfile.TemporaryDirectory(prefix="nas-annotations-")
     db = str(Path(tmp.name) / "db.sqlite")
     SQLiteMigrator(db_path=db).apply()
-    _broker, tools = _build_surface(db)
+    with patch.dict("os.environ", {"HB_MCP_CAPABILITY_PROFILE": "legacy-v12"}):
+        _broker, tools = _build_surface(db)
     try:
         yield tools
     finally:

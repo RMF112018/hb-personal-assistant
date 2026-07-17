@@ -6,9 +6,10 @@ import os
 import tempfile
 
 from hb_assistant.obsidian_mcp.canonical_tool_specs import classify_tool, replacement_map
-from hb_assistant.obsidian_mcp.client_tool_manifest import REPLACEMENT_MAP, WORKFLOW_RECIPES, classify_tool as cm_classify
+from hb_assistant.obsidian_mcp.client_tool_manifest import REPLACEMENT_MAP, WORKFLOW_RECIPES
+from hb_assistant.obsidian_mcp.client_tool_manifest import classify_tool as cm_classify
 from hb_assistant.obsidian_mcp.tool_family_manifest import FAMILY_IDS, family_for_tool
-from hb_assistant.obsidian_mcp.workflow_recipe_manifest import WORKFLOWS, WORKFLOW_IDS
+from hb_assistant.obsidian_mcp.workflow_recipe_manifest import WORKFLOW_IDS, WORKFLOWS
 
 
 def test_classify_tool_is_single_authority() -> None:
@@ -68,6 +69,7 @@ def test_live_surface_includes_routing_and_classifies() -> None:
     db = os.path.join(d, "t.db")
     SQLiteMigrator(db_path=db).apply()
     cfg = NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    cfg.capability_profile = "legacy-v12"
     names = current_tool_names(cfg)
     assert "pa_prompt_route" in names
     for n in sorted(names)[:50]:

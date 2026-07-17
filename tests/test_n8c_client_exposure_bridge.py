@@ -17,9 +17,9 @@ from hb_assistant.nas_mcp.broker import (
     ALL_ASSISTANT_TOOLS,
     ASSISTANT_TOOL_GROUPS,
     DENIED_TOOL_NAMES,
-    GATEWAY_ALLOWLIST,
     NasMcpBroker,
 )
+from hb_assistant.nas_mcp.capability_registry import gateway_names_for_profile
 from hb_assistant.nas_mcp.config import NasMcpConfig, NasObsidianConfig, RootSpec
 from hb_assistant.nas_mcp.exposure_audit import build_exposure_audit
 from hb_assistant.nas_mcp.profile import AI_OUTPUTS_WRITE_TOOL
@@ -100,7 +100,7 @@ def surface(tmp_path: Path, monkeypatch):
     )
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
     broker = NasMcpBroker(cfg)
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(mcp, broker, capability_profile="legacy-v12")
     tools = {t.name: t for t in mcp._tool_manager.list_tools()}
     return {"broker": broker, "tools": tools, "names": set(tools)}
 
@@ -134,6 +134,7 @@ def test_no_denied_tool_is_client_exposed(surface) -> None:
 
 def test_exposure_audit_reports_no_code_level_gap(monkeypatch) -> None:
     # Enable the default-off group so the audit sees the full canonical surface exposed (85).
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "legacy-v12")
     monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "1")
     audit = build_exposure_audit()
     s = audit["summary"]
@@ -150,6 +151,7 @@ def test_exposure_audit_reports_no_code_level_gap(monkeypatch) -> None:
 
 def test_exposure_audit_default_off_group_is_not_a_gap(monkeypatch) -> None:
     # With the group default-off, its 7 tools are installed-but-disabled — NOT a code-level gap.
+    monkeypatch.setenv("HB_MCP_CAPABILITY_PROFILE", "legacy-v12")
     monkeypatch.setenv("HB_MCP_ASSISTANT_SOURCE_STRUCTURE", "0")
     audit = build_exposure_audit()
     s = audit["summary"]
@@ -290,7 +292,7 @@ def test_ai_outputs_remains_only_pre_existing_write_and_stays_gate_enforced(surf
     names = surface["names"]
     assert AI_OUTPUTS_WRITE_TOOL in names
     assert AI_OUTPUTS_WRITE_TOOL not in ALL_ASSISTANT_TOOLS  # not part of the canonical 87
-    assert AI_OUTPUTS_WRITE_TOOL in GATEWAY_ALLOWLIST  # now gateway-reachable
+    assert AI_OUTPUTS_WRITE_TOOL in gateway_names_for_profile("legacy-v12")
     monkeypatch.setenv("HB_MCP_ALLOW_AI_OUTPUTS_WRITE", "0")
     receipt = surface["tools"]["hb_assistant_tool_query"].fn(AI_OUTPUTS_WRITE_TOOL, {"title": "x"})
     assert receipt["ok"] is False

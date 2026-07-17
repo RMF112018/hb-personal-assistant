@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hb_assistant.nas_mcp.broker import ALL_ASSISTANT_TOOLS, GATEWAY_ALLOWLIST, NasMcpBroker
+from hb_assistant.nas_mcp.broker import ALL_ASSISTANT_TOOLS, NasMcpBroker
+from hb_assistant.nas_mcp.capability_registry import gateway_names_for_profile
 from hb_assistant.nas_mcp.client_output_tools import (
     ALL_PA_OUTPUT_TOOLS,
     ASSISTANT_OUTPUT_ALIASES,
@@ -25,15 +26,14 @@ def surface(tmp_path: Path):
     env = make_env(tmp_path)
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
     broker = NasMcpBroker(env["config"])
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(mcp, broker, capability_profile="legacy-v12")
     tools = {t.name: t for t in mcp._tool_manager.list_tools()}
     return {"env": env, "broker": broker, "tools": tools, "names": set(tools),
             "fn": {n: t.fn for n, t in tools.items()}}
 
 
-def test_ten_output_tools_registered(surface) -> None:
+def test_all_registry_output_tools_registered(surface) -> None:
     assert set(ALL_PA_OUTPUT_TOOLS) <= surface["names"]
-    assert len(ALL_PA_OUTPUT_TOOLS) == 10
 
 
 def test_names_avoid_write_verb_and_finality_substrings() -> None:
@@ -53,10 +53,10 @@ def test_output_tools_not_in_canonical_78(surface) -> None:
 
 
 def test_output_tools_are_in_gateway_allowlist() -> None:
-    assert set(ALL_PA_OUTPUT_TOOLS) <= GATEWAY_ALLOWLIST
+    gateway = gateway_names_for_profile("legacy-v12")
+    assert set(ALL_PA_OUTPUT_TOOLS) <= gateway
     # Client-facing aliases share gateway reach with pa_output_*.
-    assert set(ASSISTANT_OUTPUT_ALIASES) <= GATEWAY_ALLOWLIST
-    assert len(ASSISTANT_OUTPUT_ALIASES) == 10
+    assert set(ASSISTANT_OUTPUT_ALIASES) <= gateway
 
 
 def test_assistant_output_aliases_registered(surface) -> None:
@@ -99,7 +99,7 @@ def test_write_tools_unregistered_when_gate_off(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("HB_MCP_ALLOW_CLIENT_OUTPUT_WRITE", "0")
     env = make_env(tmp_path)
     mcp = FastMCP("x", json_response=True, stateless_http=True)
-    register_nas_mcp_tools(mcp, NasMcpBroker(env["config"]))
+    register_nas_mcp_tools(mcp, NasMcpBroker(env["config"]), capability_profile="legacy-v12")
     names = {t.name for t in mcp._tool_manager.list_tools()}
     assert set(PA_OUTPUT_WRITE_TOOLS).isdisjoint(names)  # writes not registered
     assert "pa_output_list" in names  # reads still registered

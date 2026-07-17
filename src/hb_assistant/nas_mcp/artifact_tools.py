@@ -88,14 +88,14 @@ def _build_tool_index(config: Any, *, for_manifest: bool = False) -> dict[str, d
     return build_tool_index(config, for_manifest=for_manifest)
 
 
-def _runtime_manifest_build_kwargs() -> dict[str, Any]:
+def _runtime_manifest_build_kwargs(config: Any | None = None) -> dict[str, Any]:
     """Exposure/runtime context stamped into promoted manifests for independent freshness checks."""
     from .broker import GATEWAY_ALLOWLIST, runtime_identity  # noqa: PLC0415
     from .live_tool_surface import gate_state_snapshot, surface_profile_label  # noqa: PLC0415
 
     ident = runtime_identity()
     return {
-        "surface_profile": surface_profile_label(),
+        "surface_profile": surface_profile_label(config),
         "gate_state_snapshot": gate_state_snapshot(),
         "gateway_allowlist": sorted(GATEWAY_ALLOWLIST),
         "package_version": ident.package_version,
@@ -363,7 +363,7 @@ def dispatch_manifest_tool(config: Any, tool_name: str, a: dict[str, Any], *,
             runtime_commit=runtime_commit,
             now=_now(),
             manifest_version=version,
-            **_runtime_manifest_build_kwargs(),
+            **_runtime_manifest_build_kwargs(config),
         )
         fr = mrepo.freshness_check(
             current_tool_names(config), live_runtime_commit=runtime_commit
@@ -398,7 +398,7 @@ def _promote_manifest_refresh(config: Any, mrepo: ClientToolManifestRepository, 
         runtime_commit=runtime_commit,
         now=_now(),
         manifest_version=version,
-        **_runtime_manifest_build_kwargs(),
+        **_runtime_manifest_build_kwargs(config),
     )
     if manifest["checksum"] != proposal["checksum"]:
         raise ArtifactWorkspaceError("manifest_revalidation_required")
@@ -472,7 +472,7 @@ def bootstrap_persisted_manifest(config: Any, *, runtime_commit: str = "unknown"
         runtime_commit=runtime_commit,
         now=_now(),
         manifest_version=version,
-        **_runtime_manifest_build_kwargs(),
+        **_runtime_manifest_build_kwargs(config),
     )
     # Prefer independent semantic checksums when both sides have them; else legacy checksum.
     active_fp = None

@@ -26,7 +26,9 @@ def cfg():
     d = tempfile.mkdtemp()
     db = os.path.join(d, "t.db")
     SQLiteMigrator(db_path=db).apply()
-    return NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    config = NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    config.capability_profile = "legacy-v12"
+    return config
 
 
 def test_every_live_tool_classifies_into_a_known_family(cfg) -> None:

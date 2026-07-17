@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from hb_assistant.nas_mcp.capability_registry import definitions_for_profile
 from hb_assistant.nas_mcp.prompt_routing_tools import PROMPT_ROUTING_TOOLS, dispatch_prompt_routing_tool
 from hb_assistant.nas_mcp.runtime_attestation import build_runtime_attestation
 from hb_assistant.obsidian_mcp.tool_surface_freshness import check_tool_surface
@@ -26,7 +27,10 @@ def test_attestation_passes_on_migrated_surface(env: dict) -> None:
     assert report["attestation_ok"] is True
     assert report["client_writes_must_be_blocked"] is False
     assert "runtime_commit" in report
-    assert report["direct_gateway_parity"]["alias_pairs_checked"] == 10
+    expected_aliases = sum(
+        item.is_alias for item in definitions_for_profile(report["capability_profile"])
+    )
+    assert report["direct_gateway_parity"]["alias_pairs_checked"] == expected_aliases
 
 
 def test_attestation_tool_registered_in_routing_layer() -> None:
