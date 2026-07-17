@@ -102,24 +102,39 @@ def _validated_dest_dir(dest_dir: Path, rehearsal_root: Path) -> Path:
     return resolved
 
 
-def _assert_under_root(path: Path, root_resolved: Path) -> None:
-    """Fail closed if ``path``'s resolved location is not under the rehearsal root."""
-    resolved = path.parent.resolve() / path.name
-    if resolved != root_resolved and root_resolved not in resolved.parents:
-        raise BackupError(f"destination escapes the rehearsal root {root_resolved}: {path}")
+def _open_dir_under_root(dest_dir: Path, rehearsal_root: Path) -> int:
+    """Open ``dest_dir`` as a directory fd by traversing from the rehearsal root, one component at a
+    time, each via ``openat`` with ``O_DIRECTORY | O_NOFOLLOW`` (PC-WI02-EXT-REV-F-001, R4).
 
-
-def _open_dir_nofollow(dir_path: Path, root_resolved: Path) -> int:
-    """Open a directory fd under the rehearsal root, rejecting a symlinked final component.
-
-    Subsequent file creation uses ``openat`` relative to this fd, which is bound to the directory
-    *inode* — so the write target cannot be redirected by later replacing a path component.
+    Opening a multi-component path by its absolute name only applies ``O_NOFOLLOW`` to the *final*
+    component, so a swapped-in **intermediate** directory symlink still redirects the descriptor
+    outside the rehearsal root. Anchoring at the (trusted) root and walking each component relative to
+    the preceding directory fd — rejecting ``..``/empty/symlinked components — makes the descriptor
+    immune to ancestor-component swaps: the trusted root is opened by path, but nothing under it is
+    ever reacquired by absolute path.
     """
-    _assert_under_root(dir_path, root_resolved)
+    root = _validated_rehearsal_root(rehearsal_root)
     try:
-        return os.open(str(dir_path), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    except OSError as exc:
-        raise BackupError(f"destination directory is a symlink or unusable (fail-closed): {dir_path}") from exc
+        rel = Path(dest_dir).resolve().relative_to(root)
+    except ValueError as exc:
+        raise BackupError(f"destination escapes the rehearsal root {root}: {dest_dir}") from exc
+    fd = os.open(str(root), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in rel.parts:
+            if part in ("", ".", "..") or "/" in part:
+                raise BackupError(f"unsafe destination path component: {part!r}")
+            try:
+                nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            except OSError as exc:
+                raise BackupError(
+                    f"destination component is a symlink or unusable (fail-closed): {part}"
+                ) from exc
+            os.close(fd)
+            fd = nxt
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
 
 
 def _write_bytes_nofollow(dir_fd: int, name: str, data: bytes) -> None:
@@ -172,6 +187,7 @@ def backup_database(
     rehearsal_root: Path,
     _after_snapshot: Callable[[], None] | None = None,
     _before_write: Callable[[], None] | None = None,
+    _before_dir_open: Callable[[], None] | None = None,
 ) -> BackupResult:
     """Create a consistent online backup of ``source_db`` under ``dest_dir`` with a durable receipt.
 
@@ -183,14 +199,14 @@ def backup_database(
     authoritative snapshot state, and ``status`` is ``"complete"`` only when the live source still
     equals the snapshot; otherwise ``"source_advanced_during_backup"`` (PC-WI02-EXT-REV-F-003).
 
-    ``_after_snapshot`` / ``_before_write`` are test-only injectable hooks (fired after the snapshot,
-    and immediately before the on-disk write, respectively).
+    ``_after_snapshot`` / ``_before_write`` / ``_before_dir_open`` are test-only injectable hooks
+    (fired after the snapshot, immediately before the on-disk write, and immediately before the
+    destination directory is opened — the last exercises ancestor-component swaps, F-001/R4).
     """
     source = Path(source_db)
     if not source.is_file():
         raise BackupError(f"source database does not exist (fail-closed): {source}")
     _refuse_app_db(source)
-    root_resolved = _validated_rehearsal_root(rehearsal_root)
     dest = _validated_dest_dir(dest_dir, rehearsal_root)
 
     data = _snapshot_to_bytes(source)  # consistent online snapshot (Connection.backup over mode=ro)
@@ -198,7 +214,9 @@ def backup_database(
         _after_snapshot()
 
     backup_name = source.name + ".backup"
-    dir_fd = _open_dir_nofollow(dest, root_resolved)
+    if _before_dir_open is not None:
+        _before_dir_open()
+    dir_fd = _open_dir_under_root(dest_dir, rehearsal_root)
     try:
         if _before_write is not None:
             _before_write()
@@ -265,24 +283,28 @@ def restore_backup(
     *,
     rehearsal_root: Path,
     _before_write: Callable[[], None] | None = None,
+    _before_dir_open: Callable[[], None] | None = None,
 ) -> Path:
     """Restore a verified backup to an independent ``dest_path`` under the rehearsal root.
 
     The restore image is captured with ``Connection.backup()`` and written via a symlink-safe
-    ``openat`` descriptor (no path reopen), so a concurrent target swap cannot redirect the restore
-    outside the rehearsal root (PC-WI02-EXT-REV-F-001). ``_before_write`` is a test-only hook fired
-    immediately before the on-disk write.
+    descriptor obtained by traversing every destination-directory component from the rehearsal root
+    with ``openat``+``O_NOFOLLOW`` (no path reopen, no ancestor followed), so a concurrent swap of any
+    path component cannot redirect the restore outside the rehearsal root (PC-WI02-EXT-REV-F-001).
+    ``_before_write`` / ``_before_dir_open`` are test-only hooks fired immediately before the on-disk
+    write and before the destination directory is opened, respectively.
     """
     backup = Path(backup_path)
     if not backup.is_file():
         raise BackupError(f"backup does not exist (fail-closed): {backup}")
     target = Path(dest_path)
-    root_resolved = _validated_rehearsal_root(rehearsal_root)
-    dest_dir = _validated_dest_dir(target.parent, rehearsal_root)
+    _validated_dest_dir(target.parent, rehearsal_root)  # early containment check; write guarded below
     _refuse_app_db(target)
 
     data = _snapshot_to_bytes(backup)
-    dir_fd = _open_dir_nofollow(dest_dir, root_resolved)
+    if _before_dir_open is not None:
+        _before_dir_open()
+    dir_fd = _open_dir_under_root(target.parent, rehearsal_root)
     try:
         if _before_write is not None:
             _before_write()

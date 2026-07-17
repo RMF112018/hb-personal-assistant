@@ -9,6 +9,7 @@ under a caller rehearsal root; no production database or NAS path is touched.
 
 from __future__ import annotations
 
+import shutil
 import sqlite3
 
 import pytest
@@ -234,6 +235,48 @@ def test_restore_write_is_race_resistant(tmp_path):  # F-001 R3 — TOCTOU on th
             _before_write=_swap_target_to_symlink,
         )
     assert not (outside / "escaped.sqlite").exists()
+
+
+def test_backup_write_is_ancestor_race_resistant(tmp_path):  # F-001 R4 — intermediate component swap
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    (outside / "backups").mkdir(parents=True)
+    dest = root / "mid" / "backups"  # multi-component: 'mid' is an intermediate ancestor
+    dest.mkdir(parents=True)
+
+    def _swap_ancestor_to_symlink() -> None:
+        # attacker replaces the *intermediate* directory with a symlink to an outside subtree; the
+        # final component is untouched, so a bare O_NOFOLLOW open of the full path would traverse it.
+        shutil.rmtree(root / "mid")
+        (root / "mid").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(BackupError):
+        backup_database(fx.db_path, dest, rehearsal_root=root, _before_dir_open=_swap_ancestor_to_symlink)
+    # nothing may be created in the attacker-selected outside directory
+    assert not (outside / "backups" / (fx.db_path.name + ".backup")).exists()
+    assert not (outside / "backups" / (fx.db_path.name + ".backup.receipt.json")).exists()
+
+
+def test_restore_write_is_ancestor_race_resistant(tmp_path):  # F-001 R4 — intermediate component swap
+    root, fx = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    (outside / "restored").mkdir(parents=True)
+    dest_backups = root / "backups"
+    dest_backups.mkdir()
+    result = backup_database(fx.db_path, dest_backups, rehearsal_root=root)
+    restore_dir = root / "mid" / "restored"
+    restore_dir.mkdir(parents=True)
+
+    def _swap_ancestor_to_symlink() -> None:
+        shutil.rmtree(root / "mid")
+        (root / "mid").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(BackupError):
+        restore_backup(
+            result.backup_path, restore_dir / "r.sqlite", rehearsal_root=root,
+            _before_dir_open=_swap_ancestor_to_symlink,
+        )
+    assert not (outside / "restored" / "r.sqlite").exists()
 
 
 # --- PC-WI02-EXT-REV-F-003: receipt bound to the backup snapshot (corrective R2) -----------------
