@@ -506,6 +506,64 @@ def test_drift_obsolete_parent_index_is_dropped(fresh) -> None:
     assert "idx_si_sources_root_relpath" not in _indexes(fresh, "source_intelligence_sources")
 
 
+def test_drift_wrong_column_locator_index_is_rejected_and_repaired(fresh) -> None:
+    # REV-F-002 (CP-PI-WI-02-R2): a required locator index with the correct NAME but the WRONG
+    # indexed column must be detected (not accepted on name alone) and repaired to the right columns.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP INDEX idx_locators_current_per_entity")
+        # same name, wrong indexed column (source_id instead of source_entity_id)
+        c.execute(
+            "CREATE INDEX idx_locators_current_per_entity "
+            "ON source_index_locators(source_id)"
+        )
+
+    def _idx_cols(db: str, idx: str) -> list[str]:
+        with sqlite3.connect(db) as c:
+            return [r[2] for r in c.execute(f"PRAGMA index_info({idx})").fetchall()]
+
+    assert _idx_cols(fresh, "idx_locators_current_per_entity") == ["source_id"]
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False  # NOT accepted on name alone
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    # repaired to the correct indexed column
+    assert _idx_cols(fresh, "idx_locators_current_per_entity") == ["source_entity_id"]
+
+
+def test_drift_child_without_notnull_or_fk_fails_closed(fresh) -> None:
+    # REV-F-002 (CP-PI-WI-02-R2): a child source_entity_id column with no NOT NULL and no FK must be
+    # rejected by _v128_schema_current and fail closed on apply() (a non-additively-repairable drift),
+    # never silently accepted (which previously let the weakened child take a NULL identity).
+    import pytest
+
+    from hb_assistant.store.migrator import get_connection
+
+    # Rebuild source_intelligence_metadata (1:1) keeping ALL real columns but dropping the NOT NULL +
+    # FK on source_entity_id (CREATE TABLE ... AS SELECT copies data with no constraints/keys/FKs).
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("ALTER TABLE source_intelligence_metadata RENAME TO _md_old")
+        c.execute("CREATE TABLE source_intelligence_metadata AS SELECT * FROM _md_old")
+        c.execute("DROP TABLE _md_old")
+    # sanity: the entity column is now NULL-able and FK-less
+    _md = {r[1]: r[3] for r in sqlite3.connect(fresh).execute(
+        "PRAGMA table_info(source_intelligence_metadata)")}
+    assert _md.get("source_entity_id") == 0  # notnull == 0 (weakened)
+
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    # apply() cannot additively repair a malformed child -> fail closed, transaction rolled back.
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
 def _seed_entity_at_path(
     db: str, *, eid: str, sid: str, root: str, rel: str, current: bool
 ) -> None:

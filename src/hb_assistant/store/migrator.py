@@ -10285,6 +10285,15 @@ class SQLiteMigrator:
         if "source_index_move_signals" not in tables:
             SQLiteMigrator._v128_ensure_move_signals(conn)
         if "source_index_locators" in tables:
+            # DROP then re-create the locator indexes so a drifted index that kept the required NAME
+            # but indexes the WRONG column (REV-F-002) is actually repaired — a bare CREATE INDEX IF
+            # NOT EXISTS would see the name and skip it, leaving the malformed index in place.
+            for _idx in (
+                "idx_locators_current_per_entity",
+                "idx_locators_active_path",
+                "idx_locators_source_id",
+            ):
+                conn.execute(f"DROP INDEX IF EXISTS {_idx}")
             SQLiteMigrator._v128_ensure_locator_indexes(conn)
         SQLiteMigrator._v128_reparent_nonfk_tables(conn)
 
@@ -10296,9 +10305,13 @@ class SQLiteMigrator:
         obsolete parent path-unique index) is detected and repaired on EVERY apply() rather than
         trusted on version-record alone. Checks: the 3 identity tables exist; source_index_entities
         and source_intelligence_sources carry ``source_entity_id`` as a NOT NULL PRIMARY KEY (and no
-        ``source_id`` on the parent); the 3 required locator indexes exist; the obsolete parent
-        path-unique index is ABSENT; the 6 children are entity-keyed (``source_entity_id`` present,
-        ``source_id`` absent; relationships uses ``src_source_entity_id``)."""
+        ``source_id`` on the parent); the 3 required locator indexes exist AND index the correct
+        columns (not merely the correct name — REV-F-002); the obsolete parent path-unique index is
+        ABSENT; the 6 children are entity-keyed with the entity column present, ``source_id`` absent,
+        that column NOT NULL, and foreign-keyed to ``source_index_entities`` (relationships uses
+        ``src_source_entity_id``). A right-name/wrong-column index or a NULL-able/FK-less child column
+        is rejected, so on the next apply() the repair drops+recreates the index and a
+        non-additively-repairable child drift fails closed (v128_schema_parity_failed)."""
         def _tables() -> set[str]:
             return {r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
@@ -10316,6 +10329,18 @@ class SQLiteMigrator:
                 r[1] for r in conn.execute(f"PRAGMA index_list({table})").fetchall()
             }
 
+        def _index_cols(index: str) -> list[str]:
+            # Actual indexed column names in order (REV-F-002: a right-name/wrong-column
+            # index must be rejected, so name presence alone is not enough).
+            return [r[2] for r in conn.execute(f"PRAGMA index_info({index})").fetchall()]
+
+        def _fk_targets(table: str) -> dict[str, tuple[str, str]]:
+            # from-column -> (referenced table, referenced column).
+            return {
+                r[3]: (r[2], r[4])
+                for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+            }
+
         tables = _tables()
         for t in ("source_index_entities", "source_index_locators", "source_index_move_signals"):
             if t not in tables:
@@ -10330,36 +10355,50 @@ class SQLiteMigrator:
         if "source_id" in _cols("source_intelligence_sources"):
             return False
 
-        # Required locator indexes present; obsolete parent path-unique index absent (IMP-F-003).
-        if not {
-            "idx_locators_current_per_entity",
-            "idx_locators_active_path",
-            "idx_locators_source_id",
-        }.issubset(_indexes("source_index_locators")):
-            return False
+        # Required locator indexes present AND indexing the correct columns (REV-F-002: a required
+        # index with the correct name but the wrong indexed column must be rejected); obsolete parent
+        # path-unique index absent (IMP-F-003).
+        loc_idx = _indexes("source_index_locators")
+        _REQUIRED_LOC_IDX = {
+            "idx_locators_current_per_entity": ["source_entity_id"],
+            "idx_locators_active_path": ["source_root_key", "rel_path"],
+            "idx_locators_source_id": ["source_id"],
+        }
+        for idx_name, want_cols in _REQUIRED_LOC_IDX.items():
+            if idx_name not in loc_idx or _index_cols(idx_name) != want_cols:
+                return False
         if "idx_si_sources_root_relpath" in _indexes("source_intelligence_sources"):
             return False
         if "idx_si_sources_relpath" in _indexes("source_intelligence_sources"):
             return False
 
-        # Children entity-keyed.
-        for child in (
-            "source_intelligence_metadata",
-            "source_intelligence_text",
-            "source_intelligence_summaries",
-            "source_intelligence_chunks",
-            "source_intelligence_generated_notes",
-        ):
+        # Children entity-keyed: the entity column present + source_id absent, AND that column is
+        # NOT NULL AND foreign-keyed to source_index_entities(source_entity_id) (REV-F-002: a child
+        # with a NULL-able / FK-less source_entity_id must be rejected, not silently accepted).
+        _CHILD_EID = {
+            "source_intelligence_metadata": "source_entity_id",
+            "source_intelligence_text": "source_entity_id",
+            "source_intelligence_summaries": "source_entity_id",
+            "source_intelligence_chunks": "source_entity_id",
+            "source_intelligence_generated_notes": "source_entity_id",
+            "source_intelligence_relationships": "src_source_entity_id",
+        }
+        for child, eid_col in _CHILD_EID.items():
             if child not in tables:
                 return False
             cc = _cols(child)
-            if "source_entity_id" not in cc or "source_id" in cc:
+            if eid_col not in cc:
                 return False
-        rel = _cols("source_intelligence_relationships")
-        if "source_intelligence_relationships" not in tables:
-            return False
-        if "src_source_entity_id" not in rel or "src_source_id" in rel:
-            return False
+            # legacy source_id key must be gone (relationships used src_source_id).
+            if "source_id" in cc or "src_source_id" in cc:
+                return False
+            if cc[eid_col][0] != 1:  # notnull must be 1
+                return False
+            if _fk_targets(child).get(eid_col) != (
+                "source_index_entities",
+                "source_entity_id",
+            ):
+                return False
         return True
 
     @staticmethod
