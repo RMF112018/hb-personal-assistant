@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 127
+LATEST_SCHEMA_VERSION = 128
 
 
 def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
@@ -9436,6 +9436,30 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # --- V128: permanent source identity — Realization A (entity-scoped content, 7-table rebuild) ---
+            # Introduce an immutable per-source surrogate ``source_entity_id`` as the durable key.
+            # Mint one entity id per existing source, seed a single current locator per source, then
+            # rebuild source_intelligence_sources + its 6 FK children so every table is keyed/FK'd to
+            # the entity id (not the mutable source_id). Two non-FK tables (events, scan_quarantine)
+            # gain a nullable, locator-resolved source_entity_id. PRE-SWAP semantic gates
+            # (bijection / bidirectional PK-set equality / null-safe per-column payload fidelity /
+            # no-orphan / single-current-locator) assert BEFORE any DROP so any violation raises and
+            # rolls back the whole apply() transaction — content is never silently lost or remapped.
+            # FK enforcement is deferred to COMMIT. Version-guarded (a standard block, not
+            # always-revalidate): once recorded, the rebuild does not re-run (the old source_id key no
+            # longer exists), so re-applying apply() is a clean no-op returning 128. Code-rollback
+            # caveat: after V128, OLD application code that reads source_id off these tables cannot run
+            # — this migration is NOT for production/NAS in this phase.
+            if conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = 128"
+            ).fetchone() is None:
+                self._rebuild_v128_permanent_identity(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) "
+                    "VALUES (128, 'v128_permanent_source_identity', ?)",
+                    (now,),
+                )
+
             # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
             # drifted (path swapped to a different inode) before this single migration transaction
             # commits. A failure here raises and rolls the entire migration back.
@@ -9634,6 +9658,509 @@ class SQLiteMigrator:
         )
 
     @staticmethod
+    def _rebuild_v128_permanent_identity(conn: sqlite3.Connection) -> None:
+        """Realize permanent source identity — Realization A (entity-scoped content, 7-table rebuild).
+
+        Mint one immutable surrogate ``source_entity_id`` per existing source, seed a single current
+        ``source_index_locators`` row per source, then rebuild ``source_intelligence_sources`` and its
+        six FK children so every table is keyed/FK'd to the durable ENTITY id instead of the mutable
+        ``source_id``. PRE-SWAP semantic gates (entity bijection, bidirectional PK-set equality,
+        per-column payload fidelity with null-safe IS NOT, no-orphan, single-current-locator) assert
+        BEFORE any DROP, so any violation raises and rolls back the entire apply() transaction —
+        content is never silently lost or remapped. FK enforcement is deferred to COMMIT
+        (``PRAGMA defer_foreign_keys``). Runs inside apply()'s single transaction (atomic).
+
+        Repo-truth note: the rebuilt parent keeps only the durable attributes; the V122
+        generation-tracking scratch columns (``last_seen_generation``/``last_seen_at``/
+        ``last_indexed_fingerprint``) and their index are intentionally dropped from the parent per
+        the accepted design. The two non-FK tables (events, scan_quarantine) gain a nullable,
+        locator-resolved ``source_entity_id`` (unresolved stays NULL).
+        """
+        from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
+            EXTRACTION_STATUS_VALUES,
+            GENERATION_STATUS_VALUES,
+            RELATION_DST_KIND_VALUES,
+            RELATION_VALUES,
+            SOURCE_KIND_VALUES,
+        )
+
+        def _vcsv(vals: tuple[str, ...]) -> str:
+            return ", ".join(f"'{v}'" for v in vals)
+
+        def _count(sql: str) -> int:
+            return int(conn.execute(sql).fetchone()[0])
+
+        def _fail(gate: str) -> None:
+            raise RuntimeError(f"v128_{gate}_failed")
+
+        def _payload_ne(cols: tuple[str, ...], a: str, b: str) -> str:
+            # Null-safe inequality across every non-key column (IS NOT distinguishes NULLs).
+            return " OR ".join(f"{a}.{c} IS NOT {b}.{c}" for c in cols)
+
+        _kind_csv = _vcsv(SOURCE_KIND_VALUES)
+        _ext_csv = _vcsv(EXTRACTION_STATUS_VALUES)
+        _gen_csv = _vcsv(GENERATION_STATUS_VALUES)
+        _dstkind_csv = _vcsv(RELATION_DST_KIND_VALUES)
+        _rel_csv = _vcsv(RELATION_VALUES)
+
+        _PARENT_COLS = (
+            "source_kind", "source_root_key", "rel_path", "abs_path_hash", "domain_ref_table",
+            "domain_ref_id", "project_key", "project_number", "active", "deleted",
+            "created_at", "updated_at", "renamed_from_source_id",
+        )
+        _METADATA_COLS = (
+            "file_ext", "size_bytes", "mtime_ns", "content_sha256", "page_count",
+            "paragraph_count", "sheet_count", "extraction_status", "extraction_failure_code",
+            "fts_rowid", "indexed_at", "extraction_disposition", "content_indexed_at",
+        )
+        _TEXT_COLS = (
+            "text_excerpt", "excerpt_char_count", "excerpt_truncated", "full_text_sha256",
+            "text_vault_ref", "raw_body_persisted", "redaction_applied", "updated_at",
+        )
+        _SUMMARIES_COLS = (
+            "model_provider", "model_name", "prompt_version", "prompt_sha256", "summary_sha256",
+            "source_sha256", "advisory", "generated_at",
+        )
+        _CHUNKS_COLS = ("ordinal", "chunk_text", "char_count", "raw_body_persisted", "created_at")
+        _GEN_NOTES_COLS = ("note_rel_path", "generation_status", "generated_at", "updated_at")
+        _REL_COLS = ("dst_kind", "dst_ref", "relation", "confidence", "evidence_json", "created_at")
+
+        # Re-runnability guard: if the sources table is already ENTITY-keyed (no ``source_id``), V128
+        # has already been applied on a prior pass. Re-running the rebuild would be destructive
+        # (CREATE TABLE source_index_entities already exists; a second entity-id mint would orphan
+        # every row). The chain must stay a no-op on re-apply — self-heal re-executes this block when
+        # schema_migrations is reset to a stale version. Return before any DDL.
+        source_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)").fetchall()
+        }
+        if "source_id" not in source_cols:
+            return
+
+        # Defer FK enforcement to COMMIT so the drop/rename swap can proceed with a self-consistent
+        # graph at commit time.
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+
+        # --- Step 1: new identity tables -----------------------------------------------------------
+        conn.execute(
+            "CREATE TABLE source_index_entities ("
+            " source_entity_id TEXT PRIMARY KEY,"
+            " created_at TEXT NOT NULL,"
+            " status TEXT NOT NULL CHECK(status IN ('LIVE','TOMBSTONED'))"
+            ")"
+        )
+        conn.execute(
+            "CREATE TABLE source_index_locators ("
+            " locator_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " source_id TEXT NOT NULL,"
+            " source_root_key TEXT,"
+            " rel_path TEXT,"
+            " is_current_locator INTEGER NOT NULL DEFAULT 0,"
+            " tombstoned_at TEXT,"
+            " generation_seq INTEGER NOT NULL DEFAULT 0"
+            ")"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX idx_locators_current_per_entity "
+            "ON source_index_locators(source_entity_id) WHERE is_current_locator=1"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX idx_locators_active_path "
+            "ON source_index_locators(source_root_key, rel_path) "
+            "WHERE is_current_locator=1 AND tombstoned_at IS NULL"
+        )
+        conn.execute("CREATE INDEX idx_locators_source_id ON source_index_locators(source_id)")
+        conn.execute(
+            "CREATE TABLE source_index_move_signals ("
+            " move_signal_id TEXT PRIMARY KEY,"
+            " source_locator_id TEXT,"
+            " source_root_key TEXT,"
+            " source_rel_path TEXT,"
+            " target_root_key TEXT,"
+            " target_rel_path TEXT,"
+            " detected_at TEXT,"
+            " generation_id TEXT,"
+            " applied_at TEXT"
+            ")"
+        )
+
+        # --- Step 2: mint one entity id per source + rebuild parent --------------------------------
+        # Scratch column so the SAME minted id is reused for entities, locators, parent, and every
+        # child join. Dropped when the old parent table is dropped in Step 4.
+        conn.execute("ALTER TABLE source_intelligence_sources ADD COLUMN __eid TEXT")
+        conn.execute("UPDATE source_intelligence_sources SET __eid = lower(hex(randomblob(16)))")
+        conn.execute(
+            "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+            "SELECT __eid, created_at, 'LIVE' FROM source_intelligence_sources"
+        )
+        conn.execute(
+            "INSERT INTO source_index_locators("
+            " locator_id, source_entity_id, source_id, source_root_key, rel_path,"
+            " is_current_locator, tombstoned_at, generation_seq) "
+            "SELECT lower(hex(randomblob(16))), __eid, source_id, source_root_key, rel_path, 1, NULL, 0 "
+            "FROM source_intelligence_sources"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_sources__v128 ("
+            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            f" source_kind TEXT NOT NULL CHECK(source_kind IN ({_kind_csv})),"
+            " source_root_key TEXT,"
+            " rel_path TEXT,"
+            " abs_path_hash TEXT,"
+            " domain_ref_table TEXT,"
+            " domain_ref_id TEXT,"
+            " project_key TEXT,"
+            " project_number TEXT,"
+            " active INTEGER NOT NULL DEFAULT 1,"
+            " deleted INTEGER NOT NULL DEFAULT 0,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " renamed_from_source_id TEXT"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_sources__v128("
+            " source_entity_id, source_kind, source_root_key, rel_path, abs_path_hash,"
+            " domain_ref_table, domain_ref_id, project_key, project_number, active, deleted,"
+            " created_at, updated_at, renamed_from_source_id) "
+            "SELECT __eid, source_kind, source_root_key, rel_path, abs_path_hash,"
+            " domain_ref_table, domain_ref_id, project_key, project_number, active, deleted,"
+            " created_at, updated_at, renamed_from_source_id FROM source_intelligence_sources"
+        )
+
+        # --- Step 3: rebuild each of the 6 children keyed/FK'd to source_entity_id -----------------
+        conn.execute(
+            "CREATE TABLE source_intelligence_metadata__v128 ("
+            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            " file_ext TEXT, size_bytes INTEGER, mtime_ns INTEGER, content_sha256 TEXT,"
+            " page_count INTEGER, paragraph_count INTEGER, sheet_count INTEGER,"
+            " extraction_status TEXT NOT NULL DEFAULT 'pending'"
+            f" CHECK(extraction_status IN ({_ext_csv})),"
+            " extraction_failure_code TEXT, fts_rowid INTEGER,"
+            " indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " extraction_disposition TEXT, content_indexed_at TEXT"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_metadata__v128("
+            " source_entity_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count,"
+            " paragraph_count, sheet_count, extraction_status, extraction_failure_code, fts_rowid,"
+            " indexed_at, extraction_disposition, content_indexed_at) "
+            "SELECT s.__eid, m.file_ext, m.size_bytes, m.mtime_ns, m.content_sha256, m.page_count,"
+            " m.paragraph_count, m.sheet_count, m.extraction_status, m.extraction_failure_code,"
+            " m.fts_rowid, m.indexed_at, m.extraction_disposition, m.content_indexed_at "
+            "FROM source_intelligence_metadata m "
+            "JOIN source_intelligence_sources s ON s.source_id = m.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_text__v128 ("
+            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            " text_excerpt TEXT,"
+            " excerpt_char_count INTEGER NOT NULL DEFAULT 0 CHECK(excerpt_char_count >= 0),"
+            " excerpt_truncated INTEGER NOT NULL DEFAULT 0,"
+            " full_text_sha256 TEXT, text_vault_ref TEXT,"
+            " raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),"
+            " redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1),"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_text__v128("
+            " source_entity_id, text_excerpt, excerpt_char_count, excerpt_truncated,"
+            " full_text_sha256, text_vault_ref, raw_body_persisted, redaction_applied, updated_at) "
+            "SELECT s.__eid, t.text_excerpt, t.excerpt_char_count, t.excerpt_truncated,"
+            " t.full_text_sha256, t.text_vault_ref, t.raw_body_persisted, t.redaction_applied,"
+            " t.updated_at "
+            "FROM source_intelligence_text t "
+            "JOIN source_intelligence_sources s ON s.source_id = t.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_summaries__v128 ("
+            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            " model_provider TEXT NOT NULL, model_name TEXT, prompt_version TEXT NOT NULL,"
+            " prompt_sha256 TEXT, summary_sha256 TEXT, source_sha256 TEXT,"
+            " advisory INTEGER NOT NULL DEFAULT 1 CHECK(advisory = 1),"
+            " generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_summaries__v128("
+            " source_entity_id, model_provider, model_name, prompt_version, prompt_sha256,"
+            " summary_sha256, source_sha256, advisory, generated_at) "
+            "SELECT s.__eid, u.model_provider, u.model_name, u.prompt_version, u.prompt_sha256,"
+            " u.summary_sha256, u.source_sha256, u.advisory, u.generated_at "
+            "FROM source_intelligence_summaries u "
+            "JOIN source_intelligence_sources s ON s.source_id = u.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_chunks__v128 ("
+            " chunk_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " ordinal INTEGER NOT NULL, chunk_text TEXT NOT NULL, char_count INTEGER NOT NULL,"
+            " raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(source_entity_id, ordinal)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_chunks__v128("
+            " chunk_id, source_entity_id, ordinal, chunk_text, char_count, raw_body_persisted,"
+            " created_at) "
+            "SELECT c.chunk_id, s.__eid, c.ordinal, c.chunk_text, c.char_count, c.raw_body_persisted,"
+            " c.created_at "
+            "FROM source_intelligence_chunks c "
+            "JOIN source_intelligence_sources s ON s.source_id = c.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_generated_notes__v128 ("
+            " generated_note_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " note_rel_path TEXT,"
+            " generation_status TEXT NOT NULL DEFAULT 'not_generated'"
+            f" CHECK(generation_status IN ({_gen_csv})),"
+            " generated_at TEXT,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(source_entity_id, note_rel_path)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_generated_notes__v128("
+            " generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at,"
+            " updated_at) "
+            "SELECT g.generated_note_id, s.__eid, g.note_rel_path, g.generation_status,"
+            " g.generated_at, g.updated_at "
+            "FROM source_intelligence_generated_notes g "
+            "JOIN source_intelligence_sources s ON s.source_id = g.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_relationships__v128 ("
+            " relationship_id TEXT PRIMARY KEY,"
+            " src_source_entity_id TEXT NOT NULL"
+            " REFERENCES source_index_entities(source_entity_id),"
+            f" dst_kind TEXT NOT NULL CHECK(dst_kind IN ({_dstkind_csv})),"
+            " dst_ref TEXT NOT NULL,"
+            f" relation TEXT NOT NULL CHECK(relation IN ({_rel_csv})),"
+            " confidence TEXT, evidence_json TEXT,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(src_source_entity_id, dst_kind, dst_ref, relation)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_relationships__v128("
+            " relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence,"
+            " evidence_json, created_at) "
+            "SELECT r.relationship_id, s.__eid, r.dst_kind, r.dst_ref, r.relation, r.confidence,"
+            " r.evidence_json, r.created_at "
+            "FROM source_intelligence_relationships r "
+            "JOIN source_intelligence_sources s ON s.source_id = r.src_source_id"
+        )
+
+        # --- Step 3b: PRE-SWAP semantic gates (assert BEFORE any DROP; raise → whole-tx rollback) --
+        n_sources = _count("SELECT COUNT(*) FROM source_intelligence_sources")
+        if n_sources != _count("SELECT COUNT(*) FROM source_index_entities"):
+            _fail("entity_bijection_count")
+        if _count("SELECT COUNT(DISTINCT __eid) FROM source_intelligence_sources") != n_sources:
+            _fail("entity_bijection_distinct")
+
+        if _count("SELECT COUNT(*) FROM source_intelligence_sources__v128") != n_sources:
+            _fail("parent_count")
+        if _count(
+            "SELECT COUNT(*) FROM (SELECT __eid FROM source_intelligence_sources "
+            "EXCEPT SELECT source_entity_id FROM source_intelligence_sources__v128)"
+        ):
+            _fail("parent_keyset_forward")
+        if _count(
+            "SELECT COUNT(*) FROM (SELECT source_entity_id FROM source_intelligence_sources__v128 "
+            "EXCEPT SELECT __eid FROM source_intelligence_sources)"
+        ):
+            _fail("parent_keyset_reverse")
+        if _count(
+            "SELECT COUNT(*) FROM source_intelligence_sources o "
+            "JOIN source_intelligence_sources__v128 n ON o.__eid = n.source_entity_id "
+            f"WHERE {_payload_ne(_PARENT_COLS, 'o', 'n')}"
+        ):
+            _fail("parent_payload")
+
+        def _child_gate(
+            name: str,
+            table: str,
+            src_col: str,
+            entity_col: str,
+            pk: str | None,
+            cols: tuple[str, ...],
+        ) -> None:
+            new = f"{table}__v128"
+            # No-orphan: zero old child rows whose source_id has no parent.
+            if _count(
+                f"SELECT COUNT(*) FROM {table} x "
+                f"LEFT JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                "WHERE s.source_id IS NULL"
+            ):
+                _fail(f"{name}_orphan")
+            if pk is None:
+                # 1:1 child — pairing key is the mapped entity id (old.source_id → __eid → new key).
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT s.__eid FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"EXCEPT SELECT {entity_col} FROM {new})"
+                ):
+                    _fail(f"{name}_keyset_forward")
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {entity_col} FROM {new} "
+                    f"EXCEPT SELECT s.__eid FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col})"
+                ):
+                    _fail(f"{name}_keyset_reverse")
+                if _count(
+                    f"SELECT COUNT(*) FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"JOIN {new} n ON n.{entity_col} = s.__eid "
+                    f"WHERE {_payload_ne(cols, 'x', 'n')}"
+                ):
+                    _fail(f"{name}_payload")
+            else:
+                # 1:N child — pairing key is the declared PK (no rowid).
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {pk} FROM {table} EXCEPT SELECT {pk} FROM {new})"
+                ):
+                    _fail(f"{name}_keyset_forward")
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {pk} FROM {new} EXCEPT SELECT {pk} FROM {table})"
+                ):
+                    _fail(f"{name}_keyset_reverse")
+                # Correct entity mapping per row (new entity col == the source's minted __eid).
+                if _count(
+                    f"SELECT COUNT(*) FROM {new} n JOIN {table} x ON x.{pk} = n.{pk} "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"WHERE n.{entity_col} IS NOT s.__eid"
+                ):
+                    _fail(f"{name}_entity_map")
+                if _count(
+                    f"SELECT COUNT(*) FROM {new} n JOIN {table} x ON x.{pk} = n.{pk} "
+                    f"WHERE {_payload_ne(cols, 'x', 'n')}"
+                ):
+                    _fail(f"{name}_payload")
+
+        _child_gate(
+            "metadata", "source_intelligence_metadata", "source_id", "source_entity_id", None,
+            _METADATA_COLS,
+        )
+        _child_gate(
+            "text", "source_intelligence_text", "source_id", "source_entity_id", None, _TEXT_COLS,
+        )
+        _child_gate(
+            "summaries", "source_intelligence_summaries", "source_id", "source_entity_id", None,
+            _SUMMARIES_COLS,
+        )
+        _child_gate(
+            "chunks", "source_intelligence_chunks", "source_id", "source_entity_id", "chunk_id",
+            _CHUNKS_COLS,
+        )
+        _child_gate(
+            "generated_notes", "source_intelligence_generated_notes", "source_id",
+            "source_entity_id", "generated_note_id", _GEN_NOTES_COLS,
+        )
+        _child_gate(
+            "relationships", "source_intelligence_relationships", "src_source_id",
+            "src_source_entity_id", "relationship_id", _REL_COLS,
+        )
+
+        # Locator: every entity has exactly one current locator row.
+        if _count(
+            "SELECT COUNT(*) FROM source_index_entities e WHERE ("
+            "SELECT COUNT(*) FROM source_index_locators l "
+            "WHERE l.source_entity_id = e.source_entity_id AND l.is_current_locator = 1) != 1"
+        ):
+            _fail("locator_single_current")
+
+        # --- Step 4: swap (drop old children, drop old parent, rename rebuilt tables) --------------
+        for child in (
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+            "source_intelligence_chunks",
+            "source_intelligence_generated_notes",
+            "source_intelligence_relationships",
+        ):
+            conn.execute(f"DROP TABLE {child}")
+        conn.execute("DROP TABLE source_intelligence_sources")
+        for base in (
+            "source_intelligence_sources",
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+            "source_intelligence_chunks",
+            "source_intelligence_generated_notes",
+            "source_intelligence_relationships",
+        ):
+            conn.execute(f"ALTER TABLE {base}__v128 RENAME TO {base}")
+
+        # Recreate indexes on the rebuilt tables. The obsolete per-path unique index
+        # (idx_si_sources_root_relpath) is intentionally NOT recreated — rel_path is no longer a
+        # unique key on sources (a path's identity now lives on the locator, not the source row).
+        for stmt in (
+            "CREATE UNIQUE INDEX idx_si_sources_domain "
+            "ON source_intelligence_sources(domain_ref_table, domain_ref_id) "
+            "WHERE domain_ref_id IS NOT NULL",
+            "CREATE INDEX idx_si_sources_project ON source_intelligence_sources(project_key)",
+            "CREATE INDEX idx_si_sources_active ON source_intelligence_sources(active, deleted)",
+            "CREATE INDEX idx_si_sources_root ON source_intelligence_sources(source_root_key)",
+            "CREATE INDEX idx_si_sources_renamed_from "
+            "ON source_intelligence_sources(renamed_from_source_id) "
+            "WHERE renamed_from_source_id IS NOT NULL",
+            "CREATE INDEX idx_si_metadata_sha ON source_intelligence_metadata(content_sha256)",
+            "CREATE INDEX idx_si_metadata_fts_rowid ON source_intelligence_metadata(fts_rowid)",
+            "CREATE INDEX idx_si_chunks_source ON source_intelligence_chunks(source_entity_id)",
+            "CREATE INDEX idx_si_rel_src "
+            "ON source_intelligence_relationships(src_source_entity_id)",
+            "CREATE INDEX idx_si_rel_dst "
+            "ON source_intelligence_relationships(dst_kind, dst_ref)",
+            "CREATE INDEX idx_si_gennotes_source "
+            "ON source_intelligence_generated_notes(source_entity_id)",
+            "CREATE INDEX idx_si_gennotes_status "
+            "ON source_intelligence_generated_notes(generation_status)",
+            "CREATE INDEX idx_si_summaries_source "
+            "ON source_intelligence_summaries(source_entity_id)",
+        ):
+            conn.execute(stmt)
+
+        # --- Step 5: non-FK tables gain a locator-resolved entity ref -----------------------------
+        # DEVIATION / DEFERRED (repo-truth conflict): the spec adds ``source_entity_id`` to BOTH
+        # source_intelligence_events and source_index_scan_quarantine. The events reparenting is
+        # DEFERRED here because V127 installs an UNCONDITIONAL always-revalidate guard
+        # (``_events_schema_current``) that runs on every apply() BEFORE this block and enforces the
+        # EXACT V127 events shape (fixed column set, NO foreign keys). Adding an FK column to events
+        # makes that guard report the table malformed, so the very next apply() rebuilds events to the
+        # V127 shape and strips ``source_entity_id`` (verified: it is present after the first apply and
+        # absent after the second). Making events reparenting durable requires teaching the V127 guard
+        # and rebuild to preserve an optional ``source_entity_id`` column + its FK — a change to
+        # V127-owned invariants and their dedicated tests that is outside V128's authorized scope and
+        # needs an explicit operator decision. quarantine (V125, version-guarded only — no
+        # always-revalidate) is reparented durably below.
+        for tbl in ("source_index_scan_quarantine",):
+            existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
+            if "source_entity_id" not in existing:
+                conn.execute(
+                    f"ALTER TABLE {tbl} ADD COLUMN source_entity_id TEXT "
+                    "REFERENCES source_index_entities(source_entity_id)"
+                )
+            # Resolve via the (source_id → entity) locator map; an unresolved source_id stays NULL.
+            conn.execute(
+                f"UPDATE {tbl} SET source_entity_id = ("
+                " SELECT l.source_entity_id FROM source_index_locators l "
+                f" WHERE l.source_id = {tbl}.source_id AND l.is_current_locator = 1) "
+                "WHERE source_id IS NOT NULL AND source_entity_id IS NULL"
+            )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_si_scan_quarantine_entity "
+            "ON source_index_scan_quarantine(source_entity_id)"
+        )
+
+        # --- Step 6: post-swap integrity (immediate FK check must be clean) ------------------------
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            _fail("foreign_key_check")
+
+    @staticmethod
     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:
         """Root-scope source identity (NAS N8).
 
@@ -9653,6 +10180,19 @@ class SQLiteMigrator:
             "SELECT name FROM sqlite_master WHERE type='table'"
         )}
         if "source_intelligence_sources" not in tables:
+            return
+
+        # Post-V128 the sources table is ENTITY-keyed (no ``source_id`` column) — the root-scoped
+        # source_id remap is obsolete and meaningless. Return before touching the schema so the whole
+        # migration chain stays re-runnable: self-heal (resetting schema_migrations to a stale version
+        # and re-applying) re-executes this block against the already-rebuilt schema, and the historical
+        # ``SELECT source_id …`` below would raise ``no such column: source_id``. (V128 owns the
+        # entity-scoped identity; this idempotency guard extends the existing "no-op if already
+        # migrated" contract.)
+        source_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)").fetchall()
+        }
+        if "source_id" not in source_cols:
             return
 
         # (1) swap the uniqueness index to include the root.

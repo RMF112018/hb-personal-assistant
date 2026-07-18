@@ -75,7 +75,7 @@ def fresh(tmp_path: Path) -> str:
 
 
 def test_latest_version_is_127(fresh) -> None:
-    assert LATEST_SCHEMA_VERSION == 127
+    assert LATEST_SCHEMA_VERSION == 128
     assert 127 in _versions(fresh)
 
 
@@ -102,7 +102,7 @@ def test_rebuild_from_old_shape_preserves_rows_and_ids(tmp_path) -> None:
                           rows=[("evt-1", "created"), ("evt-2", "deleted")])
     assert "dest_rel_path" not in _cols(db)  # confirm we are genuinely pre-V127
     # re-apply -> V127 rebuild fires
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert {"dest_rel_path", "next_attempt_at"}.issubset(_cols(db))
     with sqlite3.connect(db) as c:
         preserved = {r[0]: r[1] for r in c.execute(
@@ -124,7 +124,7 @@ def test_parity_incomplete_table_is_rebuilt_not_marked_applied(tmp_path) -> None
         c.execute("INSERT INTO source_intelligence_events(event_id,event_type,status) "
                   "VALUES('probe','moved','queued')")
     # re-apply -> parity probe fails on the stale CHECK -> full rebuild -> now accepts 'moved'
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert 127 in _versions(db)
     SourceIndexRepository(db).enqueue_event(event_type="moved", rel_path="x", dest_rel_path="y",
                                             source_root_key="R")
@@ -135,7 +135,7 @@ def test_parity_incomplete_table_is_rebuilt_not_marked_applied(tmp_path) -> None
 
 def test_idempotent_reapply(fresh) -> None:
     for _ in range(3):
-        assert SQLiteMigrator(db_path=fresh).apply() == 127
+        assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
 
 
 def test_v122_to_v126_preserved(fresh) -> None:
@@ -188,7 +188,7 @@ def test_missing_attempts_column_rebuilds_losslessly_even_with_v127_recorded(tmp
         "dest_rel_path TEXT, next_attempt_at TEXT, created_at TEXT, updated_at TEXT)",
         [("e1", "created")], keep_v127=True,
     )
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert "attempts" in _cols(db)
     with sqlite3.connect(db) as c:
         assert c.execute("SELECT event_type, attempts FROM source_intelligence_events "
@@ -215,7 +215,7 @@ def test_wrong_status_default_rebuilds(tmp_path) -> None:
         assert SQLiteMigrator._events_schema_current(c) is False  # wrong default/nullability detected
     finally:
         c.close()
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     c = _get_conn(db)
     try:
         assert SQLiteMigrator._events_schema_current(c) is True
@@ -249,7 +249,7 @@ def test_index_right_name_wrong_columns_rebuilds(tmp_path) -> None:
         assert SQLiteMigrator._events_schema_current(c) is False  # wrong index columns detected
     finally:
         c.close()
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     cols = [r[2] for r in sqlite3.connect(db).execute(
         "PRAGMA index_info(idx_si_events_source)").fetchall()]
     assert cols == ["source_id"]  # index repaired
