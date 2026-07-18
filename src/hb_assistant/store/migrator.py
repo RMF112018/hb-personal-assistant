@@ -10299,106 +10299,195 @@ class SQLiteMigrator:
 
     @staticmethod
     def _v128_schema_current(conn: sqlite3.Connection) -> bool:
-        """REV-F-002 always-revalidate structural-parity check for V128 (mirrors
-        ``_events_schema_current``). Returns True ONLY when the full entity-keyed V128 shape is
-        present, so a drifted DB (a dropped identity table / locator index, or a self-heal-re-created
-        obsolete parent path-unique index) is detected and repaired on EVERY apply() rather than
-        trusted on version-record alone. Checks: the 3 identity tables exist; source_index_entities
-        and source_intelligence_sources carry ``source_entity_id`` as a NOT NULL PRIMARY KEY (and no
-        ``source_id`` on the parent); the 3 required locator indexes exist AND index the correct
-        columns (not merely the correct name — REV-F-002); the obsolete parent path-unique index is
-        ABSENT; the 6 children are entity-keyed with the entity column present, ``source_id`` absent,
-        that column NOT NULL, and foreign-keyed to ``source_index_entities`` (relationships uses
-        ``src_source_entity_id``). A right-name/wrong-column index or a NULL-able/FK-less child column
-        is rejected, so on the next apply() the repair drops+recreates the index and a
-        non-additively-repairable child drift fails closed (v128_schema_parity_failed)."""
-        def _tables() -> set[str]:
-            return {r[0] for r in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()}
+        """REV-F-002 always-revalidate COMPLETE structural-parity oracle for the V128 entity-scoped
+        shape (ADR-002 R12), mirroring ``_events_schema_current``. Returns True ONLY when every
+        required table carries its required columns (declared type, nullability, and primary-key
+        role), its required foreign keys to the identity authority, and its required CHECK
+        invariants, AND every required locator index exists with the correct indexed columns,
+        UNIQUEness, and partial predicate, AND the demoted ``source_id``/``src_source_id`` keys are
+        absent from the entity-keyed tables, AND the obsolete parent path-unique index is absent.
 
-        def _cols(table: str) -> dict[str, tuple[int, int]]:
-            # name -> (notnull, pk) for structural checks.
+        CP-PI-WI-02-R3 completeness: name/column checks alone are not enough. A drift that keeps a
+        required index NAME + columns but drops its UNIQUEness or partial predicate, a 1:1 child that
+        loses its entity PRIMARY KEY (while keeping NOT NULL + FK), a parent that loses its authority
+        FK or its addressability CHECK, a locator/move-signal table that loses its own key columns,
+        or an absent events/quarantine entity reference are ALL rejected. On the next apply() the
+        additive repair drops+recreates the locator indexes and re-adds the non-FK entity refs
+        (repairable drift); a table-level drift the bounded additive repair cannot fix (a lost
+        PK/FK/CHECK — repairing it would require re-minting identity) fails closed
+        (v128_schema_parity_failed) rather than being trusted."""
+        def _cols(table: str) -> dict[str, tuple[str, int, int]]:
+            # name -> (declared_type_upper, notnull, pk).
             return {
-                r[1]: (int(r[3]), int(r[5]))
+                r[1]: (str(r[2] or "").upper(), int(r[3]), int(r[5]))
                 for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
             }
 
-        def _indexes(table: str) -> set[str]:
-            return {
-                r[1] for r in conn.execute(f"PRAGMA index_list({table})").fetchall()
-            }
-
-        def _index_cols(index: str) -> list[str]:
-            # Actual indexed column names in order (REV-F-002: a right-name/wrong-column
-            # index must be rejected, so name presence alone is not enough).
-            return [r[2] for r in conn.execute(f"PRAGMA index_info({index})").fetchall()]
-
-        def _fk_targets(table: str) -> dict[str, tuple[str, str]]:
+        def _fks(table: str) -> dict[str, tuple[str, str]]:
             # from-column -> (referenced table, referenced column).
             return {
                 r[3]: (r[2], r[4])
                 for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
             }
 
-        tables = _tables()
-        for t in ("source_index_entities", "source_index_locators", "source_index_move_signals"):
-            if t not in tables:
-                return False
+        def _idx_meta(table: str) -> dict[str, tuple[int, int]]:
+            # index name -> (unique, partial) flags.
+            return {
+                r[1]: (int(r[2]), int(r[4]))
+                for r in conn.execute(f"PRAGMA index_list({table})").fetchall()
+            }
 
-        # Entity id is a NOT NULL PRIMARY KEY on the identity table and on the parent.
-        for t in ("source_index_entities", "source_intelligence_sources"):
-            c = _cols(t)
-            eid = c.get("source_entity_id")
-            if eid != (1, 1):  # (notnull=1, pk=1)
-                return False
-        if "source_id" in _cols("source_intelligence_sources"):
-            return False
+        def _idx_cols(index: str) -> list[str]:
+            return [r[2] for r in conn.execute(f"PRAGMA index_info({index})").fetchall()]
 
-        # Required locator indexes present AND indexing the correct columns (REV-F-002: a required
-        # index with the correct name but the wrong indexed column must be rejected); obsolete parent
-        # path-unique index absent (IMP-F-003).
-        loc_idx = _indexes("source_index_locators")
-        _REQUIRED_LOC_IDX = {
-            "idx_locators_current_per_entity": ["source_entity_id"],
-            "idx_locators_active_path": ["source_root_key", "rel_path"],
-            "idx_locators_source_id": ["source_id"],
+        def _tbl_sql(table: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        def _idx_sql(index: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (index,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        _T, _I = "TEXT", "INTEGER"
+        # Required columns per table: name -> (declared_type, notnull, pk). A "" type means "any".
+        # Values transcribed from _rebuild_v128_permanent_identity's DDL (repo truth).
+        REQUIRED_COLS: dict[str, dict[str, tuple[str, int, int]]] = {
+            "source_index_entities": {
+                "source_entity_id": (_T, 1, 1), "created_at": (_T, 1, 0), "status": (_T, 1, 0),
+            },
+            "source_index_locators": {
+                "locator_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0), "source_id": (_T, 1, 0),
+                "source_root_key": (_T, 0, 0), "rel_path": (_T, 0, 0),
+                "is_current_locator": (_I, 1, 0), "tombstoned_at": (_T, 0, 0),
+                "generation_seq": (_I, 1, 0),
+            },
+            "source_index_move_signals": {"move_signal_id": (_T, 0, 1)},
+            "source_intelligence_sources": {
+                "source_entity_id": (_T, 1, 1), "source_kind": (_T, 1, 0),
+                "active": (_I, 1, 0), "deleted": (_I, 1, 0),
+                "created_at": (_T, 1, 0), "updated_at": (_T, 1, 0),
+            },
+            "source_intelligence_metadata": {"source_entity_id": (_T, 1, 1)},
+            "source_intelligence_text": {"source_entity_id": (_T, 1, 1)},
+            "source_intelligence_summaries": {"source_entity_id": (_T, 1, 1)},
+            "source_intelligence_chunks": {
+                "chunk_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0),
+            },
+            "source_intelligence_generated_notes": {
+                "generated_note_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0),
+            },
+            "source_intelligence_relationships": {
+                "relationship_id": (_T, 0, 1), "src_source_entity_id": (_T, 1, 0),
+            },
         }
-        for idx_name, want_cols in _REQUIRED_LOC_IDX.items():
-            if idx_name not in loc_idx or _index_cols(idx_name) != want_cols:
+        # Demoted legacy keys that MUST be absent from the entity-keyed tables.
+        FORBIDDEN_COLS: dict[str, tuple[str, ...]] = {
+            "source_intelligence_sources": ("source_id",),
+            "source_intelligence_metadata": ("source_id",),
+            "source_intelligence_text": ("source_id",),
+            "source_intelligence_summaries": ("source_id",),
+            "source_intelligence_chunks": ("source_id",),
+            "source_intelligence_generated_notes": ("source_id",),
+            "source_intelligence_relationships": ("src_source_id", "source_id"),
+        }
+        # from-column -> (target table, target column) FK edges that must be present.
+        _AUTH = ("source_index_entities", "source_entity_id")
+        REQUIRED_FKS: dict[str, dict[str, tuple[str, str]]] = {
+            "source_index_locators": {"source_entity_id": _AUTH},
+            "source_intelligence_sources": {"source_entity_id": _AUTH},
+            "source_intelligence_metadata": {"source_entity_id": _AUTH},
+            "source_intelligence_text": {"source_entity_id": _AUTH},
+            "source_intelligence_summaries": {"source_entity_id": _AUTH},
+            "source_intelligence_chunks": {"source_entity_id": _AUTH},
+            "source_intelligence_generated_notes": {"source_entity_id": _AUTH},
+            "source_intelligence_relationships": {"src_source_entity_id": _AUTH},
+        }
+        # Normalized CHECK-invariant substrings that must survive in each table's stored SQL.
+        REQUIRED_CHECKS: dict[str, tuple[str, ...]] = {
+            "source_index_entities": ("'LIVE'", "'TOMBSTONED'"),
+            "source_intelligence_sources": (
+                "source_kind IN (",
+                "domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL",
+            ),
+            "source_intelligence_text": ("raw_body_persisted = 0", "redaction_applied = 1"),
+            "source_intelligence_summaries": ("advisory = 1",),
+            "source_intelligence_chunks": ("raw_body_persisted = 0",),
+        }
+
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+
+        # (1) required tables present; columns match type+nullability+pk; forbidden columns absent.
+        for table, want in REQUIRED_COLS.items():
+            if table not in tables:
                 return False
-        if "idx_si_sources_root_relpath" in _indexes("source_intelligence_sources"):
-            return False
-        if "idx_si_sources_relpath" in _indexes("source_intelligence_sources"):
+            have = _cols(table)
+            for name, (typ, notnull, pk) in want.items():
+                got = have.get(name)
+                if got is None:
+                    return False
+                if typ and got[0] != typ:
+                    return False
+                if got[1] != notnull or got[2] != pk:
+                    return False
+            for name in FORBIDDEN_COLS.get(table, ()):
+                if name in have:
+                    return False
+
+        # (2) required FK edges to the identity authority.
+        for table, want_fk in REQUIRED_FKS.items():
+            fks = _fks(table)
+            for col, target in want_fk.items():
+                if fks.get(col) != target:
+                    return False
+
+        # (3) required CHECK invariants (parent addressability, entity status, redaction guards).
+        for table, frags in REQUIRED_CHECKS.items():
+            sql = _tbl_sql(table)
+            for frag in frags:
+                if frag not in sql:
+                    return False
+
+        # (4) required locator indexes — exact indexed columns, UNIQUEness, and partial predicate.
+        #     (name, columns, unique, partial-predicate-substring or None-if-non-partial)
+        _LOC_IDX = (
+            ("idx_locators_current_per_entity", ["source_entity_id"], 1, "is_current_locator=1"),
+            ("idx_locators_active_path", ["source_root_key", "rel_path"], 1, "tombstoned_at IS NULL"),
+            ("idx_locators_source_id", ["source_id"], 0, None),
+        )
+        loc_meta = _idx_meta("source_index_locators")
+        for name, want_cols, want_unique, want_partial in _LOC_IDX:
+            meta = loc_meta.get(name)
+            if meta is None:
+                return False
+            unique, partial = meta
+            if _idx_cols(name) != want_cols or unique != want_unique:
+                return False
+            if want_partial is None:
+                if partial:
+                    return False
+            elif not partial or want_partial not in _idx_sql(name):
+                return False
+
+        # obsolete parent path-unique indexes must be absent (IMP-F-003).
+        src_idx = _idx_meta("source_intelligence_sources")
+        if "idx_si_sources_root_relpath" in src_idx or "idx_si_sources_relpath" in src_idx:
             return False
 
-        # Children entity-keyed: the entity column present + source_id absent, AND that column is
-        # NOT NULL AND foreign-keyed to source_index_entities(source_entity_id) (REV-F-002: a child
-        # with a NULL-able / FK-less source_entity_id must be rejected, not silently accepted).
-        _CHILD_EID = {
-            "source_intelligence_metadata": "source_entity_id",
-            "source_intelligence_text": "source_entity_id",
-            "source_intelligence_summaries": "source_entity_id",
-            "source_intelligence_chunks": "source_entity_id",
-            "source_intelligence_generated_notes": "source_entity_id",
-            "source_intelligence_relationships": "src_source_entity_id",
-        }
-        for child, eid_col in _CHILD_EID.items():
-            if child not in tables:
-                return False
-            cc = _cols(child)
-            if eid_col not in cc:
-                return False
-            # legacy source_id key must be gone (relationships used src_source_id).
-            if "source_id" in cc or "src_source_id" in cc:
-                return False
-            if cc[eid_col][0] != 1:  # notnull must be 1
-                return False
-            if _fk_targets(child).get(eid_col) != (
-                "source_index_entities",
-                "source_entity_id",
-            ):
-                return False
+        # (5) events/quarantine entity references — asserted only when the table exists (mirroring
+        # _v128_reparent_nonfk_tables' own tolerance): the nullable source_entity_id FK to the
+        # identity authority must be present.
+        for table in ("source_intelligence_events", "source_index_scan_quarantine"):
+            if table in tables:
+                if "source_entity_id" not in _cols(table):
+                    return False
+                if _fks(table).get("source_entity_id") != _AUTH:
+                    return False
         return True
 
     @staticmethod

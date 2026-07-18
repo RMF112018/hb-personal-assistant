@@ -564,6 +564,212 @@ def test_drift_child_without_notnull_or_fk_fails_closed(fresh) -> None:
         SQLiteMigrator(db_path=fresh).apply()
 
 
+# --- CP-PI-WI-02-R3: the oracle is a COMPLETE structural contract -------------------------------
+# Each of the following drifts keeps enough of the shape that the pre-R3 name/column/notnull-only
+# oracle would have returned True (accepting a malformed V128 DB). The completed oracle rejects them;
+# repairable drifts (index uniqueness/partial predicate, non-FK entity refs) are repaired on apply();
+# non-repairable table-level drifts (a lost PK/FK/CHECK) fail closed rather than being trusted.
+
+
+def _idx_flags(db: str, table: str, name: str) -> tuple[int, int] | None:
+    with sqlite3.connect(db) as c:
+        for r in c.execute(f"PRAGMA index_list({table})").fetchall():
+            if r[1] == name:
+                return (int(r[2]), int(r[4]))  # (unique, partial)
+    return None
+
+
+def test_drift_nonunique_locator_index_rejected_and_repaired(fresh) -> None:
+    # Right name + right column + right partial predicate, but NOT UNIQUE -> rejected, then repaired.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP INDEX idx_locators_current_per_entity")
+        c.execute(
+            "CREATE INDEX idx_locators_current_per_entity "
+            "ON source_index_locators(source_entity_id) WHERE is_current_locator=1"
+        )
+    assert _idx_flags(fresh, "source_index_locators", "idx_locators_current_per_entity") == (0, 1)
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _idx_flags(fresh, "source_index_locators", "idx_locators_current_per_entity") == (1, 1)
+
+
+def test_drift_locator_index_missing_partial_predicate_rejected_and_repaired(fresh) -> None:
+    # Right name + columns + UNIQUE, but the partial WHERE predicate is gone -> rejected, then repaired.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP INDEX idx_locators_active_path")
+        c.execute(
+            "CREATE UNIQUE INDEX idx_locators_active_path "
+            "ON source_index_locators(source_root_key, rel_path)"
+        )
+    assert _idx_flags(fresh, "source_index_locators", "idx_locators_active_path") == (1, 0)
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _idx_flags(fresh, "source_index_locators", "idx_locators_active_path") == (1, 1)
+
+
+def test_drift_1to1_child_pk_loss_fails_closed(fresh) -> None:
+    # A 1:1 child that KEEPS NOT NULL + FK on source_entity_id but LOSES its PRIMARY KEY. The pre-R3
+    # oracle only checked notnull + FK, so it accepted this; the completed oracle rejects on pk, and
+    # the drift is not additively repairable -> fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP TABLE source_intelligence_metadata")
+        c.execute(
+            "CREATE TABLE source_intelligence_metadata ("
+            " source_entity_id TEXT NOT NULL"
+            " REFERENCES source_index_entities(source_entity_id),"  # NOT NULL + FK kept, PK dropped
+            " file_ext TEXT, size_bytes INTEGER, mtime_ns INTEGER, content_sha256 TEXT,"
+            " page_count INTEGER, paragraph_count INTEGER, sheet_count INTEGER,"
+            " extraction_status TEXT NOT NULL DEFAULT 'pending',"
+            " extraction_failure_code TEXT, fts_rowid INTEGER,"
+            " indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " extraction_disposition TEXT, content_indexed_at TEXT)"
+        )
+    # sanity: entity column is NOT NULL + FK, but no longer a primary key
+    _md = {r[1]: (int(r[3]), int(r[5])) for r in sqlite3.connect(fresh).execute(
+        "PRAGMA table_info(source_intelligence_metadata)")}
+    assert _md["source_entity_id"] == (1, 0)  # notnull=1, pk=0
+    assert _fk_list(fresh, "source_intelligence_metadata")  # FK still present
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def _recreate_parent(db: str, *, with_fk: bool, with_addr_check: bool) -> None:
+    fk = " REFERENCES source_index_entities(source_entity_id)" if with_fk else ""
+    addr = (
+        ", CHECK((rel_path IS NOT NULL)"
+        " OR (domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL))"
+        if with_addr_check else ""
+    )
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP TABLE source_intelligence_sources")
+        c.execute(
+            "CREATE TABLE source_intelligence_sources ("
+            f" source_entity_id TEXT NOT NULL PRIMARY KEY{fk},"
+            " source_kind TEXT NOT NULL CHECK(source_kind IN ('external_file')),"
+            " source_root_key TEXT, rel_path TEXT, abs_path_hash TEXT,"
+            " domain_ref_table TEXT, domain_ref_id TEXT, project_key TEXT, project_number TEXT,"
+            " active INTEGER NOT NULL DEFAULT 1, deleted INTEGER NOT NULL DEFAULT 0,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            f" renamed_from_source_id TEXT{addr})"
+        )
+
+
+def test_drift_parent_missing_addressability_check_fails_closed(fresh) -> None:
+    # Parent keeps entity PK + authority FK but LOSES the rel_path-or-domain CHECK -> rejected + fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    _recreate_parent(fresh, with_fk=True, with_addr_check=False)
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_parent_missing_authority_fk_fails_closed(fresh) -> None:
+    # Parent keeps entity PK + addressability CHECK but LOSES the authority FK -> rejected + fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    _recreate_parent(fresh, with_fk=False, with_addr_check=True)
+    assert not _fk_list(fresh, "source_intelligence_sources")  # FK gone
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_locators_table_stripped_fails_closed(fresh) -> None:
+    # The locators table loses its own keys/constraints (rebuilt via AS SELECT drops PK/NOT NULL/FK).
+    # Additive repair re-creates the INDEXES but never rebuilds the table -> rejected + fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("ALTER TABLE source_index_locators RENAME TO _loc_old")
+        c.execute("CREATE TABLE source_index_locators AS SELECT * FROM _loc_old")
+        c.execute("DROP TABLE _loc_old")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_move_signals_pk_loss_fails_closed(fresh) -> None:
+    # move_signals loses its move_signal_id PRIMARY KEY (rebuilt via AS SELECT). The additive repair
+    # only re-creates the table when it is ABSENT, so a present-but-malformed table -> fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("ALTER TABLE source_index_move_signals RENAME TO _ms_old")
+        c.execute("CREATE TABLE source_index_move_signals AS SELECT * FROM _ms_old")
+        c.execute("DROP TABLE _ms_old")
+    _ms = {r[1]: int(r[5]) for r in sqlite3.connect(fresh).execute(
+        "PRAGMA table_info(source_index_move_signals)")}
+    assert _ms["move_signal_id"] == 0  # pk lost
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_events_missing_entity_ref_rejected_and_repaired(fresh) -> None:
+    # The events table exists but its nullable source_entity_id entity ref is gone -> rejected, then
+    # repaired (the non-FK reparent step re-adds the column + FK) on apply().
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP INDEX IF EXISTS idx_si_events_entity")
+        c.execute("ALTER TABLE source_intelligence_events DROP COLUMN source_entity_id")
+    assert "source_entity_id" not in _cols(fresh, "source_intelligence_events")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "source_entity_id" in _cols(fresh, "source_intelligence_events")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is True
+    finally:
+        gc.close()
+
+
 def _seed_entity_at_path(
     db: str, *, eid: str, sid: str, root: str, rel: str, current: bool
 ) -> None:
