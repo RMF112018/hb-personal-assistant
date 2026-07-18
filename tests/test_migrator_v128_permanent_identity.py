@@ -124,11 +124,32 @@ def test_quarantine_gains_entity_ref(fresh) -> None:
     assert "source_entity_id" in _cols(fresh, "source_index_scan_quarantine")
 
 
-def test_events_reparent_deferred_stays_v127_shape(fresh) -> None:
-    # DEFERRED (repo-truth conflict): V127's unconditional always-revalidate guard would strip an
-    # FK column added to events on the next apply(), so V128 does NOT reparent events. This asserts
-    # the deviation is intentional and events keeps its exact V127 shape (so the guard stays happy).
-    assert "source_entity_id" not in _cols(fresh, "source_intelligence_events")
+def _fk_list(db: str, table: str) -> list:
+    with sqlite3.connect(db) as c:
+        return c.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+
+
+def test_events_reparented_with_entity_fk(fresh) -> None:
+    # IMP-F-002: V128 now reparents events durably — a nullable source_entity_id FK to
+    # source_index_entities plus its index. V127's always-revalidate guard was extended to tolerate
+    # and preserve it, so the column survives repeated apply() (see test_events_fk_persists_...).
+    assert "source_entity_id" in _cols(fresh, "source_intelligence_events")
+    assert "idx_si_events_entity" in _indexes(fresh, "source_intelligence_events")
+    fks = _fk_list(fresh, "source_intelligence_events")
+    assert len(fks) == 1
+    assert (fks[0][2], fks[0][3], fks[0][4]) == (
+        "source_index_entities", "source_entity_id", "source_entity_id"
+    )
+
+
+def test_events_fk_persists_across_two_applies(fresh) -> None:
+    # IMP-F-002 acceptance: apply twice; the entity FK column must still be present (not stripped by
+    # the V127 always-revalidate rebuild).
+    assert "source_entity_id" in _cols(fresh, "source_intelligence_events")
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "source_entity_id" in _cols(fresh, "source_intelligence_events")
+    assert "idx_si_events_entity" in _indexes(fresh, "source_intelligence_events")
+    assert _fk_check(fresh) == []
 
 
 def test_foreign_key_check_clean_on_fresh(fresh) -> None:
@@ -329,22 +350,37 @@ def test_rebuild_preserves_child_content_rekeyed_to_entity(tmp_path) -> None:
     assert _fk_check(db) == []
 
 
-def test_rebuild_backfills_quarantine_via_locator(tmp_path) -> None:
+def test_rebuild_backfills_quarantine_and_events_via_locator(tmp_path) -> None:
     db = str(tmp_path / "pre.sqlite")
     _build_pre_v128(db)
     _run_rebuild(db)
     with sqlite3.connect(db) as c:
-        e2 = c.execute(
-            "SELECT source_entity_id FROM source_index_locators WHERE source_id='src-file-2'"
-        ).fetchone()[0]
+        def eid(source_id: str) -> str:
+            return c.execute(
+                "SELECT source_entity_id FROM source_index_locators WHERE source_id=?",
+                (source_id,),
+            ).fetchone()[0]
+
+        e2 = eid("src-file-2")
         # quarantine row for src-file-2 resolves to its entity
         assert c.execute(
             "SELECT source_entity_id FROM source_index_scan_quarantine WHERE quarantine_id='q-1'"
         ).fetchone()[0] == e2
-        # events reparenting is DEFERRED (see migrator Step 5) — events keeps its V127 shape
-        assert "source_entity_id" not in {
+        # IMP-F-002: events reparented via the locator map. ev-1 (src-file-1) resolves; ev-2 (no
+        # source) and ev-3 (orphan source) stay NULL.
+        assert "source_entity_id" in {
             r[1] for r in c.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         }
+        e1 = eid("src-file-1")
+        assert c.execute(
+            "SELECT source_entity_id FROM source_intelligence_events WHERE event_id='ev-1'"
+        ).fetchone()[0] == e1
+        assert c.execute(
+            "SELECT source_entity_id FROM source_intelligence_events WHERE event_id='ev-2'"
+        ).fetchone()[0] is None
+        assert c.execute(
+            "SELECT source_entity_id FROM source_intelligence_events WHERE event_id='ev-3'"
+        ).fetchone()[0] is None
     assert _fk_check(db) == []
 
 
@@ -360,3 +396,182 @@ def test_orphan_child_fails_closed_and_rolls_back(tmp_path) -> None:
         assert c.execute(
             "SELECT source_id FROM source_intelligence_chunks WHERE chunk_id='ch-ghost'"
         ).fetchone()[0] == "ghost-source"
+
+
+# ---------------------------------------------------------------------------------------------------
+# Corrective findings — REV-F-001 (NOT NULL keys), REV-F-003 (parent CHECK), REV-F-002 (always-
+# revalidate / drift repair), IMP-F-003 (same-path reuse after tombstone + self-heal)
+# ---------------------------------------------------------------------------------------------------
+
+
+def test_null_identity_key_rejected(fresh) -> None:
+    # REV-F-001: a NULL source_entity_id must be rejected on the identity table, the parent, and the
+    # 1:1 children (TEXT PRIMARY KEY otherwise permits NULL in SQLite).
+    with sqlite3.connect(fresh) as c:
+        with pytest.raises(sqlite3.IntegrityError):
+            c.execute(
+                "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+                "VALUES (NULL, 't', 'LIVE')"
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            c.execute(
+                "INSERT INTO source_intelligence_sources(source_entity_id, source_kind, rel_path) "
+                "VALUES (NULL, 'external_file', 'p/q.txt')"
+            )
+        for child in (
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+        ):
+            with pytest.raises(sqlite3.IntegrityError):
+                c.execute(f"INSERT INTO {child}(source_entity_id) VALUES (NULL)")
+
+
+def test_parent_pathless_domainless_rejected(fresh) -> None:
+    # REV-F-003: the restored parent CHECK requires either a rel_path or a full domain reference.
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = ON")
+        c.execute(
+            "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+            "VALUES ('e-chk', 't', 'LIVE')"
+        )
+        # pathless + domainless -> CHECK violation
+        with pytest.raises(sqlite3.IntegrityError):
+            c.execute(
+                "INSERT INTO source_intelligence_sources(source_entity_id, source_kind) "
+                "VALUES ('e-chk', 'external_file')"
+            )
+        # a row WITH rel_path is accepted
+        c.execute(
+            "INSERT INTO source_intelligence_sources(source_entity_id, source_kind, rel_path) "
+            "VALUES ('e-chk', 'external_file', 'ok/path.txt')"
+        )
+
+
+def test_v128_schema_current_true_on_fresh(fresh) -> None:
+    from hb_assistant.store.migrator import get_connection
+
+    c = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(c) is True
+    finally:
+        c.close()
+
+
+def test_drift_dropped_move_signals_is_repaired(fresh) -> None:
+    # REV-F-002: a dropped identity table is detected (not trusted on version-record) and repaired.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP TABLE source_index_move_signals")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "source_index_move_signals" in _tables(fresh)
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is True
+    finally:
+        gc.close()
+
+
+def test_drift_dropped_locator_index_is_repaired(fresh) -> None:
+    # REV-F-002: a dropped required locator index is detected and repaired.
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP INDEX idx_locators_active_path")
+    assert "idx_locators_active_path" not in _indexes(fresh, "source_index_locators")
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "idx_locators_active_path" in _indexes(fresh, "source_index_locators")
+
+
+def test_drift_obsolete_parent_index_is_dropped(fresh) -> None:
+    # REV-F-002 + IMP-F-003: a re-created obsolete parent path-unique index is detected and dropped.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute(
+            "CREATE UNIQUE INDEX idx_si_sources_root_relpath "
+            "ON source_intelligence_sources(source_kind, source_root_key, rel_path) "
+            "WHERE rel_path IS NOT NULL"
+        )
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "idx_si_sources_root_relpath" not in _indexes(fresh, "source_intelligence_sources")
+
+
+def _seed_entity_at_path(
+    db: str, *, eid: str, sid: str, root: str, rel: str, current: bool
+) -> None:
+    """Insert an entity + parent source + locator at (root, rel)."""
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys = ON")
+        c.execute(
+            "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+            "VALUES (?, 't', 'LIVE')", (eid,)
+        )
+        c.execute(
+            "INSERT INTO source_intelligence_sources"
+            "(source_entity_id, source_kind, source_root_key, rel_path) VALUES (?,?,?,?)",
+            (eid, "external_file", root, rel),
+        )
+        c.execute(
+            "INSERT INTO source_index_locators"
+            "(locator_id, source_entity_id, source_id, source_root_key, rel_path, "
+            " is_current_locator, tombstoned_at, generation_seq) VALUES (?,?,?,?,?,?,?,0)",
+            ("loc-" + eid, eid, sid, root, rel, 1 if current else 0, None if current else "t"),
+        )
+
+
+def _tombstone(db: str, eid: str) -> None:
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys = ON")
+        c.execute(
+            "UPDATE source_index_entities SET status='TOMBSTONED' WHERE source_entity_id=?", (eid,)
+        )
+        c.execute(
+            "UPDATE source_index_locators SET is_current_locator=0, tombstoned_at='t' "
+            "WHERE source_entity_id=?", (eid,)
+        )
+
+
+def test_same_path_reuse_after_tombstone(fresh) -> None:
+    # IMP-F-003: after tombstoning an entity at a path, a NEW entity may reuse the SAME path.
+    _seed_entity_at_path(fresh, eid="E1", sid="s1", root="work", rel="reuse/x.txt", current=True)
+    _tombstone(fresh, "E1")
+    # New entity at the same path must succeed (no obsolete parent unique index blocks it, and the
+    # active-path locator uniqueness only covers current + non-tombstoned rows).
+    _seed_entity_at_path(fresh, eid="E2", sid="s2", root="work", rel="reuse/x.txt", current=True)
+    with sqlite3.connect(fresh) as c:
+        n = c.execute(
+            "SELECT COUNT(*) FROM source_intelligence_sources WHERE rel_path='reuse/x.txt'"
+        ).fetchone()[0]
+    assert n == 2
+    assert _fk_check(fresh) == []
+
+
+def test_same_path_reuse_after_self_heal(fresh) -> None:
+    # IMP-F-003: even after a self-heal (schema_migrations reset to a stale version) re-creates the
+    # obsolete parent path-unique index via additive V123, the V128 always-revalidate drops it, so
+    # same-path reuse still works.
+    _seed_entity_at_path(fresh, eid="E1", sid="s1", root="work", rel="reuse/y.txt", current=True)
+    # Simulate self-heal: reset schema_migrations to before V123 (the block that re-creates the
+    # obsolete index) and re-apply the whole chain.
+    with sqlite3.connect(fresh) as c:
+        c.execute("DELETE FROM schema_migrations WHERE version >= 123")
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "idx_si_sources_root_relpath" not in _indexes(fresh, "source_intelligence_sources")
+    _tombstone(fresh, "E1")
+    _seed_entity_at_path(fresh, eid="E2", sid="s2", root="work", rel="reuse/y.txt", current=True)
+    with sqlite3.connect(fresh) as c:
+        n = c.execute(
+            "SELECT COUNT(*) FROM source_intelligence_sources WHERE rel_path='reuse/y.txt'"
+        ).fetchone()[0]
+    assert n == 2
+    assert _fk_check(fresh) == []

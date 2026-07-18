@@ -9445,15 +9445,27 @@ class SQLiteMigrator:
             # (bijection / bidirectional PK-set equality / null-safe per-column payload fidelity /
             # no-orphan / single-current-locator) assert BEFORE any DROP so any violation raises and
             # rolls back the whole apply() transaction — content is never silently lost or remapped.
-            # FK enforcement is deferred to COMMIT. Version-guarded (a standard block, not
-            # always-revalidate): once recorded, the rebuild does not re-run (the old source_id key no
-            # longer exists), so re-applying apply() is a clean no-op returning 128. Code-rollback
-            # caveat: after V128, OLD application code that reads source_id off these tables cannot run
-            # — this migration is NOT for production/NAS in this phase.
+            # FK enforcement is deferred to COMMIT. Code-rollback caveat: after V128, OLD application
+            # code that reads source_id off these tables cannot run — NOT for production/NAS this phase.
+            #
+            # REV-F-002 ALWAYS-REVALIDATE (mirrors V127's ``_events_schema_current``): the previous
+            # version-record-only guard failed OPEN — a drifted V128 DB (a dropped identity table /
+            # locator index, or a self-heal-re-created obsolete parent path-unique index) passed
+            # silently and apply() still returned 128. Instead, ``_v128_schema_current`` checks the
+            # FULL entity-keyed shape on EVERY apply. When it is False the rebuild/repair path runs:
+            # a still-source_id-keyed DB gets the full 7-table rebuild; an already entity-keyed but
+            # drifted DB gets a bounded, idempotent additive repair (never a re-mint). If parity is
+            # still not met afterwards it raises fail-closed (whole-transaction rollback). Fresh-migrate
+            # and idempotent-no-op behavior are preserved: a fresh DB rebuilds once; a healthy V128 DB
+            # returns True and does nothing.
+            if not self._v128_schema_current(conn):
+                self._rebuild_v128_permanent_identity(conn)
+                if not self._v128_schema_current(conn):
+                    # The whole apply() transaction rolls back — the prior schema is preserved intact.
+                    raise RuntimeError("v128_schema_parity_failed")
             if conn.execute(
                 "SELECT version FROM schema_migrations WHERE version = 128"
             ).fetchone() is None:
-                self._rebuild_v128_permanent_identity(conn)
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) "
                     "VALUES (128, 'v128_permanent_source_identity', ?)",
@@ -9525,9 +9537,17 @@ class SQLiteMigrator:
         ]
         info = conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         actual = {r[1]: (_norm_type(r[2]), int(r[3]), _norm_default(r[4]), int(r[5])) for r in info}
-        if len(actual) != len(expected):
+        # IMP-F-002: TOLERATE an OPTIONAL nullable ``source_entity_id`` FK column that V128 adds. When
+        # present it must be exactly (TEXT, nullable, no default, non-pk) with a single FK to
+        # source_index_entities and its own index — so the guard neither strips it nor accepts a
+        # malformed variant. When absent, the exact V127 shape is required (pre-V128 databases).
+        has_entity = "source_entity_id" in actual
+        expected_full = list(expected)
+        if has_entity:
+            expected_full.append(("source_entity_id", "TEXT", 0, None, 0))
+        if len(actual) != len(expected_full):
             return False
-        for name, typ, nn, dflt, pk in expected:
+        for name, typ, nn, dflt, pk in expected_full:
             if actual.get(name) != (typ, nn, dflt, pk):
                 return False
         # Required indexes: correct ordered columns + non-unique (an extra PK autoindex is allowed).
@@ -9539,13 +9559,28 @@ class SQLiteMigrator:
             "idx_si_events_status": (["status", "created_at"], 0),
             "idx_si_events_source": (["source_id"], 0),
         }
+        if has_entity:
+            # IMP-F-002: the FK column must carry its (non-unique) index.
+            want_idx["idx_si_events_entity"] = (["source_entity_id"], 0)
         for iname, (want_cols, want_unique) in want_idx.items():
             if idx_unique.get(iname) != want_unique:
                 return False
             actual_cols = [r[2] for r in conn.execute(f"PRAGMA index_info({iname})").fetchall()]
             if actual_cols != want_cols:
                 return False
-        if conn.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall():
+        fks = conn.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall()
+        if has_entity:
+            # IMP-F-002: EXACTLY one FK, and it must be source_entity_id -> source_index_entities.
+            # (PRAGMA foreign_key_list columns: id, seq, table, from, to, on_update, on_delete, match.)
+            if len(fks) != 1:
+                return False
+            fk = fks[0]
+            if (fk[2], fk[3], fk[4]) != (
+                "source_index_entities", "source_entity_id", "source_entity_id"
+            ):
+                return False
+        elif fks:
+            # No FK permitted on the pre-V128 (entity-less) events shape.
             return False
         if conn.execute(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' "
@@ -9586,12 +9621,17 @@ class SQLiteMigrator:
         table missing ``attempts``) is repaired LOSSLESSLY rather than crashing a static SELECT. Existing
         rows with an invalid ``event_type``/``status`` or NULL ``event_id`` raise
         ``v127_events_invalid_existing_rows`` so the whole apply() transaction rolls back — queued work is
-        never silently coerced or discarded. Runs inside the apply() transaction (atomic)."""
+        never silently coerced or discarded. Runs inside the apply() transaction (atomic).
+
+        IMP-F-002: if the OLD table already carries the optional V128 ``source_entity_id`` FK column,
+        the rebuild PRESERVES it (column + FK to source_index_entities + its index), so a repair
+        triggered for any OTHER reason never strips the entity reparenting."""
         old_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         }
         if "event_id" not in old_cols:
             raise RuntimeError("v127_events_invalid_existing_rows")
+        keep_entity = "source_entity_id" in old_cols
         et_set = "(" + ",".join(f"'{v}'" for v in event_types) + ")"
         st_set = "(" + ",".join(f"'{v}'" for v in statuses) + ")"
         row_count = conn.execute("SELECT COUNT(*) FROM source_intelligence_events").fetchone()[0]
@@ -9610,7 +9650,7 @@ class SQLiteMigrator:
         def _src(name: str, fallback: str) -> str:
             return name if name in old_cols else fallback
 
-        projection = ", ".join([
+        proj_cols = [
             "event_id",
             _src("source_id", "NULL"),
             _src("rel_path", "NULL"),
@@ -9623,9 +9663,22 @@ class SQLiteMigrator:
             "COALESCE(attempts, 0)" if "attempts" in old_cols else "0",
             "COALESCE(created_at, CURRENT_TIMESTAMP)" if "created_at" in old_cols else "CURRENT_TIMESTAMP",
             "COALESCE(updated_at, CURRENT_TIMESTAMP)" if "updated_at" in old_cols else "CURRENT_TIMESTAMP",
-        ])
+        ]
+        insert_cols = [
+            "event_id", "source_id", "rel_path", "source_root_key", "dest_rel_path",
+            "next_attempt_at", "event_type", "status", "error_code", "attempts", "created_at",
+            "updated_at",
+        ]
+        if keep_entity:  # IMP-F-002: carry the optional V128 entity FK column through the rebuild.
+            proj_cols.append("source_entity_id")
+            insert_cols.append("source_entity_id")
+        projection = ", ".join(proj_cols)
         et_csv = ", ".join(f"'{v}'" for v in event_types)
         st_csv = ", ".join(f"'{v}'" for v in statuses)
+        entity_col_ddl = (
+            " , source_entity_id TEXT REFERENCES source_index_entities(source_entity_id)"
+            if keep_entity else ""
+        )
         conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
         conn.execute(
             "CREATE TABLE source_intelligence_events_v127 ("
@@ -9636,12 +9689,12 @@ class SQLiteMigrator:
             " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
             " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            f"{entity_col_ddl}"
             ")"
         )
         conn.execute(
             "INSERT INTO source_intelligence_events_v127 "
-            "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
-            " event_type, status, error_code, attempts, created_at, updated_at) "
+            f"({', '.join(insert_cols)}) "
             f"SELECT {projection} FROM source_intelligence_events"
         )
         conn.execute("DROP TABLE source_intelligence_events")
@@ -9656,6 +9709,11 @@ class SQLiteMigrator:
             "CREATE INDEX IF NOT EXISTS idx_si_events_source "
             "ON source_intelligence_events(source_id)"
         )
+        if keep_entity:  # IMP-F-002: preserve the FK column's index too.
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_si_events_entity "
+                "ON source_intelligence_events(source_entity_id)"
+            )
 
     @staticmethod
     def _rebuild_v128_permanent_identity(conn: sqlite3.Connection) -> None:
@@ -9726,14 +9784,19 @@ class SQLiteMigrator:
         _REL_COLS = ("dst_kind", "dst_ref", "relation", "confidence", "evidence_json", "created_at")
 
         # Re-runnability guard: if the sources table is already ENTITY-keyed (no ``source_id``), V128
-        # has already been applied on a prior pass. Re-running the rebuild would be destructive
-        # (CREATE TABLE source_index_entities already exists; a second entity-id mint would orphan
-        # every row). The chain must stay a no-op on re-apply — self-heal re-executes this block when
-        # schema_migrations is reset to a stale version. Return before any DDL.
+        # has already applied the core rebuild on a prior pass. Re-minting would be destructive
+        # (a second entity-id mint would orphan every row). But a self-heal (schema_migrations reset to
+        # a stale version) re-runs the WHOLE additive chain BEFORE this block — additive V93/V123/V99
+        # re-create ``idx_si_sources_root_relpath`` (a UNIQUE parent path index) which, on the
+        # entity-keyed parent, wrongly blocks a NEW entity from reusing a TOMBSTONED path (IMP-F-003),
+        # and a drift may have dropped an additive V128 structure (move_signals / a locator index).
+        # So instead of a bare no-op return, run the bounded, idempotent additive REPAIR: never
+        # re-mint, but drop the obsolete parent index and re-ensure the additive V128 structures.
         source_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)").fetchall()
         }
         if "source_id" not in source_cols:
+            SQLiteMigrator._v128_repair_additive(conn)
             return
 
         # Defer FK enforcement to COMMIT so the drop/rename swap can proceed with a self-consistent
@@ -9743,7 +9806,9 @@ class SQLiteMigrator:
         # --- Step 1: new identity tables -----------------------------------------------------------
         conn.execute(
             "CREATE TABLE source_index_entities ("
-            " source_entity_id TEXT PRIMARY KEY,"
+            # REV-F-001: a non-INTEGER TEXT PRIMARY KEY permits NULLs in SQLite unless NOT NULL is
+            # declared. The entity id is THE durable identity key — a NULL is never a valid identity.
+            " source_entity_id TEXT NOT NULL PRIMARY KEY,"
             " created_at TEXT NOT NULL,"
             " status TEXT NOT NULL CHECK(status IN ('LIVE','TOMBSTONED'))"
             ")"
@@ -9760,29 +9825,8 @@ class SQLiteMigrator:
             " generation_seq INTEGER NOT NULL DEFAULT 0"
             ")"
         )
-        conn.execute(
-            "CREATE UNIQUE INDEX idx_locators_current_per_entity "
-            "ON source_index_locators(source_entity_id) WHERE is_current_locator=1"
-        )
-        conn.execute(
-            "CREATE UNIQUE INDEX idx_locators_active_path "
-            "ON source_index_locators(source_root_key, rel_path) "
-            "WHERE is_current_locator=1 AND tombstoned_at IS NULL"
-        )
-        conn.execute("CREATE INDEX idx_locators_source_id ON source_index_locators(source_id)")
-        conn.execute(
-            "CREATE TABLE source_index_move_signals ("
-            " move_signal_id TEXT PRIMARY KEY,"
-            " source_locator_id TEXT,"
-            " source_root_key TEXT,"
-            " source_rel_path TEXT,"
-            " target_root_key TEXT,"
-            " target_rel_path TEXT,"
-            " detected_at TEXT,"
-            " generation_id TEXT,"
-            " applied_at TEXT"
-            ")"
-        )
+        SQLiteMigrator._v128_ensure_locator_indexes(conn)
+        SQLiteMigrator._v128_ensure_move_signals(conn)
 
         # --- Step 2: mint one entity id per source + rebuild parent --------------------------------
         # Scratch column so the SAME minted id is reused for entities, locators, parent, and every
@@ -9802,7 +9846,9 @@ class SQLiteMigrator:
         )
         conn.execute(
             "CREATE TABLE source_intelligence_sources__v128 ("
-            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
             f" source_kind TEXT NOT NULL CHECK(source_kind IN ({_kind_csv})),"
             " source_root_key TEXT,"
             " rel_path TEXT,"
@@ -9815,7 +9861,11 @@ class SQLiteMigrator:
             " deleted INTEGER NOT NULL DEFAULT 0,"
             " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
-            " renamed_from_source_id TEXT"
+            " renamed_from_source_id TEXT,"
+            # REV-F-003: restore the V93 parent domain/path CHECK (verbatim columns) dropped by the
+            # V128 rebuild — a source row must carry either a rel_path or a full domain reference.
+            " CHECK((rel_path IS NOT NULL)"
+            " OR (domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL))"
             ")"
         )
         conn.execute(
@@ -9831,7 +9881,9 @@ class SQLiteMigrator:
         # --- Step 3: rebuild each of the 6 children keyed/FK'd to source_entity_id -----------------
         conn.execute(
             "CREATE TABLE source_intelligence_metadata__v128 ("
-            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
             " file_ext TEXT, size_bytes INTEGER, mtime_ns INTEGER, content_sha256 TEXT,"
             " page_count INTEGER, paragraph_count INTEGER, sheet_count INTEGER,"
             " extraction_status TEXT NOT NULL DEFAULT 'pending'"
@@ -9854,7 +9906,9 @@ class SQLiteMigrator:
         )
         conn.execute(
             "CREATE TABLE source_intelligence_text__v128 ("
-            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
             " text_excerpt TEXT,"
             " excerpt_char_count INTEGER NOT NULL DEFAULT 0 CHECK(excerpt_char_count >= 0),"
             " excerpt_truncated INTEGER NOT NULL DEFAULT 0,"
@@ -9876,7 +9930,9 @@ class SQLiteMigrator:
         )
         conn.execute(
             "CREATE TABLE source_intelligence_summaries__v128 ("
-            " source_entity_id TEXT PRIMARY KEY REFERENCES source_index_entities(source_entity_id),"
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
             " model_provider TEXT NOT NULL, model_name TEXT, prompt_version TEXT NOT NULL,"
             " prompt_sha256 TEXT, summary_sha256 TEXT, source_sha256 TEXT,"
             " advisory INTEGER NOT NULL DEFAULT 1 CHECK(advisory = 1),"
@@ -10095,6 +10151,13 @@ class SQLiteMigrator:
         ):
             conn.execute(f"ALTER TABLE {base}__v128 RENAME TO {base}")
 
+        # IMP-F-003: the obsolete per-path unique index (idx_si_sources_root_relpath, and the even
+        # older narrow idx_si_sources_relpath) must NOT survive on the entity-keyed parent — a
+        # tombstoned path may be reused by a NEW entity, and a UNIQUE parent path index would wrongly
+        # block that second row. Drop them explicitly here (the old parent's copies also vanished with
+        # DROP TABLE above; this defends against a same-transaction self-heal re-creation).
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_root_relpath")
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
         # Recreate indexes on the rebuilt tables. The obsolete per-path unique index
         # (idx_si_sources_root_relpath) is intentionally NOT recreated — rel_path is no longer a
         # unique key on sources (a path's identity now lives on the locator, not the source row).
@@ -10125,26 +10188,70 @@ class SQLiteMigrator:
             conn.execute(stmt)
 
         # --- Step 5: non-FK tables gain a locator-resolved entity ref -----------------------------
-        # DEVIATION / DEFERRED (repo-truth conflict): the spec adds ``source_entity_id`` to BOTH
-        # source_intelligence_events and source_index_scan_quarantine. The events reparenting is
-        # DEFERRED here because V127 installs an UNCONDITIONAL always-revalidate guard
-        # (``_events_schema_current``) that runs on every apply() BEFORE this block and enforces the
-        # EXACT V127 events shape (fixed column set, NO foreign keys). Adding an FK column to events
-        # makes that guard report the table malformed, so the very next apply() rebuilds events to the
-        # V127 shape and strips ``source_entity_id`` (verified: it is present after the first apply and
-        # absent after the second). Making events reparenting durable requires teaching the V127 guard
-        # and rebuild to preserve an optional ``source_entity_id`` column + its FK — a change to
-        # V127-owned invariants and their dedicated tests that is outside V128's authorized scope and
-        # needs an explicit operator decision. quarantine (V125, version-guarded only — no
-        # always-revalidate) is reparented durably below.
-        for tbl in ("source_index_scan_quarantine",):
-            existing = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
-            if "source_entity_id" not in existing:
+        # IMP-F-002 (ADR-002 R12): BOTH source_intelligence_events and source_index_scan_quarantine
+        # gain a nullable ``source_entity_id`` FK to source_index_entities (+ index), backfilled from
+        # the (source_id → entity) locator map (an unresolved source_id stays NULL). The events
+        # reparenting is now durable: V127's always-revalidate guard (``_events_schema_current``) and
+        # rebuild (``_rebuild_v127_events``) were extended to TOLERATE and PRESERVE this optional FK
+        # column, so a subsequent apply() no longer strips it. Reused by the additive-repair path.
+        SQLiteMigrator._v128_reparent_nonfk_tables(conn)
+
+        # --- Step 6: post-swap integrity (immediate FK check must be clean) ------------------------
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            _fail("foreign_key_check")
+
+    @staticmethod
+    def _v128_ensure_move_signals(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the (empty, additive) move-signals table exists. Reused by the fresh
+        rebuild (Step 1) and the additive-repair path (drift may have dropped it)."""
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS source_index_move_signals ("
+            " move_signal_id TEXT PRIMARY KEY,"
+            " source_locator_id TEXT,"
+            " source_root_key TEXT,"
+            " source_rel_path TEXT,"
+            " target_root_key TEXT,"
+            " target_rel_path TEXT,"
+            " detected_at TEXT,"
+            " generation_id TEXT,"
+            " applied_at TEXT"
+            ")"
+        )
+
+    @staticmethod
+    def _v128_ensure_locator_indexes(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the three required locator indexes exist. Reused by the fresh rebuild
+        (Step 1) and the additive-repair path (drift may have dropped one)."""
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_locators_current_per_entity "
+            "ON source_index_locators(source_entity_id) WHERE is_current_locator=1"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_locators_active_path "
+            "ON source_index_locators(source_root_key, rel_path) "
+            "WHERE is_current_locator=1 AND tombstoned_at IS NULL"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_locators_source_id "
+            "ON source_index_locators(source_id)"
+        )
+
+    @staticmethod
+    def _v128_reparent_nonfk_tables(conn: sqlite3.Connection) -> None:
+        """IMP-F-002 (ADR-002 R12): give the two non-FK tables (events, scan_quarantine) a nullable
+        ``source_entity_id`` FK to source_index_entities (+ index), backfilled via the
+        (source_id → entity) locator map; an unresolved source_id stays NULL. Idempotent (parity-
+        guarded ADD COLUMN; CREATE INDEX IF NOT EXISTS). Reused by Step 5 and the additive-repair
+        path. The ADD COLUMN is nullable with NULL default so SQLite permits the REFERENCES clause."""
+        for tbl in ("source_index_scan_quarantine", "source_intelligence_events"):
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
+            if not cols:
+                continue  # table absent (should not happen post-swap); skip rather than raise here
+            if "source_entity_id" not in cols:
                 conn.execute(
                     f"ALTER TABLE {tbl} ADD COLUMN source_entity_id TEXT "
                     "REFERENCES source_index_entities(source_entity_id)"
                 )
-            # Resolve via the (source_id → entity) locator map; an unresolved source_id stays NULL.
             conn.execute(
                 f"UPDATE {tbl} SET source_entity_id = ("
                 " SELECT l.source_entity_id FROM source_index_locators l "
@@ -10155,10 +10262,105 @@ class SQLiteMigrator:
             "CREATE INDEX IF NOT EXISTS idx_si_scan_quarantine_entity "
             "ON source_index_scan_quarantine(source_entity_id)"
         )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_si_events_entity "
+            "ON source_intelligence_events(source_entity_id)"
+        )
 
-        # --- Step 6: post-swap integrity (immediate FK check must be clean) ------------------------
-        if conn.execute("PRAGMA foreign_key_check").fetchall():
-            _fail("foreign_key_check")
+    @staticmethod
+    def _v128_repair_additive(conn: sqlite3.Connection) -> None:
+        """Bounded, idempotent additive repair for an ALREADY entity-keyed DB (IMP-F-003 + REV-F-002
+        drift). Never re-mints identity (that would orphan every row). It (a) drops the obsolete parent
+        path-unique indexes that a self-heal re-run of additive V93/V123/V99 re-creates and which would
+        wrongly block same-path reuse after a tombstone, (b) re-ensures the additive V128 structures a
+        drift may have dropped (move_signals table + the 3 locator indexes, only when the locators
+        table is present), and (c) re-ensures the non-FK entity refs. If an identity table itself was
+        destructively dropped (e.g. source_index_locators), the index/reparent DDL raises inside the
+        apply() transaction → whole-transaction rollback (fail-closed), never a silent pass."""
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_root_relpath")
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "source_index_move_signals" not in tables:
+            SQLiteMigrator._v128_ensure_move_signals(conn)
+        if "source_index_locators" in tables:
+            SQLiteMigrator._v128_ensure_locator_indexes(conn)
+        SQLiteMigrator._v128_reparent_nonfk_tables(conn)
+
+    @staticmethod
+    def _v128_schema_current(conn: sqlite3.Connection) -> bool:
+        """REV-F-002 always-revalidate structural-parity check for V128 (mirrors
+        ``_events_schema_current``). Returns True ONLY when the full entity-keyed V128 shape is
+        present, so a drifted DB (a dropped identity table / locator index, or a self-heal-re-created
+        obsolete parent path-unique index) is detected and repaired on EVERY apply() rather than
+        trusted on version-record alone. Checks: the 3 identity tables exist; source_index_entities
+        and source_intelligence_sources carry ``source_entity_id`` as a NOT NULL PRIMARY KEY (and no
+        ``source_id`` on the parent); the 3 required locator indexes exist; the obsolete parent
+        path-unique index is ABSENT; the 6 children are entity-keyed (``source_entity_id`` present,
+        ``source_id`` absent; relationships uses ``src_source_entity_id``)."""
+        def _tables() -> set[str]:
+            return {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()}
+
+        def _cols(table: str) -> dict[str, tuple[int, int]]:
+            # name -> (notnull, pk) for structural checks.
+            return {
+                r[1]: (int(r[3]), int(r[5]))
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+
+        def _indexes(table: str) -> set[str]:
+            return {
+                r[1] for r in conn.execute(f"PRAGMA index_list({table})").fetchall()
+            }
+
+        tables = _tables()
+        for t in ("source_index_entities", "source_index_locators", "source_index_move_signals"):
+            if t not in tables:
+                return False
+
+        # Entity id is a NOT NULL PRIMARY KEY on the identity table and on the parent.
+        for t in ("source_index_entities", "source_intelligence_sources"):
+            c = _cols(t)
+            eid = c.get("source_entity_id")
+            if eid != (1, 1):  # (notnull=1, pk=1)
+                return False
+        if "source_id" in _cols("source_intelligence_sources"):
+            return False
+
+        # Required locator indexes present; obsolete parent path-unique index absent (IMP-F-003).
+        if not {
+            "idx_locators_current_per_entity",
+            "idx_locators_active_path",
+            "idx_locators_source_id",
+        }.issubset(_indexes("source_index_locators")):
+            return False
+        if "idx_si_sources_root_relpath" in _indexes("source_intelligence_sources"):
+            return False
+        if "idx_si_sources_relpath" in _indexes("source_intelligence_sources"):
+            return False
+
+        # Children entity-keyed.
+        for child in (
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+            "source_intelligence_chunks",
+            "source_intelligence_generated_notes",
+        ):
+            if child not in tables:
+                return False
+            cc = _cols(child)
+            if "source_entity_id" not in cc or "source_id" in cc:
+                return False
+        rel = _cols("source_intelligence_relationships")
+        if "source_intelligence_relationships" not in tables:
+            return False
+        if "src_source_entity_id" not in rel or "src_source_id" in rel:
+            return False
+        return True
 
     @staticmethod
     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:
