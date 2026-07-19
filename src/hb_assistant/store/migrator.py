@@ -455,16 +455,13 @@ def _v128_skip_bracket(s: str, i: int) -> int:
     raise V128OracleError("v128_index_expr_unterminated_bracket")
 
 
-def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
-    """Tokenize an index key-expression region into ``(kind, value, quoted)`` tuples for
-    ``_v128_expr_references_column``. ``kind`` is ``"ident"`` (``value`` = the unquoted, lowercased
-    identifier; ``quoted`` True for a ``"…"``/`` `…` ``/``[…]`` form) or ``"punct"`` (a single
-    operator/punctuation char). Whitespace, string literals, and ``--`` line / ``/* */`` block comments
-    are dropped. Raises ``V128OracleError`` on an unterminated string / block comment / quoted
-    identifier (fail-closed). Reuses the quote-aware scanning idiom of ``_v128_split_top_level`` rather
-    than a permissive regex."""
-    tokens: list[tuple[str, str, bool]] = []
-    i = 0
+def _v128_skip_ws_comments(s: str, i: int) -> int:
+    """Advance past any run of whitespace, ``--`` line comments (to ``\\n`` / end), and ``/* */`` block
+    comments starting at ``s[i]``; return the index of the first following char that is neither
+    whitespace nor a comment (or ``len(s)``). Raises ``V128OracleError`` on an unterminated block
+    comment (fail-closed, never a silent stop). This is the single comment/whitespace-skip idiom shared
+    by ``_v128_tokenize_index_expr`` and ``_v128_index_key_region`` so the two never diverge on what
+    counts as ignorable text — a ``(`` inside a comment must never be mistaken for the key list."""
     n = len(s)
     while i < n:
         ch = s[i]
@@ -482,6 +479,29 @@ def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
                 raise V128OracleError("v128_index_expr_unterminated_comment")
             i = end + 2
             continue
+        break
+    return i
+
+
+def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
+    """Tokenize an index key-expression region into ``(kind, value, quoted)`` tuples for
+    ``_v128_expr_references_column``. ``kind`` is ``"ident"`` (``value`` = the unquoted, lowercased
+    identifier; ``quoted`` True for a ``"…"``/`` `…` ``/``[…]`` form) or ``"punct"`` (a single
+    operator/punctuation char). Whitespace, string literals, and ``--`` line / ``/* */`` block comments
+    are dropped (via ``_v128_skip_ws_comments``). Parenthesis balance is enforced: a ``)`` that drops
+    depth below zero, or a residual non-zero depth at end, raises ``V128OracleError`` (fail-closed —
+    an unbalanced key expression yields no silent verdict). Raises ``V128OracleError`` on an
+    unterminated string / block comment / quoted identifier. Reuses the quote-aware scanning idiom of
+    ``_v128_split_top_level`` rather than a permissive regex."""
+    tokens: list[tuple[str, str, bool]] = []
+    i = 0
+    n = len(s)
+    depth = 0
+    while i < n:
+        i = _v128_skip_ws_comments(s, i)
+        if i >= n:
+            break
+        ch = s[i]
         if ch == "'":  # string literal — skipped (never a column reference)
             i = _v128_skip_quoted(s, i, "'")
             continue
@@ -502,8 +522,16 @@ def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
             tokens.append(("ident", s[i:j].lower(), False))
             i = j
             continue
+        if ch == "(":  # track paren balance — fail closed on unbalanced input
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                raise V128OracleError("v128_index_expr_unbalanced_paren")
         tokens.append(("punct", ch, False))  # operator / punctuation / digit
         i += 1
+    if depth != 0:
+        raise V128OracleError("v128_index_expr_unbalanced_paren")
     return tokens
 
 
@@ -539,14 +567,21 @@ def _v128_expr_references_column(expr_sql: str, column: str) -> bool:
 
 def _v128_index_key_region(index_sql: str) -> str:
     """Extract the indexed-columns expression region (the text INSIDE the key-list parentheses) from a
-    ``CREATE INDEX`` statement, quote/bracket/paren-aware. The trailing ``WHERE`` partial predicate,
-    which lives AFTER the key-list close paren, is excluded — detection is key-only (R9-PR-F-002).
-    Raises ``V128OracleError`` when no balanced key-list parenthesis is present (fail-closed)."""
+    ``CREATE INDEX`` statement, quote/bracket/paren/comment-aware. ``--`` line and ``/* */`` block
+    comments are skipped (via ``_v128_skip_ws_comments``) both while locating the first top-level ``(``
+    and while depth-tracking to its match, so a ``(`` inside a preceding/intervening comment never
+    mis-locates the key list. The trailing ``WHERE`` partial predicate, which lives AFTER the key-list
+    close paren, is excluded — detection is key-only (R9-PR-F-002). Raises ``V128OracleError`` when no
+    balanced key-list parenthesis is present (fail-closed)."""
     n = len(index_sql)
-    # Locate the first top-level '(' (the key list), skipping any quoted/bracketed identifier.
+    # Locate the first top-level '(' (the key list), skipping any quoted/bracketed identifier AND any
+    # -- / /* */ comment (via _v128_skip_ws_comments) so a '(' inside a comment is never mis-detected.
     i = 0
     start = -1
     while i < n:
+        i = _v128_skip_ws_comments(index_sql, i)
+        if i >= n:
+            break
         ch = index_sql[i]
         if ch in ("'", '"', "`"):
             i = _v128_skip_quoted(index_sql, i, ch)
@@ -563,6 +598,9 @@ def _v128_index_key_region(index_sql: str) -> str:
     depth = 0
     j = start
     while j < n:
+        j = _v128_skip_ws_comments(index_sql, j)
+        if j >= n:
+            break
         ch = index_sql[j]
         if ch in ("'", '"', "`"):
             j = _v128_skip_quoted(index_sql, j, ch)
@@ -600,13 +638,21 @@ def _v128_entity_index_signatures(conn: "sqlite3.Connection", table: str) -> tup
     Returns ``tuple(sorted(signatures))``. Raises ``V128OracleError`` (via the key-expression parser)
     on a malformed/ambiguous index expression — fail-closed, never a silent miss."""
     signatures: list[tuple] = []
-    for row in conn.execute(f"PRAGMA index_list({table})").fetchall():
+    # Bind both dynamic names via the table-valued pragma form (reserved-word columns quoted) so an
+    # index/table named with a reserved word, space, hyphen, or embedded quote is passed as a ``?``
+    # parameter and can never raise ``sqlite3.OperationalError`` before its relevance is judged.
+    index_list = conn.execute(
+        'SELECT seq, name, "unique", origin, partial FROM pragma_index_list(?)', (table,)
+    ).fetchall()
+    for row in index_list:
         # row = (seq, name, unique, origin, partial)
         iname = row[1]
         unique = int(row[2])
         origin = str(row[3])
         partial = int(row[4])
-        xinfo = conn.execute(f"PRAGMA index_xinfo({iname})").fetchall()
+        xinfo = conn.execute(
+            'SELECT seqno, cid, name, "desc", coll, "key" FROM pragma_index_xinfo(?)', (iname,)
+        ).fetchall()
         # xr = (seqno, cid, name, desc, coll, key); key terms have xr[5] == 1.
         key_terms = sorted((xr for xr in xinfo if int(xr[5]) == 1), key=lambda xr: int(xr[0]))
         involves = any(

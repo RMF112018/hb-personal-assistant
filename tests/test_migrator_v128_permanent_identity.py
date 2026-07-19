@@ -1793,3 +1793,163 @@ def test_r9_entity_mention_not_key_ref_stays_current(
     with sqlite3.connect(fresh) as c:
         c.execute(stmt_tmpl.format(t=table))
     assert _current(fresh) is True  # not a source_entity_id KEY reference -> not policed
+
+
+# ===================================================================================================
+# CP-PI-WI-02-R10 (R8-ORACLE-GAP-001/002): false-rejection-safe entity-index parsing — comment-aware
+# key-region location, paren-balance fail-closed, and safe dynamic index-name binding. Additive to the
+# R8/R9 suites; touches only the entity-index parsing path.
+# ===================================================================================================
+
+
+# --- R10-AC-001: direct unit suite for the shared whitespace/comment skip helper --------------------
+
+
+def test_r10_skip_ws_comments_leading_whitespace() -> None:
+    assert migrator_module._v128_skip_ws_comments("   x", 0) == 3
+
+
+def test_r10_skip_ws_comments_line_comment() -> None:
+    s = "-- ( comment\nx"
+    assert migrator_module._v128_skip_ws_comments(s, 0) == s.index("x")
+
+
+def test_r10_skip_ws_comments_line_comment_to_end() -> None:
+    s = "-- ( no trailing newline"
+    assert migrator_module._v128_skip_ws_comments(s, 0) == len(s)
+
+
+def test_r10_skip_ws_comments_block_comment() -> None:
+    s = "/* ( */x"
+    assert migrator_module._v128_skip_ws_comments(s, 0) == s.index("x")
+
+
+def test_r10_skip_ws_comments_mixed_run() -> None:
+    s = "  -- a\n /* ( */  x"
+    assert migrator_module._v128_skip_ws_comments(s, 0) == s.index("x")
+
+
+def test_r10_skip_ws_comments_unterminated_block_raises() -> None:
+    with pytest.raises(V128OracleError):
+        migrator_module._v128_skip_ws_comments("/* unterminated", 0)
+
+
+def test_r10_skip_ws_comments_no_skip_returns_same_index() -> None:
+    # A non-ws, non-comment char (incl. a lone '-' or '/') is not skipped.
+    assert migrator_module._v128_skip_ws_comments("(status", 0) == 0
+    assert migrator_module._v128_skip_ws_comments("- x", 0) == 0
+    assert migrator_module._v128_skip_ws_comments("/ x", 0) == 0
+
+
+# --- R10-AC-002: paren-balance fail-closed (unbalanced input raises, never a silent verdict) ---------
+# Asserted on _v128_expr_references_column (the entry that tokenizes the key-expression region; the
+# tokenizer enforces balance). '(x))' is exercised here rather than on _v128_index_key_region because
+# that extractor returns at the FIRST balanced close and never sees the trailing ')' — the balance
+# contract lives in the key-expression parser.
+@pytest.mark.parametrize("expr", ["((x)", "(x))", ")x)"])
+def test_r10_expr_references_column_unbalanced_raises(expr) -> None:
+    with pytest.raises(V128OracleError):
+        migrator_module._v128_expr_references_column(expr, "source_entity_id")
+
+
+def test_r10_nested_balanced_expr_still_detected() -> None:
+    # Balance enforcement must not suppress a valid deeply-nested column reference.
+    assert migrator_module._v128_expr_references_column(
+        "(coalesce(lower(source_entity_id), ''))", "source_entity_id"
+    ) is True
+
+
+# --- R10-AC-001: comment-before-key-list, per non-FK table, at the exact defect positions -----------
+# The '(' inside the comment sits exactly where the pre-R10 key-region scan would mistake it for the
+# key list. Three placements: between the name and ON, between the table and the key list, and a '--'
+# line comment before ON.
+_R10_COMMENT_POS = [
+    ("comment_between_name_and_on", "CREATE INDEX ix_r10 /* ( */ ON {t}(({expr}))"),
+    ("comment_between_table_and_keylist", "CREATE INDEX ix_r10 ON {t} /* ( */ (({expr}))"),
+    ("line_comment_before_on", "CREATE INDEX ix_r10 -- (\nON {t}(({expr}))"),
+]
+_R10_NONFK_TABLES = ["source_intelligence_events", "source_index_scan_quarantine"]
+
+
+@pytest.mark.parametrize("pos_id, tmpl", _R10_COMMENT_POS, ids=[c[0] for c in _R10_COMMENT_POS])
+@pytest.mark.parametrize("table", _R10_NONFK_TABLES)
+def test_r10_comment_before_keylist_unrelated_stays_current(fresh, table, pos_id, tmpl) -> None:
+    # An UNRELATED expression index (key `(status || '')`) whose preceding comment contains '(' must
+    # not crash / false-reject the oracle: parity stays True and apply() is an idempotent no-op.
+    with sqlite3.connect(fresh) as c:
+        c.execute(tmpl.format(t=table, expr="status || ''"))
+    assert _current(fresh) is True
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _current(fresh) is True
+    assert "ix_r10" in _indexes(fresh, table)
+    assert _fk_check(fresh) == []
+
+
+@pytest.mark.parametrize("pos_id, tmpl", _R10_COMMENT_POS, ids=[c[0] for c in _R10_COMMENT_POS])
+@pytest.mark.parametrize("table", _R10_NONFK_TABLES)
+def test_r10_comment_before_keylist_entity_detected_fails_closed(fresh, table, pos_id, tmpl) -> None:
+    # The SAME comment placement with a GENUINE entity key expression `(source_entity_id || '')` is
+    # still detected (the comment does not defeat detection) -> parity False -> apply() fails closed.
+    with sqlite3.connect(fresh) as c:
+        c.execute(tmpl.format(t=table, expr="source_entity_id || ''"))
+    assert _current(fresh) is False
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+    assert _current(fresh) is False
+
+
+# --- R10-AC-003: safe dynamic index-name binding (reserved word / whitespace-hyphen / embedded quote)
+
+
+_R10_WEIRD_NAMES = [
+    ('"select"', "reserved_word"),
+    ('"weird - name"', "whitespace_hyphen"),
+    ('"weird""quote"', "embedded_quote"),
+]
+
+
+@pytest.mark.parametrize("iname, name_id", _R10_WEIRD_NAMES, ids=[c[1] for c in _R10_WEIRD_NAMES])
+def test_r10_entity_index_signatures_weird_named_unrelated(tmp_path, iname, name_id) -> None:
+    # Production path: a weird-named UNRELATED index must not raise sqlite3.OperationalError (the
+    # pre-R10 unquoted PRAGMA interpolation did) and yields no entity signature.
+    db = str(tmp_path / "probe.sqlite")
+    with sqlite3.connect(db) as c:
+        c.execute("CREATE TABLE t (source_entity_id TEXT, status TEXT)")
+        c.execute(f"CREATE INDEX {iname} ON t(status)")
+        assert migrator_module._v128_entity_index_signatures(c, "t") == ()
+
+
+@pytest.mark.parametrize("iname, name_id", _R10_WEIRD_NAMES, ids=[c[1] for c in _R10_WEIRD_NAMES])
+def test_r10_entity_index_signatures_weird_named_entity_detected(tmp_path, iname, name_id) -> None:
+    # Production path: a weird-named ENTITY-bearing index is still detected (one signature), bound-name
+    # safe.
+    db = str(tmp_path / "probe.sqlite")
+    with sqlite3.connect(db) as c:
+        c.execute("CREATE TABLE t (source_entity_id TEXT, status TEXT)")
+        c.execute(f"CREATE INDEX {iname} ON t(source_entity_id)")
+        sigs = migrator_module._v128_entity_index_signatures(c, "t")
+    assert len(sigs) == 1
+    assert sigs[0][0] == "sql"
+
+
+@pytest.mark.parametrize("iname, name_id", _R10_WEIRD_NAMES, ids=[c[1] for c in _R10_WEIRD_NAMES])
+@pytest.mark.parametrize("table", _R10_NONFK_TABLES)
+def test_r10_weird_named_unrelated_index_stays_current(fresh, table, iname, name_id) -> None:
+    # Through _v128_schema_current: a weird-named UNRELATED index on a non-FK table keeps parity True
+    # (no OperationalError from the introspection pragmas).
+    with sqlite3.connect(fresh) as c:
+        c.execute(f"CREATE INDEX {iname} ON {table}(status)")
+    assert _current(fresh) is True
+
+
+@pytest.mark.parametrize("iname, name_id", _R10_WEIRD_NAMES, ids=[c[1] for c in _R10_WEIRD_NAMES])
+@pytest.mark.parametrize("table", _R10_NONFK_TABLES)
+def test_r10_weird_named_entity_index_detected_fails_closed(fresh, table, iname, name_id) -> None:
+    # Through _v128_schema_current: a weird-named ENTITY index is detected (parity False, no
+    # OperationalError leak) -> apply() fails closed.
+    with sqlite3.connect(fresh) as c:
+        c.execute(f"CREATE INDEX {iname} ON {table}(source_entity_id)")
+    assert _current(fresh) is False
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+    assert _current(fresh) is False
