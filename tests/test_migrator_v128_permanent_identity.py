@@ -904,6 +904,137 @@ def test_drift_events_table_absent_is_rejected_and_repaired(fresh) -> None:
         gc.close()
 
 
+# --- CP-PI-WI-02-R5: reference-schema comparison (complete by construction) ----------------------
+# The oracle now validates a live DB by exact-equality against the canonical V128 schema (built once
+# from a fresh scratch migrate). These drifts are the R5 residuals the hand-enumerated oracle missed:
+# a dropped supporting index, an events entity index on the wrong column, an extra column, a changed
+# FK action, and a changed column default. All are now detected; a dropped supporting index is
+# repaired, the rest fail closed.
+
+
+def test_drift_dropped_supporting_index_rejected_and_repaired(fresh) -> None:
+    # A supporting index (the UNIQUE idx_si_sources_domain) removed -> detected, then repaired by
+    # _v128_ensure_supporting_indexes on apply().
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("DROP INDEX idx_si_sources_domain")
+    assert "idx_si_sources_domain" not in _indexes(fresh, "source_intelligence_sources")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert "idx_si_sources_domain" in _indexes(fresh, "source_intelligence_sources")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is True
+    finally:
+        gc.close()
+
+
+def test_drift_events_entity_index_wrong_column_rejected_and_repaired(fresh) -> None:
+    # The events entity index recreated on the WRONG column -> detected by index-column check (the
+    # hand-enumerated oracle checked it by name only). Repaired on apply() (the V127 events rebuild
+    # reconstructs the table + its correct indexes), restoring idx_si_events_entity to source_entity_id.
+    from hb_assistant.store.migrator import get_connection
+
+    def _idx_cols(db: str, idx: str) -> list[str]:
+        with sqlite3.connect(db) as c:
+            return [r[2] for r in c.execute(f"PRAGMA index_info({idx})").fetchall()]
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP INDEX idx_si_events_entity")
+        c.execute("CREATE INDEX idx_si_events_entity ON source_intelligence_events(event_id)")
+    assert _idx_cols(fresh, "idx_si_events_entity") == ["event_id"]
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False  # detected by column, not name
+    finally:
+        gc.close()
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _idx_cols(fresh, "idx_si_events_entity") == ["source_entity_id"]  # repaired
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is True
+    finally:
+        gc.close()
+
+
+def test_drift_extra_column_rejected_and_fails_closed(fresh) -> None:
+    # An unexpected extra column on a V128 table -> detected (strict parity; the operator-selected
+    # resolution of the additive-tolerance scope question) and not additively repairable -> fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("ALTER TABLE source_index_entities ADD COLUMN spurious TEXT")
+    assert "spurious" in _cols(fresh, "source_index_entities")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_fk_on_delete_cascade_rejected(fresh) -> None:
+    # The entity FK changed to ON DELETE CASCADE (materially different integrity behavior) -> detected
+    # (the hand-enumerated oracle's _fks ignored on_delete). Not repairable -> fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP TABLE source_intelligence_metadata")
+        c.execute("CREATE TABLE source_intelligence_metadata ("
+                  " source_entity_id TEXT NOT NULL PRIMARY KEY REFERENCES"
+                  " source_index_entities(source_entity_id) ON DELETE CASCADE,"
+                  " file_ext TEXT, size_bytes INTEGER, mtime_ns INTEGER, content_sha256 TEXT,"
+                  " page_count INTEGER, paragraph_count INTEGER, sheet_count INTEGER,"
+                  " extraction_status TEXT NOT NULL DEFAULT 'pending',"
+                  " extraction_failure_code TEXT, fts_rowid INTEGER,"
+                  " indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                  " extraction_disposition TEXT, content_indexed_at TEXT)")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
+def test_drift_changed_column_default_rejected(fresh) -> None:
+    # A changed column DEFAULT (active DEFAULT 1 -> DEFAULT 0) -> detected (the hand-enumerated oracle
+    # never inspected defaults). Not repairable -> fail closed.
+    from hb_assistant.store.migrator import get_connection
+
+    with sqlite3.connect(fresh) as c:
+        c.execute("PRAGMA foreign_keys = OFF")
+        c.execute("DROP TABLE source_intelligence_sources")
+        c.execute("CREATE TABLE source_intelligence_sources ("
+                  " source_entity_id TEXT NOT NULL PRIMARY KEY"
+                  " REFERENCES source_index_entities(source_entity_id),"
+                  " source_kind TEXT NOT NULL CHECK(source_kind IN ('external_file')),"
+                  " source_root_key TEXT, rel_path TEXT, abs_path_hash TEXT,"
+                  " domain_ref_table TEXT, domain_ref_id TEXT, project_key TEXT, project_number TEXT,"
+                  " active INTEGER NOT NULL DEFAULT 0, deleted INTEGER NOT NULL DEFAULT 0,"  # active default flipped
+                  " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                  " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                  " renamed_from_source_id TEXT,"
+                  " CHECK((rel_path IS NOT NULL)"
+                  " OR (domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL)))")
+    gc = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v128_schema_current(gc) is False
+    finally:
+        gc.close()
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+
+
 def _seed_entity_at_path(
     db: str, *, eid: str, sid: str, root: str, rel: str, current: bool
 ) -> None:

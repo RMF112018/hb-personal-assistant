@@ -20,6 +20,63 @@ if TYPE_CHECKING:
 # than hard-coding a literal so version bumps do not break unrelated tests.
 LATEST_SCHEMA_VERSION = 128
 
+# --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R5) -------
+# The V128 always-revalidate oracle validates a live DB by exact-equality against the CANONICAL V128
+# schema, which is built once per process from a fresh scratch migrate and cached here. This is
+# complete by construction: it captures every column/type/nullability/PK/CHECK/UNIQUE/FK (incl.
+# on_delete/on_update actions)/default and every index (columns/uniqueness/partial predicate) of the
+# V128-owned tables, so no facet can be silently omitted (replaces the hand-enumerated oracle that
+# leaked across R2..R5). ``_V128_REFERENCE_BUILDING`` guards the reentrancy: while the reference is
+# being constructed the oracle falls back to the structural bootstrap check so apply() still drives
+# the V128 rebuild on the empty scratch DB (and does not raise post-rebuild).
+_V128_REFERENCE_SCHEMA: "dict[str, str] | None" = None
+_V128_REFERENCE_BUILDING: bool = False
+
+# Tables whose FULL schema is owned + constructed by the V128 rebuild (always via one CREATE): the 3
+# new identity tables, the rebuilt parent, and the 6 content children. These are byte-exact compared
+# against the canonical reference. The two non-FK tables (events, scan_quarantine) are handled
+# SEPARATELY (``_v128_nonfk_entity_refs_ok``): V127 / the quarantine migration own their base schema,
+# and V128 only ADDS a nullable ``source_entity_id`` FK + index — which is appended via ALTER in a
+# fresh migrate but emitted inline by a V127/quarantine rebuild, so their full CREATE sql is
+# construction-dependent and cannot be byte-compared. Their V128 contribution is checked structurally.
+_V128_OWNED_TABLES: tuple[str, ...] = (
+    "source_index_entities",
+    "source_index_locators",
+    "source_index_move_signals",
+    "source_intelligence_sources",
+    "source_intelligence_metadata",
+    "source_intelligence_text",
+    "source_intelligence_summaries",
+    "source_intelligence_chunks",
+    "source_intelligence_generated_notes",
+    "source_intelligence_relationships",
+)
+# The two non-FK tables V128 reparents, paired with the entity index V128 adds to each.
+_V128_NONFK_ENTITY_INDEXES: tuple[tuple[str, str], ...] = (
+    ("source_intelligence_events", "idx_si_events_entity"),
+    ("source_index_scan_quarantine", "idx_si_scan_quarantine_entity"),
+)
+
+
+def _v128_schema_snapshot(conn: "sqlite3.Connection") -> "dict[str, str]":
+    """Normalized ``{"type:name": create_sql}`` for every V128-owned table and every explicit index
+    on those tables (``sqlite_master``). Auto-created indexes (from UNIQUE/PK constraints; ``sql IS
+    NULL``) are skipped because their definition already lives verbatim in the parent table's CREATE
+    sql. ``IF [NOT] EXISTS`` is stripped so identical DDL created with or without the guard compares
+    equal (the rebuild and the additive repair may differ only by that clause). Whitespace is
+    collapsed. An exact dict-equality of two snapshots is complete structural parity."""
+    owned = set(_V128_OWNED_TABLES)
+    snapshot: dict[str, str] = {}
+    for obj_type, name, tbl_name, sql in conn.execute(
+        "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type IN ('table', 'index')"
+    ).fetchall():
+        if tbl_name not in owned or sql is None:
+            continue
+        norm = " ".join(sql.split())
+        norm = norm.replace("IF NOT EXISTS ", "").replace("IF EXISTS ", "")
+        snapshot[f"{obj_type}:{name}"] = norm
+    return snapshot
+
 
 def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
     """Ordinary-caller schema readiness (NF-F-001 / NF-AUD-003): the read-only alternative to
@@ -10158,34 +10215,12 @@ class SQLiteMigrator:
         # DROP TABLE above; this defends against a same-transaction self-heal re-creation).
         conn.execute("DROP INDEX IF EXISTS idx_si_sources_root_relpath")
         conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
-        # Recreate indexes on the rebuilt tables. The obsolete per-path unique index
-        # (idx_si_sources_root_relpath) is intentionally NOT recreated — rel_path is no longer a
-        # unique key on sources (a path's identity now lives on the locator, not the source row).
-        for stmt in (
-            "CREATE UNIQUE INDEX idx_si_sources_domain "
-            "ON source_intelligence_sources(domain_ref_table, domain_ref_id) "
-            "WHERE domain_ref_id IS NOT NULL",
-            "CREATE INDEX idx_si_sources_project ON source_intelligence_sources(project_key)",
-            "CREATE INDEX idx_si_sources_active ON source_intelligence_sources(active, deleted)",
-            "CREATE INDEX idx_si_sources_root ON source_intelligence_sources(source_root_key)",
-            "CREATE INDEX idx_si_sources_renamed_from "
-            "ON source_intelligence_sources(renamed_from_source_id) "
-            "WHERE renamed_from_source_id IS NOT NULL",
-            "CREATE INDEX idx_si_metadata_sha ON source_intelligence_metadata(content_sha256)",
-            "CREATE INDEX idx_si_metadata_fts_rowid ON source_intelligence_metadata(fts_rowid)",
-            "CREATE INDEX idx_si_chunks_source ON source_intelligence_chunks(source_entity_id)",
-            "CREATE INDEX idx_si_rel_src "
-            "ON source_intelligence_relationships(src_source_entity_id)",
-            "CREATE INDEX idx_si_rel_dst "
-            "ON source_intelligence_relationships(dst_kind, dst_ref)",
-            "CREATE INDEX idx_si_gennotes_source "
-            "ON source_intelligence_generated_notes(source_entity_id)",
-            "CREATE INDEX idx_si_gennotes_status "
-            "ON source_intelligence_generated_notes(generation_status)",
-            "CREATE INDEX idx_si_summaries_source "
-            "ON source_intelligence_summaries(source_entity_id)",
-        ):
-            conn.execute(stmt)
+        # Recreate the supporting indexes on the rebuilt tables (shared with the additive-repair path
+        # so a dropped supporting index is repaired, not fail-closed, and the reference/repaired DDL
+        # stay identical). The obsolete per-path unique index (idx_si_sources_root_relpath) is
+        # intentionally NOT recreated — rel_path is no longer a unique key on sources (a path's
+        # identity now lives on the locator, not the source row).
+        SQLiteMigrator._v128_ensure_supporting_indexes(conn)
 
         # --- Step 5: non-FK tables gain a locator-resolved entity ref -----------------------------
         # IMP-F-002 (ADR-002 R12): BOTH source_intelligence_events and source_index_scan_quarantine
@@ -10199,6 +10234,45 @@ class SQLiteMigrator:
         # --- Step 6: post-swap integrity (immediate FK check must be clean) ------------------------
         if conn.execute("PRAGMA foreign_key_check").fetchall():
             _fail("foreign_key_check")
+
+    @staticmethod
+    def _v128_ensure_supporting_indexes(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the V128 supporting indexes on the rebuilt source/payload tables.
+        Single source of truth shared by the fresh rebuild (Step 4) and the additive-repair path, so a
+        dropped supporting index is REPAIRED (not fail-closed) and the canonical-reference DDL matches
+        the repaired DDL (the snapshot normalizer strips ``IF NOT EXISTS``). Does NOT recreate the
+        obsolete parent path-unique index (rel_path is no longer a unique key on sources)."""
+        for stmt in (
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_domain "
+            "ON source_intelligence_sources(domain_ref_table, domain_ref_id) "
+            "WHERE domain_ref_id IS NOT NULL",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_project "
+            "ON source_intelligence_sources(project_key)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_active "
+            "ON source_intelligence_sources(active, deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_root "
+            "ON source_intelligence_sources(source_root_key)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_renamed_from "
+            "ON source_intelligence_sources(renamed_from_source_id) "
+            "WHERE renamed_from_source_id IS NOT NULL",
+            "CREATE INDEX IF NOT EXISTS idx_si_metadata_sha "
+            "ON source_intelligence_metadata(content_sha256)",
+            "CREATE INDEX IF NOT EXISTS idx_si_metadata_fts_rowid "
+            "ON source_intelligence_metadata(fts_rowid)",
+            "CREATE INDEX IF NOT EXISTS idx_si_chunks_source "
+            "ON source_intelligence_chunks(source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_rel_src "
+            "ON source_intelligence_relationships(src_source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_rel_dst "
+            "ON source_intelligence_relationships(dst_kind, dst_ref)",
+            "CREATE INDEX IF NOT EXISTS idx_si_gennotes_source "
+            "ON source_intelligence_generated_notes(source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_gennotes_status "
+            "ON source_intelligence_generated_notes(generation_status)",
+            "CREATE INDEX IF NOT EXISTS idx_si_summaries_source "
+            "ON source_intelligence_summaries(source_entity_id)",
+        ):
+            conn.execute(stmt)
 
     @staticmethod
     def _v128_ensure_move_signals(conn: sqlite3.Connection) -> None:
@@ -10295,31 +10369,106 @@ class SQLiteMigrator:
             ):
                 conn.execute(f"DROP INDEX IF EXISTS {_idx}")
             SQLiteMigrator._v128_ensure_locator_indexes(conn)
+        # Re-ensure the supporting indexes on the rebuilt source/payload tables (CP-PI-WI-02-R5): a
+        # dropped supporting index is repaired here so it is not fail-closed, and the repaired DDL
+        # matches the canonical reference (both go through _v128_ensure_supporting_indexes).
+        if "source_intelligence_sources" in tables:
+            SQLiteMigrator._v128_ensure_supporting_indexes(conn)
         SQLiteMigrator._v128_reparent_nonfk_tables(conn)
+
+    @staticmethod
+    def _v128_canonical_schema() -> "dict[str, str]":
+        """Build (once per process, cached) the canonical V128 schema snapshot from a fresh scratch
+        migrate, and return it. Reentrancy-guarded via ``_V128_REFERENCE_BUILDING`` so the nested
+        apply() drives the V128 rebuild through the structural bootstrap check (rather than recursing
+        into the reference comparison). The scratch DB is a disposable temp file (an absolute path the
+        storage guard permits as ``dev_permissive``); it is deleted after the snapshot is taken."""
+        global _V128_REFERENCE_SCHEMA, _V128_REFERENCE_BUILDING
+        if _V128_REFERENCE_SCHEMA is not None:
+            return _V128_REFERENCE_SCHEMA
+        import shutil  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
+        _V128_REFERENCE_BUILDING = True
+        tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref_")
+        try:
+            ref_db = str(Path(tmpdir) / "v128_reference.sqlite")
+            SQLiteMigrator(db_path=ref_db).apply()
+            ref_conn = get_connection(ref_db)
+            try:
+                _V128_REFERENCE_SCHEMA = _v128_schema_snapshot(ref_conn)
+            finally:
+                ref_conn.close()
+        finally:
+            _V128_REFERENCE_BUILDING = False
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        return _V128_REFERENCE_SCHEMA
 
     @staticmethod
     def _v128_schema_current(conn: sqlite3.Connection) -> bool:
         """REV-F-002 always-revalidate COMPLETE structural-parity oracle for the V128 entity-scoped
-        shape (ADR-002 R12), mirroring ``_events_schema_current``. Returns True ONLY when every
-        required table carries its FULL required column set (declared type, nullability, primary-key
-        role), its required foreign keys to the identity authority, and its EXACT required SQL
-        fragments (full CHECK clauses, UNIQUE table-constraints, and enum ``IN (...)`` lists built
-        from the same live value tuples the rebuild imports), AND every required locator index exists
-        with the correct indexed columns, UNIQUEness, and FULL partial predicate, AND the two non-FK
-        tables (events, scan_quarantine) exist with their nullable ``source_entity_id`` FK and their
-        entity index, AND the demoted ``source_id``/``src_source_id`` keys and the obsolete parent
-        path-unique index are absent.
+        shape (ADR-002 R12), mirroring ``_events_schema_current``. CP-PI-WI-02-R5: validates a live DB
+        by EXACT-EQUALITY against the canonical V128 schema (``_v128_canonical_schema``) — an approach
+        that is complete by construction (every column/type/nullability/PK/CHECK/UNIQUE/FK incl.
+        on_delete/on_update actions/default and every index's columns/uniqueness/partial predicate are
+        captured), replacing the hand-enumerated oracle that leaked across R2..R5. Returns True ONLY
+        when the live DB's V128-owned schema snapshot equals the reference. A drift the additive repair
+        can restore (a dropped/altered supporting or locator index, a re-added non-FK entity ref) is
+        repaired on the next apply(); a structural drift it cannot restore fails closed
+        (v128_schema_parity_failed), never trusted.
 
-        CP-PI-WI-02-R4 completeness: partial enumeration leaks. This oracle enumerates the WHOLE
-        column set of every V128 table (a payload table stripped to its key columns is rejected),
-        asserts the FULL CHECK clause text (a parent addressability CHECK weakened to domain-only is
-        rejected because the ``(rel_path IS NOT NULL) OR`` branch is gone), asserts the FULL compound
-        index predicate (an ``idx_locators_active_path`` that drops the ``is_current_locator=1``
-        conjunct is rejected), and requires the events/quarantine tables and their entity indexes
-        (their absence is rejected). On the next apply() the additive repair drops+recreates the
-        locator indexes and re-adds the non-FK entity refs + indexes (repairable drift); a table-level
-        drift the bounded additive repair cannot fix (a lost column/PK/FK/CHECK/UNIQUE — repairing it
-        would require re-minting identity) fails closed (v128_schema_parity_failed), never trusted."""
+        While the reference itself is being constructed (``_V128_REFERENCE_BUILDING``) the oracle falls
+        back to the structural bootstrap check (``_v128_schema_structural_ok``) so the nested scratch
+        apply() still drives the V128 rebuild and does not raise once rebuilt."""
+        if _V128_REFERENCE_BUILDING:
+            return SQLiteMigrator._v128_schema_structural_ok(conn)
+        if _v128_schema_snapshot(conn) != SQLiteMigrator._v128_canonical_schema():
+            return False
+        return SQLiteMigrator._v128_nonfk_entity_refs_ok(conn)
+
+    @staticmethod
+    def _v128_nonfk_entity_refs_ok(conn: sqlite3.Connection) -> bool:
+        """Structural check of V128's contribution to the two non-FK tables (events, scan_quarantine),
+        which are excluded from the byte-exact reference (their full CREATE sql is construction-
+        dependent — ALTER-appended in a fresh migrate vs emitted inline by a V127/quarantine rebuild).
+        Each table must exist, carry a ``source_entity_id`` FK to the identity authority, and have its
+        entity index actually indexing ``source_entity_id`` (CP-PI-WI-02-R5: index columns, not just
+        name)."""
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        for table, entity_idx in _V128_NONFK_ENTITY_INDEXES:
+            if table not in tables:
+                return False
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if "source_entity_id" not in cols:
+                return False
+            fk = {
+                r[3]: (r[2], r[4])
+                for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+            }
+            if fk.get("source_entity_id") != ("source_index_entities", "source_entity_id"):
+                return False
+            idx_names = {r[1] for r in conn.execute(f"PRAGMA index_list({table})").fetchall()}
+            if entity_idx not in idx_names:
+                return False
+            idx_cols = [r[2] for r in conn.execute(f"PRAGMA index_info({entity_idx})").fetchall()]
+            if idx_cols != ["source_entity_id"]:
+                return False
+        return True
+
+    @staticmethod
+    def _v128_schema_structural_ok(conn: sqlite3.Connection) -> bool:
+        """Structural bootstrap check used ONLY while the reference schema is being built (the normal
+        path is the reference comparison in ``_v128_schema_current``). Enumerative parity check for the
+        V128 entity-keyed shape: FULL per-table column set (declared type, nullability, primary-key
+        role), required FK edges to the identity authority, EXACT required SQL fragments (full CHECK
+        clauses, UNIQUE table-constraints, enum ``IN (...)`` lists from the same live value tuples the
+        rebuild imports), each locator index's columns + UNIQUEness + full partial predicate, mandatory
+        events/quarantine tables with their entity FK + index, and absent demoted keys / obsolete
+        parent path-unique index. Returns False on a still-source_id-keyed DB so the scratch apply()
+        runs the rebuild, and True once rebuilt so it does not raise."""
         from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
             EXTRACTION_STATUS_VALUES,
             GENERATION_STATUS_VALUES,
