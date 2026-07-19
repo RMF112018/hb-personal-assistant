@@ -10301,21 +10301,37 @@ class SQLiteMigrator:
     def _v128_schema_current(conn: sqlite3.Connection) -> bool:
         """REV-F-002 always-revalidate COMPLETE structural-parity oracle for the V128 entity-scoped
         shape (ADR-002 R12), mirroring ``_events_schema_current``. Returns True ONLY when every
-        required table carries its required columns (declared type, nullability, and primary-key
-        role), its required foreign keys to the identity authority, and its required CHECK
-        invariants, AND every required locator index exists with the correct indexed columns,
-        UNIQUEness, and partial predicate, AND the demoted ``source_id``/``src_source_id`` keys are
-        absent from the entity-keyed tables, AND the obsolete parent path-unique index is absent.
+        required table carries its FULL required column set (declared type, nullability, primary-key
+        role), its required foreign keys to the identity authority, and its EXACT required SQL
+        fragments (full CHECK clauses, UNIQUE table-constraints, and enum ``IN (...)`` lists built
+        from the same live value tuples the rebuild imports), AND every required locator index exists
+        with the correct indexed columns, UNIQUEness, and FULL partial predicate, AND the two non-FK
+        tables (events, scan_quarantine) exist with their nullable ``source_entity_id`` FK and their
+        entity index, AND the demoted ``source_id``/``src_source_id`` keys and the obsolete parent
+        path-unique index are absent.
 
-        CP-PI-WI-02-R3 completeness: name/column checks alone are not enough. A drift that keeps a
-        required index NAME + columns but drops its UNIQUEness or partial predicate, a 1:1 child that
-        loses its entity PRIMARY KEY (while keeping NOT NULL + FK), a parent that loses its authority
-        FK or its addressability CHECK, a locator/move-signal table that loses its own key columns,
-        or an absent events/quarantine entity reference are ALL rejected. On the next apply() the
-        additive repair drops+recreates the locator indexes and re-adds the non-FK entity refs
-        (repairable drift); a table-level drift the bounded additive repair cannot fix (a lost
-        PK/FK/CHECK — repairing it would require re-minting identity) fails closed
-        (v128_schema_parity_failed) rather than being trusted."""
+        CP-PI-WI-02-R4 completeness: partial enumeration leaks. This oracle enumerates the WHOLE
+        column set of every V128 table (a payload table stripped to its key columns is rejected),
+        asserts the FULL CHECK clause text (a parent addressability CHECK weakened to domain-only is
+        rejected because the ``(rel_path IS NOT NULL) OR`` branch is gone), asserts the FULL compound
+        index predicate (an ``idx_locators_active_path`` that drops the ``is_current_locator=1``
+        conjunct is rejected), and requires the events/quarantine tables and their entity indexes
+        (their absence is rejected). On the next apply() the additive repair drops+recreates the
+        locator indexes and re-adds the non-FK entity refs + indexes (repairable drift); a table-level
+        drift the bounded additive repair cannot fix (a lost column/PK/FK/CHECK/UNIQUE — repairing it
+        would require re-minting identity) fails closed (v128_schema_parity_failed), never trusted."""
+        from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
+            EXTRACTION_STATUS_VALUES,
+            GENERATION_STATUS_VALUES,
+            RELATION_DST_KIND_VALUES,
+            RELATION_VALUES,
+            SOURCE_KIND_VALUES,
+        )
+
+        def _in(col: str, vals: tuple[str, ...]) -> str:
+            # Mirror _rebuild_v128_permanent_identity's ``_vcsv`` exactly so the expected enum-CHECK
+            # substring tracks the SAME live value tuples the rebuild baked into the stored DDL.
+            return f"{col} IN (" + ", ".join(f"'{v}'" for v in vals) + ")"
         def _cols(table: str) -> dict[str, tuple[str, int, int]]:
             # name -> (declared_type_upper, notnull, pk).
             return {
@@ -10353,8 +10369,9 @@ class SQLiteMigrator:
             return " ".join((row[0] or "").split()) if row and row[0] else ""
 
         _T, _I = "TEXT", "INTEGER"
-        # Required columns per table: name -> (declared_type, notnull, pk). A "" type means "any".
-        # Values transcribed from _rebuild_v128_permanent_identity's DDL (repo truth).
+        # FULL required column set per table: name -> (declared_type, notnull, pk). Transcribed
+        # verbatim from _rebuild_v128_permanent_identity's DDL (repo truth). CP-PI-WI-02-R4: the whole
+        # column set is enumerated so a payload table stripped to its key columns is rejected.
         REQUIRED_COLS: dict[str, dict[str, tuple[str, int, int]]] = {
             "source_index_entities": {
                 "source_entity_id": (_T, 1, 1), "created_at": (_T, 1, 0), "status": (_T, 1, 0),
@@ -10365,23 +10382,56 @@ class SQLiteMigrator:
                 "is_current_locator": (_I, 1, 0), "tombstoned_at": (_T, 0, 0),
                 "generation_seq": (_I, 1, 0),
             },
-            "source_index_move_signals": {"move_signal_id": (_T, 0, 1)},
+            "source_index_move_signals": {
+                "move_signal_id": (_T, 0, 1), "source_locator_id": (_T, 0, 0),
+                "source_root_key": (_T, 0, 0), "source_rel_path": (_T, 0, 0),
+                "target_root_key": (_T, 0, 0), "target_rel_path": (_T, 0, 0),
+                "detected_at": (_T, 0, 0), "generation_id": (_T, 0, 0), "applied_at": (_T, 0, 0),
+            },
             "source_intelligence_sources": {
                 "source_entity_id": (_T, 1, 1), "source_kind": (_T, 1, 0),
+                "source_root_key": (_T, 0, 0), "rel_path": (_T, 0, 0), "abs_path_hash": (_T, 0, 0),
+                "domain_ref_table": (_T, 0, 0), "domain_ref_id": (_T, 0, 0),
+                "project_key": (_T, 0, 0), "project_number": (_T, 0, 0),
                 "active": (_I, 1, 0), "deleted": (_I, 1, 0),
                 "created_at": (_T, 1, 0), "updated_at": (_T, 1, 0),
+                "renamed_from_source_id": (_T, 0, 0),
             },
-            "source_intelligence_metadata": {"source_entity_id": (_T, 1, 1)},
-            "source_intelligence_text": {"source_entity_id": (_T, 1, 1)},
-            "source_intelligence_summaries": {"source_entity_id": (_T, 1, 1)},
+            "source_intelligence_metadata": {
+                "source_entity_id": (_T, 1, 1), "file_ext": (_T, 0, 0), "size_bytes": (_I, 0, 0),
+                "mtime_ns": (_I, 0, 0), "content_sha256": (_T, 0, 0), "page_count": (_I, 0, 0),
+                "paragraph_count": (_I, 0, 0), "sheet_count": (_I, 0, 0),
+                "extraction_status": (_T, 1, 0), "extraction_failure_code": (_T, 0, 0),
+                "fts_rowid": (_I, 0, 0), "indexed_at": (_T, 1, 0),
+                "extraction_disposition": (_T, 0, 0), "content_indexed_at": (_T, 0, 0),
+            },
+            "source_intelligence_text": {
+                "source_entity_id": (_T, 1, 1), "text_excerpt": (_T, 0, 0),
+                "excerpt_char_count": (_I, 1, 0), "excerpt_truncated": (_I, 1, 0),
+                "full_text_sha256": (_T, 0, 0), "text_vault_ref": (_T, 0, 0),
+                "raw_body_persisted": (_I, 1, 0), "redaction_applied": (_I, 1, 0),
+                "updated_at": (_T, 1, 0),
+            },
+            "source_intelligence_summaries": {
+                "source_entity_id": (_T, 1, 1), "model_provider": (_T, 1, 0),
+                "model_name": (_T, 0, 0), "prompt_version": (_T, 1, 0), "prompt_sha256": (_T, 0, 0),
+                "summary_sha256": (_T, 0, 0), "source_sha256": (_T, 0, 0),
+                "advisory": (_I, 1, 0), "generated_at": (_T, 1, 0),
+            },
             "source_intelligence_chunks": {
-                "chunk_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0),
+                "chunk_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0), "ordinal": (_I, 1, 0),
+                "chunk_text": (_T, 1, 0), "char_count": (_I, 1, 0),
+                "raw_body_persisted": (_I, 1, 0), "created_at": (_T, 1, 0),
             },
             "source_intelligence_generated_notes": {
                 "generated_note_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0),
+                "note_rel_path": (_T, 0, 0), "generation_status": (_T, 1, 0),
+                "generated_at": (_T, 0, 0), "updated_at": (_T, 1, 0),
             },
             "source_intelligence_relationships": {
                 "relationship_id": (_T, 0, 1), "src_source_entity_id": (_T, 1, 0),
+                "dst_kind": (_T, 1, 0), "dst_ref": (_T, 1, 0), "relation": (_T, 1, 0),
+                "confidence": (_T, 0, 0), "evidence_json": (_T, 0, 0), "created_at": (_T, 1, 0),
             },
         }
         # Demoted legacy keys that MUST be absent from the entity-keyed tables.
@@ -10406,16 +10456,34 @@ class SQLiteMigrator:
             "source_intelligence_generated_notes": {"source_entity_id": _AUTH},
             "source_intelligence_relationships": {"src_source_entity_id": _AUTH},
         }
-        # Normalized CHECK-invariant substrings that must survive in each table's stored SQL.
-        REQUIRED_CHECKS: dict[str, tuple[str, ...]] = {
-            "source_index_entities": ("'LIVE'", "'TOMBSTONED'"),
+        # FULL normalized SQL fragments (complete CHECK clauses, UNIQUE table-constraints, and enum
+        # IN-lists) that must survive verbatim in each table's stored SQL. CP-PI-WI-02-R4: exact full
+        # clauses, not loose substrings — a weakened CHECK (e.g. the parent addressability CHECK cut
+        # to domain-only) no longer contains the full expected text and is rejected.
+        REQUIRED_SQL_FRAGMENTS: dict[str, tuple[str, ...]] = {
+            "source_index_entities": ("status IN ('LIVE','TOMBSTONED')",),
             "source_intelligence_sources": (
-                "source_kind IN (",
-                "domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL",
+                _in("source_kind", SOURCE_KIND_VALUES),
+                "(rel_path IS NOT NULL) OR (domain_ref_table IS NOT NULL"
+                " AND domain_ref_id IS NOT NULL)",
             ),
-            "source_intelligence_text": ("raw_body_persisted = 0", "redaction_applied = 1"),
+            "source_intelligence_metadata": (_in("extraction_status", EXTRACTION_STATUS_VALUES),),
+            "source_intelligence_text": (
+                "excerpt_char_count >= 0", "raw_body_persisted = 0", "redaction_applied = 1",
+            ),
             "source_intelligence_summaries": ("advisory = 1",),
-            "source_intelligence_chunks": ("raw_body_persisted = 0",),
+            "source_intelligence_chunks": (
+                "raw_body_persisted = 0", "UNIQUE(source_entity_id, ordinal)",
+            ),
+            "source_intelligence_generated_notes": (
+                _in("generation_status", GENERATION_STATUS_VALUES),
+                "UNIQUE(source_entity_id, note_rel_path)",
+            ),
+            "source_intelligence_relationships": (
+                _in("dst_kind", RELATION_DST_KIND_VALUES),
+                _in("relation", RELATION_VALUES),
+                "UNIQUE(src_source_entity_id, dst_kind, dst_ref, relation)",
+            ),
         }
 
         tables = {r[0] for r in conn.execute(
@@ -10446,18 +10514,19 @@ class SQLiteMigrator:
                 if fks.get(col) != target:
                     return False
 
-        # (3) required CHECK invariants (parent addressability, entity status, redaction guards).
-        for table, frags in REQUIRED_CHECKS.items():
+        # (3) required SQL fragments — full CHECK clauses, UNIQUE constraints, enum IN-lists.
+        for table, frags in REQUIRED_SQL_FRAGMENTS.items():
             sql = _tbl_sql(table)
             for frag in frags:
                 if frag not in sql:
                     return False
 
-        # (4) required locator indexes — exact indexed columns, UNIQUEness, and partial predicate.
-        #     (name, columns, unique, partial-predicate-substring or None-if-non-partial)
+        # (4) required locator indexes — exact indexed columns, UNIQUEness, and the FULL partial
+        #     predicate. (name, columns, unique, full-partial-predicate or None-if-non-partial)
         _LOC_IDX = (
             ("idx_locators_current_per_entity", ["source_entity_id"], 1, "is_current_locator=1"),
-            ("idx_locators_active_path", ["source_root_key", "rel_path"], 1, "tombstoned_at IS NULL"),
+            ("idx_locators_active_path", ["source_root_key", "rel_path"], 1,
+             "is_current_locator=1 AND tombstoned_at IS NULL"),
             ("idx_locators_source_id", ["source_id"], 0, None),
         )
         loc_meta = _idx_meta("source_index_locators")
@@ -10479,15 +10548,23 @@ class SQLiteMigrator:
         if "idx_si_sources_root_relpath" in src_idx or "idx_si_sources_relpath" in src_idx:
             return False
 
-        # (5) events/quarantine entity references — asserted only when the table exists (mirroring
-        # _v128_reparent_nonfk_tables' own tolerance): the nullable source_entity_id FK to the
-        # identity authority must be present.
-        for table in ("source_intelligence_events", "source_index_scan_quarantine"):
-            if table in tables:
-                if "source_entity_id" not in _cols(table):
-                    return False
-                if _fks(table).get("source_entity_id") != _AUTH:
-                    return False
+        # (5) non-FK tables (events, scan_quarantine) — CP-PI-WI-02-R4: MANDATORY (not conditional).
+        #     Each must exist, carry the nullable source_entity_id FK to the identity authority, and
+        #     carry its entity index. (All are re-established by _v128_reparent_nonfk_tables, so a
+        #     dropped column/index is repairable; a fully-absent table fails closed.)
+        _NONFK = (
+            ("source_intelligence_events", "idx_si_events_entity"),
+            ("source_index_scan_quarantine", "idx_si_scan_quarantine_entity"),
+        )
+        for table, entity_idx in _NONFK:
+            if table not in tables:
+                return False
+            if "source_entity_id" not in _cols(table):
+                return False
+            if _fks(table).get("source_entity_id") != _AUTH:
+                return False
+            if entity_idx not in _idx_meta(table):
+                return False
         return True
 
     @staticmethod
