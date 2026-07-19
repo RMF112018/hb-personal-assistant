@@ -109,7 +109,9 @@ class NonFkContract:
     column: tuple  # PRAGMA table_xinfo tuple for source_entity_id: (type, notnull, dflt, pk, hidden)
     fk_groups: tuple  # tuple of FK groups (tuple of rows) that contain a source_entity_id row
     fk_signature: FkClauseSignature  # structured source_entity_id FK-clause signature
-    entity_indexes: tuple  # sorted tuple of normalized index sql involving source_entity_id
+    entity_indexes: tuple  # sorted tuple of tagged index signatures involving source_entity_id
+    # (("sql", normalized_sql) for explicit indexes, ("auto", origin, unique, partial, key_terms) for
+    # auto-created UNIQUE/PK indexes) — see ``_v128_entity_index_signatures``
 
 
 @dataclass(frozen=True)
@@ -425,6 +427,211 @@ def _v128_parse_fk_clause_signature(create_sql: str) -> FkClauseSignature:
     return found[0]
 
 
+def _v128_skip_quoted(s: str, i: int, quote: str) -> int:
+    """Return the index just past a quoted region opened by ``quote`` at ``s[i]`` — a ``'`` string
+    literal or a ``"``/`` ` `` quoted identifier, honoring the doubled-quote escape. Raises
+    ``V128OracleError`` when the region is unterminated (fail-closed, never a silent stop)."""
+    i += 1
+    n = len(s)
+    while i < n:
+        if s[i] == quote:
+            if i + 1 < n and s[i + 1] == quote:
+                i += 2
+                continue
+            return i + 1
+        i += 1
+    raise V128OracleError("v128_index_expr_unterminated_quote")
+
+
+def _v128_skip_bracket(s: str, i: int) -> int:
+    """Return the index just past a ``[...]`` bracketed identifier opened at ``s[i]``. Raises
+    ``V128OracleError`` when unterminated."""
+    i += 1
+    n = len(s)
+    while i < n:
+        if s[i] == "]":
+            return i + 1
+        i += 1
+    raise V128OracleError("v128_index_expr_unterminated_bracket")
+
+
+def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
+    """Tokenize an index key-expression region into ``(kind, value, quoted)`` tuples for
+    ``_v128_expr_references_column``. ``kind`` is ``"ident"`` (``value`` = the unquoted, lowercased
+    identifier; ``quoted`` True for a ``"…"``/`` `…` ``/``[…]`` form) or ``"punct"`` (a single
+    operator/punctuation char). Whitespace, string literals, and ``--`` line / ``/* */`` block comments
+    are dropped. Raises ``V128OracleError`` on an unterminated string / block comment / quoted
+    identifier (fail-closed). Reuses the quote-aware scanning idiom of ``_v128_split_top_level`` rather
+    than a permissive regex."""
+    tokens: list[tuple[str, str, bool]] = []
+    i = 0
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        if ch.isspace():
+            i += 1
+            continue
+        if ch == "-" and i + 1 < n and s[i + 1] == "-":  # -- line comment (to newline / end)
+            i += 2
+            while i < n and s[i] != "\n":
+                i += 1
+            continue
+        if ch == "/" and i + 1 < n and s[i + 1] == "*":  # /* block comment */
+            end = s.find("*/", i + 2)
+            if end == -1:
+                raise V128OracleError("v128_index_expr_unterminated_comment")
+            i = end + 2
+            continue
+        if ch == "'":  # string literal — skipped (never a column reference)
+            i = _v128_skip_quoted(s, i, "'")
+            continue
+        if ch in ('"', "`"):  # quoted identifier
+            end = _v128_skip_quoted(s, i, ch)
+            tokens.append(("ident", _v128_unquote_ident(s[i:end]), True))
+            i = end
+            continue
+        if ch == "[":  # bracketed identifier
+            end = _v128_skip_bracket(s, i)
+            tokens.append(("ident", _v128_unquote_ident(s[i:end]), True))
+            i = end
+            continue
+        if ch.isalpha() or ch == "_":  # bare identifier / keyword
+            j = i + 1
+            while j < n and (s[j].isalnum() or s[j] in "_$"):
+                j += 1
+            tokens.append(("ident", s[i:j].lower(), False))
+            i = j
+            continue
+        tokens.append(("punct", ch, False))  # operator / punctuation / digit
+        i += 1
+    return tokens
+
+
+def _v128_expr_references_column(expr_sql: str, column: str) -> bool:
+    """Fail-closed, token/paren/quote-aware test of whether the indexed-columns expression region
+    ``expr_sql`` contains a **column reference** to ``column`` (e.g. ``source_entity_id``).
+
+    A ``column`` token is a reference when it is a bare identifier (case-insensitive) or a quoted
+    identifier (``"…"``/`` `…` ``/``[…]``), UNLESS its syntactic role is — per that token — a function
+    name (immediately followed by ``(``), a type name (the identifier right after ``AS`` in a
+    ``CAST(… AS <type>)``), or a collation name (the identifier right after ``COLLATE``). The exclusion
+    is per-token, not whole-construct suppression, so a genuine column reference inside those constructs
+    still matches: ``lower(source_entity_id)``, ``CAST(source_entity_id AS TEXT)``,
+    ``source_entity_id COLLATE NOCASE`` and ``coalesce(source_entity_id, 'source_entity_id')`` are all
+    True, while ``source_entity_id(status)``, ``CAST(status AS source_entity_id)``,
+    ``status COLLATE source_entity_id`` and the string literal ``'source_entity_id'`` are all False.
+    String literals and comments are ignored. Raises ``V128OracleError`` on malformed/unterminated
+    input — ambiguity fails closed, never a silent ``False``."""
+    target = column.lower()
+    tokens = _v128_tokenize_index_expr(expr_sql)
+    for k, (kind, value, _quoted) in enumerate(tokens):
+        if kind != "ident" or value != target:
+            continue
+        nxt = tokens[k + 1] if k + 1 < len(tokens) else None
+        if nxt is not None and nxt[0] == "punct" and nxt[1] == "(":
+            continue  # function name: source_entity_id(...)
+        prev = tokens[k - 1] if k >= 1 else None
+        if prev is not None and prev[0] == "ident" and not prev[2] and prev[1] in ("as", "collate"):
+            continue  # type name (CAST(... AS source_entity_id)) / collation (COLLATE source_entity_id)
+        return True
+    return False
+
+
+def _v128_index_key_region(index_sql: str) -> str:
+    """Extract the indexed-columns expression region (the text INSIDE the key-list parentheses) from a
+    ``CREATE INDEX`` statement, quote/bracket/paren-aware. The trailing ``WHERE`` partial predicate,
+    which lives AFTER the key-list close paren, is excluded — detection is key-only (R9-PR-F-002).
+    Raises ``V128OracleError`` when no balanced key-list parenthesis is present (fail-closed)."""
+    n = len(index_sql)
+    # Locate the first top-level '(' (the key list), skipping any quoted/bracketed identifier.
+    i = 0
+    start = -1
+    while i < n:
+        ch = index_sql[i]
+        if ch in ("'", '"', "`"):
+            i = _v128_skip_quoted(index_sql, i, ch)
+            continue
+        if ch == "[":
+            i = _v128_skip_bracket(index_sql, i)
+            continue
+        if ch == "(":
+            start = i
+            break
+        i += 1
+    if start == -1:
+        raise V128OracleError("v128_index_key_region_missing")
+    depth = 0
+    j = start
+    while j < n:
+        ch = index_sql[j]
+        if ch in ("'", '"', "`"):
+            j = _v128_skip_quoted(index_sql, j, ch)
+            continue
+        if ch == "[":
+            j = _v128_skip_bracket(index_sql, j)
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return index_sql[start + 1 : j]
+        j += 1
+    raise V128OracleError("v128_index_key_region_unbalanced")
+
+
+def _v128_entity_index_signatures(conn: "sqlite3.Connection", table: str) -> tuple:
+    """Construction-independent signatures of every index on ``table`` whose KEY (a named column or a
+    key expression — NOT the ``WHERE`` partial predicate, R9-PR-F-002) references the
+    ``source_entity_id`` column. Auto-created indexes (``sqlite_master.sql IS NULL`` — a table-level
+    ``UNIQUE``/``PRIMARY KEY`` on ``source_entity_id``) are INCLUDED (the pre-R9 loop skipped them,
+    false-open). An index involves ``source_entity_id`` when a named key term (``cid >= 0``) equals it
+    case-insensitively, or a key expression (``cid == -2``) references it via
+    ``_v128_expr_references_column`` on the paren-extracted indexed-columns region.
+
+    Each involved index becomes a type-homogeneous tagged tuple so ``sorted()`` never mixes shapes:
+
+      * explicit index (has sql) -> ``("sql", normalized_sql)`` (full sql, incl. any ``WHERE``);
+      * auto-index (sql NULL, unstable ``sqlite_autoindex_*`` name) ->
+        ``("auto", origin, unique, partial, ordered_key_terms)`` with ``ordered_key_terms`` a tuple of
+        ``(cid, name, descending, collation)`` per key term in ``seqno`` order (name-independent,
+        order-preserving, multiplicity kept).
+
+    Returns ``tuple(sorted(signatures))``. Raises ``V128OracleError`` (via the key-expression parser)
+    on a malformed/ambiguous index expression — fail-closed, never a silent miss."""
+    signatures: list[tuple] = []
+    for row in conn.execute(f"PRAGMA index_list({table})").fetchall():
+        # row = (seq, name, unique, origin, partial)
+        iname = row[1]
+        unique = int(row[2])
+        origin = str(row[3])
+        partial = int(row[4])
+        xinfo = conn.execute(f"PRAGMA index_xinfo({iname})").fetchall()
+        # xr = (seqno, cid, name, desc, coll, key); key terms have xr[5] == 1.
+        key_terms = sorted((xr for xr in xinfo if int(xr[5]) == 1), key=lambda xr: int(xr[0]))
+        involves = any(
+            int(xr[1]) >= 0 and xr[2] is not None and str(xr[2]).lower() == "source_entity_id"
+            for xr in key_terms
+        )
+        idx_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (iname,)
+        ).fetchone()
+        sql = idx_row[0] if idx_row is not None else None
+        if not involves and sql is not None and any(int(xr[1]) == -2 for xr in key_terms):
+            if _v128_expr_references_column(_v128_index_key_region(sql), "source_entity_id"):
+                involves = True
+        if not involves:
+            continue
+        if sql is not None:
+            signatures.append(("sql", _v128_normalize_sql(sql)))
+        else:
+            ordered_key_terms = tuple(
+                (int(xr[1]), xr[2], int(xr[3]), xr[4]) for xr in key_terms
+            )
+            signatures.append(("auto", origin, unique, partial, ordered_key_terms))
+    return tuple(sorted(signatures))
+
+
 def _v128_extract_nonfk_contract(conn: "sqlite3.Connection", table: str) -> NonFkContract:
     """Extract the reference-derived ``NonFkContract`` for one non-FK table from a live/scratch conn.
     Raises ``V128OracleError`` (via the FK-clause parser) when the table's entity FK is ambiguous /
@@ -458,26 +665,13 @@ def _v128_extract_nonfk_contract(conn: "sqlite3.Connection", table: str) -> NonF
     ).fetchone()
     fk_signature = _v128_parse_fk_clause_signature(create_row[0] if create_row else "")
 
-    # Entity-index set: indexes whose key columns/expressions involve source_entity_id.
-    entity_sqls: list[str] = []
-    for row in conn.execute(f"PRAGMA index_list({table})").fetchall():
-        iname = row[1]
-        idx_row = conn.execute(
-            "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (iname,)
-        ).fetchone()
-        if idx_row is None or idx_row[0] is None:
-            continue  # auto-created (UNIQUE/PK) index — no stored sql
-        xi = conn.execute(f"PRAGMA index_xinfo({iname})").fetchall()
-        key_names = [xr[2] for xr in xi if int(xr[5]) == 1]  # xr = (seqno, cid, name, desc, coll, key)
-        has_expr_key = any(int(xr[1]) == -2 and int(xr[5]) == 1 for xr in xi)
-        norm = _v128_normalize_sql(idx_row[0])
-        if "source_entity_id" in key_names or (has_expr_key and "source_entity_id" in norm):
-            entity_sqls.append(norm)
+    # Entity-index set: every index (auto-created or explicit, any identifier case, quoted or bare)
+    # whose KEY columns/expressions involve source_entity_id — factored into a unit-testable helper.
     return NonFkContract(
         column=column,
         fk_groups=fk_groups,
         fk_signature=fk_signature,
-        entity_indexes=tuple(sorted(entity_sqls)),
+        entity_indexes=_v128_entity_index_signatures(conn, table),
     )
 
 

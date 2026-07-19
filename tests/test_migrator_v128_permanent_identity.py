@@ -1130,13 +1130,14 @@ _REF = "REFERENCES source_index_entities(source_entity_id)"
 
 
 @pytest.fixture(autouse=True)
-def _v128_reset_reference_cache():
-    """R8-AC-006: keep the process-wide V128 oracle state from leaking between tests
-    (order-independence). The build barrier is the only stateful HOOK — it is reset before and after
-    every test so a machinery test can never poison a later one. The reference CACHE itself is
-    deterministic (a persistent valid reference is order-safe), and every machinery test that mutates
-    it resets it explicitly; it is cleared here on teardown for good measure. Never runs while a builder
-    is active — tests are sequential and no builder survives a test."""
+def _v128_reset_build_barrier():
+    """R9-PR-F-005: reset the process-wide V128 build BARRIER before and after every test. The build
+    barrier is the only stateful test HOOK, so resetting it keeps a machinery test from poisoning a
+    later one (order-independence). This fixture does NOT reset ``_V128_REFERENCE``: the reference
+    cache is intentionally built-once and reused across tests (a persistent valid reference is
+    order-safe and rebuilding it per test would rebuild it ~91x and slow the suite); the machinery
+    tests that exercise cache behavior keep their own EXPLICIT ``_V128_REFERENCE = None`` resets.
+    Never runs while a builder is active — tests are sequential and no builder survives a test."""
     migrator_module._V128_BUILD_BARRIER = None
     yield
     migrator_module._V128_BUILD_BARRIER = None
@@ -1605,3 +1606,190 @@ def test_r8_same_thread_reentrancy_fails_closed_without_second_build(fresh) -> N
     assert seen == ["v128_reference_build_reentrancy"]
     assert ref is not None
     assert migrator_module._V128_REFERENCE is ref
+
+
+# ===================================================================================================
+# CP-PI-WI-02-R9 (R7-ORACLE-GAP-001): complete entity-index detection — auto-indexes included, a
+# structured fail-closed key-expression parser, and a type-homogeneous ordered signature. Additive
+# to the R8 suite; touches only the entity-index detection path.
+# ===================================================================================================
+
+
+# --- R9-AC-001B / 002 / 003: direct unit suite for the key-expression parser (symmetric controls) ---
+
+# True: a genuine source_entity_id COLUMN reference (bare / mixed-case / each quoted form / inside a
+# function / CAST-value / COLLATE-operand / a real column ref alongside a string literal).
+_EXPR_TRUE = [
+    "source_entity_id",
+    "SOURCE_ENTITY_ID",
+    '"source_entity_id"',
+    "`source_entity_id`",
+    "[source_entity_id]",
+    "lower(source_entity_id)",
+    "CAST(source_entity_id AS TEXT)",
+    "source_entity_id COLLATE NOCASE",
+    'coalesce(CAST("source_entity_id" AS TEXT), \'\')',
+    "coalesce(source_entity_id, 'source_entity_id')",
+]
+
+# False: not a column reference — string literal (plain + ''-escaped), line/block comment, and the
+# per-token function-name / type-name / collation-name roles, plus no-mention controls.
+_EXPR_FALSE = [
+    "'source_entity_id'",
+    "'don''t reference source_entity_id'",
+    "-- source_entity_id",
+    "/* source_entity_id */",
+    "source_entity_id(status)",
+    "CAST(status AS source_entity_id)",
+    "status COLLATE source_entity_id",
+    "lower(status)",
+    "CAST(status AS TEXT)",
+    "status COLLATE NOCASE",
+]
+
+# Malformed/unterminated -> V128OracleError (ambiguity fails closed, never a silent False).
+_EXPR_RAISES = [
+    "'unterminated string",
+    "/* unterminated comment",
+    '"unterminated quoted ident',
+]
+
+
+@pytest.mark.parametrize("expr", _EXPR_TRUE)
+def test_r9_expr_references_column_true(expr) -> None:
+    assert migrator_module._v128_expr_references_column(expr, "source_entity_id") is True
+
+
+@pytest.mark.parametrize("expr", _EXPR_FALSE)
+def test_r9_expr_references_column_false(expr) -> None:
+    assert migrator_module._v128_expr_references_column(expr, "source_entity_id") is False
+
+
+@pytest.mark.parametrize("expr", _EXPR_RAISES)
+def test_r9_expr_references_column_raises(expr) -> None:
+    with pytest.raises(V128OracleError):
+        migrator_module._v128_expr_references_column(expr, "source_entity_id")
+
+
+# --- R9-AC-001: focused signature unit test on a PINNED probe table (pk + u autoindexes, sql NULL) ---
+
+
+def test_r9_entity_index_signatures_probe_autoindexes(tmp_path) -> None:
+    """A composite PK + a table-level UNIQUE on an ordinary rowid table yields SQL-less origin='pk' and
+    origin='u' autoindexes; assert SQLite reports that form FIRST (guard against build-dependent table
+    shapes), THEN the helper's ordered, name-independent ("auto", ...) descriptors — isolating the
+    origin='pk' descriptor a whole-table test could otherwise pass via the column ``pk`` facet alone."""
+    db = str(tmp_path / "probe.sqlite")
+    with sqlite3.connect(db) as c:
+        c.execute(
+            "CREATE TABLE probe ("
+            "  source_entity_id TEXT, status TEXT, other TEXT,"
+            "  PRIMARY KEY (source_entity_id, status),"
+            "  UNIQUE (source_entity_id, other)"
+            ")"
+        )
+    with sqlite3.connect(db) as c:
+        index_list = c.execute("PRAGMA index_list(probe)").fetchall()
+        origins = {row[3] for row in index_list}
+        assert origins == {"pk", "u"}  # exactly one pk autoindex, one u autoindex
+        assert len(index_list) == 2
+        for row in index_list:
+            stored = c.execute(
+                "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (row[1],)
+            ).fetchone()
+            assert stored[0] is None  # both are auto-created, sqlite_master.sql IS NULL
+        sigs = migrator_module._v128_entity_index_signatures(c, "probe")
+    assert sigs == (
+        ("auto", "pk", 1, 0, ((0, "source_entity_id", 0, "BINARY"), (1, "status", 0, "BINARY"))),
+        ("auto", "u", 1, 0, ((0, "source_entity_id", 0, "BINARY"), (2, "other", 0, "BINARY"))),
+    )
+
+
+def test_r9_entity_index_signatures_named_column_case_insensitive(tmp_path) -> None:
+    """R9-AC-001A: a plain ``ON t(SOURCE_ENTITY_ID)`` is exposed by index_xinfo as the NAMED column
+    (cid>=0) and detected by case-insensitive comparison — NOT via the expression parser. The table
+    column is declared upper-case so index_xinfo returns 'SOURCE_ENTITY_ID', exercising the .lower()."""
+    db = str(tmp_path / "named.sqlite")
+    with sqlite3.connect(db) as c:
+        c.execute('CREATE TABLE t ("SOURCE_ENTITY_ID" TEXT, status TEXT)')
+        c.execute("CREATE INDEX ix ON t(source_entity_id)")
+        xinfo = c.execute("PRAGMA index_xinfo(ix)").fetchall()
+        # the key term is a named column (cid>=0), NOT an expression (cid==-2).
+        assert [xr[1] for xr in xinfo if int(xr[5]) == 1] == [0]
+        sigs = migrator_module._v128_entity_index_signatures(c, "t")
+    assert len(sigs) == 1
+    assert sigs[0][0] == "sql"
+
+
+# --- R9-AC-001A / 002 / 003 / 004 / 005: integration drift, per non-FK table, via GENUINE key exprs --
+
+_NONFK = [
+    ("source_intelligence_events", _recreate_events, _insert_events_keep_row, "event_id", "keep-ev"),
+    (
+        "source_index_scan_quarantine",
+        _recreate_quarantine,
+        _insert_quarantine_keep_row,
+        "quarantine_id",
+        "keep-q",
+    ),
+]
+
+# Fail-closed drift cases: an entity-involving KEY (auto UNIQUE/composite, or a genuine cid==-2 key
+# expression in any case / quoted form) added ON TOP of the canonical named index -> parity False,
+# apply() raises + rollback preserves schema + data. Each entry is (case_id, table_constraints,
+# extra_index_template) where "{t}" is the table name.
+_R9_FAIL = [
+    ("auto_unique_entity", ", UNIQUE(source_entity_id)", None),
+    ("auto_unique_composite", ", UNIQUE(source_entity_id, status)", None),
+    ("expr_case_varied", "", "CREATE INDEX idx_r9_x ON {t}((SOURCE_ENTITY_ID || ''))"),
+    ("expr_quoted_double", "", 'CREATE INDEX idx_r9_x ON {t}(lower("source_entity_id"))'),
+    ("expr_quoted_backtick", "", "CREATE INDEX idx_r9_x ON {t}(coalesce(`source_entity_id`, ''))"),
+    ("expr_quoted_bracket", "", "CREATE INDEX idx_r9_x ON {t}(trim([source_entity_id]))"),
+]
+
+
+@pytest.mark.parametrize("case_id, table_constraints, extra_tmpl", _R9_FAIL, ids=[c[0] for c in _R9_FAIL])
+@pytest.mark.parametrize(
+    "table, recreate, insert_keep, pk_col, pk_val", _NONFK, ids=[c[0] for c in _NONFK]
+)
+def test_r9_entity_key_drift_fails_closed(
+    fresh, table, recreate, insert_keep, pk_col, pk_val, case_id, table_constraints, extra_tmpl
+) -> None:
+    extra = (extra_tmpl.format(t=table),) if extra_tmpl else ()
+    recreate(
+        fresh, entity_col=f"source_entity_id TEXT {_REF}",
+        table_constraints=table_constraints, extra_indexes=extra,
+    )
+    insert_keep(fresh)
+    assert _current(fresh) is False  # the entity-involving key is detected
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+    # rollback preserved the drift (schema) and the seeded row (data).
+    assert _current(fresh) is False
+    assert _keep_entity_id(fresh, table, pk_col, pk_val) != "__row_absent__"
+    if extra_tmpl:
+        assert "idx_r9_x" in _indexes(fresh, table)
+
+
+# True (no false rejection): an entity-mention that is NOT a key column reference — a string literal, a
+# line/block comment, a CAST type name, or a predicate-only index (key unrelated) -> parity stays True.
+_R9_TRUE = [
+    ("string_literal_key", "CREATE INDEX idx_r9_t ON {t}((status || 'source_entity_id'))"),
+    ("line_comment_key", "CREATE INDEX idx_r9_t ON {t}((status || '' -- source_entity_id\n))"),
+    ("block_comment_key", "CREATE INDEX idx_r9_t ON {t}((status /* source_entity_id */ || ''))"),
+    ("cast_type_name_key", "CREATE INDEX idx_r9_t ON {t}(CAST(status AS source_entity_id))"),
+    ("predicate_only", "CREATE INDEX idx_r9_t ON {t}(status) WHERE source_entity_id IS NOT NULL"),
+]
+
+
+@pytest.mark.parametrize("case_id, stmt_tmpl", _R9_TRUE, ids=[c[0] for c in _R9_TRUE])
+@pytest.mark.parametrize(
+    "table, recreate, insert_keep, pk_col, pk_val", _NONFK, ids=[c[0] for c in _NONFK]
+)
+def test_r9_entity_mention_not_key_ref_stays_current(
+    fresh, table, recreate, insert_keep, pk_col, pk_val, case_id, stmt_tmpl
+) -> None:
+    # The canonical named entity index stays intact on ``fresh``; add only the negative-control index.
+    with sqlite3.connect(fresh) as c:
+        c.execute(stmt_tmpl.format(t=table))
+    assert _current(fresh) is True  # not a source_entity_id KEY reference -> not policed
