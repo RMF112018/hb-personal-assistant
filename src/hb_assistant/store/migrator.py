@@ -6,9 +6,14 @@ apply() is safe to call repeatedly.
 
 from __future__ import annotations
 
+import re
 import sqlite3
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Literal
 
 from .connection import get_connection, open_connection, transaction
 
@@ -20,25 +25,46 @@ if TYPE_CHECKING:
 # than hard-coding a literal so version bumps do not break unrelated tests.
 LATEST_SCHEMA_VERSION = 128
 
-# --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R5) -------
-# The V128 always-revalidate oracle validates a live DB by exact-equality against the CANONICAL V128
-# schema, which is built once per process from a fresh scratch migrate and cached here. This is
-# complete by construction: it captures every column/type/nullability/PK/CHECK/UNIQUE/FK (incl.
-# on_delete/on_update actions)/default and every index (columns/uniqueness/partial predicate) of the
-# V128-owned tables, so no facet can be silently omitted (replaces the hand-enumerated oracle that
-# leaked across R2..R5). ``_V128_REFERENCE_BUILDING`` guards the reentrancy: while the reference is
-# being constructed the oracle falls back to the structural bootstrap check so apply() still drives
-# the V128 rebuild on the empty scratch DB (and does not raise post-rebuild).
-_V128_REFERENCE_SCHEMA: "dict[str, str] | None" = None
-_V128_REFERENCE_BUILDING: bool = False
+# --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R8) -------
+# The V128 always-revalidate oracle validates a live DB by exact-equality against a CANONICAL V128
+# reference (``V128Reference``), built once per process from a fresh scratch migrate and cached in
+# ``_V128_REFERENCE``. It has two parts, both reference-derived (nothing hand-typed):
+#   * ``owned_schema`` — byte-exact ``{"type:name": create_sql}`` for the 10 fully-V128-owned tables +
+#     their own indexes. Complete by construction: every column/type/nullability/PK/CHECK/UNIQUE/FK
+#     (incl. on_delete/on_update)/default and every index (columns/uniqueness/partial predicate).
+#   * ``nonfk_contracts`` — a per-table ``NonFkContract`` for the two non-FK tables (events,
+#     scan_quarantine). Their FULL CREATE sql is construction-dependent (``source_entity_id`` is
+#     ALTER-appended in a fresh migrate but inline in a V127/quarantine rebuild), so V128's exact
+#     contribution — one column, one FK (incl. DEFERRABLE/INITIALLY, which PRAGMA cannot expose, so
+#     the FK clause is parsed from ``sqlite_master.sql`` into ``FkClauseSignature``), one entity index
+#     — is compared reference-derived rather than byte-compared. Unrelated V125/V127/future indexes are
+#     deliberately NOT policed.
+# Construction is single-flight + connection-bound + reentrancy-safe (see ``_v128_canonical_schema`` /
+# ``_v128_schema_current``): an explicit three-way state machine, not an RLock (whose same-thread
+# reacquire would allow recursive rebuilds). ``_V128_BUILD_STATE`` (a ``threading.local``) holds the
+# actual scratch ``sqlite3.Connection`` object on the builder thread only, so the bootstrap check is
+# bound to one real connection object, never a path another connection could reopen.
+_V128_REFERENCE: "V128Reference | None" = None
+_V128_BUILD_LOCK = threading.Lock()
+_V128_BUILD_STATE = threading.local()
+# Test-only synchronous build-barrier seam: a module-level callback invoked ON THE BUILDER THREAD after
+# the scratch connection is stored in the thread-local and before the scratch migrate runs. Defaults to
+# ``None`` (no production effect). Deterministic tests set it to block (two-thread single-flight proof)
+# or to re-enter the oracle on a different connection (same-thread reentrancy proof).
+_V128_BUILD_BARRIER: "Callable[[], None] | None" = None
+
+
+class V128OracleError(RuntimeError):
+    """Fail-closed condition in the V128 structural oracle: an unparseable/ambiguous FK clause, or a
+    reentrant reference build (``v128_reference_build_reentrancy``). Never swallowed into a silent
+    True — it propagates so the caller fails closed rather than trusting an unverifiable schema."""
+
 
 # Tables whose FULL schema is owned + constructed by the V128 rebuild (always via one CREATE): the 3
 # new identity tables, the rebuilt parent, and the 6 content children. These are byte-exact compared
 # against the canonical reference. The two non-FK tables (events, scan_quarantine) are handled
-# SEPARATELY (``_v128_nonfk_entity_refs_ok``): V127 / the quarantine migration own their base schema,
-# and V128 only ADDS a nullable ``source_entity_id`` FK + index — which is appended via ALTER in a
-# fresh migrate but emitted inline by a V127/quarantine rebuild, so their full CREATE sql is
-# construction-dependent and cannot be byte-compared. Their V128 contribution is checked structurally.
+# SEPARATELY (``_v128_nonfk_entity_refs_ok`` + ``NonFkContract``): V127 / the quarantine migration own
+# their base schema, and V128 only ADDS a nullable ``source_entity_id`` FK + index.
 _V128_OWNED_TABLES: tuple[str, ...] = (
     "source_index_entities",
     "source_index_locators",
@@ -58,13 +84,59 @@ _V128_NONFK_ENTITY_INDEXES: tuple[tuple[str, str], ...] = (
 )
 
 
+@dataclass(frozen=True)
+class FkClauseSignature:
+    """Structured, immutable signature of a ``source_entity_id`` FK clause, parsed token/paren/quote-
+    aware from ``sqlite_master.sql`` (a permissive regex would risk another incomplete oracle). Carries
+    the facets PRAGMA cannot expose — DEFERRABLE / INITIALLY — plus the column-vs-table declaration
+    kind and composite column lists, all case/whitespace-normalized."""
+
+    declaration_kind: Literal["column", "table"]
+    source_columns: tuple[str, ...]
+    target_table: str
+    target_columns: tuple[str, ...]
+    match: str
+    on_update: str
+    on_delete: str
+    deferrability: Literal["omitted", "deferrable", "not_deferrable"]
+    initially: Literal["omitted", "deferred", "immediate"]
+
+
+@dataclass(frozen=True)
+class NonFkContract:
+    """V128's exact, reference-derived contribution to one non-FK table — all members immutable."""
+
+    column: tuple  # PRAGMA table_xinfo tuple for source_entity_id: (type, notnull, dflt, pk, hidden)
+    fk_groups: tuple  # tuple of FK groups (tuple of rows) that contain a source_entity_id row
+    fk_signature: FkClauseSignature  # structured source_entity_id FK-clause signature
+    entity_indexes: tuple  # sorted tuple of normalized index sql involving source_entity_id
+
+
+@dataclass(frozen=True)
+class V128Reference:
+    """The single, deeply-immutable canonical V128 reference bundle (published atomically)."""
+
+    owned_schema: "MappingProxyType[str, str]"  # byte-exact 10 core tables + their indexes
+    nonfk_contracts: "MappingProxyType[str, NonFkContract]"
+
+
+def _v128_normalize_sql(sql: "str | None") -> str:
+    """Shared SQL normalizer used everywhere V128 sql is compared: collapse all whitespace and strip
+    the ``IF [NOT] EXISTS`` guard so DDL created with or without the guard (the rebuild vs the additive
+    repair) compares equal. ``None`` (an auto-created object with no stored sql) normalizes to ``""``."""
+    if not sql:
+        return ""
+    norm = " ".join(sql.split())
+    return norm.replace("IF NOT EXISTS ", "").replace("IF EXISTS ", "")
+
+
 def _v128_schema_snapshot(conn: "sqlite3.Connection") -> "dict[str, str]":
     """Normalized ``{"type:name": create_sql}`` for every V128-owned table and every explicit index
     on those tables (``sqlite_master``). Auto-created indexes (from UNIQUE/PK constraints; ``sql IS
     NULL``) are skipped because their definition already lives verbatim in the parent table's CREATE
-    sql. ``IF [NOT] EXISTS`` is stripped so identical DDL created with or without the guard compares
-    equal (the rebuild and the additive repair may differ only by that clause). Whitespace is
-    collapsed. An exact dict-equality of two snapshots is complete structural parity."""
+    sql. ``IF [NOT] EXISTS`` is stripped (via ``_v128_normalize_sql``) so identical DDL created with or
+    without the guard compares equal. An exact dict-equality of two snapshots is complete structural
+    parity."""
     owned = set(_V128_OWNED_TABLES)
     snapshot: dict[str, str] = {}
     for obj_type, name, tbl_name, sql in conn.execute(
@@ -72,10 +144,341 @@ def _v128_schema_snapshot(conn: "sqlite3.Connection") -> "dict[str, str]":
     ).fetchall():
         if tbl_name not in owned or sql is None:
             continue
-        norm = " ".join(sql.split())
-        norm = norm.replace("IF NOT EXISTS ", "").replace("IF EXISTS ", "")
-        snapshot[f"{obj_type}:{name}"] = norm
+        snapshot[f"{obj_type}:{name}"] = _v128_normalize_sql(sql)
     return snapshot
+
+
+# A leading SQL identifier: bare word, or a quoted/bracketed identifier.
+_V128_IDENT_RE = re.compile(r"""\s*(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[[^\]]*\]|[A-Za-z_][A-Za-z0-9_$]*)""")
+# The word-boundary REFERENCES keyword inside a column definition (case-insensitive).
+_V128_REFERENCES_RE = re.compile(r"\bREFERENCES\b", re.IGNORECASE)
+
+
+def _v128_split_top_level(body: str) -> "list[str]":
+    """Split a CREATE-TABLE body into top-level comma-separated segments, respecting nested parens and
+    quoted identifiers/strings (``'`` ``"`` `` ` `` ``[]``). Quote-aware so a comma or paren inside a
+    string/identifier never splits a segment."""
+    segments: list[str] = []
+    depth = 0
+    cur: list[str] = []
+    i = 0
+    n = len(body)
+    while i < n:
+        ch = body[i]
+        if ch in ("'", '"', "`"):
+            cur.append(ch)
+            i += 1
+            while i < n:
+                cur.append(body[i])
+                if body[i] == ch:
+                    # A doubled quote is an escaped literal quote, not a close.
+                    if i + 1 < n and body[i + 1] == ch:
+                        cur.append(body[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "[":
+            while i < n:
+                cur.append(body[i])
+                if body[i] == "]":
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            segments.append("".join(cur))
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
+    if "".join(cur).strip():
+        segments.append("".join(cur))
+    return segments
+
+
+def _v128_unquote_ident(tok: str) -> str:
+    """Normalize a possibly-quoted SQL identifier to its bare lowercase form."""
+    t = tok.strip()
+    if len(t) >= 2 and t[0] in ("'", '"', "`") and t[-1] == t[0]:
+        t = t[1:-1].replace(t[0] * 2, t[0])
+    elif len(t) >= 2 and t[0] == "[" and t[-1] == "]":
+        t = t[1:-1]
+    return t.lower()
+
+
+def _v128_paren_list(segment: str, start: int) -> "tuple[list[str], int]":
+    """Parse a parenthesized, comma-separated identifier list beginning at ``segment[start] == '('``.
+    Returns the unquoted identifiers and the index just past the closing paren. Quote/paren-aware."""
+    assert segment[start] == "("
+    depth = 0
+    i = start
+    n = len(segment)
+    buf: list[str] = []
+    parts: list[str] = []
+    while i < n:
+        ch = segment[i]
+        if ch in ("'", '"', "`"):
+            buf.append(ch)
+            i += 1
+            while i < n:
+                buf.append(segment[i])
+                if segment[i] == ch:
+                    if i + 1 < n and segment[i + 1] == ch:
+                        buf.append(segment[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "[":
+            while i < n:
+                buf.append(segment[i])
+                if segment[i] == "]":
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                parts.append("".join(buf))
+                i += 1
+                break
+        if ch == "," and depth == 1:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    cols = [_v128_unquote_ident(p) for p in parts if p.strip()]
+    return cols, i
+
+
+def _v128_parse_references_tail(tail: str) -> "tuple[str, tuple[str, ...], str, str, str, str, str]":
+    """Parse the portion of an FK clause STARTING at the ``REFERENCES`` keyword (already consumed by
+    the caller): ``<target_table> [ (cols) ] [MATCH x] [ON DELETE ...] [ON UPDATE ...]
+    [[NOT] DEFERRABLE [INITIALLY ...]]``. Returns
+    ``(target_table, target_columns, match, on_update, on_delete, deferrability, initially)``. Raises
+    ``V128OracleError`` on an unparseable/ambiguous tail."""
+    s = tail.strip()
+    # target table (bare or quoted), then optional (col, ...)
+    m = _V128_IDENT_RE.match(s)
+    if not m:
+        raise V128OracleError("v128_fk_clause_unparseable")
+    target_table = _v128_unquote_ident(m.group(0))
+    i = m.end()
+    while i < len(s) and s[i].isspace():
+        i += 1
+    target_columns: tuple[str, ...] = ()
+    if i < len(s) and s[i] == "(":
+        cols, i = _v128_paren_list(s, i)
+        target_columns = tuple(cols)
+    rest = " ".join(s[i:].split()).upper()
+    toks = rest.split()
+
+    match = "SIMPLE"
+    on_update = "NO ACTION"
+    on_delete = "NO ACTION"
+    deferrability: str = "omitted"
+    initially: str = "omitted"
+
+    j = 0
+    while j < len(toks):
+        t = toks[j]
+        if t == "MATCH" and j + 1 < len(toks):
+            match = toks[j + 1]
+            j += 2
+            continue
+        if t == "ON" and j + 2 < len(toks):
+            action_kw = toks[j + 1]
+            action, consumed = _v128_read_fk_action(toks, j + 2)
+            if action_kw == "UPDATE":
+                on_update = action
+            elif action_kw == "DELETE":
+                on_delete = action
+            else:
+                raise V128OracleError("v128_fk_clause_unparseable")
+            j += 2 + consumed
+            continue
+        if t == "NOT" and j + 1 < len(toks) and toks[j + 1] == "DEFERRABLE":
+            deferrability = "not_deferrable"
+            j += 2
+            continue
+        if t == "DEFERRABLE":
+            deferrability = "deferrable"
+            j += 1
+            if j + 1 < len(toks) and toks[j] == "INITIALLY":
+                mode = toks[j + 1]
+                if mode == "DEFERRED":
+                    initially = "deferred"
+                elif mode == "IMMEDIATE":
+                    initially = "immediate"
+                else:
+                    raise V128OracleError("v128_fk_clause_unparseable")
+                j += 2
+            continue
+        # Any unrecognized trailing token in an FK clause is ambiguous -> fail closed.
+        raise V128OracleError("v128_fk_clause_unparseable")
+    return target_table, target_columns, match, on_update, on_delete, deferrability, initially
+
+
+def _v128_read_fk_action(toks: "list[str]", i: int) -> "tuple[str, int]":
+    """Read an ON UPDATE/ON DELETE action starting at ``toks[i]``. Returns (canonical action, tokens
+    consumed). Recognizes CASCADE / RESTRICT / SET NULL / SET DEFAULT / NO ACTION."""
+    if i >= len(toks):
+        raise V128OracleError("v128_fk_clause_unparseable")
+    t = toks[i]
+    if t in ("CASCADE", "RESTRICT"):
+        return t, 1
+    if t == "SET" and i + 1 < len(toks) and toks[i + 1] in ("NULL", "DEFAULT"):
+        return f"SET {toks[i + 1]}", 2
+    if t == "NO" and i + 1 < len(toks) and toks[i + 1] == "ACTION":
+        return "NO ACTION", 2
+    raise V128OracleError("v128_fk_clause_unparseable")
+
+
+def _v128_parse_fk_clause_signature(create_sql: str) -> FkClauseSignature:
+    """Token/paren/quote-aware extraction of the ONE ``source_entity_id`` FK clause from a table's
+    ``CREATE`` sql. Distinguishes column-level (``source_entity_id ... REFERENCES ...``) from
+    table-level (``FOREIGN KEY(...source_entity_id...) REFERENCES ...``), preserves composite column
+    lists, normalizes case/whitespace, and requires EXACTLY ONE recognized entity-FK declaration —
+    raising ``V128OracleError`` on zero, more than one, or an ambiguous/unparseable clause (NEVER a
+    PRAGMA-only fallback). Deferrability/init-mode (absent from PRAGMA) come from here."""
+    open_paren = create_sql.find("(")
+    close_paren = create_sql.rfind(")")
+    if open_paren == -1 or close_paren <= open_paren:
+        raise V128OracleError("v128_fk_clause_unparseable")
+    body = create_sql[open_paren + 1 : close_paren]
+    found: list[FkClauseSignature] = []
+    for raw in _v128_split_top_level(body):
+        seg = raw.strip()
+        if not seg:
+            continue
+        upper = seg.upper()
+        # Table-level constraint? (optionally CONSTRAINT <name>) FOREIGN KEY (cols) REFERENCES ...
+        head = upper
+        work = seg
+        if head.startswith("CONSTRAINT"):
+            cm = _V128_IDENT_RE.match(seg[len("CONSTRAINT"):].lstrip())
+            if cm is None:
+                continue
+            after = seg[len("CONSTRAINT"):].lstrip()[cm.end():].lstrip()
+            work = after
+            head = after.upper()
+        if head.startswith("FOREIGN KEY") or head.startswith("FOREIGN  KEY"):
+            fk_start = work.upper().find("FOREIGN")
+            paren = work.find("(", fk_start)
+            if paren == -1:
+                raise V128OracleError("v128_fk_clause_unparseable")
+            src_cols, after_idx = _v128_paren_list(work, paren)
+            if "source_entity_id" not in src_cols:
+                continue
+            rest = work[after_idx:].lstrip()
+            if not rest.upper().startswith("REFERENCES"):
+                raise V128OracleError("v128_fk_clause_unparseable")
+            tt, tc, match, onu, ond, def_, init_ = _v128_parse_references_tail(
+                rest[len("REFERENCES"):]
+            )
+            found.append(FkClauseSignature(
+                declaration_kind="table", source_columns=tuple(src_cols), target_table=tt,
+                target_columns=tc, match=match, on_update=onu, on_delete=ond,
+                deferrability=def_, initially=init_,  # type: ignore[arg-type]
+            ))
+            continue
+        if head.startswith(("PRIMARY KEY", "UNIQUE", "CHECK")):
+            continue  # other table-level constraints — not FK declarations
+        # Column definition: first token is the column name.
+        cm = _V128_IDENT_RE.match(seg)
+        if cm is None:
+            continue
+        col_name = _v128_unquote_ident(cm.group(0))
+        if col_name != "source_entity_id":
+            continue
+        ref_idx = _V128_REFERENCES_RE.search(seg)
+        if ref_idx is None:
+            continue  # source_entity_id column with no inline FK — not an FK declaration
+        tt, tc, match, onu, ond, def_, init_ = _v128_parse_references_tail(
+            seg[ref_idx.end():]
+        )
+        found.append(FkClauseSignature(
+            declaration_kind="column", source_columns=("source_entity_id",), target_table=tt,
+            target_columns=tc, match=match, on_update=onu, on_delete=ond,
+            deferrability=def_, initially=init_,  # type: ignore[arg-type]
+        ))
+    if len(found) != 1:
+        raise V128OracleError("v128_fk_clause_ambiguous")
+    return found[0]
+
+
+def _v128_extract_nonfk_contract(conn: "sqlite3.Connection", table: str) -> NonFkContract:
+    """Extract the reference-derived ``NonFkContract`` for one non-FK table from a live/scratch conn.
+    Raises ``V128OracleError`` (via the FK-clause parser) when the table's entity FK is ambiguous /
+    unparseable / not exactly one — a fail-closed condition, never a silent pass. The required
+    canonical entity index is enforced implicitly: the reference's ``entity_indexes`` contains it, so
+    any live DB missing it (or carrying an extra/variant one) mismatches the reference."""
+    xinfo = conn.execute(f"PRAGMA table_xinfo({table})").fetchall()
+    column: tuple = ()
+    for r in xinfo:
+        if r[1] == "source_entity_id":
+            # (type, notnull, dflt_value, pk, hidden)
+            column = (str(r[2] or ""), int(r[3]), r[4], int(r[5]), int(r[6]))
+            break
+
+    # FK groups containing a source_entity_id row (grouped by FK id, ordering canonicalized).
+    groups: dict[int, list[tuple]] = {}
+    for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall():
+        # r = (id, seq, table, from, to, on_update, on_delete, match)
+        groups.setdefault(int(r[0]), []).append(
+            (int(r[1]), r[3], r[4], r[2], r[5], r[6], r[7])
+        )
+    kept: list[tuple] = []
+    for _gid, rows in groups.items():
+        if any(row[1] == "source_entity_id" for row in rows):
+            kept.append(tuple(sorted(rows, key=lambda x: x[0])))
+    fk_groups = tuple(sorted(kept))
+
+    # FK clause signature parsed from the table's CREATE sql (deferrability/declaration-kind).
+    create_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone()
+    fk_signature = _v128_parse_fk_clause_signature(create_row[0] if create_row else "")
+
+    # Entity-index set: indexes whose key columns/expressions involve source_entity_id.
+    entity_sqls: list[str] = []
+    for row in conn.execute(f"PRAGMA index_list({table})").fetchall():
+        iname = row[1]
+        idx_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (iname,)
+        ).fetchone()
+        if idx_row is None or idx_row[0] is None:
+            continue  # auto-created (UNIQUE/PK) index — no stored sql
+        xi = conn.execute(f"PRAGMA index_xinfo({iname})").fetchall()
+        key_names = [xr[2] for xr in xi if int(xr[5]) == 1]  # xr = (seqno, cid, name, desc, coll, key)
+        has_expr_key = any(int(xr[1]) == -2 and int(xr[5]) == 1 for xr in xi)
+        norm = _v128_normalize_sql(idx_row[0])
+        if "source_entity_id" in key_names or (has_expr_key and "source_entity_id" in norm):
+            entity_sqls.append(norm)
+    return NonFkContract(
+        column=column,
+        fk_groups=fk_groups,
+        fk_signature=fk_signature,
+        entity_indexes=tuple(sorted(entity_sqls)),
+    )
 
 
 def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
@@ -10315,8 +10718,17 @@ class SQLiteMigrator:
         """IMP-F-002 (ADR-002 R12): give the two non-FK tables (events, scan_quarantine) a nullable
         ``source_entity_id`` FK to source_index_entities (+ index), backfilled via the
         (source_id → entity) locator map; an unresolved source_id stays NULL. Idempotent (parity-
-        guarded ADD COLUMN; CREATE INDEX IF NOT EXISTS). Reused by Step 5 and the additive-repair
-        path. The ADD COLUMN is nullable with NULL default so SQLite permits the REFERENCES clause."""
+        guarded ADD COLUMN). Reused by Step 5 and the additive-repair path. The ADD COLUMN is nullable
+        with NULL default so SQLite permits the REFERENCES clause.
+
+        CP-PI-WI-02-R8 repair symmetry: the two canonical NAMED entity indexes are DROPPed then
+        recreated (single-sourced DDL), so a same-name entity index that drifted (wrong column /
+        UNIQUE / partial / etc.) is REPAIRED on an already-failed-parity apply() — a bare
+        ``CREATE INDEX IF NOT EXISTS`` would see the name and skip it, leaving the malformed index. This
+        runs only when parity has already failed (healthy DBs skip rebuild/repair entirely). It
+        recreates ONLY the two canonical named entity indexes and deletes NO other index (an
+        additional/noncanonical entity index is detected + fail-closed, not silently dropped — expanding
+        that would need a separate scope/authorization change; see the plan's rebuild-scope boundary)."""
         for tbl in ("source_index_scan_quarantine", "source_intelligence_events"):
             cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
             if not cols:
@@ -10332,12 +10744,16 @@ class SQLiteMigrator:
                 f" WHERE l.source_id = {tbl}.source_id AND l.is_current_locator = 1) "
                 "WHERE source_id IS NOT NULL AND source_entity_id IS NULL"
             )
+        # Drop+recreate the two canonical named entity indexes (repair symmetry). Same DDL the fresh
+        # rebuild emits, so the reference and the repaired index compare identically.
+        conn.execute("DROP INDEX IF EXISTS idx_si_scan_quarantine_entity")
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_si_scan_quarantine_entity "
+            "CREATE INDEX idx_si_scan_quarantine_entity "
             "ON source_index_scan_quarantine(source_entity_id)"
         )
+        conn.execute("DROP INDEX IF EXISTS idx_si_events_entity")
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_si_events_entity "
+            "CREATE INDEX idx_si_events_entity "
             "ON source_intelligence_events(source_entity_id)"
         )
 
@@ -10377,84 +10793,122 @@ class SQLiteMigrator:
         SQLiteMigrator._v128_reparent_nonfk_tables(conn)
 
     @staticmethod
-    def _v128_canonical_schema() -> "dict[str, str]":
-        """Build (once per process, cached) the canonical V128 schema snapshot from a fresh scratch
-        migrate, and return it. Reentrancy-guarded via ``_V128_REFERENCE_BUILDING`` so the nested
-        apply() drives the V128 rebuild through the structural bootstrap check (rather than recursing
-        into the reference comparison). The scratch DB is a disposable temp file (an absolute path the
-        storage guard permits as ``dev_permissive``); it is deleted after the snapshot is taken."""
-        global _V128_REFERENCE_SCHEMA, _V128_REFERENCE_BUILDING
-        if _V128_REFERENCE_SCHEMA is not None:
-            return _V128_REFERENCE_SCHEMA
+    def _v128_canonical_schema() -> "V128Reference":
+        """Build (once per process, cached) the deeply-immutable canonical ``V128Reference`` from a
+        fresh scratch migrate, and return it. Single-flight + connection-bound + reentrancy-safe
+        (CP-PI-WI-02-R8):
+
+        * Return the published cache if set; else acquire ``_V128_BUILD_LOCK`` (so concurrent callers
+          block here and, on wake, see the published cache — never a half-built reference), double-check
+          the cache, then open the scratch connection MYSELF and store it in ``_V128_BUILD_STATE.conn``
+          (a ``threading.local`` — set on the builder thread only) so ``_v128_schema_current`` can bind
+          the bootstrap to this EXACT connection object.
+        * Run the migration through the PUBLIC borrowed-connection API
+          ``SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn)`` (retains opened-target identity
+          validation, guard-FD lifecycle, and transaction-ownership checks — never the private
+          ``_apply_on_connection``). The borrowed conn has no pending transaction (RC-3).
+        * Extract ``owned_schema`` + ``nonfk_contracts`` into LOCALS and publish the single frozen
+          ``V128Reference`` to the cache ONLY after all extraction succeeds; on any failure the cache
+          stays unset and a later caller can construct successfully.
+        * In ``finally``: release the lock (via ``with``), ``del _V128_BUILD_STATE.conn`` (so "builder
+          state absent" is unambiguous — not a lingering closed connection), and close the scratch conn.
+
+        The scratch DB is a disposable temp file (an absolute path the storage guard permits as
+        ``dev_permissive``); ``:memory:`` and relative paths are rejected by the guard."""
+        global _V128_REFERENCE
+        if _V128_REFERENCE is not None:
+            return _V128_REFERENCE
         import shutil  # noqa: PLC0415
         import tempfile  # noqa: PLC0415
         from pathlib import Path  # noqa: PLC0415
 
-        _V128_REFERENCE_BUILDING = True
-        tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref_")
-        try:
-            ref_db = str(Path(tmpdir) / "v128_reference.sqlite")
-            SQLiteMigrator(db_path=ref_db).apply()
-            ref_conn = get_connection(ref_db)
+        with _V128_BUILD_LOCK:
+            if _V128_REFERENCE is not None:  # double-check under the lock (single-flight)
+                return _V128_REFERENCE
+            tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref_")
+            ref_conn: sqlite3.Connection | None = None
             try:
-                _V128_REFERENCE_SCHEMA = _v128_schema_snapshot(ref_conn)
+                ref_db = str(Path(tmpdir) / "v128_reference.sqlite")
+                ref_conn = get_connection(ref_db)
+                _V128_BUILD_STATE.conn = ref_conn
+                if _V128_BUILD_BARRIER is not None:  # test-only seam; no production effect
+                    _V128_BUILD_BARRIER()
+                # Public borrowed-connection migration path (R8-R3-F-001): apply() treats the
+                # connection as borrowed and delegates through _apply_on_connection itself.
+                SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn)
+                owned = MappingProxyType(dict(_v128_schema_snapshot(ref_conn)))
+                contracts: dict[str, NonFkContract] = {}
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                    contracts[table] = _v128_extract_nonfk_contract(ref_conn, table)
+                reference = V128Reference(
+                    owned_schema=owned,
+                    nonfk_contracts=MappingProxyType(contracts),
+                )
+                _V128_REFERENCE = reference  # publish atomically, only after all extraction succeeded
+                return reference
             finally:
-                ref_conn.close()
-        finally:
-            _V128_REFERENCE_BUILDING = False
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        return _V128_REFERENCE_SCHEMA
+                try:
+                    del _V128_BUILD_STATE.conn
+                except AttributeError:
+                    pass
+                if ref_conn is not None:
+                    ref_conn.close()
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     @staticmethod
     def _v128_schema_current(conn: sqlite3.Connection) -> bool:
         """REV-F-002 always-revalidate COMPLETE structural-parity oracle for the V128 entity-scoped
-        shape (ADR-002 R12), mirroring ``_events_schema_current``. CP-PI-WI-02-R5: validates a live DB
-        by EXACT-EQUALITY against the canonical V128 schema (``_v128_canonical_schema``) — an approach
-        that is complete by construction (every column/type/nullability/PK/CHECK/UNIQUE/FK incl.
-        on_delete/on_update actions/default and every index's columns/uniqueness/partial predicate are
-        captured), replacing the hand-enumerated oracle that leaked across R2..R5. Returns True ONLY
-        when the live DB's V128-owned schema snapshot equals the reference. A drift the additive repair
-        can restore (a dropped/altered supporting or locator index, a re-added non-FK entity ref) is
+        shape (ADR-002 R12), mirroring ``_events_schema_current``. Validates a live DB by
+        EXACT-EQUALITY against the canonical ``V128Reference`` (``_v128_canonical_schema``): the 10
+        owned tables byte-exact, plus the two non-FK tables' reference-derived contracts. Complete by
+        construction — every column/type/nullability/PK/CHECK/UNIQUE/FK (incl. on_delete/on_update
+        actions + DEFERRABLE/INITIALLY)/default and every index's columns/uniqueness/partial predicate
+        is captured. Returns True ONLY on full parity. A drift the additive repair can restore is
         repaired on the next apply(); a structural drift it cannot restore fails closed
         (v128_schema_parity_failed), never trusted.
 
-        While the reference itself is being constructed (``_V128_REFERENCE_BUILDING``) the oracle falls
-        back to the structural bootstrap check (``_v128_schema_structural_ok``) so the nested scratch
-        apply() still drives the V128 rebuild and does not raise once rebuilt."""
-        if _V128_REFERENCE_BUILDING:
-            return SQLiteMigrator._v128_schema_structural_ok(conn)
-        if _v128_schema_snapshot(conn) != SQLiteMigrator._v128_canonical_schema():
+        Three-way state machine (CP-PI-WI-02-R8), keyed on the ``threading.local`` builder state:
+          1. Builder thread AND ``conn is _V128_BUILD_STATE.conn`` -> the enumerated bootstrap
+             (``_v128_schema_structural_ok``), so the nested scratch apply() drives the V128 rebuild on
+             the empty scratch DB and does not raise once rebuilt.
+          2. Builder thread AND any OTHER connection -> fail closed immediately
+             (``v128_reference_build_reentrancy``); NEVER re-enter the builder (no recursion).
+          3. Any other thread -> ``_v128_canonical_schema()`` (blocks on the single-flight lock until
+             the reference is published, never using the bootstrap), then compare snapshot + contracts.
+        """
+        builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+        if builder_conn is not None:
+            if conn is builder_conn:
+                return SQLiteMigrator._v128_schema_structural_ok(conn)
+            raise V128OracleError("v128_reference_build_reentrancy")
+        reference = SQLiteMigrator._v128_canonical_schema()
+        if _v128_schema_snapshot(conn) != dict(reference.owned_schema):
             return False
-        return SQLiteMigrator._v128_nonfk_entity_refs_ok(conn)
+        return SQLiteMigrator._v128_nonfk_entity_refs_ok(conn, reference)
 
     @staticmethod
-    def _v128_nonfk_entity_refs_ok(conn: sqlite3.Connection) -> bool:
-        """Structural check of V128's contribution to the two non-FK tables (events, scan_quarantine),
-        which are excluded from the byte-exact reference (their full CREATE sql is construction-
-        dependent — ALTER-appended in a fresh migrate vs emitted inline by a V127/quarantine rebuild).
-        Each table must exist, carry a ``source_entity_id`` FK to the identity authority, and have its
-        entity index actually indexing ``source_entity_id`` (CP-PI-WI-02-R5: index columns, not just
-        name)."""
+    def _v128_nonfk_entity_refs_ok(conn: sqlite3.Connection, reference: "V128Reference") -> bool:
+        """Compare V128's contribution to the two non-FK tables (events, scan_quarantine) against the
+        reference-derived ``NonFkContract`` bundle. Each table's live contract (column xinfo, FK groups
+        containing source_entity_id, parsed FK-clause signature, source_entity_id index set) must equal
+        the reference exactly; any mismatch -> False. A ``V128OracleError`` from the FK-clause parser on
+        the LIVE schema (an ambiguous/duplicate/unparseable entity FK) is treated as a detected drift ->
+        False; the same error while BUILDING the reference propagates (fail-closed), which is intended.
+        """
         tables = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
-        for table, entity_idx in _V128_NONFK_ENTITY_INDEXES:
+        for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
             if table not in tables:
                 return False
-            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-            if "source_entity_id" not in cols:
+            ref_contract = reference.nonfk_contracts.get(table)
+            if ref_contract is None:
                 return False
-            fk = {
-                r[3]: (r[2], r[4])
-                for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
-            }
-            if fk.get("source_entity_id") != ("source_index_entities", "source_entity_id"):
+            try:
+                live = _v128_extract_nonfk_contract(conn, table)
+            except V128OracleError:
                 return False
-            idx_names = {r[1] for r in conn.execute(f"PRAGMA index_list({table})").fetchall()}
-            if entity_idx not in idx_names:
-                return False
-            idx_cols = [r[2] for r in conn.execute(f"PRAGMA index_info({entity_idx})").fetchall()]
-            if idx_cols != ["source_entity_id"]:
+            if live != ref_contract:
                 return False
         return True
 

@@ -10,16 +10,30 @@ rollback) when a child row is orphaned. Uses scratch SQLite DBs only.
 
 from __future__ import annotations
 
+import dataclasses
+import shutil
 import sqlite3
+import threading
 from pathlib import Path
 
 import pytest
 
-from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
+from hb_assistant.store import migrator as migrator_module
+from hb_assistant.store.migrator import (
+    LATEST_SCHEMA_VERSION,
+    SQLiteMigrator,
+    V128OracleError,
+    get_connection,
+)
 from hb_assistant.store.source_index_scan_quarantine_tables import (
     V125_SOURCE_INDEX_SCAN_QUARANTINE_STATEMENTS,
 )
-from hb_assistant.store.source_intelligence_tables import V93_STATEMENTS, V94_STATEMENTS
+from hb_assistant.store.source_intelligence_tables import (
+    EVENT_STATUS_VALUES,
+    EVENT_TYPE_VALUES_V127,
+    V93_STATEMENTS,
+    V94_STATEMENTS,
+)
 
 NEW_TABLES = ("source_index_entities", "source_index_locators", "source_index_move_signals")
 
@@ -1104,3 +1118,490 @@ def test_same_path_reuse_after_self_heal(fresh) -> None:
         ).fetchone()[0]
     assert n == 2
     assert _fk_check(fresh) == []
+
+
+# ===================================================================================================
+# CP-PI-WI-02-R8: reference-derived non-FK contract oracle + connection-bound single-flight reference.
+# Additive coverage for the plan §D table-specific repair/fail-closed matrix (events + scan_quarantine)
+# on the two non-FK tables, plus the concurrency / immutability / atomic-build machinery (§B, §C).
+# ===================================================================================================
+
+_REF = "REFERENCES source_index_entities(source_entity_id)"
+
+
+@pytest.fixture(autouse=True)
+def _v128_reset_reference_cache():
+    """R8-AC-006: keep the process-wide V128 oracle state from leaking between tests
+    (order-independence). The build barrier is the only stateful HOOK — it is reset before and after
+    every test so a machinery test can never poison a later one. The reference CACHE itself is
+    deterministic (a persistent valid reference is order-safe), and every machinery test that mutates
+    it resets it explicitly; it is cleared here on teardown for good measure. Never runs while a builder
+    is active — tests are sequential and no builder survives a test."""
+    migrator_module._V128_BUILD_BARRIER = None
+    yield
+    migrator_module._V128_BUILD_BARRIER = None
+
+
+def _current(db: str) -> bool:
+    """Evaluate the V128 oracle on ``db`` via a real ``get_connection`` (matches production)."""
+    c = get_connection(db)
+    try:
+        return SQLiteMigrator._v128_schema_current(c)
+    finally:
+        c.close()
+
+
+def _events_checks() -> tuple[str, str]:
+    et = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES_V127)
+    st = ", ".join(f"'{v}'" for v in EVENT_STATUS_VALUES)
+    return (f"CHECK(event_type IN ({et}))", f"CHECK(status IN ({st}))")
+
+
+def _recreate_events(
+    db: str, *, entity_col: str, table_constraints: str = "",
+    entity_index: str | None = "CREATE INDEX idx_si_events_entity "
+    "ON source_intelligence_events(source_entity_id)",
+    extra_indexes: tuple[str, ...] = (),
+) -> None:
+    """Drop + recreate source_intelligence_events with the full canonical V127 column set (so the V127
+    always-revalidate probe passes unless the drift is in V127's contract) plus a customizable
+    ``source_entity_id`` column definition / table constraints / entity index."""
+    et_check, st_check = _events_checks()
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys=OFF")
+        c.execute("DROP TABLE source_intelligence_events")
+        c.execute(
+            "CREATE TABLE source_intelligence_events ("
+            " event_id TEXT PRIMARY KEY, source_id TEXT, rel_path TEXT, source_root_key TEXT,"
+            " dest_rel_path TEXT, next_attempt_at TEXT,"
+            f" event_type TEXT NOT NULL {et_check},"
+            f" status TEXT NOT NULL DEFAULT 'queued' {st_check},"
+            " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            f" {entity_col}{table_constraints})"
+        )
+        c.execute("CREATE INDEX idx_si_events_status ON source_intelligence_events(status, created_at)")
+        c.execute("CREATE INDEX idx_si_events_source ON source_intelligence_events(source_id)")
+        if entity_index:
+            c.execute(entity_index)
+        for stmt in extra_indexes:
+            c.execute(stmt)
+
+
+def _recreate_quarantine(
+    db: str, *, entity_col: str, table_constraints: str = "",
+    entity_index: str | None = "CREATE INDEX idx_si_scan_quarantine_entity "
+    "ON source_index_scan_quarantine(source_entity_id)",
+    extra_indexes: tuple[str, ...] = (),
+) -> None:
+    """Drop + recreate source_index_scan_quarantine with its full V125 column set plus a customizable
+    ``source_entity_id`` column definition / table constraints / entity index."""
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys=OFF")
+        c.execute("DROP TABLE source_index_scan_quarantine")
+        c.execute(
+            "CREATE TABLE source_index_scan_quarantine ("
+            " quarantine_id TEXT PRIMARY KEY, source_root_key TEXT NOT NULL, generation_id TEXT,"
+            " origin_generation_id TEXT, source_id TEXT, rel_path TEXT NOT NULL,"
+            " failure_stage TEXT NOT NULL, error_code TEXT NOT NULL,"
+            " attempt_count INTEGER NOT NULL DEFAULT 0, first_seen_at TEXT NOT NULL,"
+            " last_seen_at TEXT NOT NULL, last_attempt_at TEXT,"
+            " status TEXT NOT NULL DEFAULT 'quarantined',"
+            " resolution_state TEXT NOT NULL DEFAULT 'unresolved', resolved_at TEXT,"
+            " last_successful_observation_at TEXT,"
+            f" {entity_col}{table_constraints})"
+        )
+        if entity_index:
+            c.execute(entity_index)
+        for stmt in extra_indexes:
+            c.execute(stmt)
+
+
+def _insert_events_keep_row(db: str) -> None:
+    # source_entity_id is set explicitly NULL (not left to a possibly-drifted column DEFAULT) so it is
+    # supplied by the reparent locator backfill, not a bad default that could not be re-keyed.
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys=OFF")
+        c.execute(
+            "INSERT INTO source_intelligence_events"
+            "(event_id, source_id, source_entity_id, event_type, status) "
+            "VALUES ('keep-ev', 's1', NULL, 'created', 'queued')"
+        )
+
+
+def _insert_quarantine_keep_row(db: str) -> None:
+    with sqlite3.connect(db) as c:
+        c.execute("PRAGMA foreign_keys=OFF")
+        c.execute(
+            "INSERT INTO source_index_scan_quarantine"
+            "(quarantine_id, source_root_key, source_id, source_entity_id, rel_path, failure_stage,"
+            " error_code, first_seen_at, last_seen_at) "
+            "VALUES ('keep-q', 'work', 's1', NULL, 'rp/keep.txt', 'stat', 'stat_failed', 't0', 't1')"
+        )
+
+
+def _keep_entity_id(db: str, table: str, pk_col: str, pk_val: str) -> object:
+    with sqlite3.connect(db) as c:
+        row = c.execute(
+            f"SELECT source_entity_id FROM {table} WHERE {pk_col}=?", (pk_val,)
+        ).fetchone()
+    return row[0] if row else "__row_absent__"
+
+
+# --- Repair matrix cells: current() is False, apply() heals to LATEST + True, row preserved ---------
+
+
+def _seed_e1_for_backfill(fresh: str) -> None:
+    """Seed one entity/source/current-locator at source_id='s1' so a non-FK row with source_id='s1'
+    backfills to entity 'E1' through the reparent locator map."""
+    _seed_entity_at_path(fresh, eid="E1", sid="s1", root="work", rel="rp/keep.txt", current=True)
+
+
+_REPAIR_EVENTS: list[tuple] = [
+    # (id, entity_col, table_constraints, entity_index_override_or_default, extra_indexes)
+    ("events_wrong_column_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(event_id)", ()),
+    ("events_unique_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE UNIQUE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)", ()),
+    ("events_partial_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id) "
+     "WHERE source_entity_id IS NOT NULL", ()),
+    ("events_column_integer_default", f"source_entity_id INTEGER DEFAULT 7 {_REF}", "",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)", ()),
+    ("events_composite_fk", "source_entity_id TEXT",
+     ", FOREIGN KEY(source_entity_id, source_id) "
+     "REFERENCES source_index_entities(source_entity_id, created_at)",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)", ()),
+    ("events_two_separate_fks", f"source_entity_id TEXT {_REF}",
+     f", FOREIGN KEY(source_entity_id) {_REF}",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)", ()),
+    ("events_correct_plus_duplicate_fk", f"source_entity_id TEXT {_REF}",
+     f", FOREIGN KEY(source_entity_id) {_REF}",
+     "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)", ()),
+]
+
+
+@pytest.mark.parametrize(
+    "case_id, entity_col, table_constraints, entity_index, extra_indexes",
+    _REPAIR_EVENTS, ids=[c[0] for c in _REPAIR_EVENTS],
+)
+def test_r8_events_drift_repaired(
+    fresh, case_id, entity_col, table_constraints, entity_index, extra_indexes
+) -> None:
+    _seed_e1_for_backfill(fresh)
+    _recreate_events(
+        fresh, entity_col=entity_col, table_constraints=table_constraints,
+        entity_index=entity_index, extra_indexes=extra_indexes,
+    )
+    _insert_events_keep_row(fresh)
+    assert _current(fresh) is False
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _current(fresh) is True
+    # row preserved and backfilled to the seeded entity through the locator map.
+    assert _keep_entity_id(fresh, "source_intelligence_events", "event_id", "keep-ev") == "E1"
+    assert _fk_check(fresh) == []
+
+
+_REPAIR_QUARANTINE: list[tuple] = [
+    ("quarantine_wrong_column_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE INDEX idx_si_scan_quarantine_entity "
+     "ON source_index_scan_quarantine(quarantine_id)", ()),
+    ("quarantine_unique_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE UNIQUE INDEX idx_si_scan_quarantine_entity "
+     "ON source_index_scan_quarantine(source_entity_id)", ()),
+    ("quarantine_partial_index", f"source_entity_id TEXT {_REF}", "",
+     "CREATE INDEX idx_si_scan_quarantine_entity "
+     "ON source_index_scan_quarantine(source_entity_id) WHERE source_entity_id IS NOT NULL", ()),
+]
+
+
+@pytest.mark.parametrize(
+    "case_id, entity_col, table_constraints, entity_index, extra_indexes",
+    _REPAIR_QUARANTINE, ids=[c[0] for c in _REPAIR_QUARANTINE],
+)
+def test_r8_quarantine_drift_repaired(
+    fresh, case_id, entity_col, table_constraints, entity_index, extra_indexes
+) -> None:
+    _seed_e1_for_backfill(fresh)
+    _recreate_quarantine(
+        fresh, entity_col=entity_col, table_constraints=table_constraints,
+        entity_index=entity_index, extra_indexes=extra_indexes,
+    )
+    _insert_quarantine_keep_row(fresh)
+    assert _current(fresh) is False
+    assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
+    assert _current(fresh) is True
+    assert _keep_entity_id(fresh, "source_index_scan_quarantine", "quarantine_id", "keep-q") == "E1"
+    assert _fk_check(fresh) == []
+
+
+# --- Fail-closed matrix cells: current() is False, apply() raises, rollback preserves schema + data -
+
+
+_FAIL_EVENTS: list[tuple] = [
+    ("events_fk_on_delete_cascade",
+     f"source_entity_id TEXT {_REF} ON DELETE CASCADE", "", None),
+    ("events_fk_deferrable_initially_deferred",
+     f"source_entity_id TEXT {_REF} DEFERRABLE INITIALLY DEFERRED", "", None),
+    ("events_fk_deferrable_initially_immediate",
+     f"source_entity_id TEXT {_REF} DEFERRABLE INITIALLY IMMEDIATE", "", None),
+    ("events_table_level_fk_same_endpoint",
+     "source_entity_id TEXT", f", FOREIGN KEY(source_entity_id) {_REF}", None),
+    ("events_extra_entity_index", f"source_entity_id TEXT {_REF}", "",
+     ("CREATE INDEX idx_ev_extra_entity ON source_intelligence_events(source_entity_id)",)),
+    ("events_expression_entity_index", f"source_entity_id TEXT {_REF}", "",
+     ("CREATE INDEX idx_ev_expr_entity ON source_intelligence_events((source_entity_id || ''))",)),
+]
+
+
+@pytest.mark.parametrize(
+    "case_id, entity_col, table_constraints, extra_indexes",
+    _FAIL_EVENTS, ids=[c[0] for c in _FAIL_EVENTS],
+)
+def test_r8_events_drift_fails_closed(
+    fresh, case_id, entity_col, table_constraints, extra_indexes
+) -> None:
+    _recreate_events(
+        fresh, entity_col=entity_col, table_constraints=table_constraints,
+        extra_indexes=extra_indexes or (),
+    )
+    _insert_events_keep_row(fresh)
+    assert _current(fresh) is False
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+    # rollback preserved the drift + the seeded row.
+    assert _current(fresh) is False
+    assert _keep_entity_id(fresh, "source_intelligence_events", "event_id", "keep-ev") != "__row_absent__"
+
+
+_FAIL_QUARANTINE: list[tuple] = [
+    ("quarantine_fk_on_delete_cascade",
+     f"source_entity_id TEXT {_REF} ON DELETE CASCADE", "", None),
+    ("quarantine_fk_deferrable_initially_deferred",
+     f"source_entity_id TEXT {_REF} DEFERRABLE INITIALLY DEFERRED", "", None),
+    ("quarantine_fk_deferrable_initially_immediate",
+     f"source_entity_id TEXT {_REF} DEFERRABLE INITIALLY IMMEDIATE", "", None),
+    ("quarantine_column_integer_default", f"source_entity_id INTEGER DEFAULT 7 {_REF}", "", None),
+    ("quarantine_composite_fk", "source_entity_id TEXT",
+     ", FOREIGN KEY(source_entity_id, source_id) "
+     "REFERENCES source_index_entities(source_entity_id, created_at)", None),
+    ("quarantine_two_separate_fks", f"source_entity_id TEXT {_REF}",
+     f", FOREIGN KEY(source_entity_id) {_REF}", None),
+    ("quarantine_correct_plus_duplicate_fk", f"source_entity_id TEXT {_REF}",
+     f", FOREIGN KEY(source_entity_id) {_REF}", None),
+    ("quarantine_table_level_fk_same_endpoint",
+     "source_entity_id TEXT", f", FOREIGN KEY(source_entity_id) {_REF}", None),
+    ("quarantine_extra_entity_index", f"source_entity_id TEXT {_REF}", "",
+     ("CREATE INDEX idx_q_extra_entity ON source_index_scan_quarantine(source_entity_id)",)),
+    ("quarantine_expression_entity_index", f"source_entity_id TEXT {_REF}", "",
+     ("CREATE INDEX idx_q_expr_entity ON source_index_scan_quarantine((source_entity_id || ''))",)),
+]
+
+
+@pytest.mark.parametrize(
+    "case_id, entity_col, table_constraints, extra_indexes",
+    _FAIL_QUARANTINE, ids=[c[0] for c in _FAIL_QUARANTINE],
+)
+def test_r8_quarantine_drift_fails_closed(
+    fresh, case_id, entity_col, table_constraints, extra_indexes
+) -> None:
+    _recreate_quarantine(
+        fresh, entity_col=entity_col, table_constraints=table_constraints,
+        extra_indexes=extra_indexes or (),
+    )
+    _insert_quarantine_keep_row(fresh)
+    assert _current(fresh) is False
+    with pytest.raises((RuntimeError, sqlite3.OperationalError)):
+        SQLiteMigrator(db_path=fresh).apply()
+    assert _current(fresh) is False
+    assert _keep_entity_id(
+        fresh, "source_index_scan_quarantine", "quarantine_id", "keep-q"
+    ) != "__row_absent__"
+
+
+# --- Unrelated non-source_entity_id index is NOT policed (R8-AC-002C) -------------------------------
+
+
+def test_r8_unrelated_index_ignored_events(fresh) -> None:
+    with sqlite3.connect(fresh) as c:
+        c.execute(
+            "CREATE INDEX idx_ev_unrelated ON source_intelligence_events(created_at)"
+        )
+    assert _current(fresh) is True  # extra index on a non-entity column does not fail parity
+
+
+def test_r8_unrelated_index_ignored_quarantine(fresh) -> None:
+    with sqlite3.connect(fresh) as c:
+        c.execute(
+            "CREATE INDEX idx_q_unrelated ON source_index_scan_quarantine(status)"
+        )
+    assert _current(fresh) is True
+
+
+# --- FK-clause parser fails closed on an unparseable/ambiguous entity FK (R8-AC-002E) ---------------
+
+
+def test_r8_fk_parser_rejects_ambiguous_duplicate_entity_fk() -> None:
+    sql = (
+        "CREATE TABLE t (source_entity_id TEXT REFERENCES x(source_entity_id), "
+        "FOREIGN KEY(source_entity_id) REFERENCES x(source_entity_id))"
+    )
+    with pytest.raises(V128OracleError):
+        migrator_module._v128_parse_fk_clause_signature(sql)
+
+
+def test_r8_fk_parser_extracts_deferrability_and_kind() -> None:
+    sig = migrator_module._v128_parse_fk_clause_signature(
+        "CREATE TABLE t (source_entity_id TEXT REFERENCES x(source_entity_id) "
+        "ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)"
+    )
+    assert sig.declaration_kind == "column"
+    assert sig.source_columns == ("source_entity_id",)
+    assert sig.on_delete == "CASCADE"
+    assert sig.deferrability == "deferrable"
+    assert sig.initially == "deferred"
+
+
+# --- Atomic, deeply-immutable reference bundle (R8-AC-001 / 001A / 001B) ----------------------------
+
+
+def test_r8_reference_published_is_immutable() -> None:
+    migrator_module._V128_REFERENCE = None
+    ref = SQLiteMigrator._v128_canonical_schema()
+    assert ref is not None
+    with pytest.raises(TypeError):  # MappingProxyType is read-only
+        ref.owned_schema["injected"] = "x"  # type: ignore[index]
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        ref.owned_schema = {}  # type: ignore[misc]
+    contract = next(iter(ref.nonfk_contracts.values()))
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        contract.column = ()  # type: ignore[misc]
+    with pytest.raises(TypeError):
+        ref.nonfk_contracts["injected"] = contract  # type: ignore[index]
+
+
+def test_r8_atomic_build_failure_leaves_cache_unset_then_rebuilds() -> None:
+    migrator_module._V128_REFERENCE = None
+    orig = migrator_module._v128_extract_nonfk_contract
+
+    def boom(conn, table):  # noqa: ANN001, ANN202
+        raise RuntimeError("injected_midbuild_failure")
+
+    migrator_module._v128_extract_nonfk_contract = boom
+    try:
+        with pytest.raises(RuntimeError, match="injected_midbuild_failure"):
+            SQLiteMigrator._v128_canonical_schema()
+        # published cache stays unset on failure.
+        assert migrator_module._V128_REFERENCE is None
+    finally:
+        migrator_module._v128_extract_nonfk_contract = orig
+    # the next call rebuilds cleanly.
+    ref = SQLiteMigrator._v128_canonical_schema()
+    assert ref is not None and dict(ref.owned_schema)
+
+
+def test_r8_failure_cleanup_removes_builder_identity_and_releases_lock() -> None:
+    migrator_module._V128_REFERENCE = None
+    orig = migrator_module._v128_extract_nonfk_contract
+
+    def boom(conn, table):  # noqa: ANN001, ANN202
+        raise RuntimeError("injected_cleanup_probe")
+
+    migrator_module._v128_extract_nonfk_contract = boom
+    try:
+        with pytest.raises(RuntimeError, match="injected_cleanup_probe"):
+            SQLiteMigrator._v128_canonical_schema()
+        assert migrator_module._V128_REFERENCE is None
+        # thread-local builder identity removed via ``del`` (not a lingering closed connection).
+        assert not hasattr(migrator_module._V128_BUILD_STATE, "conn")
+        # the single-flight lock was released.
+        assert not migrator_module._V128_BUILD_LOCK.locked()
+    finally:
+        migrator_module._v128_extract_nonfk_contract = orig
+    assert SQLiteMigrator._v128_canonical_schema() is not None
+
+
+# --- Connection-bound, single-flight, reentrancy-safe bootstrap (R8-AC-003 / 004) ------------------
+
+
+def test_r8_two_thread_single_flight_blocks_non_builder(fresh, monkeypatch) -> None:
+    # A malformed DB (owned-table drift) for the validating (non-builder) thread.
+    mal = str(Path(fresh).with_name("mal.sqlite"))
+    shutil.copy(fresh, mal)
+    with sqlite3.connect(mal) as c:
+        c.execute("DROP TABLE source_index_move_signals")
+
+    migrator_module._V128_REFERENCE = None
+    bootstrap_threads: list[int] = []
+    orig_boot = SQLiteMigrator._v128_schema_structural_ok
+
+    def rec_boot(conn):  # noqa: ANN001, ANN202
+        bootstrap_threads.append(threading.get_ident())
+        return orig_boot(conn)
+
+    monkeypatch.setattr(SQLiteMigrator, "_v128_schema_structural_ok", staticmethod(rec_boot))
+
+    builder_parked = threading.Event()
+    release = threading.Event()
+
+    def barrier() -> None:
+        builder_parked.set()
+        assert release.wait(10)
+
+    migrator_module._V128_BUILD_BARRIER = barrier
+
+    result: dict[str, object] = {}
+
+    def builder() -> None:
+        result["ref"] = SQLiteMigrator._v128_canonical_schema()
+
+    def validator() -> None:
+        c = get_connection(mal)
+        try:
+            result["val"] = SQLiteMigrator._v128_schema_current(c)
+        finally:
+            c.close()
+
+    bt = threading.Thread(target=builder)
+    bt.start()
+    assert builder_parked.wait(10)  # builder holds the lock + thread-local, parked in the barrier
+    vt = threading.Thread(target=validator)
+    vt.start()
+    vt.join(1.0)
+    try:
+        assert vt.is_alive()  # the non-builder caller BLOCKS on the single-flight lock (no bootstrap)
+    finally:
+        release.set()
+        bt.join(10)
+        vt.join(10)
+    assert result["ref"] is not None
+    assert result["val"] is False  # once published, the malformed DB is rejected
+    assert set(bootstrap_threads) == {bt.ident}  # ONLY the builder invoked the bootstrap
+
+
+def test_r8_same_thread_reentrancy_fails_closed_without_second_build(fresh) -> None:
+    migrator_module._V128_REFERENCE = None
+    other = get_connection(fresh)  # a DIFFERENT connection than the builder's scratch conn
+    seen: list[str] = []
+
+    def barrier() -> None:
+        # Runs synchronously ON the builder thread, mid-build, with the thread-local conn set.
+        try:
+            SQLiteMigrator._v128_schema_current(other)
+            seen.append("no_raise")
+        except V128OracleError as exc:
+            seen.append(str(exc))
+
+    migrator_module._V128_BUILD_BARRIER = barrier
+    try:
+        ref = SQLiteMigrator._v128_canonical_schema()
+    finally:
+        migrator_module._V128_BUILD_BARRIER = None
+        other.close()
+
+    # (5) dedicated reentrancy error; (6) barrier ran exactly once -> NO second scratch construction;
+    # (8) exactly one reference published; the original authorized build completed.
+    assert seen == ["v128_reference_build_reentrancy"]
+    assert ref is not None
+    assert migrator_module._V128_REFERENCE is ref
