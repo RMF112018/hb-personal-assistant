@@ -54,12 +54,26 @@ _V128_BUILD_STATE = threading.local()
 _V128_BUILD_BARRIER: "Callable[[], None] | None" = None
 # ADR-003 R10 §R10.6.2 — the 128-reference cache. The V129 attribution oracle compares the live
 # V128-owned surface against a reference built by the REAL migrator STOPPED at version 128 (the
+# private capability-gated ``_apply_reference_build_stop_at_128`` route — F-001; there is NO public
 # ``target_version`` seam on ``apply()``), so the reference-derived V129 delta (129 − 128) is derived,
 # never hand-listed. Cached once per process (single-flight) alongside the head (129) reference in
 # ``_V128_REFERENCE``. Its own lock so a concurrent 128-build never blocks on the 129-build lock; the
 # two builds are sequential on any one thread (never nested) so they safely share ``_V128_BUILD_STATE``.
 _V128_REFERENCE_128: "V128Reference | None" = None
 _V128_BUILD_LOCK_128 = threading.Lock()
+
+
+class _V128ReferenceBuildCapability:
+    """Unforgeable private capability that authorizes the internal stop-at-128 reference-build route
+    (ADR-003 R10 §R10.6.2 / IMPL-V129-R2-F-001). A single module-private instance
+    (``_V128_REFERENCE_BUILD_CAPABILITY``) exists; the route verifies object identity against it AND
+    requires the exact builder-state connection, so the stop-at-128 seam is unreachable through the
+    public ``apply`` surface (which exposes NO target-version selection)."""
+
+    __slots__ = ()
+
+
+_V128_REFERENCE_BUILD_CAPABILITY = _V128ReferenceBuildCapability()
 
 
 class V128OracleError(RuntimeError):
@@ -8403,9 +8417,9 @@ class SQLiteMigrator:
         conn: sqlite3.Connection | None = None,
         authorization: MigrationAuthorization | None = None,
         require_backup_receipt: bool = False,
-        target_version: int = LATEST_SCHEMA_VERSION,
     ) -> int:
-        """Apply all pending migrations (idempotent). Returns current schema version.
+        """Apply all pending migrations to ``LATEST_SCHEMA_VERSION`` (idempotent). Returns the current
+        schema version.
 
         NF-F-001 migration-ownership guard: every migration of a managed database MUST carry an
         explicit ``authorization`` bound to the actual opened target; it is validated (and, for a
@@ -8413,28 +8427,50 @@ class SQLiteMigrator:
         provided the caller owns it (it must have no pending transaction — RC-3); otherwise apply()
         opens and deterministically closes its own connection.
 
-        ``target_version`` is a controlled stop-at-version seam (ADR-003 R10 §R10.6.2): it defaults
-        to ``LATEST_SCHEMA_VERSION`` (the only production value) and, when set lower, stops after the
-        given version's block. Its sole supported non-default value is ``128`` — used to build the
-        V128 attribution reference on a FRESH scratch connection via the REAL migrator (no hand-replay,
-        no ``LATEST_SCHEMA_VERSION`` monkeypatch). It never gates a managed/production migration.
+        IMPL-V129-R2-F-001: the PUBLIC ``apply`` exposes NO target-version selection — it always
+        migrates to ``LATEST_SCHEMA_VERSION`` (a legacy ``apply(target_version=...)`` / an extra
+        positional target argument fails with ``TypeError`` at the API boundary). The V128 attribution
+        reference is built by the private capability-gated ``_apply_reference_build_stop_at_128`` route
+        (callable only by ``_v128_canonical_schema_128``), never through this surface.
         """
         if conn is not None:
             return self._apply_on_connection(
                 conn, authorization, require_backup_receipt, owned=False,
-                target_version=target_version,
             )
         owned_conn = get_connection(self._db_path)
         try:
             return self._apply_on_connection(
                 owned_conn, authorization, require_backup_receipt, owned=True,
-                target_version=target_version,
             )
         finally:
             # Deterministic WAL-connection closure: a left-open WAL handle only checkpoints on GC,
             # non-deterministically flushing -wal into the main file and perturbing byte-compare
             # readers. Close the owned connection exactly once, here.
             owned_conn.close()
+
+    def _apply_reference_build_stop_at_128(
+        self, conn: sqlite3.Connection, *, capability: object
+    ) -> int:
+        """Private capability-gated stop-at-128 reference-build route (ADR-003 R10 §R10.6.2 /
+        IMPL-V129-R2-F-001). NOT part of the public migration surface: it is the ONLY way to run the
+        real migrator stopped at version 128, and it is callable ONLY with the module-private
+        ``_V128_REFERENCE_BUILD_CAPABILITY`` sentinel AND on the exact builder-state connection object.
+
+        It traverses the SAME guarded migration transaction + migration blocks as ``apply`` (opened-
+        target identity, guard-FD lifecycle, transaction-ownership, audit), stopping ONLY before V129
+        realization and the version-129 ledger insertion — NOT a materially separate migration. Before
+        any DDL (in ``_run_guarded_migration``) it additionally requires: scratch/dev storage, origin
+        version 0, a fresh empty DB, no pending transaction, the exact builder-state connection object,
+        and NO authorization object.
+        """
+        if capability is not _V128_REFERENCE_BUILD_CAPABILITY:
+            raise V128OracleError("v128_reference_build_capability_invalid")
+        builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+        if builder_conn is None or conn is not builder_conn:
+            raise V128OracleError("v128_reference_build_requires_builder_connection")
+        return self._apply_on_connection(
+            conn, None, False, owned=False, _reference_build_capability=capability,
+        )
 
     def _apply_on_connection(
         self,
@@ -8443,7 +8479,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
-        target_version: int = LATEST_SCHEMA_VERSION,
+        _reference_build_capability: object | None = None,
     ) -> int:
         """Establish the opened-target identity (retaining a read-only guard FD) and run the guarded
         migration, deterministically closing the guard FD on every path (NF-AUD-005)."""
@@ -8455,7 +8491,7 @@ class SQLiteMigrator:
         try:
             return self._run_guarded_migration(
                 conn, opened, authorization, require_backup_receipt, owned=owned,
-                target_version=target_version,
+                _reference_build_capability=_reference_build_capability,
             )
         finally:
             if opened.guard_fd is not None:
@@ -8469,7 +8505,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
-        target_version: int = LATEST_SCHEMA_VERSION,
+        _reference_build_capability: object | None = None,
     ) -> int:
         """Validate authorization against the opened identity, run the migration body in one atomic
         transaction, and revalidate identity at the commit boundary.
@@ -8489,6 +8525,14 @@ class SQLiteMigrator:
 
         _op = authorization.operation.value if authorization is not None else None
         origin = self._current_version_on(conn)
+
+        # IMPL-V129-R2-F-001: the private stop-at-128 reference-build route (the ONLY caller that
+        # passes a capability) is authenticated by unforgeable sentinel identity — never a generic
+        # Boolean. When present the migration realizes the V128 core ONLY (see ``apply_v129`` below);
+        # when absent this is an ordinary production/self-heal apply() to LATEST_SCHEMA_VERSION.
+        stop_at_128 = _reference_build_capability is not None
+        if stop_at_128 and _reference_build_capability is not _V128_REFERENCE_BUILD_CAPABILITY:
+            raise V128OracleError("v128_reference_build_capability_invalid")
 
         try:
             validate_authorization(
@@ -8521,6 +8565,32 @@ class SQLiteMigrator:
 
         if authorization is not None:
             assert_origin_version(authorization, origin)
+
+        if stop_at_128:
+            # IMPL-V129-R2-F-001 pre-DDL preconditions for the private reference-build route, enforced
+            # BEFORE any DDL: exact builder-state connection identity, NO authorization object,
+            # scratch/dev storage, origin version 0, no pending transaction, and a fresh empty DB.
+            from ..config.db_storage_guard import DatabaseStorageClass  # noqa: PLC0415
+
+            builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+            if builder_conn is None or conn is not builder_conn:
+                raise V128OracleError("v128_reference_build_requires_builder_connection")
+            if authorization is not None:
+                raise V128OracleError("v128_reference_build_forbids_authorization")
+            if opened.storage_class not in (
+                DatabaseStorageClass.DISPOSABLE_REHEARSAL,
+                DatabaseStorageClass.EXPLICIT_DEVELOPMENT,
+            ):
+                raise V128OracleError("v128_reference_build_requires_scratch_storage")
+            if origin != 0:
+                raise V128OracleError("v128_reference_build_requires_fresh_origin")
+            if conn.in_transaction:
+                raise V128OracleError("v128_reference_build_forbids_open_transaction")
+            table_count = conn.execute(
+                "SELECT count(*) FROM sqlite_master WHERE type='table'"
+            ).fetchone()[0]
+            if int(table_count) != 0:
+                raise V128OracleError("v128_reference_build_requires_empty_db")
 
         emit_migration_event(
             "migration_started",
@@ -10213,46 +10283,80 @@ class SQLiteMigrator:
             # still not met afterwards it raises fail-closed (whole-transaction rollback). Fresh-migrate
             # and idempotent-no-op behavior are preserved: a fresh DB rebuilds once; a healthy V128 DB
             # returns True and does nothing.
-            # The V129 additive layer is applied only when the migration target reaches 129 (the
-            # production default). ``target_version == 128`` is the controlled stop-at-128 seam used
-            # ONLY to build the reference-derived V128 attribution reference on a fresh scratch
-            # connection (ADR-003 R10 §R10.6.2); it realizes the V128 core alone.
-            apply_v129 = target_version >= 129
+            # The V129 additive layer is applied on every ordinary apply() (to LATEST_SCHEMA_VERSION);
+            # ``stop_at_128`` (the private capability-gated reference-build route) realizes the V128
+            # core ALONE, to build the reference-derived V128 attribution reference on a fresh scratch
+            # connection (ADR-003 R10 §R10.6.2). ``in_reference_build`` (the exact builder-state
+            # connection — the 129 head-reference build) BYPASSES the reference-derived classifier that
+            # would otherwise recurse into this very reference build (the nonrecursive canonical-
+            # reference bootstrap).
+            apply_v129 = not stop_at_128
+            _builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+            in_reference_build = _builder_conn is not None and conn is _builder_conn
             if not self._v128_schema_current(conn):
                 self._rebuild_v128_permanent_identity(conn)
-                if apply_v129:
-                    # --- V129: observation re-homing + serving-trust gate + move-signal disposition --
-                    # (ADR-003 R8 §4/§7/§8/§9 + R10 §R10.1/§R10.2). V129 is forward-only, immutable-
-                    # additive (nullable ADD COLUMN + one new index) on the two already-V128-owned
-                    # identity tables, and RIDES the V128 byte-exact permanent-identity oracle rather
-                    # than introducing a second authority. The canonical reference migrates to
-                    # LATEST_SCHEMA_VERSION (=129), so its locators/move_signals CREATE SQL already
-                    # carries the V129 columns/index and ``_v128_schema_current`` DETECTS a dropped V129
-                    # column (§9.1).
+                if apply_v129 and in_reference_build:
+                    # --- Reference-build MODE (ADR-003 R10 nonrecursive bootstrap) ----------------
+                    # Building the 129 HEAD reference on the exact builder-state connection. The
+                    # reference-derived classifier/repair below needs the 129 reference, so on the
+                    # builder connection it would recurse; reference-build mode therefore BYPASSES
+                    # classification and runs the SAME canonical V129 realization DDL production uses on
+                    # a fresh empty scratch DB. Unreachable outside the exact builder-state connection.
+                    self._v129_ensure_locator_observation_columns(conn)
+                    self._v129_ensure_move_signal_disposition_columns(conn)
+                    self._v129_ensure_reconcile_index(conn)
+                    if not self._v128_schema_current(conn):
+                        # On the builder connection the attribution oracle would recurse into a
+                        # reference build; fail closed with a plain reason instead.
+                        raise RuntimeError("v128_schema_parity_failed")
+                elif apply_v129:
+                    # --- Normal/repair MODE (live DB) --------------------------------------------
+                    # (ADR-003 R8 §4/§7/§8/§9 + R10 §R10.1/§R10.2/§R10.6.2). V129 is forward-only,
+                    # immutable-additive (nullable ADD COLUMN + one new index) on the two already-V128-
+                    # owned identity tables and RIDES the V128 byte-exact oracle.
                     #
+                    # IMPL-V129-R2-F-002: the canonical V129 delta (129 − 128) is REFERENCE-DERIVED
+                    # from the two authenticated references with COMPLETE normalized column
+                    # declarations, and it drives BOTH the order-aware prefix classifier AND the
+                    # additive repair — never the hand-maintained ``_V129_*_COLS`` tuples. If the delta
+                    # is unbuildable/underivable the migration fails closed on the V128 layer.
+                    try:
+                        ref128 = self._v128_canonical_schema_128()
+                        ref129 = self._v128_canonical_schema()
+                        loc_delta = self._v129_derive_table_delta(
+                            ref128, ref129, "source_index_locators"
+                        )
+                        ms_delta = self._v129_derive_table_delta(
+                            ref128, ref129, "source_index_move_signals"
+                        )
+                    except Exception as exc:  # noqa: BLE001 — underivable delta → fail closed (V128)
+                        raise RuntimeError("v128_schema_parity_failed") from exc
+                    loc_names = tuple(self._v129_seg_leading_ident(seg) for seg in loc_delta)
+                    ms_names = tuple(self._v129_seg_leading_ident(seg) for seg in ms_delta)
                     # F-001 (R10 §R10.1) — ORDER-AWARE PREFIX PREFLIGHT: classify BOTH V129-touched
-                    # tables from their ACTUAL ``PRAGMA table_info`` column order BEFORE any ADD COLUMN.
-                    # The prefix guard yields ONLY a classification and assigns NO reason code; on the
-                    # non-prefix (``nonrepairable_v129_shape``) path it makes NO schema change (declines
-                    # repair). D1's additive trailing-suffix repair runs ONLY when BOTH tables are a
-                    # canonical prefix, so a fresh rebuild AND an in-place V128→V129 upgrade converge to
-                    # the byte-identical shape (§9.4) and no out-of-order/partial column is ever appended
-                    # on the non-repairable path. No V128 historical DDL is edited.
+                    # tables from their ACTUAL ``PRAGMA table_info`` column order BEFORE any ADD COLUMN,
+                    # using the reference-DERIVED delta column names. The prefix guard yields ONLY a
+                    # classification and assigns NO reason code; on the non-prefix
+                    # (``nonrepairable_v129_shape``) path it makes NO schema change (declines repair).
                     loc_cls = self._v129_classify_trailing_suffix(
-                        conn, "source_index_locators", _V129_LOCATOR_COLS
+                        conn, "source_index_locators", loc_names
                     )
                     ms_cls = self._v129_classify_trailing_suffix(
-                        conn, "source_index_move_signals", _V129_MOVE_SIGNAL_COLS
+                        conn, "source_index_move_signals", ms_names
                     )
                     if (
                         loc_cls == "repairable_trailing_suffix"
                         and ms_cls == "repairable_trailing_suffix"
                     ):
-                        # D1 (unchanged): additive ADD COLUMN of the canonical trailing suffix, in
-                        # canonical order, on both tables (present V129 columns are a canonical prefix,
-                        # so only the missing trailing suffix is appended → byte-identical head CREATE).
-                        self._v129_ensure_locator_observation_columns(conn)
-                        self._v129_ensure_move_signal_disposition_columns(conn)
+                        # D1 additive trailing-suffix repair, driven by the reference-DERIVED COMPLETE
+                        # column declarations (F-002). Present V129 columns are a canonical prefix, so
+                        # only the missing trailing suffix is appended → byte-identical head CREATE.
+                        self._v129_repair_trailing_from_delta(
+                            conn, "source_index_locators", loc_names, loc_delta
+                        )
+                        self._v129_repair_trailing_from_delta(
+                            conn, "source_index_move_signals", ms_names, ms_delta
+                        )
                     # Reconcile-index repair (DROP+recreate) — preserved unchanged from R9 (§R10.1);
                     # a separate repair, always run (a same-name index that drifted is REPAIRED).
                     self._v129_ensure_reconcile_index(conn)
@@ -10266,7 +10370,7 @@ class SQLiteMigrator:
                         # failed``, never a pure-V129 reason before V128 correctness is positively proven.
                         raise RuntimeError(self._v129_attribute_layer(conn))
                 else:
-                    # Controlled stop-at-128 reference-build seam (R10 §R10.6.2 / the V128-reference
+                    # Private stop-at-128 reference-build seam (R10 §R10.6.2 / the V128-reference
                     # construction acceptance criterion): realize the V128 core ONLY (no V129 additive
                     # layer), gated by the same enumerative bootstrap the reference build already rides
                     # (``_v128_core_structural_ok``, minus the V129 additions). Never a production path.
@@ -11264,6 +11368,67 @@ class SQLiteMigrator:
         return "nonrepairable_v129_shape"
 
     @staticmethod
+    def _v129_derive_table_delta(
+        ref128: "V128Reference", ref129: "V128Reference", table: str
+    ) -> "list[str]":
+        """IMPL-V129-R2-F-002 — derive the ordered per-table V129 delta (129 − 128) as the trailing-
+        additive block of COMPLETE normalized column declarations, from the two AUTHENTICATED
+        references (ADR-003 R10 §R10.6.2). Each returned segment is a complete normalized column
+        declaration (name + ordered position, type + nullability, default + PK, complete column-level
+        CHECK, complete REFERENCES + FK actions) — exactly as the real migrator realized it, never a
+        hand-listed name.
+
+        It requires the table's V128 CREATE segments to be an EXACT ordered prefix of its V129 segments
+        (identical header; no modified / removed / reordered V128 segment) and the trailing delta to be
+        one-or-more DISTINCT COLUMN declarations (no table-constraint segment, no duplicate identifier,
+        no collision with a V128 column). Raises ``V128OracleError`` if the delta is not cleanly
+        trailing-additive, so the caller fails closed with ``v128_schema_parity_failed``."""
+        key = f"table:{table}"
+        ref128_sql = dict(ref128.owned_schema).get(key)
+        ref129_sql = dict(ref129.owned_schema).get(key)
+        if not ref128_sql or not ref129_sql:
+            raise V128OracleError("v128_reference_delta_missing_table")
+        ref128_header, ref128_segs = SQLiteMigrator._v129_split_create(ref128_sql)
+        ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
+        if ref129_header != ref128_header:
+            raise V128OracleError("v128_reference_delta_header_drift")
+        if ref129_segs[: len(ref128_segs)] != ref128_segs:
+            raise V128OracleError("v128_reference_delta_v128_core_drift")
+        delta_segs = ref129_segs[len(ref128_segs):]
+        if not delta_segs:
+            raise V128OracleError("v128_reference_delta_empty")
+        delta_names = [SQLiteMigrator._v129_seg_leading_ident(seg) for seg in delta_segs]
+        constraint_kw = {"check", "foreign", "unique", "primary", "constraint"}
+        if any(name == "" or name in constraint_kw for name in delta_names):
+            raise V128OracleError("v128_reference_delta_not_all_columns")
+        if len(set(delta_names)) != len(delta_names):
+            raise V128OracleError("v128_reference_delta_duplicate_column")
+        v128_names = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
+        if set(delta_names) & v128_names:
+            raise V128OracleError("v128_reference_delta_collides_with_v128")
+        return delta_segs
+
+    @staticmethod
+    def _v129_repair_trailing_from_delta(
+        conn: sqlite3.Connection,
+        table: str,
+        delta_names: "tuple[str, ...]",
+        delta_segs: "list[str]",
+    ) -> None:
+        """IMPL-V129-R2-F-002 — D1 additive trailing-suffix repair driven by the reference-DERIVED
+        COMPLETE column declarations (ADR-003 R10 §R10.1 D1). ``delta_segs`` are the ordered complete
+        normalized declarations of the reference-derived V129 delta (129 − 128); each missing trailing
+        column is appended via ``ALTER TABLE ... ADD COLUMN`` using its derived declaration VERBATIM
+        (parity-guarded — a column already present is skipped). Because the declarations are derived
+        from the head (129) reference the real migrator built, re-adding them reproduces the byte-
+        identical head CREATE SQL. Only ever called when the order-aware prefix guard classified the
+        table ``repairable_trailing_suffix`` (the present V129 columns are a canonical prefix)."""
+        present = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        for name, seg in zip(delta_names, delta_segs, strict=True):
+            if name and name not in present:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {seg}")
+
+    @staticmethod
     def _v129_attribute_layer(conn: sqlite3.Connection) -> str:
         """F-002 reference-derived exact-V128-core attribution oracle (ADR-003 R10 §R10.2/§R10.3/
         §R10.6.2). Invoked SOLELY after D3 byte-exact detection has failed AND the F-001 repair has not
@@ -11362,30 +11527,64 @@ class SQLiteMigrator:
     def _v129_table_v128_core_matches(
         live_sql: "str | None", ref128_sql: "str | None", ref129_sql: "str | None"
     ) -> bool:
-        """Project the reference-derived V129 columns out of one live V129-touched table and compare the
-        remaining V128 core to ``ref128`` (ADR-003 R10 §R10.3). The V129 delta column names are derived
-        as ``leading-idents(ref129) − leading-idents(ref128)`` (reference-derived, not hand-listed);
-        those columns are removed from the live table by name, order-preserving, and the result must
-        equal ``ref128`` (ordered top-level segments + table header) EXACTLY."""
+        """IMPL-V129-R2-F-003 — prove the ref129→ref128 reference relationship BEFORE the live
+        comparison, then project the reference-derived V129 delta out of one live V129-touched table
+        and compare the remaining V128 core to ``ref128`` (ADR-003 R10 §R10.3). Returns True ONLY when
+        every check holds:
+
+          1. ref129's header equals ref128's, and ref128's ordered segments are an EXACT prefix of
+             ref129's — so every ref129-vs-ref128 difference in this touched table is an ADDED trailing
+             V129 column, never a modified / removed / reordered / unexplained V128 segment.
+          2. the trailing delta is one-or-more DISTINCT column identifiers, none colliding with a V128
+             column (a duplicated / malformed delta identifier fails closed).
+          3. projecting the derived delta OUT of ref129 reduces it to ref128 EXACTLY (header + ordered
+             segments).
+          4. projecting the SAME delta out of the LIVE table (order-preserving, by name) equals ref128
+             (header + ordered segments) EXACTLY.
+
+        Any failure returns False → the caller attributes ``v128_schema_parity_failed`` (a pure-V129
+        verdict is permitted only after exact V128 correctness is positively proven)."""
         if not live_sql or not ref128_sql or not ref129_sql:
             return False
         ref128_header, ref128_segs = SQLiteMigrator._v129_split_create(ref128_sql)
-        _ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
+        ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
         live_header, live_segs = SQLiteMigrator._v129_split_create(live_sql)
-        ref128_idents = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
-        delta_names = {
-            SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref129_segs
-        } - ref128_idents
-        delta_names.discard("")
-        if not delta_names:
-            # A V129-touched table with no derivable V129 delta is an ambiguous reference → fail closed.
+        # (1) ref128 must be an exact ordered prefix of ref129 (same header, no modified/removed/
+        # reordered/unexplained V128 segment in ref129's touched table).
+        if ref129_header != ref128_header:
             return False
-        projected = [
+        if ref129_segs[: len(ref128_segs)] != ref128_segs:
+            return False
+        # (2) the trailing delta is one-or-more DISTINCT COLUMN identifiers, disjoint from V128 (a
+        # table-constraint / malformed / empty leading identifier in the delta region fails closed).
+        delta_segs = ref129_segs[len(ref128_segs):]
+        delta_names_list = [SQLiteMigrator._v129_seg_leading_ident(seg) for seg in delta_segs]
+        _constraint_kw = {"check", "foreign", "unique", "primary", "constraint"}
+        if not delta_names_list or any(
+            name == "" or name in _constraint_kw for name in delta_names_list
+        ):
+            return False
+        if len(set(delta_names_list)) != len(delta_names_list):
+            return False  # duplicated delta identifier
+        delta_names = set(delta_names_list)
+        ref128_idents = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
+        if delta_names & ref128_idents:
+            return False  # a delta name collides with a V128 column
+        # (3) projecting the derived delta out of ref129 must reduce it to ref128 EXACTLY.
+        ref129_projected = [
+            seg
+            for seg in ref129_segs
+            if SQLiteMigrator._v129_seg_leading_ident(seg) not in delta_names
+        ]
+        if ref129_projected != ref128_segs:
+            return False
+        # (4) projecting the SAME delta out of the LIVE table must equal ref128 EXACTLY.
+        projected_live = [
             seg
             for seg in live_segs
             if SQLiteMigrator._v129_seg_leading_ident(seg) not in delta_names
         ]
-        return live_header == ref128_header and projected == ref128_segs
+        return live_header == ref128_header and projected_live == ref128_segs
 
     @staticmethod
     def _v129_split_create(sql: str) -> "tuple[str, list[str]]":
@@ -11415,12 +11614,12 @@ class SQLiteMigrator:
     def _v128_canonical_schema_128() -> "V128Reference":
         """Build (once per process, cached) the V128 attribution reference — the COMPLETE V128-owned
         surface at version 128 (no V129 additive layer) — from a fresh scratch migrate STOPPED at
-        version 128 via the ``apply(target_version=128)`` seam (ADR-003 R10 §R10.6.2). Mirrors
-        ``_v128_canonical_schema`` exactly (single-flight, connection-bound builder state, public
-        borrowed-connection ``apply``) but stops at 128, so its two identity tables carry NO V129
-        columns and its owned index set has NO ``idx_locators_reconcile``. Never hand-replays or copies
-        V128 DDL and never mutates ``LATEST_SCHEMA_VERSION`` — the schema is realized by the real
-        migrator itself."""
+        version 128 via the PRIVATE capability-gated ``_apply_reference_build_stop_at_128`` route
+        (ADR-003 R10 §R10.6.2 / IMPL-V129-R2-F-001; there is NO public ``target_version`` seam).
+        Mirrors ``_v128_canonical_schema`` exactly (single-flight, connection-bound builder state) but
+        stops at 128, so its two identity tables carry NO V129 columns and its owned index set has NO
+        ``idx_locators_reconcile``. Never hand-replays or copies V128 DDL and never mutates
+        ``LATEST_SCHEMA_VERSION`` — the schema is realized by the real migrator itself."""
         global _V128_REFERENCE_128
         if _V128_REFERENCE_128 is not None:
             return _V128_REFERENCE_128
@@ -11437,8 +11636,12 @@ class SQLiteMigrator:
                 ref_db = str(Path(tmpdir) / "v128_reference_128.sqlite")
                 ref_conn = get_connection(ref_db)
                 _V128_BUILD_STATE.conn = ref_conn
-                # Public borrowed-connection migration path, stopped at 128 (the controlled seam).
-                SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn, target_version=128)
+                # Private capability-gated stop-at-128 route (F-001) — the ONLY way to run the real
+                # migrator stopped at 128; it traverses the same guarded migration transaction/blocks
+                # on this exact builder-state connection and stops before the V129 realization/ledger.
+                SQLiteMigrator(db_path=ref_db)._apply_reference_build_stop_at_128(
+                    ref_conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+                )
                 owned = MappingProxyType(dict(_v128_schema_snapshot(ref_conn)))
                 contracts: dict[str, NonFkContract] = {}
                 for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:

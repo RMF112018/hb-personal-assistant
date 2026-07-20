@@ -12,14 +12,22 @@ closed (``v129_schema_parity_failed``); and ``PRAGMA foreign_key_check`` is clea
 
 from __future__ import annotations
 
+import contextlib
+import inspect
 import sqlite3
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
 from hb_assistant.store.migrator import (
+    _V128_BUILD_STATE,
+    _V128_REFERENCE_BUILD_CAPABILITY,
     LATEST_SCHEMA_VERSION,
     SQLiteMigrator,
+    V128OracleError,
+    V128Reference,
+    _v128_split_top_level,
     get_connection,
 )
 
@@ -646,3 +654,359 @@ def test_mid_migration_exception_rolls_back_to_v128(
     # DB is at the exact V128 schema, foreign_key_check clean.
     assert _full_master(db) == pristine_v128
     assert _fk_check(db) == []
+
+
+# ===================================================================================================
+# IMPL-V129-R2 corrective round R3 (ADR-003 R10) adversarial matrix:
+#   F-001 — the public ``apply`` exposes NO target-version seam; the private capability-gated stop-at-
+#           128 reference-build route rejects every misuse.
+#   F-002 — the classifier/repair canonical V129 delta is REFERENCE-DERIVED with COMPLETE declarations;
+#           an altered reference declaration fails closed.
+#   F-003 — before the live comparison, the ref129→ref128 projection is proven exactly; every ref129
+#           variant that is not purely additive V129 columns attributes ``v128_schema_parity_failed``.
+# ===================================================================================================
+
+
+@contextlib.contextmanager
+def _builder_state(conn: sqlite3.Connection):
+    """Bind the module builder-state connection for the duration of a private-route test, then clear
+    it deterministically (a leaked builder state would corrupt the reference oracle for later tests)."""
+    _V128_BUILD_STATE.conn = conn
+    try:
+        yield
+    finally:
+        with contextlib.suppress(AttributeError):
+            del _V128_BUILD_STATE.conn
+
+
+def _seg_split(sql: str) -> tuple[str, list[str]]:
+    open_idx = sql.index("(")
+    close_idx = sql.rindex(")")
+    header = sql[:open_idx].strip()
+    body = sql[open_idx + 1 : close_idx]
+    return header, [s.strip() for s in _v128_split_top_level(body) if s.strip()]
+
+
+def _seg_join(header: str, segs: list[str]) -> str:
+    return f"{header} (" + ", ".join(segs) + ")"
+
+
+def _variant_reference(base: V128Reference, table: str, transform) -> V128Reference:
+    """Independently construct an immutable ``V128Reference`` variant by transforming ONE touched
+    table's ordered segments; every other owned object + both non-FK contracts are copied unchanged."""
+    owned = dict(base.owned_schema)
+    key = f"table:{table}"
+    header, segs = _seg_split(owned[key])
+    owned[key] = _seg_join(*transform(header, list(segs)))
+    return V128Reference(
+        owned_schema=MappingProxyType(owned),
+        nonfk_contracts=base.nonfk_contracts,
+    )
+
+
+# Segment transforms for the F-003 variant matrix (each returns (header, segs)). locators has 8 V128
+# columns (indices 0..7) followed by the 4 trailing V129 columns.
+def _alter_v128_column(header: str, segs: list[str]) -> tuple[str, list[str]]:
+    segs[2] = segs[2] + " DEFAULT 'zzz'"  # a V128 column declaration (source_id) altered
+    return header, segs
+
+
+def _add_nontrailing_segment(header: str, segs: list[str]) -> tuple[str, list[str]]:
+    segs.insert(2, "bogus_extra TEXT")  # an unexplained added segment inside the V128 region
+    return header, segs
+
+
+def _remove_v128_segment(header: str, segs: list[str]) -> tuple[str, list[str]]:
+    del segs[2]  # a removed V128 segment
+    return header, segs
+
+
+def _duplicate_delta_id(header: str, segs: list[str]) -> tuple[str, list[str]]:
+    segs.append(segs[-1])  # a duplicated V129 delta column identifier
+    return header, segs
+
+
+# ---------------------------------------------------------------------------------------------------
+# F-001: no public target-version seam
+# ---------------------------------------------------------------------------------------------------
+
+
+def test_f001_apply_has_no_target_version_parameter() -> None:
+    sig = inspect.signature(SQLiteMigrator.apply)
+    assert "target_version" not in sig.parameters
+    # Every non-self parameter is keyword-only (an extra positional target is impossible).
+    for name, param in sig.parameters.items():
+        if name == "self":
+            continue
+        assert param.kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_f001_legacy_target_version_kwarg_raises_typeerror(tmp_path: Path) -> None:
+    db = str(tmp_path / "x.sqlite")
+    with pytest.raises(TypeError):
+        SQLiteMigrator(db_path=db).apply(target_version=128)  # type: ignore[call-arg]
+
+
+def test_f001_extra_positional_target_raises_typeerror(tmp_path: Path) -> None:
+    db = str(tmp_path / "x.sqlite")
+    with pytest.raises(TypeError):
+        SQLiteMigrator(db_path=db).apply(128)  # type: ignore[misc]
+
+
+def test_f001_no_public_alias_exposes_target_selection() -> None:
+    # No public callable on the migrator surface re-introduces a target-version selection parameter.
+    for name in dir(SQLiteMigrator):
+        if name.startswith("_"):
+            continue
+        attr = getattr(SQLiteMigrator, name)
+        if not callable(attr):
+            continue
+        try:
+            sig = inspect.signature(attr)
+        except (TypeError, ValueError):
+            continue
+        for pname in sig.parameters:
+            assert "target_version" not in pname, f"{name} exposes target selection via {pname}"
+
+
+def test_f001_public_audit_records_latest_schema_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hb_assistant.store import migration_audit
+
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        migration_audit, "emit_migration_event", lambda ev, **kw: events.append((ev, kw))
+    )
+    db = str(tmp_path / "audit.sqlite")
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
+    started = [kw for ev, kw in events if ev == "migration_started"]
+    completed = [kw for ev, kw in events if ev == "migration_completed"]
+    assert started and started[0]["target_version"] == LATEST_SCHEMA_VERSION
+    assert completed and completed[0]["target_version"] == LATEST_SCHEMA_VERSION
+
+
+# ---------------------------------------------------------------------------------------------------
+# F-001: the private capability-gated stop-at-128 route rejects every misuse
+# ---------------------------------------------------------------------------------------------------
+
+
+def test_f001_private_route_rejects_forged_capability(tmp_path: Path) -> None:
+    db = str(tmp_path / "s.sqlite")
+    conn = get_connection(db)
+    try:
+        with _builder_state(conn), pytest.raises(V128OracleError, match="capability"):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(conn, capability=object())
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_direct_invocation_outside_builder_state(tmp_path: Path) -> None:
+    db = str(tmp_path / "s.sqlite")
+    conn = get_connection(db)
+    try:  # no builder state established
+        with pytest.raises(V128OracleError, match="builder_connection"):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_second_connection(tmp_path: Path) -> None:
+    db_a = str(tmp_path / "a.sqlite")
+    db_b = str(tmp_path / "b.sqlite")
+    conn_a = get_connection(db_a)
+    conn_b = get_connection(db_b)
+    try:
+        with _builder_state(conn_a), pytest.raises(V128OracleError, match="builder_connection"):
+            SQLiteMigrator(db_path=db_b)._apply_reference_build_stop_at_128(
+                conn_b, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn_a.close()
+        conn_b.close()
+
+
+def test_f001_private_route_rejects_nonempty_db(tmp_path: Path) -> None:
+    db = str(tmp_path / "s.sqlite")
+    conn = get_connection(db)
+    try:
+        conn.execute("CREATE TABLE junk (x TEXT)")  # non-empty DB, origin still 0
+        conn.commit()
+        with _builder_state(conn), pytest.raises(V128OracleError, match="empty_db"):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_already_v129_db(tmp_path: Path, fresh: str) -> None:
+    conn = get_connection(fresh)  # already migrated to head (origin 129)
+    try:
+        with _builder_state(conn), pytest.raises(V128OracleError, match="fresh_origin"):
+            SQLiteMigrator(db_path=fresh)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_already_v128_db(tmp_path: Path) -> None:
+    db = _make_v128_db(tmp_path, "v128only.sqlite")  # origin 128
+    conn = get_connection(db)
+    try:
+        with _builder_state(conn), pytest.raises(V128OracleError, match="fresh_origin"):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_connection_in_transaction(tmp_path: Path) -> None:
+    from hb_assistant.store.errors import MigrationAuthorizationInvalid
+
+    db = str(tmp_path / "tx.sqlite")
+    conn = get_connection(db)
+    try:
+        conn.execute("BEGIN")
+        assert conn.in_transaction
+        with _builder_state(conn), pytest.raises(
+            (MigrationAuthorizationInvalid, V128OracleError)
+        ):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+def test_f001_private_route_rejects_managed_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from hb_assistant.config.db_storage_guard import DatabaseStorageClass
+    from hb_assistant.store import database_identity
+    from hb_assistant.store.errors import MigrationAuthorizationError
+
+    monkeypatch.setattr(
+        database_identity,
+        "classify_storage_class",
+        lambda _p: DatabaseStorageClass.MANAGED_LOCAL,
+    )
+    db = str(tmp_path / "m.sqlite")
+    conn = get_connection(db)
+    try:  # a managed target is rejected (None-auth-for-managed guard or scratch-storage precondition)
+        with _builder_state(conn), pytest.raises(
+            (MigrationAuthorizationError, V128OracleError)
+        ):
+            SQLiteMigrator(db_path=db)._apply_reference_build_stop_at_128(
+                conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+            )
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------------------------------
+# F-002: reference-derived classifier/repair delta with COMPLETE declarations
+# ---------------------------------------------------------------------------------------------------
+
+
+def test_f002_derived_delta_matches_canonical_with_complete_declarations() -> None:
+    ref128 = SQLiteMigrator._v128_canonical_schema_128()
+    ref129 = SQLiteMigrator._v128_canonical_schema()
+    loc = SQLiteMigrator._v129_derive_table_delta(ref128, ref129, "source_index_locators")
+    ms = SQLiteMigrator._v129_derive_table_delta(ref128, ref129, "source_index_move_signals")
+    # The derived ordered delta names equal the canonical V129 columns (reference-derived, not tuples).
+    assert tuple(SQLiteMigrator._v129_seg_leading_ident(s) for s in loc) == LOCATOR_V129_COLS
+    assert tuple(SQLiteMigrator._v129_seg_leading_ident(s) for s in ms) == MOVE_SIGNAL_V129_COLS
+    # COMPLETE declarations: column-level CHECK + REFERENCES + FK targets captured, not name-only.
+    loc_sql = " ".join(loc)
+    assert "CHECK(policy_validation_state IS NULL OR policy_validation_state='policy_stale')" in loc_sql
+    ms_sql = " ".join(ms)
+    assert "CHECK(disposition IN (" in ms_sql
+    assert "CHECK(disposition_reason IN (" in ms_sql
+    assert "REFERENCES source_index_entities(source_entity_id)" in ms_sql
+    assert "REFERENCES source_index_locators(locator_id)" in ms_sql
+
+
+def test_f002_altered_derived_reference_declaration_fails_derivation() -> None:
+    ref128 = SQLiteMigrator._v128_canonical_schema_128()
+    ref129 = SQLiteMigrator._v128_canonical_schema()
+    # Alter a V128 column declaration in the reference used for derivation → no longer trailing-additive.
+    bad = _variant_reference(ref129, "source_index_locators", _alter_v128_column)
+    with pytest.raises(V128OracleError):
+        SQLiteMigrator._v129_derive_table_delta(ref128, bad, "source_index_locators")
+
+
+def test_f002_production_repair_fails_closed_on_altered_reference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A live DB that needs a (repairable) V129 trailing-suffix repair; the tampered head reference has a
+    # drifted V128 column so the reference-derived delta is underivable → the production classifier/
+    # repair path fails closed on the V128 layer (v128_schema_parity_failed), never a pure-V129 verdict.
+    db = str(tmp_path / "repair.sqlite")
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
+    real129 = SQLiteMigrator._v128_canonical_schema()
+    with sqlite3.connect(db) as c:
+        c.execute("ALTER TABLE source_index_locators DROP COLUMN policy_validation_state")
+        c.execute("DELETE FROM schema_migrations WHERE version=129")
+    bad = _variant_reference(real129, "source_index_locators", _alter_v128_column)
+    monkeypatch.setattr(SQLiteMigrator, "_v128_canonical_schema", staticmethod(lambda: bad))
+    with pytest.raises(RuntimeError, match="v128_schema_parity_failed"):
+        SQLiteMigrator(db_path=db).apply()
+
+
+# ---------------------------------------------------------------------------------------------------
+# F-003: ref129→ref128 projection proof before the live comparison
+# ---------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("variant_name", "transform"),
+    [
+        ("altered_v128_column", _alter_v128_column),
+        ("unexplained_added_segment", _add_nontrailing_segment),
+        ("removed_v128_segment", _remove_v128_segment),
+        ("duplicate_delta_identifier", _duplicate_delta_id),
+    ],
+)
+def test_f003_ref129_variant_attributes_v128(
+    fresh: str, monkeypatch: pytest.MonkeyPatch, variant_name: str, transform
+) -> None:
+    """Each independently-constructed immutable ref129 variant whose touched-table difference is NOT
+    exclusively additive V129 columns must attribute ``v128_schema_parity_failed`` — the projection
+    proof (ref129 minus the derived delta must equal ref128 exactly) rejects it before the pure-V129
+    verdict is ever reachable."""
+    real129 = SQLiteMigrator._v128_canonical_schema()  # build/cache the real head reference first
+    variant = _variant_reference(real129, "source_index_locators", transform)
+    monkeypatch.setattr(SQLiteMigrator, "_v128_canonical_schema", staticmethod(lambda: variant))
+    conn = get_connection(fresh)
+    try:
+        assert SQLiteMigrator._v129_attribute_layer(conn) == "v128_schema_parity_failed"
+    finally:
+        conn.close()
+
+
+def test_f003_matcher_rejects_enumerated_reference_variants() -> None:
+    """Direct proof of the per-touched-table projection matcher (ADR-003 R10 §R10.3): only a clean
+    ref128-is-exact-prefix-of-ref129 relationship (trailing additive columns) matches; an altered V128
+    column, an altered V128 table constraint, an unexplained added / removed V128 segment, and a
+    duplicate / malformed delta identifier are each rejected."""
+    m = SQLiteMigrator._v129_table_v128_core_matches
+    b128 = "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, UNIQUE(a, b))"
+    b129 = "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, UNIQUE(a, b), c TEXT, d TEXT)"
+    assert m(b129, b128, b129) is True  # clean reference relationship + clean live
+    # altered V128 table constraint (UNIQUE(a, b) -> UNIQUE(a)):
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, UNIQUE(a), c TEXT, d TEXT)") is False
+    # altered V128 column declaration (b INTEGER -> b TEXT):
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, b TEXT, UNIQUE(a, b), c TEXT, d TEXT)") is False
+    # unexplained added V128-region segment:
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, z TEXT, UNIQUE(a, b), c TEXT, d TEXT)") is False
+    # removed V128 segment:
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, UNIQUE(a, b), c TEXT, d TEXT)") is False
+    # duplicate delta identifier:
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, UNIQUE(a, b), c TEXT, c TEXT)") is False
+    # malformed delta identifier (a table constraint in the delta region, not a column):
+    assert m(b129, b128, "CREATE TABLE t (a TEXT PRIMARY KEY, b INTEGER, UNIQUE(a, b), c TEXT, CHECK(c IS NOT NULL))") is False
