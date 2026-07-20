@@ -75,7 +75,7 @@ def fresh(tmp_path: Path) -> str:
 
 
 def test_latest_version_is_127(fresh) -> None:
-    assert LATEST_SCHEMA_VERSION == 128
+    assert LATEST_SCHEMA_VERSION == 129
     assert 127 in _versions(fresh)
 
 

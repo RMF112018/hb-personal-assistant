@@ -81,7 +81,7 @@ def fresh(tmp_path: Path) -> str:
 
 
 def test_latest_version_is_128(fresh) -> None:
-    assert LATEST_SCHEMA_VERSION == 128
+    assert LATEST_SCHEMA_VERSION == 129
     assert 128 in _versions(fresh)
 
 
@@ -96,6 +96,9 @@ def test_new_identity_tables_and_columns_present(fresh) -> None:
     assert {
         "move_signal_id", "source_locator_id", "source_root_key", "source_rel_path",
         "target_root_key", "target_rel_path", "detected_at", "generation_id", "applied_at",
+        # V129 (ADR-003 R8 §7.2) additive nullable disposition columns on the same identity table.
+        "disposition", "disposition_at", "disposition_reason",
+        "resulting_entity_id", "resulting_locator_id",
     } == _cols(fresh, "source_index_move_signals")
 
 

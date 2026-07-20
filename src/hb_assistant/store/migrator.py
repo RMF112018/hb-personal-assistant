@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 128
+LATEST_SCHEMA_VERSION = 129
 
 # --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R8) -------
 # The V128 always-revalidate oracle validates a live DB by exact-equality against a CANONICAL V128
@@ -81,6 +81,41 @@ _V128_OWNED_TABLES: tuple[str, ...] = (
 _V128_NONFK_ENTITY_INDEXES: tuple[tuple[str, str], ...] = (
     ("source_intelligence_events", "idx_si_events_entity"),
     ("source_index_scan_quarantine", "idx_si_scan_quarantine_entity"),
+)
+
+# --- V129 additive layer (ADR-003 R8): observation re-homing + serving-trust gate + move disposition -
+# V129 is forward-only, immutable-additive (ALTER … ADD COLUMN, all nullable + one new index) on the
+# two ALREADY V128-owned identity tables (source_index_locators, source_index_move_signals). It rides
+# the V128 byte-exact permanent-identity oracle (§9): the canonical reference migrates to
+# LATEST_SCHEMA_VERSION (=129), so its two identity-table CREATE SQLs already carry these columns/index
+# and ``_v128_schema_current`` detects a dropped V129 column for free. These constants single-source the
+# V129 additive shape shared by the migrator's structural bootstrap (§9.2) and the fail-closed layer
+# attribution (§9.3) so the two never diverge. (Runtime WRITE/apply of the disposition columns is
+# PI-WI-03b — NOT realized here; this unit only ADDS the columns.)
+# Four nullable observation/serving columns re-homed onto the locator epoch (ADR-003 R8 §4.1).
+_V129_LOCATOR_COLS: tuple[str, ...] = (
+    "last_seen_generation", "last_seen_at", "last_indexed_fingerprint", "policy_validation_state",
+)
+# Five nullable move-signal disposition columns; the last two are the applied-only resulting_* FKs
+# (ADR-003 R8 §7.2).
+_V129_MOVE_SIGNAL_COLS: tuple[str, ...] = (
+    "disposition", "disposition_at", "disposition_reason",
+    "resulting_entity_id", "resulting_locator_id",
+)
+# from-column -> (target table, target column) for the two applied-only nullable resulting_* FK edges.
+_V129_MOVE_SIGNAL_FKS: dict[str, tuple[str, str]] = {
+    "resulting_entity_id": ("source_index_entities", "source_entity_id"),
+    "resulting_locator_id": ("source_index_locators", "locator_id"),
+}
+# Column-level enum/serving CHECK fragments each V129 column must retain verbatim (normalized substring
+# match, mirroring the V128 REQUIRED_SQL_FRAGMENTS check).
+_V129_LOCATOR_CHECK_FRAGMENTS: tuple[str, ...] = (
+    "policy_validation_state IS NULL OR policy_validation_state='policy_stale'",
+)
+_V129_MOVE_SIGNAL_CHECK_FRAGMENTS: tuple[str, ...] = (
+    "disposition IN ('applied','rejected_stale','rejected_target_occupied','malformed')",
+    "disposition_reason IN ('ok','source_locator_not_current','source_locator_tombstoned',"
+    "'missing_source_locator','target_path_occupied','malformed_payload')",
 )
 
 
@@ -10160,8 +10195,31 @@ class SQLiteMigrator:
             # returns True and does nothing.
             if not self._v128_schema_current(conn):
                 self._rebuild_v128_permanent_identity(conn)
+                # --- V129: observation re-homing + serving-trust gate + move-signal disposition ------
+                # (ADR-003 R8 §4/§7/§8/§9). V129 is forward-only, immutable-additive (nullable ADD
+                # COLUMN + one new index) on the two already-V128-owned identity tables, and RIDES the
+                # V128 byte-exact permanent-identity oracle rather than introducing a second authority.
+                # The canonical reference migrates to LATEST_SCHEMA_VERSION (=129), so its
+                # locators/move_signals CREATE SQL already carries the V129 columns/index and
+                # ``_v128_schema_current`` DETECTS a dropped V129 column (§9.1). These idempotent
+                # ``_v129_ensure_*`` helpers are the REPAIR pass (§9.3), run here on the already-failed-
+                # parity path — AFTER the V128 rebuild/repair, BEFORE the final revalidation — so a
+                # fresh rebuild AND an in-place V128→V129 upgrade converge to the byte-identical shape
+                # (§9.4). No V128 historical DDL is edited.
+                self._v129_ensure_locator_observation_columns(conn)
+                self._v129_ensure_reconcile_index(conn)
+                self._v129_ensure_move_signal_disposition_columns(conn)
                 if not self._v128_schema_current(conn):
                     # The whole apply() transaction rolls back — the prior schema is preserved intact.
+                    # Attribute the fail-closed layer (§9.3): when the V128 CORE is otherwise intact and
+                    # ONLY the V129 additive layer is non-repairable (a malformed column-level CHECK /
+                    # incompatible declaration additive repair cannot fix), raise v129_schema_parity_
+                    # failed; any V128-core parity failure (which may also disturb V129) keeps the
+                    # unified v128_schema_parity_failed so existing V128 drift contracts are preserved.
+                    if self._v128_core_structural_ok(conn) and not (
+                        self._v129_schema_additions_present(conn)
+                    ):
+                        raise RuntimeError("v129_schema_parity_failed")
                     raise RuntimeError("v128_schema_parity_failed")
             if conn.execute(
                 "SELECT version FROM schema_migrations WHERE version = 128"
@@ -10169,6 +10227,17 @@ class SQLiteMigrator:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, name, applied_at) "
                     "VALUES (128, 'v128_permanent_source_identity', ?)",
+                    (now,),
+                )
+            # V129 version record (ADR-003 R8 §8): the schema shape is realized/repaired above via the
+            # V128-oracle-riding ``_v129_ensure_*`` pass; this idempotent gate records version 129 once.
+            if conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = 129"
+            ).fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) "
+                    "VALUES (129, 'v129_locator_observation_rehoming_serving_gate_and_move_disposition',"
+                    " ?)",
                     (now,),
                 )
 
@@ -10954,6 +11023,158 @@ class SQLiteMigrator:
         )
 
     @staticmethod
+    def _v129_ensure_locator_observation_columns(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §4.1/§9.3: idempotently ADD the four nullable V129 observation / serving-trust
+        columns to ``source_index_locators`` (parity-guarded — skip a column already present). Re-homes
+        the three V122 observation columns the V128 rebuild dropped from the parent
+        (``last_seen_generation`` — a scan-generation UUID, NOT the integer ``generation_seq``;
+        ``last_seen_at``; ``last_indexed_fingerprint``) onto the locator epoch, plus the AR-F-001
+        serving-trust gate ``policy_validation_state`` (NULL ≡ validated, ``'policy_stale'`` ≡ content
+        unverified under this locator's current policy). All nullable/additive; V128 historical DDL is
+        untouched, so a fresh rebuild and an in-place V128→V129 upgrade produce byte-identical CREATE
+        SQL (both realize these columns ONLY via this same ordered ADD COLUMN sequence). Runs on the
+        already-failed-parity apply() path so a dropped column is re-ensured (§9.3)."""
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(source_index_locators)"
+        ).fetchall()}
+        if "last_seen_generation" not in cols:
+            conn.execute("ALTER TABLE source_index_locators ADD COLUMN last_seen_generation TEXT")
+        if "last_seen_at" not in cols:
+            conn.execute("ALTER TABLE source_index_locators ADD COLUMN last_seen_at TEXT")
+        if "last_indexed_fingerprint" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_locators ADD COLUMN last_indexed_fingerprint TEXT"
+            )
+        if "policy_validation_state" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_locators ADD COLUMN policy_validation_state TEXT "
+                "CHECK(policy_validation_state IS NULL OR policy_validation_state='policy_stale')"
+            )
+
+    @staticmethod
+    def _v129_ensure_reconcile_index(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §4.4/§9.3: single-sourced DROP + recreate of the V129 reconcile index on
+        ``source_index_locators`` (replaces the V122 reconcile index the V128 rebuild dropped with the
+        parent columns). Keyed ``(source_root_key, source_id)`` restricted to current locators — the
+        root-scope + ``source_id`` keyset ``stale_candidates_batch`` needs; deliberately NOT
+        ``last_seen_generation``-leading. DROP + recreate (repair symmetry with the V128 locator
+        indexes) so a same-name index that drifted (wrong columns / partial predicate) is REPAIRED, not
+        skipped. Idempotent; runs only on the already-failed-parity path (healthy DBs skip repair). The
+        ``is_current_locator=1`` predicate is written unspaced to match the V128 locator-index house
+        style + the ``_LOC_IDX`` structural-check substring (§9.2)."""
+        conn.execute("DROP INDEX IF EXISTS idx_locators_reconcile")
+        conn.execute(
+            "CREATE INDEX idx_locators_reconcile "
+            "ON source_index_locators(source_root_key, source_id) "
+            "WHERE is_current_locator=1"
+        )
+
+    @staticmethod
+    def _v129_ensure_move_signal_disposition_columns(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §7.2/§9.3: idempotently ADD the five nullable V129 disposition columns to
+        ``source_index_move_signals`` (parity-guarded). ``disposition`` NULL ≡ pending; the terminal
+        set and reason enum are bound structurally by column-level CHECKs (a NULL satisfies an ``IN``
+        CHECK). ``resulting_entity_id``/``resulting_locator_id`` are the two applied-only nullable FK
+        edges (repo-precedented nullable-FK-via-ADD-COLUMN, §2.6). All additive → byte-identical CREATE
+        SQL across fresh-rebuild and V128→V129 upgrade; a dropped column is re-ensured on the
+        already-failed-parity path (§9.3). SQLite cannot ADD a table-level cross-column CHECK, so the
+        cross-column terminal-state contract is a runtime in-transaction oracle (PI-WI-03b), NOT this
+        unit — this method only ADDS the columns and writes/applies none of them."""
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(source_index_move_signals)"
+        ).fetchall()}
+        if "disposition" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN disposition TEXT "
+                "CHECK(disposition IN "
+                "('applied','rejected_stale','rejected_target_occupied','malformed'))"
+            )
+        if "disposition_at" not in cols:
+            conn.execute("ALTER TABLE source_index_move_signals ADD COLUMN disposition_at TEXT")
+        if "disposition_reason" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN disposition_reason TEXT "
+                "CHECK(disposition_reason IN ('ok','source_locator_not_current',"
+                "'source_locator_tombstoned','missing_source_locator','target_path_occupied',"
+                "'malformed_payload'))"
+            )
+        if "resulting_entity_id" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN resulting_entity_id TEXT "
+                "REFERENCES source_index_entities(source_entity_id)"
+            )
+        if "resulting_locator_id" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN resulting_locator_id TEXT "
+                "REFERENCES source_index_locators(locator_id)"
+            )
+
+    @staticmethod
+    def _v129_schema_additions_present(conn: sqlite3.Connection) -> bool:
+        """True when the V129 additive layer is structurally intact on a live DB: the four locator
+        columns + five move-signal columns present as nullable non-PK TEXT, both column-level enum
+        CHECK fragments + the policy CHECK retained verbatim, the two applied-only resulting_* FK edges
+        present, and the reconcile index present with the exact columns + partial predicate. Used ONLY
+        to ATTRIBUTE a fail-closed non-repairable drift (§9.3): after the ``_v129_ensure_*`` repair
+        pass has run, a still-absent-or-malformed V129 element (a malformed column-level CHECK / an
+        incompatible declaration that additive repair cannot fix) means the V129 layer could not be
+        repaired → ``apply()`` raises ``v129_schema_parity_failed`` (vs a V128-core parity failure).
+        Byte-exact live-drift DETECTION itself is ``_v128_schema_current``; this is the error-attribution
+        slice only, sourced from the SAME V129 constants as the structural bootstrap so they never
+        diverge."""
+        def _cols(table: str) -> dict[str, tuple[str, int, int]]:
+            return {
+                r[1]: (str(r[2] or "").upper(), int(r[3]), int(r[5]))
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+
+        def _tbl_sql(table: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        loc = _cols("source_index_locators")
+        for name in _V129_LOCATOR_COLS:
+            if loc.get(name) != ("TEXT", 0, 0):
+                return False
+        ms = _cols("source_index_move_signals")
+        for name in _V129_MOVE_SIGNAL_COLS:
+            if ms.get(name) != ("TEXT", 0, 0):
+                return False
+        loc_sql = _tbl_sql("source_index_locators")
+        if any(frag not in loc_sql for frag in _V129_LOCATOR_CHECK_FRAGMENTS):
+            return False
+        ms_sql = _tbl_sql("source_index_move_signals")
+        if any(frag not in ms_sql for frag in _V129_MOVE_SIGNAL_CHECK_FRAGMENTS):
+            return False
+        ms_fks = {
+            r[3]: (r[2], r[4])
+            for r in conn.execute(
+                "PRAGMA foreign_key_list(source_index_move_signals)"
+            ).fetchall()
+        }
+        for col, target in _V129_MOVE_SIGNAL_FKS.items():
+            if ms_fks.get(col) != target:
+                return False
+        loc_idx = {
+            r[1]: int(r[4])
+            for r in conn.execute("PRAGMA index_list(source_index_locators)").fetchall()
+        }
+        if loc_idx.get("idx_locators_reconcile") != 1:  # must exist AND be partial
+            return False
+        recon_cols = [
+            r[2] for r in conn.execute("PRAGMA index_info(idx_locators_reconcile)").fetchall()
+        ]
+        if recon_cols != ["source_root_key", "source_id"]:
+            return False
+        recon_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_locators_reconcile'"
+        ).fetchone()
+        recon_norm = " ".join((recon_sql[0] or "").split()) if recon_sql and recon_sql[0] else ""
+        return "is_current_locator=1" in recon_norm
+
+    @staticmethod
     def _v128_reparent_nonfk_tables(conn: sqlite3.Connection) -> None:
         """IMP-F-002 (ADR-002 R12): give the two non-FK tables (events, scan_quarantine) a nullable
         ``source_entity_id`` FK to source_index_entities (+ index), backfilled via the
@@ -11153,16 +11374,19 @@ class SQLiteMigrator:
         return True
 
     @staticmethod
-    def _v128_schema_structural_ok(conn: sqlite3.Connection) -> bool:
-        """Structural bootstrap check used ONLY while the reference schema is being built (the normal
-        path is the reference comparison in ``_v128_schema_current``). Enumerative parity check for the
-        V128 entity-keyed shape: FULL per-table column set (declared type, nullability, primary-key
-        role), required FK edges to the identity authority, EXACT required SQL fragments (full CHECK
-        clauses, UNIQUE table-constraints, enum ``IN (...)`` lists from the same live value tuples the
-        rebuild imports), each locator index's columns + UNIQUEness + full partial predicate, mandatory
-        events/quarantine tables with their entity FK + index, and absent demoted keys / obsolete
-        parent path-unique index. Returns False on a still-source_id-keyed DB so the scratch apply()
-        runs the rebuild, and True once rebuilt so it does not raise."""
+    def _v128_core_structural_ok(conn: sqlite3.Connection) -> bool:
+        """Enumerative parity check for the V128-CORE entity-keyed shape (the V129 additive layer is
+        checked SEPARATELY by ``_v129_schema_additions_present``; the bootstrap wrapper
+        ``_v128_schema_structural_ok`` ANDs the two). Used while the reference schema is being built (the
+        normal path is the reference comparison in ``_v128_schema_current``) and, on a live drifted DB,
+        to ATTRIBUTE a fail-closed error to the V128 core vs the V129 layer (§9.3). Checks the FULL
+        per-table V128 column set (declared type, nullability, primary-key role), required FK edges to
+        the identity authority, EXACT required SQL fragments (full CHECK clauses, UNIQUE table-
+        constraints, enum ``IN (...)`` lists from the same live value tuples the rebuild imports), each
+        V128 locator index's columns + UNIQUEness + full partial predicate, mandatory events/quarantine
+        tables with their entity FK + index, and absent demoted keys / obsolete parent path-unique
+        index. Subset-based, so the extra nullable V129 columns/index are ignored here. Returns False on
+        a still-source_id-keyed DB so the scratch apply() runs the rebuild, and True once rebuilt."""
         from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
             EXTRACTION_STATUS_VALUES,
             GENERATION_STATUS_VALUES,
@@ -11409,6 +11633,19 @@ class SQLiteMigrator:
             if entity_idx not in _idx_meta(table):
                 return False
         return True
+
+    @staticmethod
+    def _v128_schema_structural_ok(conn: sqlite3.Connection) -> bool:
+        """Structural bootstrap check used ONLY while the reference schema is being built (the normal
+        path is the reference comparison in ``_v128_schema_current``). ADR-003 R8 §9.2: V129 rides the
+        V128 oracle, so a broken V129 migration is caught during reference build too — the bootstrap
+        requires BOTH the V128-core shape (``_v128_core_structural_ok``) AND the V129 additive layer
+        (``_v129_schema_additions_present``). Returns False on a still-source_id-keyed DB so the scratch
+        apply() runs the rebuild, and True once the full head (V128 core + V129 additions) is realized."""
+        return (
+            SQLiteMigrator._v128_core_structural_ok(conn)
+            and SQLiteMigrator._v129_schema_additions_present(conn)
+        )
 
     @staticmethod
     def _reconcile_v99_source_identity_root_scoped(conn: sqlite3.Connection) -> None:
