@@ -27,6 +27,11 @@ from .memory_models import bound_text, sha256_hex
 # references. SOURCE_REF_VERSION keeps its original string so existing refs remain valid; only
 # SOURCE_CURSOR_VERSION advances (weighted BM25 + metadata-only path candidates changed the ordering).
 SOURCE_REF_VERSION = "source-connector-v1"
+# PI-WI-03a: the v2 entity-ref version. A v2 ref (``hbsrc2_``) wraps a durable ``source_entity_id``;
+# its checksum is bound to THIS version so a v1-checksummed payload presented as v2 fails closed
+# (cross-version checksum rejection). v1 refs (``hbsrc1_``) and bare 32-hex remain LEGACY locator
+# handles resolved via the fail-closed DISTINCT resolver — never a v1/bare entity fallback.
+SOURCE_ENTITY_REF_VERSION = "source-connector-v2"
 SOURCE_CURSOR_VERSION = "source-cursor-v2"
 # Back-compat alias (refs): older imports of SOURCE_CONNECTOR_VERSION resolve to the ref version.
 SOURCE_CONNECTOR_VERSION = SOURCE_REF_VERSION
@@ -85,7 +90,8 @@ COMPLETE_READ_TEXT_EXTS = frozenset(
     {"txt", "md", "markdown", "csv", "json", "xml", "html", "htm", "log"}
 )
 
-_SOURCE_REF_PREFIX = "hbsrc1_"
+_SOURCE_REF_PREFIX = "hbsrc1_"          # v1 legacy locator-source_id ref (retained, decodes to a legacy handle)
+_SOURCE_ENTITY_REF_PREFIX = "hbsrc2_"   # v2 entity ref (go-forward; wraps a durable source_entity_id)
 
 # Static, conservative extension→mime map (advisory only; never trusted for gating).
 MIME_BY_EXT = {
@@ -125,48 +131,93 @@ def _b64u_decode(token: str) -> bytes:
     return base64.urlsafe_b64decode(token + pad)
 
 
+def _is_32hex(value: str) -> bool:
+    return len(value) == 32 and all(ch in "0123456789abcdef" for ch in value)
+
+
 def _source_id_checksum(source_id: str) -> str:
-    """Version-bound short checksum so a forged/typo'd ref is rejected before any DB hit."""
+    """v1 version-bound short checksum so a forged/typo'd v1 ref is rejected before any DB hit."""
     return sha256_hex(f"{SOURCE_REF_VERSION}|source_ref|{source_id}")[:8]
 
 
+def _entity_ref_checksum(entity_id: str) -> str:
+    """v2 version-bound short checksum (bound to SOURCE_ENTITY_REF_VERSION). A v1-checksummed payload
+    presented under the v2 prefix therefore fails closed (cross-version checksum rejection)."""
+    return sha256_hex(f"{SOURCE_ENTITY_REF_VERSION}|source_ref|{entity_id}")[:8]
+
+
 def encode_source_ref(source_id: str) -> str:
-    """Opaque, path-free reference around the 32-hex ``source_id`` (id + version-bound checksum).
-
-    The ref reveals nothing about the file location: ``source_id`` is a sha256, not a path.
-    """
+    """Opaque, path-free **v2 entity reference** (``hbsrc2_``) around a 32-hex durable id (id +
+    version-bound checksum). Go-forward all entity-addressed outputs emit v2. The ref reveals nothing
+    about the file location: the id is a sha256/random hex, not a path."""
     sid = str(source_id or "")
-    if len(sid) != 32 or any(ch not in "0123456789abcdef" for ch in sid):
+    if not _is_32hex(sid):
         raise SourceConnectorValidationError("invalid_source_id")
-    payload = f"{sid}{_source_id_checksum(sid)}"
-    return _SOURCE_REF_PREFIX + _b64u_encode(payload.encode("ascii"))
+    payload = f"{sid}{_entity_ref_checksum(sid)}"
+    return _SOURCE_ENTITY_REF_PREFIX + _b64u_encode(payload.encode("ascii"))
 
 
-def decode_source_ref(source_ref: str) -> str:
-    """Resolve an opaque ``source_ref`` back to its ``source_id`` (server-side only). Validates the
-    prefix + version-bound checksum; raises on any tampering. Does NOT confirm the source exists —
-    the caller resolves it against the index."""
-    ref = str(source_ref or "")
-    if not ref.startswith(_SOURCE_REF_PREFIX):
-        raise SourceConnectorValidationError("invalid_source_ref")
+def _decode_prefixed_ref(ref: str, prefix: str, checksum_fn: Any) -> str:
+    """Shared strict decode for a ``prefix``-tagged ref: base64url body → 32-hex id + 8-hex checksum,
+    checksum re-validated with ``checksum_fn``. Any tamper/malformed/non-canonical input fails closed."""
     try:
-        decoded = _b64u_decode(ref[len(_SOURCE_REF_PREFIX):]).decode("ascii")
+        decoded = _b64u_decode(ref[len(prefix):]).decode("ascii")
     except (ValueError, UnicodeDecodeError) as exc:
         raise SourceConnectorValidationError("invalid_source_ref") from exc
     if len(decoded) != 40:  # 32-hex id + 8-hex checksum
         raise SourceConnectorValidationError("invalid_source_ref")
-    sid, checksum = decoded[:32], decoded[32:]
-    if checksum != _source_id_checksum(sid):
+    value, checksum = decoded[:32], decoded[32:]
+    if not _is_32hex(value) or checksum != checksum_fn(value):
         raise SourceConnectorValidationError("invalid_source_ref")
-    return sid
+    return value
+
+
+def decode_source_ref(source_ref: str) -> str:
+    """Resolve an opaque ``source_ref`` back to its inner 32-hex id (server-side only). Accepts a v2
+    entity ref (``hbsrc2_``) or a v1 legacy ref (``hbsrc1_``); validates the version-bound checksum and
+    raises on any tampering. Does NOT classify entity-vs-legacy or confirm existence — callers that need
+    lifecycle-correct resolution use :func:`classify_source_ref` + the repository ``resolve_entity``."""
+    ref = str(source_ref or "")
+    if ref.startswith(_SOURCE_ENTITY_REF_PREFIX):
+        return _decode_prefixed_ref(ref, _SOURCE_ENTITY_REF_PREFIX, _entity_ref_checksum)
+    if ref.startswith(_SOURCE_REF_PREFIX):
+        return _decode_prefixed_ref(ref, _SOURCE_REF_PREFIX, _source_id_checksum)
+    raise SourceConnectorValidationError("invalid_source_ref")
+
+
+def classify_source_ref(
+    *, source_id: str | None = None, source_ref: str | None = None
+) -> tuple[str, str]:
+    """Fail-closed v2 codec classification (DB-free). Returns ``(kind, value)``:
+
+    * ``('entity', <32-hex>)`` — a v2 ``hbsrc2_`` ref: a durable ``source_entity_id`` (go-forward).
+    * ``('legacy', <32-hex>)`` — a v1 ``hbsrc1_`` ref OR a bare 32-hex ``source_id`` handle. There is
+      **no** bare/v1 entity fallback: these resolve only via the DISTINCT legacy locator resolver.
+
+    Unknown version / cross-version checksum / malformed / non-canonical / tampered input fails closed
+    (``SourceConnectorValidationError``)."""
+    if source_ref:
+        ref = str(source_ref)
+        if ref.startswith(_SOURCE_ENTITY_REF_PREFIX):
+            return ("entity", _decode_prefixed_ref(ref, _SOURCE_ENTITY_REF_PREFIX, _entity_ref_checksum))
+        if ref.startswith(_SOURCE_REF_PREFIX):
+            return ("legacy", _decode_prefixed_ref(ref, _SOURCE_REF_PREFIX, _source_id_checksum))
+        raise SourceConnectorValidationError("invalid_source_ref")
+    sid = str(source_id or "")
+    if _is_32hex(sid):
+        return ("legacy", sid)  # a bare 32-hex is a LEGACY locator handle (never an entity)
+    raise SourceConnectorValidationError("source_id_or_ref_required")
 
 
 def resolve_source_id(*, source_id: str | None = None, source_ref: str | None = None) -> str:
-    """Accept either a raw ``source_id`` or an opaque ``source_ref``; return the ``source_id``."""
+    """Accept either a raw ``source_id`` or an opaque ``source_ref``; return the inner 32-hex id.
+
+    Legacy shim retained for callers that only need the opaque handle. Lifecycle-correct
+    entity resolution goes through the repository ``resolve_entity`` (DB-aware)."""
     if source_ref:
         return decode_source_ref(source_ref)
     sid = str(source_id or "")
-    if len(sid) != 32 or any(ch not in "0123456789abcdef" for ch in sid):
+    if not _is_32hex(sid):
         raise SourceConnectorValidationError("source_id_or_ref_required")
     return sid
 

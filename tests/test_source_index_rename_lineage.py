@@ -1,15 +1,16 @@
-"""Phase B / B4 — conservative, transactional same-root rename/move lineage.
+"""PI-WI-03a (ADR-003 R11-D1/D3) — degraded, decomposed relocation; NO runtime rename lineage.
 
-Proves: a confirmed same-root move links old->new identity via ``renamed_from_source_id`` in ONE
-transaction (old row not non-current unless the destination + lineage persist), content trust is NOT
-carried forward (extraction invalidated, generated notes inherited-but-unverified), an old source_ref
-answers ``moved`` (with the lineage-lookup ordered before the generic deleted branch), cross-root /
-unconfirmed moves stay conservative, and the watcher helper only correlates a confirmed same-root move.
+Under the accepted R11 the ``renamed_from_source_id`` lineage authority is removed from runtime (P-C):
+a no-signal relocation is a decomposed **P2 tombstone-old + P1 create-new** (the destination P1 is the
+drain's own re-index), ``find_successor_source_id`` always returns None (P-B), and an old (deleted) ref
+therefore answers ordinary *unavailable* — never ``moved`` (a signalled-P4 moved answer is 03b). This
+suite replaces the former B4 lineage tests with the R11 contract at the repository + provider surface.
 """
 
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,20 +28,51 @@ _NOW = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 def _insert_source(db: str, *, root_key: str, rel_path: str, ext: str = "txt",
                    with_note: bool = False) -> str:
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
+    """Seed a LIVE indexed file entity (entity + current locator + parent + metadata). Returns the
+    durable source_entity_id."""
+    legacy = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
+    eid = uuid.uuid4().hex
     with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
+        c.execute("INSERT INTO source_index_entities(source_entity_id,created_at,status) "
+                  "VALUES(?,?, 'LIVE')", (eid, _NOW))
+        c.execute("INSERT INTO source_index_locators(locator_id,source_entity_id,source_id,"
+                  "source_root_key,rel_path,is_current_locator,tombstoned_at,generation_seq) "
+                  "VALUES(?,?,?,?,?,1,NULL,0)", (uuid.uuid4().hex, eid, legacy, root_key, rel_path))
+        c.execute("INSERT INTO source_intelligence_sources(source_entity_id,source_kind,source_root_key,"
                   "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
-                  (sid, ext, 10, 111, "d", "ok", _NOW))
+                  (eid, "external_file", root_key, rel_path))
+        c.execute("INSERT INTO source_intelligence_metadata(source_entity_id,file_ext,size_bytes,"
+                  "mtime_ns,content_sha256,extraction_status,fts_rowid,indexed_at) "
+                  "VALUES(?,?,?,?,?,?,NULL,?)", (eid, ext, 10, 111, "d", "ok", _NOW))
         if with_note:
-            c.execute("INSERT INTO source_intelligence_generated_notes(generated_note_id,source_id,"
-                      "note_rel_path,generation_status,generated_at,updated_at) VALUES(?,?,?,?,?,?)",
-                      ("n1", sid, "Source Notes/old.md", "generated", _NOW, _NOW))
+            c.execute("INSERT INTO source_intelligence_generated_notes(generated_note_id,"
+                      "source_entity_id,note_rel_path,generation_status,generated_at,updated_at) "
+                      "VALUES(?,?,?,?,?,?)", ("n1", eid, "Source Notes/old.md", "generated", _NOW, _NOW))
         c.commit()
-    return sid
+    return eid
+
+
+def _entity_for(db: str, root_key: str, rel_path: str) -> str | None:
+    legacy = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
+    with sqlite3.connect(db) as c:
+        rows = c.execute("SELECT DISTINCT source_entity_id FROM source_index_locators WHERE source_id=?",
+                         (legacy,)).fetchall()
+    return rows[0][0] if len(rows) == 1 else None
+
+
+def _row(db: str, entity_id: str):
+    """(deleted, active, entity_status) for an entity, or None."""
+    with sqlite3.connect(db) as c:
+        return c.execute(
+            "SELECT s.deleted, s.active, e.status FROM source_intelligence_sources s "
+            "JOIN source_index_entities e ON e.source_entity_id = s.source_entity_id "
+            "WHERE s.source_entity_id=?", (entity_id,)).fetchone()
+
+
+def _has_renamed_from_writes(db: str) -> int:
+    with sqlite3.connect(db) as c:
+        return c.execute("SELECT COUNT(*) FROM source_intelligence_sources "
+                         "WHERE renamed_from_source_id IS NOT NULL").fetchone()[0]
 
 
 def _trust(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
@@ -59,12 +91,6 @@ def _trust(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
         c.commit()
 
 
-def _row(db: str, sid: str):
-    with sqlite3.connect(db) as c:
-        return c.execute("SELECT deleted, active, renamed_from_source_id FROM "
-                         "source_intelligence_sources WHERE source_id=?", (sid,)).fetchone()
-
-
 @pytest.fixture()
 def db(tmp_path: Path) -> str:
     d = str(tmp_path / "db.sqlite")
@@ -72,173 +98,115 @@ def db(tmp_path: Path) -> str:
     return d
 
 
-# ---------------- transactional move op ----------------
+# ---------------- R11-D3 decomposed move op (repository surface) ----------------
 
-def test_confirmed_move_links_and_invalidates(db) -> None:
+def test_confirmed_move_tombstones_old_no_lineage(db) -> None:
     repo = SourceIndexRepository(db)
     old = _insert_source(db, root_key="work", rel_path="a/old.txt", with_note=True)
     res = repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/new.txt",
                                               {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
-    new = res["new_source_id"]
-    assert res["linked"] is True
-    assert res["result"] == "move_applied"
-    # old row is now non-current; new row carries lineage
-    assert _row(db, old)[0] == 1  # deleted
-    assert _row(db, new)[2] == old  # renamed_from_source_id
-    assert _row(db, new)[0] == 0 and _row(db, new)[1] == 1  # current
-    # content trust NOT carried: destination extraction is pending
-    with sqlite3.connect(db) as c:
-        status = c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
-                           (new,)).fetchone()[0]
-        note = c.execute("SELECT source_id, generation_status FROM source_intelligence_generated_notes "
-                         "WHERE generated_note_id='n1'").fetchone()
-    assert status == "pending"
-    # generated note is inherited-but-unverified on the NEW row (explicit 'stale' status)
-    assert note == (new, "stale")
-    assert repo.find_successor_source_id(old) == new
+    assert res["result"] == "move_applied" and res["linked"] is True
+    # source side only: the old entity is P2-TOMBSTONED; NO destination entity was created by the move op
+    # (the drain's re-index establishes the destination P1).
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED"
+    assert _entity_for(db, "work", "a/new.txt") is None
+    # NO lineage written; find_successor is always None (R11-D1).
+    assert _has_renamed_from_writes(db) == 0
+    assert repo.find_successor_source_id(old) is None
+    # the old legacy handle still resolves (via the DISTINCT resolver, separately) to the ORIGINAL
+    # tombstoned entity — never to a "successor".
+    assert repo.resolve_entity(source_id=source_id_for("external_file", source_root_key="work",
+                                                       rel_path="a/old.txt")) == old
 
 
-def test_move_rolls_back_and_keeps_old_current(db, monkeypatch) -> None:
+def test_confirmed_move_conflicting_successor_no_mutation(db) -> None:
+    # old is still current AND a live entity already occupies the destination → conservative conflict.
     repo = SourceIndexRepository(db)
     old = _insert_source(db, root_key="work", rel_path="a/old.txt")
-    new_sid = source_id_for("external_file", source_root_key="work", rel_path="a/new.txt")
-    # Force the final step (old-row delete) to fail AFTER the destination inserts -> whole txn rolls back.
+    dst = _insert_source(db, root_key="work", rel_path="a/dest.txt")
+    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/dest.txt",
+                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
+    assert res["result"] == "conflicting_successor" and res["linked"] is False
+    assert _row(db, old)[0] == 0 and _row(db, dst)[0] == 0  # nothing mutated
+
+
+def test_confirmed_move_source_missing_no_mutation(db) -> None:
+    repo = SourceIndexRepository(db)
+    res = repo.apply_confirmed_same_root_move("work", "a/missing.txt", "a/new.txt",
+                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
+    assert res["result"] == "source_missing" and res["linked"] is False
+    assert _entity_for(db, "work", "a/new.txt") is None
+
+
+def test_confirmed_move_already_applied_when_dest_occupied_old_gone(db) -> None:
+    # old absent, destination already occupied by a live entity → P2 no-op, compatibility string only.
+    repo = SourceIndexRepository(db)
+    _insert_source(db, root_key="work", rel_path="a/dest.txt")
+    res = repo.apply_confirmed_same_root_move("work", "a/gone.txt", "a/dest.txt",
+                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
+    assert res["result"] == "move_already_applied" and res["linked"] is False
+
+
+def test_move_rolls_back_on_failure(db, monkeypatch) -> None:
+    repo = SourceIndexRepository(db)
+    old = _insert_source(db, root_key="work", rel_path="a/old.txt")
+
     def _boom(*a, **k):
         raise RuntimeError("injected failure")
 
     monkeypatch.setattr(repo, "_mark_deleted_by_source_id_locked", _boom)
     with pytest.raises(RuntimeError):
         repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/new.txt",
-                                            {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
-    # Invariant: old row stays current, and NO partial destination/lineage row was left behind.
-    assert _row(db, old) == (0, 1, None)
-    assert _row(db, new_sid) is None
+                                            {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
+    # old entity left current (rolled back)
+    assert _row(db, old)[:2] == (0, 1) and _row(db, old)[2] == "LIVE"
 
 
-def test_move_without_old_row_is_source_missing_no_mutation(db) -> None:
-    # No current predecessor and no tracked successor → source_missing: the move op does NOT mutate. The
-    # drain then indexes the destination as an ordinary current source (renamed_from_source_id=null).
-    repo = SourceIndexRepository(db)
-    res = repo.apply_confirmed_same_root_move("work", "a/missing.txt", "a/new.txt",
-                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
-    assert res["linked"] is False
-    assert res["result"] == "source_missing"
-    assert _row(db, res["new_source_id"]) is None  # no dest row fabricated by the move op
+# ---------------- R11-D1 provider: old ref → unavailable, never "moved" ----------------
 
-
-def test_move_conflicting_successor_does_not_mutate(db) -> None:
-    # The predecessor is already superseded by a DIFFERENT successor → conflicting_successor, no mutation.
-    repo = SourceIndexRepository(db)
-    _insert_source(db, root_key="work", rel_path="a/old.txt")
-    repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/first.txt",
-                                        {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 1})
-    other = source_id_for("external_file", source_root_key="work", rel_path="a/second.txt")
-    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/second.txt",
-                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
-    assert res["result"] == "conflicting_successor"
-    assert _row(db, other) is None  # the divergent destination was not written
-
-
-def test_move_over_indexed_destination_invalidates_content(db) -> None:
-    # PB-007: moving A->B onto a B that was ALREADY indexed must invalidate B's stale content
-    # representation (text excerpt, chunks, FTS row, content metadata, its OWN generated card).
-    repo = SourceIndexRepository(db)
-    _insert_source(db, root_key="work", rel_path="a/old.txt")
-    dest_rel = "a/dest.txt"
-    dest = source_id_for("external_file", source_root_key="work", rel_path=dest_rel)
-    with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (dest, "external_file", "work", dest_rel))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at,extraction_disposition,"
-                  "content_indexed_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                  (dest, "txt", 99, 999, "OLDHASH", "ok", None, _NOW, "content", _NOW))
-        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
-                  "excerpt_truncated,full_text_sha256,raw_body_persisted,redaction_applied,updated_at) "
-                  "VALUES(?,?,?,?,?,0,1,?)", (dest, "STALE DEST BODY", 14, 0, "fsha", _NOW))
-        c.execute("INSERT INTO source_intelligence_chunks(chunk_id,source_id,ordinal,chunk_text,"
-                  "char_count,raw_body_persisted,created_at) VALUES(?,?,?,?,?,0,?)",
-                  (f"{dest}:0", dest, 0, "STALE DEST BODY", 14, _NOW))
-        c.execute("INSERT INTO source_intelligence_generated_notes(generated_note_id,source_id,"
-                  "note_rel_path,generation_status,generated_at,updated_at) VALUES(?,?,?,?,?,?)",
-                  ("destnote", dest, "Source Notes/dest.md", "generated", _NOW, _NOW))
-        c.commit()
-    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", dest_rel,
-                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
-    assert res["result"] == "move_applied" and res["new_source_id"] == dest
-    with sqlite3.connect(db) as c:
-        meta = c.execute("SELECT content_sha256, extraction_status, extraction_disposition, "
-                         "content_indexed_at, fts_rowid FROM source_intelligence_metadata "
-                         "WHERE source_id=?", (dest,)).fetchone()
-        text = c.execute("SELECT COUNT(*) FROM source_intelligence_text WHERE source_id=?",
-                         (dest,)).fetchone()[0]
-        chunks = c.execute("SELECT COUNT(*) FROM source_intelligence_chunks WHERE source_id=?",
-                           (dest,)).fetchone()[0]
-        note = c.execute("SELECT generation_status FROM source_intelligence_generated_notes "
-                         "WHERE generated_note_id='destnote'").fetchone()[0]
-    assert meta == ("", "pending", None, None, None)  # content metadata fully reset
-    assert text == 0 and chunks == 0                   # excerpt + chunks dropped
-    assert note == "stale"                             # dest's OWN card staled (collision case)
-
-
-# ---------------- old source_ref -> moved (lookup ordering) ----------------
-
-def _env_with_move(tmp_path: Path):
+def _env(tmp_path: Path):
     db = str(tmp_path / "db.sqlite")
     SQLiteMigrator(db_path=db).apply()
-    config = ObsidianMcpConfig(external_sources=[ExternalSourceRoot(source_root_key="work", path=str(tmp_path))])
+    config = ObsidianMcpConfig(
+        external_sources=[ExternalSourceRoot(source_root_key="work", path=str(tmp_path))])
     _trust(db, config, "work")
     repo = SourceIndexRepository(db)
+    return db, config, repo
+
+
+def test_find_successor_is_always_none(tmp_path) -> None:
+    db, config, repo = _env(tmp_path)
     old = _insert_source(db, root_key="work", rel_path="a/old.txt")
-    res = repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/new.txt",
-                                              {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 222})
-    return db, config, repo, old, res["new_source_id"]
+    # even after a move, no successor is ever reported (R11-D1).
+    repo.apply_confirmed_same_root_move("work", "a/old.txt", "a/new.txt",
+                                        {"file_ext": "txt", "size_bytes": 20, "mtime_ns": 2})
+    assert repo.find_successor_source_id(old) is None
 
 
-def test_old_ref_answers_moved_with_successor(tmp_path) -> None:
-    db, config, repo, old, new = _env_with_move(tmp_path)
-    r = svc.read_source_file(repo, config, source_ref=encode_source_ref(old), mode="complete")
-    assert r["retrieval_state"] == "moved"
-    assert r["successor_source_ref"] == encode_source_ref(new)
-    assert r["content"] is None and r["completeness_state"] == "none"
-
-
-def test_moved_successor_outside_authorization_not_disclosed(tmp_path) -> None:
-    db, config, repo, old, new = _env_with_move(tmp_path)
-    # Make the successor's root sensitive -> successor must not be disclosed; falls back to unavailable.
-    config.external_sources[0].sensitive = True
+def test_deleted_old_ref_is_unavailable_not_moved(tmp_path) -> None:
+    db, config, repo = _env(tmp_path)
+    old = _insert_source(db, root_key="work", rel_path="a/old.txt")
+    legacy = source_id_for("external_file", source_root_key="work", rel_path="a/old.txt")
+    repo.mark_deleted("external_file", "a/old.txt")  # P2 tombstone
+    # a v2 entity ref for the (now tombstoned) entity: the provider answers unavailable, never "moved".
     r = svc.read_source_file(repo, config, source_ref=encode_source_ref(old), mode="complete")
     assert r["retrieval_state"] == "unavailable"
     assert "successor_source_ref" not in r
-
-
-def test_non_current_successor_not_fabricated_move(tmp_path) -> None:
-    db, config, repo, old, new = _env_with_move(tmp_path)
-    with sqlite3.connect(db) as c:  # successor itself deleted -> no current successor
-        c.execute("UPDATE source_intelligence_sources SET deleted=1, active=0 WHERE source_id=?", (new,))
-        c.commit()
-    r = svc.read_source_file(repo, config, source_ref=encode_source_ref(old), mode="complete")
-    assert r["retrieval_state"] == "unavailable"
+    # the legacy handle still resolves to the original tombstoned entity (not a successor).
+    assert repo.resolve_entity(source_id=legacy) == old
 
 
 def test_plain_deleted_without_lineage_is_unavailable(tmp_path) -> None:
-    db = str(tmp_path / "db.sqlite")
-    SQLiteMigrator(db_path=db).apply()
-    config = ObsidianMcpConfig(external_sources=[ExternalSourceRoot(source_root_key="work", path=str(tmp_path))])
-    _trust(db, config, "work")
-    repo = SourceIndexRepository(db)
+    db, config, repo = _env(tmp_path)
     sid = _insert_source(db, root_key="work", rel_path="a/gone.txt")
-    with sqlite3.connect(db) as c:
-        c.execute("UPDATE source_intelligence_sources SET deleted=1, active=0 WHERE source_id=?", (sid,))
-        c.commit()
+    repo.mark_deleted("external_file", "a/gone.txt")
     r = svc.read_source_file(repo, config, source_ref=encode_source_ref(sid), mode="complete")
     assert r["retrieval_state"] == "unavailable"
 
 
 # ---------------- watcher: enqueue-only 'moved' event vs conservative fallback ----------------
-# The observer thread NEVER stats/mutates (PB-005): on_moved enqueues one governed 'moved' event carrying
-# both paths, or falls back to delete+create. The readiness-gated drain owns the actual lineage move.
+# The observer thread NEVER stats/mutates: on_moved enqueues one governed 'moved' event carrying both
+# paths, or falls back to delete+create. The readiness-gated drain owns the actual relocation.
 
 def _queued(db: str):
     with sqlite3.connect(db) as c:
@@ -257,9 +225,8 @@ def test_watcher_same_root_move_enqueues_moved_event_no_mutation(tmp_path) -> No
     outcome = source_watch.enqueue_move(repo, "work", root, str(root / "a" / "old.txt"),
                                         str(root / "a" / "new.txt"))
     assert outcome == "moved"
-    # exactly one governed 'moved' event carrying both paths; NO delete/create; NO source-table mutation
     assert _queued(db) == [("moved", "a/old.txt", "a/new.txt", "work")]
-    assert _row(db, old) == (0, 1, None)  # old row untouched on the observer thread
+    assert _row(db, old)[:2] == (0, 1)  # old row untouched on the observer thread
 
 
 def test_watcher_cross_root_move_falls_back_to_delete_create(tmp_path) -> None:
@@ -268,11 +235,10 @@ def test_watcher_cross_root_move_falls_back_to_delete_create(tmp_path) -> None:
     root = tmp_path / "work"
     (root / "a").mkdir(parents=True)
     repo = SourceIndexRepository(db)
-    # destination outside the root -> not a same-root move -> caller uses the conservative fallback
     outcome = source_watch.enqueue_move(repo, "work", root, str(root / "a" / "old.txt"),
                                         str(tmp_path / "elsewhere" / "new.txt"))
     assert outcome == "fallback"
-    assert _queued(db) == []  # enqueue_move itself emits nothing on fallback
+    assert _queued(db) == []
 
 
 def test_watcher_vault_root_move_falls_back(tmp_path) -> None:

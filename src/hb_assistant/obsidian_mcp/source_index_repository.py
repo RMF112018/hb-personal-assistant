@@ -25,8 +25,21 @@ from typing import Any
 from hb_assistant.store.connection import borrow_connection, transaction
 from hb_assistant.store.source_intelligence_tables import fts5_available
 
-from .source_connector_models import sanitize_fts_query
+from .source_connector_models import classify_source_ref, sanitize_fts_query
 from .source_skip_codes import normalize_skip_code
+
+
+class LifecycleOracleError(RuntimeError):
+    """Pre-commit permanent-identity lifecycle-oracle violation (PI-WI-03a). Raised inside a lifecycle
+    transaction BEFORE commit so the enclosing ``transaction()`` rolls the whole write back — a LIVE
+    entity must have exactly one current locator, a TOMBSTONED entity zero, and current-locator
+    (per-entity + per-live-path) uniqueness must hold. Never swallowed; surfaces as a real error."""
+
+
+class DualAuthorityGuardError(RuntimeError):
+    """A dual-authority violation (PC-AC-ID-001): an attempt to write a source_index_entities row
+    outside the sole ``_mint_entity`` choke-point, or a raw parent-address write bypassing the locator
+    lifecycle. Fail-closed."""
 
 
 def _now() -> str:
@@ -156,6 +169,153 @@ class SourceIndexRepository:
             (key, value, _now()),
         )
 
+    # ----- permanent-identity lifecycle primitives (PI-WI-03a; ADR-001 R5 / ADR-003 R8 §5) -------
+    # Post-V128 the 7 content tables key on ``source_entity_id`` (a durable 32-hex identity); the
+    # CURRENT locator (``source_index_locators`` WHERE ``is_current_locator=1``) is the single authority
+    # for a source's current ``source_id``/``source_root_key``/``rel_path``. The internal repository
+    # handle IS the ``source_entity_id``; the locator carries the legacy deterministic ``source_id`` so a
+    # persisted legacy ref resolves via the fail-closed DISTINCT resolver (PC-AC-ID-005).
+    def _mint_entity(self, c: sqlite3.Connection, *, created_at: str | None = None) -> str:
+        """P1 — the SOLE ``INSERT INTO source_index_entities`` choke-point (PC-AC-ID-001). Mints one LIVE
+        entity and returns its durable id. NEVER writes a locator/observation column."""
+        eid = uuid.uuid4().hex
+        c.execute(
+            "INSERT INTO source_index_entities (source_entity_id, created_at, status) VALUES (?,?,'LIVE')",
+            (eid, created_at or _now()),
+        )
+        return eid
+
+    def _insert_current_locator(
+        self,
+        c: sqlite3.Connection,
+        *,
+        entity_id: str,
+        source_id: str,
+        source_root_key: str | None,
+        rel_path: str | None,
+    ) -> None:
+        """P1/P3 — insert a fresh CURRENT locator for an entity. A pure-CA mint: it OMITS the three F-005
+        observation columns (``last_seen_generation``/``last_seen_at``/``last_indexed_fingerprint``) and
+        the serving-trust column, which are stamped only by a distinct OW/observation write."""
+        c.execute(
+            "INSERT INTO source_index_locators "
+            "(locator_id, source_entity_id, source_id, source_root_key, rel_path, "
+            " is_current_locator, tombstoned_at, generation_seq) VALUES (?,?,?,?,?,1,NULL,0)",
+            (uuid.uuid4().hex, entity_id, source_id, source_root_key, rel_path),
+        )
+
+    def _demote_current_locator(
+        self, c: sqlite3.Connection, entity_id: str, *, tombstone: bool
+    ) -> None:
+        """Demote the entity's current locator (P2 tombstone stamps ``tombstoned_at``)."""
+        if tombstone:
+            c.execute(
+                "UPDATE source_index_locators SET is_current_locator=0, tombstoned_at=? "
+                "WHERE source_entity_id=? AND is_current_locator=1",
+                (_now(), entity_id),
+            )
+        else:
+            c.execute(
+                "UPDATE source_index_locators SET is_current_locator=0 "
+                "WHERE source_entity_id=? AND is_current_locator=1",
+                (entity_id,),
+            )
+
+    def _tombstone_entity(self, c: sqlite3.Connection, entity_id: str) -> None:
+        """P2 — mark an entity TOMBSTONED (terminal) and demote its current locator. Idempotent by
+        TOMBSTONED-terminal: re-tombstoning a TOMBSTONED entity is a no-op."""
+        c.execute(
+            "UPDATE source_index_entities SET status='TOMBSTONED' WHERE source_entity_id=?",
+            (entity_id,),
+        )
+        self._demote_current_locator(c, entity_id, tombstone=True)
+
+    def _locator_for_path(
+        self,
+        c: sqlite3.Connection,
+        source_kind: str,
+        rel_path: str,
+        source_root_key: str | None = None,
+    ) -> tuple[str, str, str | None, str | None] | None:
+        """Resolve the CURRENT locator for a ``(kind, rel_path[, root])`` → ``(entity_id, source_id,
+        source_root_key, rel_path)`` or None. Binds the current locator (``is_current_locator=1``) joined
+        to its LIVE parent — the CA current-address resolution."""
+        sql = (
+            "SELECT s.source_entity_id, l.source_id, l.source_root_key, l.rel_path "
+            "FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "  AND l.is_current_locator = 1 "
+            "WHERE s.source_kind=? AND l.rel_path=?"
+        )
+        params: list[Any] = [source_kind, rel_path]
+        if source_root_key is not None:
+            sql += " AND l.source_root_key=?"
+            params.append(source_root_key)
+        return c.execute(sql, tuple(params)).fetchone()
+
+    def _resolve_entity_by_source_id(self, c: sqlite3.Connection, source_id: str) -> str | None:
+        """PC-AC-ID-005 on an OPEN connection — DISTINCT legacy resolver: exactly-1 → that entity (LIVE
+        or TOMBSTONED); 0 or >=2 → None (UNRESOLVED). NEVER disambiguates by ``is_current_locator`` /
+        ``generation_seq`` (that was the stale-handle rebinding bug)."""
+        rows = c.execute(
+            "SELECT DISTINCT source_entity_id FROM source_index_locators WHERE source_id=?",
+            (source_id,),
+        ).fetchall()
+        return rows[0][0] if len(rows) == 1 else None
+
+    def resolve_entity(
+        self,
+        *,
+        source_id: str | None = None,
+        source_ref: str | None = None,
+        conn: sqlite3.Connection | None = None,
+    ) -> str | None:
+        """Fail-closed DB-aware resolver wired at the connector call-sites. Decodes/classifies via the
+        DB-free v2 codec, then resolves to a ``source_entity_id`` or None (UNRESOLVED):
+
+        * v2 entity ref → the entity iff it exists (LIVE or TOMBSTONED); else None.
+        * v1 ref / bare-32-hex legacy handle → the DISTINCT legacy resolver (PC-AC-ID-005).
+
+        A bare 32-hex that happens to equal a current entity id resolving to UNRESOLVED is the correct
+        posture (no bare/v1 entity fallback)."""
+        kind, value = classify_source_ref(source_id=source_id, source_ref=source_ref)
+        with borrow_connection(conn, self.db_path) as c:
+            if kind == "entity":
+                row = c.execute(
+                    "SELECT source_entity_id FROM source_index_entities WHERE source_entity_id=?",
+                    (value,),
+                ).fetchone()
+                return row[0] if row else None
+            return self._resolve_entity_by_source_id(c, value)
+
+    def _assert_lifecycle_oracle(
+        self, c: sqlite3.Connection, entity_id: str | None = None
+    ) -> None:
+        """Pre-commit lifecycle oracle (run as the LAST statement inside a lifecycle transaction; a
+        violation raises → the enclosing ``transaction()`` ROLLS BACK). Invariants: every LIVE entity has
+        exactly one current locator; every TOMBSTONED entity zero; current-locator uniqueness (per entity
+        and per live path) — the latter two DB-enforced by the V128 partial-unique indexes, re-checked
+        here for defence-in-depth. ``entity_id`` scopes the check to a single entity (hot-path cost O(1));
+        None runs the full-scan invariant (bounded-batch / test use)."""
+        scope = "" if entity_id is None else " AND e.source_entity_id = :eid"
+        params = {} if entity_id is None else {"eid": entity_id}
+        bad_live = c.execute(
+            "SELECT COUNT(*) FROM source_index_entities e WHERE e.status='LIVE' AND "
+            "(SELECT COUNT(*) FROM source_index_locators l "
+            " WHERE l.source_entity_id=e.source_entity_id AND l.is_current_locator=1) != 1" + scope,
+            params,
+        ).fetchone()[0]
+        if bad_live:
+            raise LifecycleOracleError("live_entity_not_single_current_locator")
+        bad_tomb = c.execute(
+            "SELECT COUNT(*) FROM source_index_entities e WHERE e.status='TOMBSTONED' AND "
+            "(SELECT COUNT(*) FROM source_index_locators l "
+            " WHERE l.source_entity_id=e.source_entity_id AND l.is_current_locator=1) != 0" + scope,
+            params,
+        ).fetchone()[0]
+        if bad_tomb:
+            raise LifecycleOracleError("tombstoned_entity_has_current_locator")
+
     def record_drain(self, *, conn: sqlite3.Connection | None = None) -> None:
         """Stamp the last successful queue-drain time (operator queue-health signal)."""
         with borrow_connection(conn, self.db_path) as c, transaction(c):
@@ -193,19 +353,35 @@ class SourceIndexRepository:
                 "ON CONFLICT(state_key) DO UPDATE SET state_value=excluded.state_value, updated_at=excluded.updated_at",
                 (json.dumps(sorted(active_keys)), _now()),
             )
-            # Deactivate file sources whose root is no longer configured/enabled.
+            # Deactivate file sources whose root is no longer configured/enabled. W-2 membership is
+            # evaluated against the CURRENT locator's source_root_key (not the parent's last-known), and
+            # deactivation realizes as a P2 tombstone of each affected entity (ADR-003 R8 §5.1/§5.4).
             known = {
                 row[0]
                 for row in c.execute(
-                    "SELECT DISTINCT source_root_key FROM source_intelligence_sources "
-                    "WHERE source_root_key IS NOT NULL"
+                    "SELECT DISTINCT l.source_root_key FROM source_index_locators l "
+                    "WHERE l.is_current_locator=1 AND l.source_root_key IS NOT NULL"
                 ).fetchall()
             }
             for stale_key in known - active_keys:
-                c.execute(
-                    "UPDATE source_intelligence_sources SET active=0, updated_at=? WHERE source_root_key=?",
-                    (_now(), stale_key),
-                )
+                stale_entities = [
+                    r[0]
+                    for r in c.execute(
+                        "SELECT s.source_entity_id FROM source_intelligence_sources s "
+                        "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                        "  AND l.is_current_locator = 1 "
+                        "WHERE l.source_root_key=? AND s.deleted=0",
+                        (stale_key,),
+                    ).fetchall()
+                ]
+                for entity_id in stale_entities:
+                    c.execute(
+                        "UPDATE source_intelligence_sources SET active=0, updated_at=? "
+                        "WHERE source_entity_id=?",
+                        (_now(), entity_id),
+                    )
+                    self._tombstone_entity(c, entity_id)
+            self._assert_lifecycle_oracle(c)
 
     # ----- idempotency lookups ---------------------------------------------------------------
     def lookup_by_path(
@@ -220,15 +396,20 @@ class SourceIndexRepository:
         single root — required when the same rel_path may exist under multiple roots, so the
         change-detection sha/mtime and fts_rowid belong to the right root. Omitting it keeps the
         legacy root-blind match (safe only for single-root/single-vault callers)."""
+        # CA: resolve (kind, rel_path[, root]) through the CURRENT locator (is_current_locator=1) to the
+        # LIVE entity, then join metadata by entity. A tombstoned/deleted path has no current locator, so a
+        # reappearance is a fresh P1 (direction-A) — the returned handle is the durable source_entity_id.
         sql = (
-            "SELECT s.source_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted, m.size_bytes "
+            "SELECT s.source_entity_id, m.content_sha256, m.mtime_ns, m.fts_rowid, s.deleted, m.size_bytes "
             "FROM source_intelligence_sources s "
-            "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-            "WHERE s.source_kind=? AND s.rel_path=?"
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "  AND l.is_current_locator = 1 "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+            "WHERE s.source_kind=? AND l.rel_path=?"
         )
         params: list[Any] = [source_kind, rel_path]
         if source_root_key is not None:
-            sql += " AND s.source_root_key=?"
+            sql += " AND l.source_root_key=?"
             params.append(source_root_key)
         with borrow_connection(conn, self.db_path) as c:
             row = c.execute(sql, tuple(params)).fetchone()
@@ -250,8 +431,10 @@ class SourceIndexRepository:
             return {
                 row[0]
                 for row in c.execute(
-                    "SELECT rel_path FROM source_intelligence_sources "
-                    "WHERE source_root_key=? AND rel_path IS NOT NULL AND deleted=0",
+                    "SELECT l.rel_path FROM source_intelligence_sources s "
+                    "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                    "  AND l.is_current_locator = 1 "
+                    "WHERE l.source_root_key=? AND l.rel_path IS NOT NULL AND s.deleted=0",
                     (source_root_key,),
                 ).fetchall()
             }
@@ -267,11 +450,13 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT s.rel_path, m.mtime_ns, m.size_bytes "
+                "SELECT l.rel_path, m.mtime_ns, m.size_bytes "
                 "FROM source_intelligence_sources s "
-                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-                "WHERE s.source_kind='external_file' AND s.source_root_key=? "
-                "AND s.rel_path IS NOT NULL AND s.deleted=0",
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+                "WHERE s.source_kind='external_file' AND l.source_root_key=? "
+                "AND l.rel_path IS NOT NULL AND s.deleted=0",
                 (source_root_key,),
             ).fetchall()
         return {row[0]: (row[1], row[2]) for row in rows}
@@ -288,37 +473,47 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                # Disposition is the explicit V122 column when present, else mapped from the legacy
-                # extraction_status (NO row-wide backfill — mapped at read time). metadata_searchable =
-                # has a path/project FTS row; content_searchable = has NONEMPTY indexed text.
+                # CA: joins bind the entity; root scope + address come from the CURRENT locator. The
+                # serving-trust gate (R8 §6.3) rides the locator's policy_validation_state (NULL ≡
+                # validated, 'policy_stale' ≡ content unverified) with COUNT-EXCLUSIVITY: a policy-stale
+                # locator is bucketed as policy_unverified and NEVER counts as content_searchable /
+                # content_extracted. Disposition mapped read-time (no row-wide backfill).
                 "SELECT COALESCE(m.extraction_disposition, CASE m.extraction_status "
                 "   WHEN 'ok' THEN 'content' WHEN 'failed' THEN 'content' "
                 "   WHEN 'unsupported' THEN 'unsupported' WHEN 'skipped_too_large' THEN 'too_large' "
                 "   ELSE 'metadata_only' END) AS disp, "
                 " m.extraction_status AS st, "
+                " CASE WHEN l.policy_validation_state IS NULL THEN 0 ELSE 1 END AS policy_stale, "
                 " SUM(CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 "
                 "          THEN 1 ELSE 0 END) AS searchable, "
                 " SUM(CASE WHEN m.fts_rowid IS NOT NULL THEN 1 ELSE 0 END) AS has_fts, "
                 " COUNT(*) AS n "
                 "FROM source_intelligence_sources s "
-                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
-                "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
-                "GROUP BY disp, st",
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
+                "JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+                "LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
+                "WHERE s.source_kind='external_file' AND l.source_root_key=? AND s.deleted=0 "
+                "GROUP BY disp, st, policy_stale",
                 (source_root_key,),
             ).fetchall()
 
-        # Positional access (disp=0, st=1, searchable=2, has_fts=3, n=4) — independent of row_factory.
+        # Positional access (disp=0, st=1, policy_stale=2, searchable=3, has_fts=4, n=5).
         def _sum(pred: Any) -> int:
-            return sum(int(r[4]) for r in rows if pred(r))
+            return sum(int(r[5]) for r in rows if pred(r))
 
-        total = sum(int(r[4]) for r in rows)
-        searchable = sum(int(r[2] or 0) for r in rows)
-        metadata_searchable = sum(int(r[3] or 0) for r in rows)
-        content_extracted = _sum(lambda r: r[1] == "ok")
+        def _valid(r: Any) -> bool:
+            return int(r[2]) == 0  # policy-validated locator (NULL policy_validation_state)
+
+        total = sum(int(r[5]) for r in rows)
+        # Count-exclusivity: content_searchable / content_extracted exclude policy-stale locators.
+        searchable = sum(int(r[3] or 0) for r in rows if _valid(r))
+        metadata_searchable = sum(int(r[4] or 0) for r in rows)
+        content_extracted = _sum(lambda r: r[1] == "ok" and _valid(r))
         content_eligible = _sum(lambda r: r[0] == "content")
         content_pending = _sum(lambda r: r[0] == "content" and r[1] == "pending")
         intentional_metadata_only = _sum(lambda r: r[0] == "metadata_only")
+        policy_unverified = _sum(lambda r: not _valid(r))
         return {
             "metadata_indexed": total,
             "metadata_searchable": metadata_searchable,
@@ -329,9 +524,11 @@ class SourceIndexRepository:
             "intentional_metadata_only": intentional_metadata_only,
             # Back-compat key (was extraction_status='pending'); now the explicit metadata-only count.
             "metadata_only": intentional_metadata_only,
-            "failed": _sum(lambda r: r["st"] == "failed"),
-            "unsupported": _sum(lambda r: r["disp"] == "unsupported"),
-            "too_large": _sum(lambda r: r["disp"] == "too_large"),
+            # Serving-trust DEGRADE bucket (R8 §6.3): locators whose content is policy-unverified.
+            "policy_unverified": policy_unverified,
+            "failed": _sum(lambda r: r[1] == "failed"),
+            "unsupported": _sum(lambda r: r[0] == "unsupported"),
+            "too_large": _sum(lambda r: r[0] == "too_large"),
         }
 
     def list_root_file_sources(
@@ -343,52 +540,83 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT source_id, rel_path, project_number FROM source_intelligence_sources "
-                "WHERE source_kind='external_file' AND source_root_key=? AND rel_path IS NOT NULL "
-                "AND deleted=0",
+                "SELECT s.source_entity_id, l.rel_path, s.project_number "
+                "FROM source_intelligence_sources s "
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
+                "WHERE s.source_kind='external_file' AND l.source_root_key=? AND l.rel_path IS NOT NULL "
+                "AND s.deleted=0",
                 (source_root_key,),
             ).fetchall()
         return [{"source_id": r[0], "rel_path": r[1], "project_number": r[2]} for r in rows]
 
+    def _resolve_dst_ref_entity(self, c: sqlite3.Connection, dst_ref: str) -> str | None:
+        """Fail-closed resolution of a relationship ``dst_ref`` (a 'source' target) to a
+        ``source_entity_id`` (R11 §2a/§2b). Accepts a go-forward v2 entity ref, a bare entity id, or a
+        legacy locator ``source_id`` (DISTINCT resolver). None on unresolved/tamper."""
+        ref = str(dst_ref or "")
+        if ref.startswith("hbsrc2_"):
+            try:
+                _, value = classify_source_ref(source_ref=ref)
+            except Exception:  # noqa: BLE001 — malformed ref fails closed
+                return None
+        else:
+            value = ref
+        row = c.execute(
+            "SELECT source_entity_id FROM source_index_entities WHERE source_entity_id=?", (value,)
+        ).fetchone()
+        if row is not None:
+            return row[0]
+        return self._resolve_entity_by_source_id(c, value)
+
     def list_relationships(
-        self, source_id: str, *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> list[dict[str, Any]]:
-        """Outgoing relationships for a source, with the target rel_path resolved for 'source' kinds."""
+        """Outgoing relationships for a source entity, with the target rel_path (from the target's CURRENT
+        locator) resolved for 'source' kinds via the fail-closed resolver (R11 OCC-009)."""
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT r.dst_kind, r.dst_ref, r.relation, r.confidence, r.evidence_json, s.rel_path "
+                "SELECT r.dst_kind, r.dst_ref, r.relation, r.confidence, r.evidence_json "
                 "FROM source_intelligence_relationships r "
-                "LEFT JOIN source_intelligence_sources s "
-                "  ON r.dst_kind='source' AND s.source_id = r.dst_ref "
-                "WHERE r.src_source_id=? ORDER BY r.created_at",
-                (source_id,),
+                "WHERE r.src_source_entity_id=? ORDER BY r.created_at",
+                (source_entity_id,),
             ).fetchall()
-        out: list[dict[str, Any]] = []
-        for dst_kind, dst_ref, relation, confidence, evidence_json, dst_rel_path in rows:
-            evidence = None
-            if evidence_json:
-                with suppress(ValueError, TypeError):
-                    evidence = json.loads(evidence_json)
-            out.append(
-                {
-                    "dst_kind": dst_kind,
-                    "dst_ref": dst_ref,
-                    "relation": relation,
-                    "confidence": confidence,
-                    "evidence": evidence,
-                    "dst_rel_path": dst_rel_path,
-                }
-            )
+            out: list[dict[str, Any]] = []
+            for dst_kind, dst_ref, relation, confidence, evidence_json in rows:
+                dst_rel_path = None
+                if dst_kind == "source" and dst_ref:
+                    target = self._resolve_dst_ref_entity(c, dst_ref)
+                    if target is not None:
+                        loc = c.execute(
+                            "SELECT rel_path FROM source_index_locators "
+                            "WHERE source_entity_id=? AND is_current_locator=1",
+                            (target,),
+                        ).fetchone()
+                        dst_rel_path = loc[0] if loc else None
+                evidence = None
+                if evidence_json:
+                    with suppress(ValueError, TypeError):
+                        evidence = json.loads(evidence_json)
+                out.append(
+                    {
+                        "dst_kind": dst_kind,
+                        "dst_ref": dst_ref,
+                        "relation": relation,
+                        "confidence": confidence,
+                        "evidence": evidence,
+                        "dst_rel_path": dst_rel_path,
+                    }
+                )
         return out
 
     def record_relationships(
         self,
-        source_id: str,
+        source_entity_id: str,
         relationships: list[dict[str, Any]],
         *,
         conn: sqlite3.Connection | None = None,
     ) -> None:
-        """Upsert outgoing relationship rows for a source (UNIQUE guard dedupes). Additive."""
+        """Upsert outgoing relationship rows for a source entity (UNIQUE guard dedupes). Additive."""
         if not relationships:
             return
         now = _now()
@@ -396,13 +624,13 @@ class SourceIndexRepository:
             for rel in relationships:
                 c.execute(
                     "INSERT INTO source_intelligence_relationships "
-                    "(relationship_id, src_source_id, dst_kind, dst_ref, relation, confidence, "
+                    "(relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence, "
                     " evidence_json, created_at) VALUES (?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(src_source_id, dst_kind, dst_ref, relation) DO UPDATE SET "
+                    "ON CONFLICT(src_source_entity_id, dst_kind, dst_ref, relation) DO UPDATE SET "
                     " confidence=excluded.confidence, evidence_json=excluded.evidence_json",
                     (
                         uuid.uuid4().hex,
-                        source_id,
+                        source_entity_id,
                         rel["dst_kind"],
                         rel["dst_ref"],
                         rel["relation"],
@@ -455,87 +683,84 @@ class SourceIndexRepository:
         """
         source_kind = record["source_kind"]
         rel_path = record["rel_path"]
-        source_id = source_id_for(
-            source_kind, source_root_key=record.get("source_root_key"), rel_path=rel_path
-        )
+        root = record.get("source_root_key")
+        # Legacy deterministic handle — carried on the locator's ``source_id`` so a persisted legacy ref
+        # still resolves via the DISTINCT resolver (PC-AC-ID-005).
+        legacy_source_id = source_id_for(source_kind, source_root_key=root, rel_path=rel_path)
         now = _now()
         preserve = bool(record.get("preserve_content"))
+
+        # CA address realization: resolve the CURRENT locator for this path → existing entity (update /
+        # P3 reappearance), else mint a fresh P1 entity + current locator. A tombstoned path has no
+        # current locator, so a reappearance mints a NEW entity (direction-A; TOMBSTONED terminal).
+        loc = self._locator_for_path(c, source_kind, rel_path, source_root_key=root)
+        if loc is not None:
+            entity_id = loc[0]
+        else:
+            entity_id = self._mint_entity(c)
+            self._insert_current_locator(
+                c, entity_id=entity_id, source_id=legacy_source_id,
+                source_root_key=root, rel_path=rel_path,
+            )
+
         existing = c.execute(
-            "SELECT m.fts_rowid FROM source_intelligence_metadata m WHERE m.source_id=?",
-            (source_id,),
+            "SELECT m.fts_rowid FROM source_intelligence_metadata m WHERE m.source_entity_id=?",
+            (entity_id,),
         ).fetchone()
         old_fts_rowid = existing[0] if existing else None
 
-        # Generation stamp (V122): a metadata observation stamps last_seen_generation/last_seen_at so
-        # generation-based reconciliation can tell "seen this generation" from "gone". A CHANGED file
-        # moves updated_at (material change); a preserve REPAIR of an unchanged file must NOT move
-        # updated_at (it would defeat the reconciliation guard / needlessly re-stale notes).
+        # OW (F-005 observation): last_seen_generation/last_seen_at/last_indexed_fingerprint live on the
+        # CURRENT locator (V129), NOT the parent. A metadata observation stamps last_seen so
+        # generation-based reconciliation can tell "seen this generation" from "gone"; a reprocess
+        # re-stamps the policy fingerprint the row is now current under and, in the SAME write,
+        # REVALIDATES serving-trust (policy_validation_state = NULL). COALESCE-preserve keeps a prior
+        # value on a bare re-observe with no fingerprint context.
         gen = record.get("last_seen_generation")
         last_seen_at = now if gen is not None else None
-        # The policy fingerprint the row is now current under (V122): written in BOTH modes so the next
-        # generation can fast-skip only when the row is current for CURRENT policy. COALESCE-preserve on a
-        # NULL keeps a legacy row's prior value untouched (a bare re-observe with no fingerprint context).
         fingerprint = record.get("last_indexed_fingerprint")
+        if gen is not None or fingerprint is not None:
+            c.execute(
+                "UPDATE source_index_locators SET "
+                " last_seen_generation=COALESCE(?, last_seen_generation), "
+                " last_seen_at=COALESCE(?, last_seen_at), "
+                " last_indexed_fingerprint=COALESCE(?, last_indexed_fingerprint), "
+                " policy_validation_state=CASE WHEN ? IS NOT NULL THEN NULL "
+                "  ELSE policy_validation_state END "
+                "WHERE source_entity_id=? AND is_current_locator=1",
+                (gen, last_seen_at, fingerprint, fingerprint, entity_id),
+            )
+
+        # Parent row (entity-keyed; last-known root/rel_path — non-authoritative). Observation columns are
+        # NOT parent columns post-V128. ``updated_at`` moves only on a material change (replace), never a
+        # preserve REPAIR (which must not read as a change / re-stale notes).
         if preserve:
             c.execute(
                 "INSERT INTO source_intelligence_sources "
-                "(source_id, source_kind, source_root_key, rel_path, abs_path_hash, "
-                " project_key, project_number, active, deleted, created_at, updated_at, "
-                " last_seen_generation, last_seen_at, last_indexed_fingerprint) "
-                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET "
-                # Authoritatively refresh derived identity fields (abs_path_hash after a root-path change,
-                # project routing after a matcher change) — but NEVER updated_at (a preserve is not a
-                # material change). Content columns are untouched below.
+                "(source_entity_id, source_kind, source_root_key, rel_path, abs_path_hash, "
+                " project_key, project_number, active, deleted, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,?,1,0,?,?) "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET "
                 " source_root_key=excluded.source_root_key, abs_path_hash=excluded.abs_path_hash, "
                 " project_key=excluded.project_key, project_number=excluded.project_number, "
-                " active=1, deleted=0, "
-                " last_seen_generation=COALESCE(excluded.last_seen_generation, source_intelligence_sources.last_seen_generation), "
-                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at), "
-                " last_indexed_fingerprint=COALESCE(excluded.last_indexed_fingerprint, source_intelligence_sources.last_indexed_fingerprint)",
+                " active=1, deleted=0",
                 (
-                    source_id,
-                    source_kind,
-                    record.get("source_root_key"),
-                    rel_path,
-                    record.get("abs_path_hash"),
-                    record.get("project_key"),
-                    record.get("project_number"),
-                    now,
-                    now,
-                    gen,
-                    last_seen_at,
-                    fingerprint,
+                    entity_id, source_kind, root, rel_path, record.get("abs_path_hash"),
+                    record.get("project_key"), record.get("project_number"), now, now,
                 ),
             )
         else:
             c.execute(
                 "INSERT INTO source_intelligence_sources "
-                "(source_id, source_kind, source_root_key, rel_path, abs_path_hash, "
-                " project_key, project_number, active, deleted, created_at, updated_at, "
-                " last_seen_generation, last_seen_at, last_indexed_fingerprint) "
-                "VALUES (?,?,?,?,?,?,?,1,0,?,?,?,?,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET "
+                "(source_entity_id, source_kind, source_root_key, rel_path, abs_path_hash, "
+                " project_key, project_number, active, deleted, created_at, updated_at) "
+                "VALUES (?,?,?,?,?,?,?,1,0,?,?) "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET "
                 " source_root_key=excluded.source_root_key, abs_path_hash=excluded.abs_path_hash, "
-                " project_key=excluded.project_key, "
-                " project_number=excluded.project_number, active=1, deleted=0, updated_at=excluded.updated_at, "
-                " last_seen_generation=COALESCE(excluded.last_seen_generation, source_intelligence_sources.last_seen_generation), "
-                " last_seen_at=COALESCE(excluded.last_seen_at, source_intelligence_sources.last_seen_at), "
-                # Authoritative in replace mode: a reprocess re-stamps the fingerprint the row is now current under.
-                " last_indexed_fingerprint=COALESCE(excluded.last_indexed_fingerprint, source_intelligence_sources.last_indexed_fingerprint)",
+                " project_key=excluded.project_key, project_number=excluded.project_number, "
+                " active=1, deleted=0, updated_at=excluded.updated_at",
                 (
-                    source_id,
-                    source_kind,
-                    record.get("source_root_key"),
-                    rel_path,
-                    record.get("abs_path_hash"),
-                    record.get("project_key"),
-                    record.get("project_number"),
-                    now,
-                    now,
-                    gen,
-                    last_seen_at,
-                    fingerprint,
+                    entity_id, source_kind, root, rel_path, record.get("abs_path_hash"),
+                    record.get("project_key"), record.get("project_number"), now, now,
                 ),
             )
 
@@ -550,7 +775,8 @@ class SourceIndexRepository:
             # text) get an empty-excerpt path row. Extracted text/chunks/digest + extraction_status are left
             # intact (content is unchanged); only the DERIVED representation is refreshed.
             retained = c.execute(
-                "SELECT text_excerpt FROM source_intelligence_text WHERE source_id=?", (source_id,)
+                "SELECT text_excerpt FROM source_intelligence_text WHERE source_entity_id=?",
+                (entity_id,),
             ).fetchone()
             retained_excerpt = retained[0] if retained and retained[0] else ""
             fts_rowid = old_fts_rowid
@@ -564,9 +790,9 @@ class SourceIndexRepository:
                 fts_rowid = cur.lastrowid
             c.execute(
                 "INSERT INTO source_intelligence_metadata "
-                "(source_id, file_ext, size_bytes, mtime_ns, extraction_status, fts_rowid, "
+                "(source_entity_id, file_ext, size_bytes, mtime_ns, extraction_status, fts_rowid, "
                 " indexed_at, extraction_disposition) VALUES (?,?,?,?,?,?,?,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET "
                 " file_ext=excluded.file_ext, size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, "
                 # Authoritative: point at the rebuilt FTS row and re-stamp disposition to current policy
                 # (extraction_status + content columns are deliberately NOT touched — content is unchanged).
@@ -574,7 +800,7 @@ class SourceIndexRepository:
                 " extraction_disposition=excluded.extraction_disposition, "
                 " indexed_at=excluded.indexed_at",
                 (
-                    source_id,
+                    entity_id,
                     record.get("file_ext"),
                     record.get("size_bytes"),
                     record.get("mtime_ns"),
@@ -588,19 +814,19 @@ class SourceIndexRepository:
             # key/number can still change confidence/evidence) — replacement-based, never orphaned.
             c.execute(
                 "DELETE FROM source_intelligence_relationships "
-                "WHERE src_source_id=? AND relation='belongs_to_project'",
-                (source_id,),
+                "WHERE src_source_entity_id=? AND relation='belongs_to_project'",
+                (entity_id,),
             )
             for rel in record.get("relationships") or []:
                 c.execute(
                     "INSERT INTO source_intelligence_relationships "
-                    "(relationship_id, src_source_id, dst_kind, dst_ref, relation, confidence, evidence_json, created_at) "
+                    "(relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence, evidence_json, created_at) "
                     "VALUES (?,?,?,?,?,?,?,?) "
-                    "ON CONFLICT(src_source_id, dst_kind, dst_ref, relation) DO UPDATE SET "
+                    "ON CONFLICT(src_source_entity_id, dst_kind, dst_ref, relation) DO UPDATE SET "
                     " confidence=excluded.confidence, evidence_json=excluded.evidence_json",
                     (
                         uuid.uuid4().hex,
-                        source_id,
+                        entity_id,
                         rel["dst_kind"],
                         rel["dst_ref"],
                         rel["relation"],
@@ -609,7 +835,8 @@ class SourceIndexRepository:
                         now,
                     ),
                 )
-            return source_id
+            self._assert_lifecycle_oracle(c, entity_id)
+            return entity_id
 
         # ---- replace mode (a genuine change / transition) ----
         # FTS sync (regular fts5; only bounded excerpt/rel_path/project_key indexed). Always drop any prior
@@ -652,11 +879,11 @@ class SourceIndexRepository:
         )
         c.execute(
             "INSERT INTO source_intelligence_metadata "
-            "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count, "
+            "(source_entity_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count, "
             " paragraph_count, sheet_count, extraction_status, extraction_failure_code, fts_rowid, "
             " indexed_at, extraction_disposition, content_indexed_at) "
             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
-            "ON CONFLICT(source_id) DO UPDATE SET "
+            "ON CONFLICT(source_entity_id) DO UPDATE SET "
             " file_ext=excluded.file_ext, size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, "
             " content_sha256=excluded.content_sha256, page_count=excluded.page_count, "
             " paragraph_count=excluded.paragraph_count, sheet_count=excluded.sheet_count, "
@@ -666,7 +893,7 @@ class SourceIndexRepository:
             # Authoritative in replace mode: NULL clears a stale stamp when valid content no longer exists.
             " content_indexed_at=excluded.content_indexed_at",
             (
-                source_id,
+                entity_id,
                 record.get("file_ext"),
                 record.get("size_bytes"),
                 record.get("mtime_ns"),
@@ -691,15 +918,15 @@ class SourceIndexRepository:
         if record.get("text_excerpt") is not None or record.get("text_vault_ref") is not None:
             c.execute(
                 "INSERT INTO source_intelligence_text "
-                "(source_id, text_excerpt, excerpt_char_count, excerpt_truncated, full_text_sha256, "
+                "(source_entity_id, text_excerpt, excerpt_char_count, excerpt_truncated, full_text_sha256, "
                 " text_vault_ref, raw_body_persisted, redaction_applied, updated_at) "
                 "VALUES (?,?,?,?,?,?,0,1,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET "
                 " text_excerpt=excluded.text_excerpt, excerpt_char_count=excluded.excerpt_char_count, "
                 " excerpt_truncated=excluded.excerpt_truncated, full_text_sha256=excluded.full_text_sha256, "
                 " text_vault_ref=excluded.text_vault_ref, updated_at=excluded.updated_at",
                 (
-                    source_id,
+                    entity_id,
                     record.get("text_excerpt"),
                     record.get("excerpt_char_count", 0),
                     1 if record.get("excerpt_truncated") else 0,
@@ -709,16 +936,18 @@ class SourceIndexRepository:
                 ),
             )
         else:
-            c.execute("DELETE FROM source_intelligence_text WHERE source_id=?", (source_id,))
+            c.execute(
+                "DELETE FROM source_intelligence_text WHERE source_entity_id=?", (entity_id,)
+            )
 
         # chunks (replace set)
-        c.execute("DELETE FROM source_intelligence_chunks WHERE source_id=?", (source_id,))
+        c.execute("DELETE FROM source_intelligence_chunks WHERE source_entity_id=?", (entity_id,))
         for ordinal, chunk in enumerate(record.get("chunks") or []):
             c.execute(
                 "INSERT INTO source_intelligence_chunks "
-                "(chunk_id, source_id, ordinal, chunk_text, char_count, raw_body_persisted, created_at) "
+                "(chunk_id, source_entity_id, ordinal, chunk_text, char_count, raw_body_persisted, created_at) "
                 "VALUES (?,?,?,?,?,0,?)",
-                (f"{source_id}:{ordinal}", source_id, ordinal, chunk, len(chunk), now),
+                (f"{entity_id}:{ordinal}", entity_id, ordinal, chunk, len(chunk), now),
             )
 
         # relationships — REPLACEMENT-based for project edges: a reprocess/transition drops the source's
@@ -726,19 +955,19 @@ class SourceIndexRepository:
         # leaves an obsolete project relationship attached (additive ON CONFLICT alone could not remove one).
         c.execute(
             "DELETE FROM source_intelligence_relationships "
-            "WHERE src_source_id=? AND relation='belongs_to_project'",
-            (source_id,),
+            "WHERE src_source_entity_id=? AND relation='belongs_to_project'",
+            (entity_id,),
         )
         for rel in record.get("relationships") or []:
             c.execute(
                 "INSERT INTO source_intelligence_relationships "
-                "(relationship_id, src_source_id, dst_kind, dst_ref, relation, confidence, evidence_json, created_at) "
+                "(relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence, evidence_json, created_at) "
                 "VALUES (?,?,?,?,?,?,?,?) "
-                "ON CONFLICT(src_source_id, dst_kind, dst_ref, relation) DO UPDATE SET "
+                "ON CONFLICT(src_source_entity_id, dst_kind, dst_ref, relation) DO UPDATE SET "
                 " confidence=excluded.confidence, evidence_json=excluded.evidence_json",
                 (
                     uuid.uuid4().hex,
-                    source_id,
+                    entity_id,
                     rel["dst_kind"],
                     rel["dst_ref"],
                     rel["relation"],
@@ -747,7 +976,8 @@ class SourceIndexRepository:
                     now,
                 ),
             )
-        return source_id
+        self._assert_lifecycle_oracle(c, entity_id)
+        return entity_id
 
     def link_domain_source(
         self,
@@ -759,20 +989,39 @@ class SourceIndexRepository:
         project_number: str | None = None,
         conn: sqlite3.Connection | None = None,
     ) -> str:
-        """Create a LINK row to an existing domain record (email/procore/schedule). No body re-ingest."""
-        source_id = source_id_for(
+        """Create a LINK to an existing domain record (email/procore/schedule). No body re-ingest.
+
+        R11-D2: mints through the P1 lifecycle (entity + a SYNTHETIC current locator) — never a raw parent
+        ``source_id`` write. The synthetic address encodes the COMPLETE stable identity tuple so it is
+        collision-free: ``source_root_key = f"domain::{source_kind}::{domain_ref_table}"`` and
+        ``rel_path = domain_ref_id``. Path-uniqueness therefore gives domain sources idempotent re-link
+        semantics identical to file sources; the deterministic domain-link handle stays on the locator's
+        ``source_id`` for legacy resolution. Returns the durable ``source_entity_id``."""
+        legacy_source_id = source_id_for(
             source_kind, domain_ref_table=domain_ref_table, domain_ref_id=domain_ref_id
         )
+        synthetic_root = f"domain::{source_kind}::{domain_ref_table}"
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
+            loc = self._locator_for_path(
+                c, source_kind, domain_ref_id, source_root_key=synthetic_root
+            )
+            if loc is not None:
+                entity_id = loc[0]
+            else:
+                entity_id = self._mint_entity(c)
+                self._insert_current_locator(
+                    c, entity_id=entity_id, source_id=legacy_source_id,
+                    source_root_key=synthetic_root, rel_path=domain_ref_id,
+                )
             c.execute(
                 "INSERT INTO source_intelligence_sources "
-                "(source_id, source_kind, domain_ref_table, domain_ref_id, project_key, project_number, "
-                " active, deleted, created_at, updated_at) VALUES (?,?,?,?,?,?,1,0,?,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET project_key=excluded.project_key, "
+                "(source_entity_id, source_kind, domain_ref_table, domain_ref_id, project_key, "
+                " project_number, active, deleted, created_at, updated_at) VALUES (?,?,?,?,?,?,1,0,?,?) "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET project_key=excluded.project_key, "
                 " project_number=excluded.project_number, active=1, deleted=0, updated_at=excluded.updated_at",
                 (
-                    source_id,
+                    entity_id,
                     source_kind,
                     domain_ref_table,
                     domain_ref_id,
@@ -782,7 +1031,8 @@ class SourceIndexRepository:
                     now,
                 ),
             )
-        return source_id
+            self._assert_lifecycle_oracle(c, entity_id)
+        return entity_id
 
     def mark_deleted(
         self,
@@ -792,20 +1042,24 @@ class SourceIndexRepository:
         source_root_key: str | None = None,
         conn: sqlite3.Connection | None = None,
     ) -> None:
+        # W-1: resolve the target via the CURRENT locator (a demoted path must never resolve a live
+        # target), then P2-tombstone the entity.
         sql = (
-            "SELECT s.source_id, m.fts_rowid FROM source_intelligence_sources s "
-            "LEFT JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
-            "WHERE s.source_kind=? AND s.rel_path=?"
+            "SELECT s.source_entity_id, m.fts_rowid FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id=s.source_entity_id "
+            "  AND l.is_current_locator=1 "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id=s.source_entity_id "
+            "WHERE s.source_kind=? AND l.rel_path=?"
         )
         params: list[Any] = [source_kind, rel_path]
         if source_root_key is not None:
-            sql += " AND s.source_root_key=?"
+            sql += " AND l.source_root_key=?"
             params.append(source_root_key)
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             row = c.execute(sql, tuple(params)).fetchone()
             if row is None:
                 return
-            source_id, fts_rowid = row[0], row[1]
+            entity_id, fts_rowid = row[0], row[1]
             if fts_rowid is not None and self._fts_available(c):
                 fts_table = (
                     "source_intelligence_fts"
@@ -814,10 +1068,13 @@ class SourceIndexRepository:
                 )
                 c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
             c.execute(
-                "UPDATE source_intelligence_sources SET deleted=1, active=0, updated_at=? WHERE source_id=?",
-                (_now(), source_id),
+                "UPDATE source_intelligence_sources SET deleted=1, active=0, updated_at=? "
+                "WHERE source_entity_id=?",
+                (_now(), entity_id),
             )
-            self._mark_generated_notes_stale(c, source_id)
+            self._tombstone_entity(c, entity_id)
+            self._mark_generated_notes_stale(c, entity_id)
+            self._assert_lifecycle_oracle(c, entity_id)
 
     def mark_deleted_batch(
         self,
@@ -839,9 +1096,11 @@ class SourceIndexRepository:
             "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
         )
         base_sql = (
-            "SELECT s.source_id, m.fts_rowid FROM source_intelligence_sources s "
-            "LEFT JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
-            "WHERE s.source_kind=? AND s.rel_path=?"
+            "SELECT s.source_entity_id, m.fts_rowid FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id=s.source_entity_id "
+            "  AND l.is_current_locator=1 "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id=s.source_entity_id "
+            "WHERE s.source_kind=? AND l.rel_path=?"
         )
         deleted = 0
         with borrow_connection(conn, self.db_path) as c, transaction(c):
@@ -850,35 +1109,37 @@ class SourceIndexRepository:
                 sql = base_sql
                 params: list[Any] = [source_kind, rel_path]
                 if source_root_key is not None:
-                    sql += " AND s.source_root_key=?"
+                    sql += " AND l.source_root_key=?"
                     params.append(source_root_key)
                 row = c.execute(sql, tuple(params)).fetchone()
                 if row is None:
                     continue
-                source_id, fts_rowid = row[0], row[1]
+                entity_id, fts_rowid = row[0], row[1]
                 if fts_rowid is not None and fts_ok:
                     c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
                 c.execute(
                     "UPDATE source_intelligence_sources "
-                    "SET deleted=1, active=0, updated_at=? WHERE source_id=?",
-                    (_now(), source_id),
+                    "SET deleted=1, active=0, updated_at=? WHERE source_entity_id=?",
+                    (_now(), entity_id),
                 )
-                self._mark_generated_notes_stale(c, source_id)
+                self._tombstone_entity(c, entity_id)
+                self._mark_generated_notes_stale(c, entity_id)
                 deleted += 1
+            self._assert_lifecycle_oracle(c)
         return deleted
 
-    def _mark_generated_notes_stale(self, c: sqlite3.Connection, source_id: str) -> None:
+    def _mark_generated_notes_stale(self, c: sqlite3.Connection, source_entity_id: str) -> None:
         c.execute(
             "UPDATE source_intelligence_generated_notes SET generation_status='stale', updated_at=? "
-            "WHERE source_id=? AND generation_status='generated'",
-            (_now(), source_id),
+            "WHERE source_entity_id=? AND generation_status='generated'",
+            (_now(), source_entity_id),
         )
 
     def mark_generated_notes_stale(
-        self, source_id: str, *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            self._mark_generated_notes_stale(c, source_id)
+            self._mark_generated_notes_stale(c, source_entity_id)
 
     # ----- V122 generation-aware batch reads/writes ------------------------------------------
     def load_metadata_state_batch(
@@ -903,7 +1164,7 @@ class SourceIndexRepository:
         placeholders = ",".join("?" for _ in rel_paths)
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT s.rel_path, m.mtime_ns, m.size_bytes, "
+                "SELECT l.rel_path, m.mtime_ns, m.size_bytes, "
                 " CASE WHEN m.fts_rowid IS NOT NULL THEN 1 ELSE 0 END AS has_fts, "
                 # Read-time legacy mapping (matches content_status_counts); NULL disposition is derived
                 # from the legacy extraction_status so a fast-skip comparison sees the effective value.
@@ -912,18 +1173,21 @@ class SourceIndexRepository:
                 "   WHEN 'unsupported' THEN 'unsupported' WHEN 'skipped_too_large' THEN 'too_large' "
                 "   ELSE 'metadata_only' END) AS disp, "
                 " s.project_key AS project_key, s.project_number AS project_number, "
-                " s.last_indexed_fingerprint AS fingerprint, "
+                # F-005: the policy fingerprint the row was last indexed under is re-homed to the locator.
+                " l.last_indexed_fingerprint AS fingerprint, "
                 # Content storage mode: plaintext excerpt vs encrypted-to-vault ref vs none. Lets the walker
                 # detect BOTH a sensitive root holding plaintext AND a plain root holding a vault ref.
                 " COALESCE((SELECT CASE "
                 "   WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 'plain' "
                 "   WHEN t.text_vault_ref IS NOT NULL AND LENGTH(t.text_vault_ref) > 0 THEN 'vault' "
                 "   ELSE 'none' END FROM source_intelligence_text t "
-                "   WHERE t.source_id = s.source_id), 'none') AS content_mode "
+                "   WHERE t.source_entity_id = s.source_entity_id), 'none') AS content_mode "
                 "FROM source_intelligence_sources s "
-                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-                "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
-                f"AND s.rel_path IN ({placeholders})",
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+                "WHERE s.source_kind='external_file' AND l.source_root_key=? AND s.deleted=0 "
+                f"AND l.rel_path IN ({placeholders})",
                 (source_root_key, *rel_paths),
             ).fetchall()
         return {
@@ -959,10 +1223,15 @@ class SourceIndexRepository:
             return
         now = _now()
         placeholders = ",".join("?" for _ in rel_paths)
+        # OW (observation-write): the last-seen columns are re-homed to the CURRENT locator (V129). Scope
+        # by the locator's own current address; restrict to LIVE external_file entities. Writes ONLY the
+        # two observation columns — never parent updated_at.
         sql = (
-            "UPDATE source_intelligence_sources SET last_seen_generation=?, last_seen_at=? "
-            "WHERE source_kind='external_file' AND source_root_key=? AND deleted=0 "
-            f"AND rel_path IN ({placeholders})"
+            "UPDATE source_index_locators SET last_seen_generation=?, last_seen_at=? "
+            "WHERE is_current_locator=1 AND source_root_key=? "
+            f"AND rel_path IN ({placeholders}) "
+            "AND source_entity_id IN (SELECT source_entity_id FROM source_intelligence_sources "
+            " WHERE source_kind='external_file' AND deleted=0)"
         )
         params = (generation_id, now, source_root_key, *rel_paths)
         if in_transaction:
@@ -991,17 +1260,21 @@ class SourceIndexRepository:
         considered. ``julianday`` comparison — never lexical. Keyset by ``source_id`` (never OFFSET) so a
         ``reconcile_pending`` generation resumes without rewalking. Returns ``[(source_id, rel_path), ...]``.
         """
+        # CA: entity keyset/order/output; rel_path + the generation observation come from the CURRENT
+        # locator (F-005). ``after_source_id`` is the prior page's entity-id keyset cursor.
         sql = (
-            "SELECT source_id, rel_path FROM source_intelligence_sources "
-            "WHERE source_kind='external_file' AND source_root_key=? AND deleted=0 "
-            "AND (last_seen_generation IS NULL OR last_seen_generation != ?) "
-            "AND julianday(updated_at) <= julianday(?) "
+            "SELECT s.source_entity_id, l.rel_path FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "  AND l.is_current_locator = 1 "
+            "WHERE s.source_kind='external_file' AND l.source_root_key=? AND s.deleted=0 "
+            "AND (l.last_seen_generation IS NULL OR l.last_seen_generation != ?) "
+            "AND julianday(s.updated_at) <= julianday(?) "
         )
         params: list[Any] = [source_root_key, generation_id, generation_started_at]
         if after_source_id is not None:
-            sql += "AND source_id > ? "
+            sql += "AND s.source_entity_id > ? "
             params.append(after_source_id)
-        sql += "ORDER BY source_id LIMIT ?"
+        sql += "ORDER BY s.source_entity_id LIMIT ?"
         params.append(int(limit))
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(sql, tuple(params)).fetchall()
@@ -1009,29 +1282,29 @@ class SourceIndexRepository:
 
     def mark_deleted_by_source_id(
         self,
-        source_id: str,
+        source_entity_id: str,
         *,
         source_kind: str = "external_file",
         conn: sqlite3.Connection | None = None,
         in_transaction: bool = False,
     ) -> None:
-        """Delete-reconcile a single confirmed-absent source: drop its FTS row (path + content), mark it
-        deleted/inactive, and mark generated notes stale. ``in_transaction=True`` (requires ``conn``) runs
-        on the caller's open txn so a reconcile batch's deletes + cursor checkpoint commit atomically."""
+        """Delete-reconcile a single confirmed-absent source ENTITY: drop its FTS row (path + content), P2
+        tombstone it, and stale its generated notes. ``in_transaction=True`` (requires ``conn``) runs on the
+        caller's open txn so a reconcile batch's deletes + cursor checkpoint commit atomically."""
         if in_transaction:
             if conn is None:
                 raise ValueError("in_transaction=True requires an open conn")
-            self._mark_deleted_by_source_id_locked(conn, source_id, source_kind)
+            self._mark_deleted_by_source_id_locked(conn, source_entity_id, source_kind)
             return
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            self._mark_deleted_by_source_id_locked(c, source_id, source_kind)
+            self._mark_deleted_by_source_id_locked(c, source_entity_id, source_kind)
 
     def _mark_deleted_by_source_id_locked(
-        self, c: sqlite3.Connection, source_id: str, source_kind: str
+        self, c: sqlite3.Connection, source_entity_id: str, source_kind: str
     ) -> None:
         row = c.execute(
-            "SELECT m.fts_rowid FROM source_intelligence_metadata m WHERE m.source_id=?",
-            (source_id,),
+            "SELECT m.fts_rowid FROM source_intelligence_metadata m WHERE m.source_entity_id=?",
+            (source_entity_id,),
         ).fetchone()
         fts_rowid = row[0] if row else None
         if fts_rowid is not None and self._fts_available(c):
@@ -1040,13 +1313,16 @@ class SourceIndexRepository:
             )
             c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
         c.execute(
-            "UPDATE source_intelligence_sources SET deleted=1, active=0, updated_at=? WHERE source_id=?",
-            (_now(), source_id),
+            "UPDATE source_intelligence_sources SET deleted=1, active=0, updated_at=? "
+            "WHERE source_entity_id=?",
+            (_now(), source_entity_id),
         )
-        self._mark_generated_notes_stale(c, source_id)
+        self._tombstone_entity(c, source_entity_id)
+        self._mark_generated_notes_stale(c, source_entity_id)
+        self._assert_lifecycle_oracle(c, source_entity_id)
 
     def _invalidate_content_locked(
-        self, c: sqlite3.Connection, source_id: str, source_kind: str
+        self, c: sqlite3.Connection, source_entity_id: str, source_kind: str
     ) -> None:
         """Fully invalidate a source's CONTENT representation IN PLACE (Phase B / B4 corrective) — WITHOUT
         deleting the source row — for a move that OVERWRITES an already-indexed destination. Clears every
@@ -1065,7 +1341,8 @@ class SourceIndexRepository:
         Mirrors replace-mode ``_upsert_source_file_locked`` (text/chunks/content_indexed_at) + the FTS drop
         in ``_mark_deleted_by_source_id_locked``. Idempotent / no-op when the source has no content."""
         row = c.execute(
-            "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?", (source_id,)
+            "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_entity_id=?",
+            (source_entity_id,),
         ).fetchone()
         fts_rowid = row[0] if row else None
         if fts_rowid is not None and self._fts_available(c):
@@ -1073,16 +1350,18 @@ class SourceIndexRepository:
                 "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
             )
             c.execute(f"DELETE FROM {fts_table} WHERE rowid=?", (fts_rowid,))
-        c.execute("DELETE FROM source_intelligence_text WHERE source_id=?", (source_id,))
-        c.execute("DELETE FROM source_intelligence_chunks WHERE source_id=?", (source_id,))
+        c.execute("DELETE FROM source_intelligence_text WHERE source_entity_id=?", (source_entity_id,))
+        c.execute(
+            "DELETE FROM source_intelligence_chunks WHERE source_entity_id=?", (source_entity_id,)
+        )
         c.execute(
             "UPDATE source_intelligence_metadata SET content_sha256='', fts_rowid=NULL, "
             " page_count=NULL, paragraph_count=NULL, sheet_count=NULL, extraction_failure_code=NULL, "
             " extraction_disposition=NULL, content_indexed_at=NULL, extraction_status='pending' "
-            "WHERE source_id=?",
-            (source_id,),
+            "WHERE source_entity_id=?",
+            (source_entity_id,),
         )
-        self._mark_generated_notes_stale(c, source_id)
+        self._mark_generated_notes_stale(c, source_entity_id)
 
     def _confirmed_move_locked(
         self,
@@ -1092,79 +1371,46 @@ class SourceIndexRepository:
         new_rel_path: str,
         dest_metadata: dict[str, Any],
     ) -> dict[str, Any]:
-        """Core same-root rename/move on an OPEN transaction (Phase B / B4). Callers own the txn.
+        """Decomposed, per-event-idempotent same-root relocation on an OPEN transaction (ADR-003 R11-D3).
 
-        Invariant: the old row cannot become non-current unless the destination row + lineage are persisted
-        in the SAME transaction. Content trust is NOT carried (a filesystem move does not prove byte
-        identity): the destination's content representation is fully invalidated and extraction set to
-        ``pending``. Returns ``{old_source_id, new_source_id, linked, result}`` where ``result`` is
-        ``move_applied`` / ``move_already_applied`` (both mutate) / ``source_missing`` /
-        ``conflicting_successor`` (both leave the store untouched)."""
+        A no-signal relocation is TWO independently-valid lifecycle observations, NOT one correlated
+        identity-preserving move. This method realizes only the **source side**: source-gone ⇒ **P2
+        tombstone the old entity** resolved via its CURRENT locator. The **destination side** (target-appears
+        ⇒ P1 create-new) is established by the drain's own post-move ``index_source_file`` — it is NOT done
+        here (no content/fingerprint/file-stat/generated-note/lineage carried; ``renamed_from_source_id``
+        is never written; P-C/P-D). Destination-locator occupancy is an idempotent ACTION discriminator, NOT
+        provenance. Returns ``{old_source_id, new_source_id, linked, result}`` — result strings are
+        compatibility bindings for the frozen drain, never evidence of lineage or completion:
+
+        | old current | dest occupied | action | result |
+        |---|---|---|---|
+        | yes | no  | P2-tombstone old | ``move_applied`` (drain indexes dest) |
+        | yes | yes | conservative conflict — NO mutation | ``conflicting_successor`` (drain terminal-skips) |
+        | no  | yes | P2 no-op | ``move_already_applied`` (drain resolves+updates dest) |
+        | no  | no  | P2 no-op | ``source_missing`` (drain mints dest) |
+        """
         old_sid = source_id_for("external_file", source_root_key=root_key, rel_path=old_rel_path)
         new_sid = source_id_for("external_file", source_root_key=root_key, rel_path=new_rel_path)
-        now = _now()
-        old_present = c.execute(
-            "SELECT 1 FROM source_intelligence_sources WHERE source_id=? AND deleted=0",
-            (old_sid,),
-        ).fetchone() is not None
-        if old_present:
-            result = "move_applied"
-        else:
-            # No current predecessor — distinguish idempotent-retry / conflict / genuinely-missing so a
-            # retried or racing move never fabricates lineage or re-deletes.
-            succ = c.execute(
-                "SELECT source_id FROM source_intelligence_sources "
-                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
-                (old_sid,),
-            ).fetchone()
-            if succ is not None and succ[0] == new_sid:
-                result = "move_already_applied"
-            elif succ is not None:
+        _ = dest_metadata  # destination stat is applied by the drain's re-index, not here (R11-D3)
+        old_loc = self._locator_for_path(c, "external_file", old_rel_path, source_root_key=root_key)
+        dest_loc = self._locator_for_path(c, "external_file", new_rel_path, source_root_key=root_key)
+        dest_occupied = dest_loc is not None
+        if old_loc is not None:
+            if dest_occupied:
+                # Conservative conflict: old is still current AND a live entity already occupies the
+                # destination — fail closed, no move mutation (cleanup left to authoritative reconciliation).
                 return {"old_source_id": old_sid, "new_source_id": new_sid,
                         "linked": False, "result": "conflicting_successor"}
-            else:
-                return {"old_source_id": old_sid, "new_source_id": new_sid,
-                        "linked": False, "result": "source_missing"}
-
-        lineage = old_sid  # both move_applied and move_already_applied carry lineage
-        # Destination row + lineage first — if this fails the txn rolls back and the old row is intact.
-        # COALESCE-preserve lineage on a retry so re-running never nulls an existing predecessor link.
-        c.execute(
-            "INSERT INTO source_intelligence_sources"
-            "(source_id, source_kind, source_root_key, rel_path, active, deleted, "
-            " renamed_from_source_id, created_at, updated_at) VALUES(?,?,?,?,1,0,?,?,?) "
-            "ON CONFLICT(source_id) DO UPDATE SET active=1, deleted=0, "
-            " renamed_from_source_id=COALESCE(excluded.renamed_from_source_id, "
-            "  source_intelligence_sources.renamed_from_source_id), updated_at=excluded.updated_at",
-            (new_sid, "external_file", root_key, new_rel_path, lineage, now, now),
-        )
-        # FULL content invalidation of the destination (drops a pre-existing dest's FTS row via its
-        # CURRENT fts_rowid, text, chunks, content metadata cols, and stales the dest's own card) —
-        # BEFORE the metadata upsert nulls fts_rowid. Fresh dest → no-op.
-        self._invalidate_content_locked(c, new_sid, "external_file")
-        # Destination metadata = current dest stat; content trust invalidated (extraction pending).
-        c.execute(
-            "INSERT INTO source_intelligence_metadata"
-            "(source_id, file_ext, size_bytes, mtime_ns, content_sha256, extraction_status, "
-            " fts_rowid, indexed_at) VALUES(?,?,?,?,?, 'pending', NULL, ?) "
-            "ON CONFLICT(source_id) DO UPDATE SET file_ext=excluded.file_ext, "
-            " size_bytes=excluded.size_bytes, mtime_ns=excluded.mtime_ns, content_sha256='', "
-            " fts_rowid=NULL, extraction_status='pending', indexed_at=excluded.indexed_at",
-            (new_sid, dest_metadata.get("file_ext"), dest_metadata.get("size_bytes"),
-             dest_metadata.get("mtime_ns"), "", now),
-        )
-        if old_present:
-            # Inherited-but-unverified: relink the old row's generated notes to the new row as 'stale'
-            # (an explicit status, not an implied null) so they are not advertised as current content.
-            c.execute(
-                "UPDATE OR IGNORE source_intelligence_generated_notes "
-                "SET source_id=?, generation_status='stale', updated_at=? WHERE source_id=?",
-                (new_sid, now, old_sid),
-            )
-            # Old row becomes non-current only now that the destination + lineage are persisted.
-            self._mark_deleted_by_source_id_locked(c, old_sid, "external_file")
+            # Source side only: P2 tombstone the old entity (idempotent by TOMBSTONED-terminal). The
+            # destination P1 is the drain's fall-through re-index of the target.
+            self._mark_deleted_by_source_id_locked(c, old_loc[0], "external_file")
+            return {"old_source_id": old_sid, "new_source_id": new_sid,
+                    "linked": True, "result": "move_applied"}
+        # Old already absent/TOMBSTONED — P2 is a no-op; destination occupancy only distinguishes which
+        # compatibility string the drain sees (both fall through to the idempotent destination re-index).
+        result = "move_already_applied" if dest_occupied else "source_missing"
         return {"old_source_id": old_sid, "new_source_id": new_sid,
-                "linked": old_present, "result": result}
+                "linked": False, "result": result}
 
     def apply_confirmed_same_root_move(
         self,
@@ -1226,34 +1472,42 @@ class SourceIndexRepository:
     def find_successor_source_id(
         self, source_id: str, *, conn: sqlite3.Connection | None = None
     ) -> str | None:
-        """Return the current successor of a renamed/moved source (the active row whose
-        ``renamed_from_source_id`` is ``source_id``), or None. Used to answer an old source_ref as
-        ``moved`` rather than a bare deleted/unavailable."""
-        with borrow_connection(conn, self.db_path) as c:
-            row = c.execute(
-                "SELECT source_id FROM source_intelligence_sources "
-                "WHERE renamed_from_source_id=? AND deleted=0 AND active=1 LIMIT 1",
-                (source_id,),
-            ).fetchone()
-        return row[0] if row else None
+        """R11-D1: **always returns None** in 03a. The ``renamed_from_source_id`` lineage authority is
+        removed from runtime (P-C): under the degraded model a relocation is delete+create with no
+        identity-preserving successor, so answering a stale handle as a current successor is exactly the
+        rebinding P-B forbids. A signalled-P4 moved answer (derived only from authoritative P4 continuity)
+        is 03b — ``renamed_from_source_id`` is NOT reinstated. The content provider's ``_resolve_moved``
+        already fails closed on None, so a deleted ref falls through to ordinary unavailable handling."""
+        _ = (source_id, conn)  # signature preserved for the frozen content-provider caller
+        return None
 
     # ----- source detail + generated-note tracking (source cards) ----------------------------
     def get_source_detail(
-        self, source_id: str, *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> dict[str, Any] | None:
-        """Joined sources+metadata+text row for rendering a source card. None if absent."""
+        """Joined sources+metadata+text row for rendering a source card (keyed by durable entity). The
+        served ``source_id``/``source_root_key``/``rel_path`` come from the CURRENT locator (CA authority);
+        a TOMBSTONED entity (no current locator) returns NULLs for those and ``deleted=True``. None if the
+        entity is absent."""
         with borrow_connection(conn, self.db_path) as c:
             row = c.execute(
-                "SELECT s.source_id, s.source_kind, s.source_root_key, s.rel_path, s.domain_ref_table, "
-                "  s.domain_ref_id, s.project_key, s.project_number, s.deleted, "
+                # A domain-LINK source has a synthetic locator (root=domain::…, rel_path=domain_ref_id)
+                # for identity/uniqueness only — its served file address is NULL (it is a domain ref, not a
+                # path), so consumers that distinguish link-vs-file by rel_path stay correct.
+                "SELECT s.source_entity_id, s.source_kind, "
+                "  CASE WHEN s.domain_ref_table IS NOT NULL THEN NULL ELSE l.source_root_key END, "
+                "  CASE WHEN s.domain_ref_table IS NOT NULL THEN NULL ELSE l.rel_path END, "
+                "  s.domain_ref_table, s.domain_ref_id, s.project_key, s.project_number, s.deleted, "
                 "  m.file_ext, m.size_bytes, m.mtime_ns, m.content_sha256, m.page_count, "
                 "  m.paragraph_count, m.sheet_count, m.extraction_status, m.indexed_at, "
                 "  t.text_excerpt, t.excerpt_char_count, t.excerpt_truncated, t.text_vault_ref "
                 "FROM source_intelligence_sources s "
-                "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
-                "WHERE s.source_id = ?",
-                (source_id,),
+                "LEFT JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
+                "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+                "LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
+                "WHERE s.source_entity_id = ?",
+                (source_entity_id,),
             ).fetchone()
         if row is None:
             return None
@@ -1287,7 +1541,7 @@ class SourceIndexRepository:
 
     def record_generated_note(
         self,
-        source_id: str,
+        source_entity_id: str,
         note_rel_path: str,
         status: str,
         generated_at: str,
@@ -1297,23 +1551,25 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             c.execute(
                 "INSERT INTO source_intelligence_generated_notes "
-                "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+                "(generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at, updated_at) "
                 "VALUES (?,?,?,?,?,?) "
-                "ON CONFLICT(source_id, note_rel_path) DO UPDATE SET "
+                "ON CONFLICT(source_entity_id, note_rel_path) DO UPDATE SET "
                 " generation_status=excluded.generation_status, generated_at=excluded.generated_at, "
                 " updated_at=excluded.updated_at",
-                (uuid.uuid4().hex, source_id, note_rel_path, status, generated_at, _now()),
+                (uuid.uuid4().hex, source_entity_id, note_rel_path, status, generated_at, _now()),
             )
             if status == "generated":
                 self._set_state(c, "last_note_at", _now())
 
-    def has_generated_note(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> bool:
-        """True if a card was ever generated for this source (status generated or stale)."""
+    def has_generated_note(
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> bool:
+        """True if a card was ever generated for this source entity (status generated or stale)."""
         with borrow_connection(conn, self.db_path) as c:
             row = c.execute(
                 "SELECT 1 FROM source_intelligence_generated_notes "
-                "WHERE source_id=? AND generation_status IN ('generated','stale') LIMIT 1",
-                (source_id,),
+                "WHERE source_entity_id=? AND generation_status IN ('generated','stale') LIMIT 1",
+                (source_entity_id,),
             ).fetchone()
         return row is not None
 
@@ -1322,7 +1578,7 @@ class SourceIndexRepository:
     ) -> list[dict[str, Any]]:
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT source_id, note_rel_path FROM source_intelligence_generated_notes "
+                "SELECT source_entity_id, note_rel_path FROM source_intelligence_generated_notes "
                 "WHERE generation_status='stale' ORDER BY updated_at LIMIT ?",
                 (int(limit),),
             ).fetchall()
@@ -1380,10 +1636,12 @@ class SourceIndexRepository:
         placeholders = ",".join("?" for _ in statuses)
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT g.generated_note_id, g.source_id, g.note_rel_path, g.generation_status, "
-                "       s.rel_path, s.source_kind "
+                "SELECT g.generated_note_id, g.source_entity_id, g.note_rel_path, g.generation_status, "
+                "       l.rel_path, s.source_kind "
                 "FROM source_intelligence_generated_notes g "
-                "JOIN source_intelligence_sources s ON s.source_id = g.source_id "
+                "JOIN source_intelligence_sources s ON s.source_entity_id = g.source_entity_id "
+                "LEFT JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
                 f"WHERE g.generation_status IN ({placeholders}) ORDER BY g.updated_at",
                 statuses,
             ).fetchall()
@@ -1410,10 +1668,12 @@ class SourceIndexRepository:
         """
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT g.source_id, g.generation_status, g.generated_at, "
-                "       s.source_kind, s.rel_path, s.source_root_key, s.deleted, s.active "
+                "SELECT g.source_entity_id, g.generation_status, g.generated_at, "
+                "       s.source_kind, l.rel_path, l.source_root_key, s.deleted, s.active "
                 "FROM source_intelligence_generated_notes g "
-                "JOIN source_intelligence_sources s ON s.source_id = g.source_id "
+                "JOIN source_intelligence_sources s ON s.source_entity_id = g.source_entity_id "
+                "LEFT JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 "
                 "WHERE g.note_rel_path=? ORDER BY g.updated_at",
                 (note_rel_path,),
             ).fetchall()
@@ -1432,9 +1692,9 @@ class SourceIndexRepository:
         ]
 
     def list_cards_for_source(
-        self, source_id: str, *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> list[dict[str, Any]]:
-        """All generated-note rows for a ``source_id`` (any status), oldest-updated first.
+        """All generated-note rows for a source entity (any status), oldest-updated first.
 
         Read-only; the basis for duplicate-card and card-state detection. One source SHOULD have one
         active (generated/stale) card row; more than one is a duplicate the caller flags.
@@ -1442,8 +1702,8 @@ class SourceIndexRepository:
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
                 "SELECT generated_note_id, note_rel_path, generation_status, generated_at, updated_at "
-                "FROM source_intelligence_generated_notes WHERE source_id=? ORDER BY updated_at",
-                (source_id,),
+                "FROM source_intelligence_generated_notes WHERE source_entity_id=? ORDER BY updated_at",
+                (source_entity_id,),
             ).fetchall()
         return [
             {
@@ -1469,20 +1729,20 @@ class SourceIndexRepository:
 
     # ----- advisory model-summary receipts (V94) ---------------------------------------------
     def upsert_summary(
-        self, source_id: str, receipt: dict[str, Any], *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, receipt: dict[str, Any], *, conn: sqlite3.Connection | None = None
     ) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             c.execute(
                 "INSERT INTO source_intelligence_summaries "
-                "(source_id, model_provider, model_name, prompt_version, prompt_sha256, "
+                "(source_entity_id, model_provider, model_name, prompt_version, prompt_sha256, "
                 " summary_sha256, source_sha256, advisory, generated_at) "
                 "VALUES (?,?,?,?,?,?,?,1,?) "
-                "ON CONFLICT(source_id) DO UPDATE SET model_provider=excluded.model_provider, "
+                "ON CONFLICT(source_entity_id) DO UPDATE SET model_provider=excluded.model_provider, "
                 " model_name=excluded.model_name, prompt_version=excluded.prompt_version, "
                 " prompt_sha256=excluded.prompt_sha256, summary_sha256=excluded.summary_sha256, "
                 " source_sha256=excluded.source_sha256, generated_at=excluded.generated_at",
                 (
-                    source_id,
+                    source_entity_id,
                     receipt["model_provider"],
                     receipt.get("model_name"),
                     receipt["prompt_version"],
@@ -1494,18 +1754,24 @@ class SourceIndexRepository:
             )
             self._set_state(c, "last_summary_at", _now())
 
-    def delete_summary(self, source_id: str, *, conn: sqlite3.Connection | None = None) -> None:
+    def delete_summary(
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
+    ) -> None:
         with borrow_connection(conn, self.db_path) as c, transaction(c):
-            c.execute("DELETE FROM source_intelligence_summaries WHERE source_id=?", (source_id,))
+            c.execute(
+                "DELETE FROM source_intelligence_summaries WHERE source_entity_id=?",
+                (source_entity_id,),
+            )
 
     def get_summary(
-        self, source_id: str, *, conn: sqlite3.Connection | None = None
+        self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> dict[str, Any] | None:
         with borrow_connection(conn, self.db_path) as c:
             row = c.execute(
                 "SELECT model_provider, model_name, prompt_version, prompt_sha256, summary_sha256, "
-                " source_sha256, generated_at FROM source_intelligence_summaries WHERE source_id=?",
-                (source_id,),
+                " source_sha256, generated_at FROM source_intelligence_summaries "
+                "WHERE source_entity_id=?",
+                (source_entity_id,),
             ).fetchone()
         if row is None:
             return None
@@ -1531,7 +1797,7 @@ class SourceIndexRepository:
             total = c.execute("SELECT COUNT(*) FROM source_intelligence_summaries").fetchone()[0]
             stale = c.execute(
                 "SELECT COUNT(*) FROM source_intelligence_summaries s "
-                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
                 "WHERE s.source_sha256 IS NOT m.content_sha256"
             ).fetchone()[0]
         return {"summarized_count": int(total), "stale_summary_count": int(stale)}
@@ -1908,16 +2174,21 @@ class SourceIndexRepository:
                 # rank above deep body-frequency matches — critical now that metadata-only files are
                 # searchable by path alone. Weights are locked by ranking tests. Per-column snippets +
                 # text presence + disposition drive match_basis/indexed_text_available shaping (V122).
-                "SELECT f.rel_path, f.aux, bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
+                # CA: the FTS/content join binds the entity; the displayed path + returned handle come
+                # from the CURRENT locator. Serving-trust EXCLUDE (R8 §6.3): policy-stale locators are
+                # filtered out of search (l.policy_validation_state IS NULL).
+                "SELECT l.rel_path, f.aux, bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
                 " snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip_text, "
                 " snippet(source_intelligence_fts, 1, '[', ']', '…', 12) AS snip_path, "
                 " snippet(source_intelligence_fts, 2, '[', ']', '…', 12) AS snip_aux, "
-                " s.source_id, m.extraction_status, m.extraction_disposition, "
+                " s.source_entity_id, m.extraction_status, m.extraction_disposition, "
                 " CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 1 ELSE 0 END AS has_text "
                 "FROM source_intelligence_fts f "
                 "JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
-                "JOIN source_intelligence_sources s ON s.source_id = m.source_id "
-                "LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
+                "JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 AND l.policy_validation_state IS NULL "
+                "LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
                 "WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
             params: list[Any] = [match_query]
@@ -1964,11 +2235,15 @@ class SourceIndexRepository:
             if not match_query:
                 return []
             sql = (
+                # CA: entity-bound join; returned handle = source_entity_id. Serving-trust EXCLUDE (§6.3).
                 "SELECT n.rel_path, n.aux, bm25(obsidian_note_fts) AS rank, "
-                " snippet(obsidian_note_fts, 0, '[', ']', '…', 12) AS snip, s.source_id "
+                " snippet(obsidian_note_fts, 0, '[', ']', '…', 12) AS snip, s.source_entity_id "
                 "FROM obsidian_note_fts n "
                 "JOIN source_intelligence_metadata m ON m.fts_rowid = n.rowid "
-                "JOIN source_intelligence_sources s ON s.source_id = m.source_id AND s.source_kind='obsidian_note' "
+                "JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
+                "  AND s.source_kind='obsidian_note' "
+                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 AND l.policy_validation_state IS NULL "
                 "WHERE obsidian_note_fts MATCH ? AND s.deleted=0 "
             )
             params: list[Any] = [match_query]
@@ -2018,8 +2293,10 @@ class SourceIndexRepository:
             sql = (
                 "SELECT src_root, rel, sid, ext, rank, snip_text, snip_path, snip_aux, "
                 "       est, disp, has_text FROM ("
-                " SELECT COALESCE(s.source_root_key,'') AS src_root, COALESCE(s.rel_path,'') AS rel, "
-                "  s.source_id AS sid, m.file_ext AS ext, "
+                # CA: entity-bound join; displayed root/path from the CURRENT locator; keyset + public
+                # `after` tuple key on the entity. Serving-trust EXCLUDE (§6.3): policy-stale filtered out.
+                " SELECT COALESCE(l.source_root_key,'') AS src_root, COALESCE(l.rel_path,'') AS rel, "
+                "  s.source_entity_id AS sid, m.file_ext AS ext, "
                 "  bm25(source_intelligence_fts, 1.0, 8.0, 12.0) AS rank, "
                 "  snippet(source_intelligence_fts, 0, '[', ']', '…', 12) AS snip_text, "
                 "  snippet(source_intelligence_fts, 1, '[', ']', '…', 12) AS snip_path, "
@@ -2028,13 +2305,15 @@ class SourceIndexRepository:
                 "  CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 1 ELSE 0 END AS has_text "
                 " FROM source_intelligence_fts f "
                 " JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
-                " JOIN source_intelligence_sources s ON s.source_id = m.source_id "
-                " LEFT JOIN source_intelligence_text t ON t.source_id = s.source_id "
+                " JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
+                " JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "   AND l.is_current_locator = 1 AND l.policy_validation_state IS NULL "
+                " LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
                 " WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
             params: list[Any] = [match_query]
             if source_root_key is not None:
-                sql += " AND s.source_root_key = ? "
+                sql += " AND l.source_root_key = ? "
                 params.append(source_root_key)
             if file_ext:
                 sql += " AND m.file_ext = ? "
@@ -2087,28 +2366,40 @@ class SourceIndexRepository:
         Stable order ``(rel_path, source_id)`` with keyset ``after`` = the prior page's last
         ``(rel_path, source_id)``. NOT a filesystem scan — reads only indexed rows. Read-only.
         """
+        # CA: address/scope/keyset via the CURRENT locator; handle = entity. Serving-trust DEGRADE (§6.3):
+        # policy-stale rows are NOT excluded here — they are returned and MARKED (policy_unverified) so a
+        # listing degrades rather than hides.
         sql = (
-            "SELECT s.source_root_key, s.rel_path, s.source_id, m.file_ext "
+            "SELECT l.source_root_key, l.rel_path, s.source_entity_id, m.file_ext, "
+            "       l.policy_validation_state "
             "FROM source_intelligence_sources s "
-            "LEFT JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
-            "WHERE s.source_kind='external_file' AND s.deleted=0 AND s.source_root_key = ? "
-            "AND s.rel_path IS NOT NULL "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "  AND l.is_current_locator = 1 "
+            "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
+            "WHERE s.source_kind='external_file' AND s.deleted=0 AND l.source_root_key = ? "
+            "AND l.rel_path IS NOT NULL "
         )
         params: list[Any] = [source_root_key]
         if prefix:
             escaped = str(prefix).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            sql += "AND s.rel_path LIKE ? ESCAPE '\\' "
+            sql += "AND l.rel_path LIKE ? ESCAPE '\\' "
             params.append(f"{escaped}%")
         if after is not None:
             arel, asid = after
-            sql += "AND (s.rel_path > ? OR (s.rel_path = ? AND s.source_id > ?)) "
+            sql += "AND (l.rel_path > ? OR (l.rel_path = ? AND s.source_entity_id > ?)) "
             params += [arel, arel, asid]
-        sql += "ORDER BY s.rel_path, s.source_id LIMIT ?"
+        sql += "ORDER BY l.rel_path, s.source_entity_id LIMIT ?"
         params.append(int(limit))
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(sql, params).fetchall()
         return [
-            {"source_root_key": r[0], "rel_path": r[1], "source_id": r[2], "file_ext": r[3]}
+            {
+                "source_root_key": r[0],
+                "rel_path": r[1],
+                "source_id": r[2],
+                "file_ext": r[3],
+                "policy_unverified": r[4] is not None,
+            }
             for r in rows
         ]
 
@@ -2118,8 +2409,10 @@ class SourceIndexRepository:
         internet-facing serve profile) so roots_list/status still reflect reality. Path-free."""
         with borrow_connection(conn, self.db_path) as c:
             rows = c.execute(
-                "SELECT DISTINCT source_root_key FROM source_intelligence_sources "
-                "WHERE source_root_key IS NOT NULL AND deleted=0 ORDER BY source_root_key"
+                # R8 §5.2 exact form: distinct CURRENT-locator roots (authoritative), never a demoted one.
+                "SELECT DISTINCT l.source_root_key FROM source_index_locators l "
+                "WHERE l.is_current_locator=1 AND l.tombstoned_at IS NULL "
+                "AND l.source_root_key IS NOT NULL ORDER BY l.source_root_key"
             ).fetchall()
         return [str(r[0]) for r in rows]
 
@@ -2127,13 +2420,16 @@ class SourceIndexRepository:
         self, source_root_key: str | None = None, *, conn: sqlite3.Connection | None = None
     ) -> int:
         """Count of active indexed external source files (optionally scoped to one root)."""
+        # CA: scope by the CURRENT locator's root (high-fanout cost NOT_VERIFIED → PC-WI-06A).
         sql = (
-            "SELECT COUNT(*) FROM source_intelligence_sources "
-            "WHERE source_kind='external_file' AND deleted=0"
+            "SELECT COUNT(*) FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "  AND l.is_current_locator = 1 "
+            "WHERE s.source_kind='external_file' AND s.deleted=0"
         )
         params: list[Any] = []
         if source_root_key is not None:
-            sql += " AND source_root_key = ?"
+            sql += " AND l.source_root_key = ?"
             params.append(source_root_key)
         with borrow_connection(conn, self.db_path) as c:
             return int(c.execute(sql, params).fetchone()[0])
@@ -2183,7 +2479,7 @@ class SourceIndexRepository:
             ]
             stale_summaries = c.execute(
                 "SELECT COUNT(*) FROM source_intelligence_summaries s "
-                "JOIN source_intelligence_metadata m ON m.source_id = s.source_id "
+                "JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
                 "WHERE s.source_sha256 IS NOT m.content_sha256"
             ).fetchone()[0]
             generated_cards = c.execute(
