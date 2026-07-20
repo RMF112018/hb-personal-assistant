@@ -52,6 +52,14 @@ _V128_BUILD_STATE = threading.local()
 # ``None`` (no production effect). Deterministic tests set it to block (two-thread single-flight proof)
 # or to re-enter the oracle on a different connection (same-thread reentrancy proof).
 _V128_BUILD_BARRIER: "Callable[[], None] | None" = None
+# ADR-003 R10 §R10.6.2 — the 128-reference cache. The V129 attribution oracle compares the live
+# V128-owned surface against a reference built by the REAL migrator STOPPED at version 128 (the
+# ``target_version`` seam on ``apply()``), so the reference-derived V129 delta (129 − 128) is derived,
+# never hand-listed. Cached once per process (single-flight) alongside the head (129) reference in
+# ``_V128_REFERENCE``. Its own lock so a concurrent 128-build never blocks on the 129-build lock; the
+# two builds are sequential on any one thread (never nested) so they safely share ``_V128_BUILD_STATE``.
+_V128_REFERENCE_128: "V128Reference | None" = None
+_V128_BUILD_LOCK_128 = threading.Lock()
 
 
 class V128OracleError(RuntimeError):
@@ -8395,6 +8403,7 @@ class SQLiteMigrator:
         conn: sqlite3.Connection | None = None,
         authorization: MigrationAuthorization | None = None,
         require_backup_receipt: bool = False,
+        target_version: int = LATEST_SCHEMA_VERSION,
     ) -> int:
         """Apply all pending migrations (idempotent). Returns current schema version.
 
@@ -8403,15 +8412,23 @@ class SQLiteMigrator:
         borrowed connection, its transaction state checked) BEFORE any DDL. When ``conn`` is
         provided the caller owns it (it must have no pending transaction — RC-3); otherwise apply()
         opens and deterministically closes its own connection.
+
+        ``target_version`` is a controlled stop-at-version seam (ADR-003 R10 §R10.6.2): it defaults
+        to ``LATEST_SCHEMA_VERSION`` (the only production value) and, when set lower, stops after the
+        given version's block. Its sole supported non-default value is ``128`` — used to build the
+        V128 attribution reference on a FRESH scratch connection via the REAL migrator (no hand-replay,
+        no ``LATEST_SCHEMA_VERSION`` monkeypatch). It never gates a managed/production migration.
         """
         if conn is not None:
             return self._apply_on_connection(
-                conn, authorization, require_backup_receipt, owned=False
+                conn, authorization, require_backup_receipt, owned=False,
+                target_version=target_version,
             )
         owned_conn = get_connection(self._db_path)
         try:
             return self._apply_on_connection(
-                owned_conn, authorization, require_backup_receipt, owned=True
+                owned_conn, authorization, require_backup_receipt, owned=True,
+                target_version=target_version,
             )
         finally:
             # Deterministic WAL-connection closure: a left-open WAL handle only checkpoints on GC,
@@ -8426,6 +8443,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
+        target_version: int = LATEST_SCHEMA_VERSION,
     ) -> int:
         """Establish the opened-target identity (retaining a read-only guard FD) and run the guarded
         migration, deterministically closing the guard FD on every path (NF-AUD-005)."""
@@ -8436,7 +8454,8 @@ class SQLiteMigrator:
         opened = describe_opened_database(conn, self._db_path)
         try:
             return self._run_guarded_migration(
-                conn, opened, authorization, require_backup_receipt, owned=owned
+                conn, opened, authorization, require_backup_receipt, owned=owned,
+                target_version=target_version,
             )
         finally:
             if opened.guard_fd is not None:
@@ -8450,6 +8469,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
+        target_version: int = LATEST_SCHEMA_VERSION,
     ) -> int:
         """Validate authorization against the opened identity, run the migration body in one atomic
         transaction, and revalidate identity at the commit boundary.
@@ -10193,34 +10213,65 @@ class SQLiteMigrator:
             # still not met afterwards it raises fail-closed (whole-transaction rollback). Fresh-migrate
             # and idempotent-no-op behavior are preserved: a fresh DB rebuilds once; a healthy V128 DB
             # returns True and does nothing.
+            # The V129 additive layer is applied only when the migration target reaches 129 (the
+            # production default). ``target_version == 128`` is the controlled stop-at-128 seam used
+            # ONLY to build the reference-derived V128 attribution reference on a fresh scratch
+            # connection (ADR-003 R10 §R10.6.2); it realizes the V128 core alone.
+            apply_v129 = target_version >= 129
             if not self._v128_schema_current(conn):
                 self._rebuild_v128_permanent_identity(conn)
-                # --- V129: observation re-homing + serving-trust gate + move-signal disposition ------
-                # (ADR-003 R8 §4/§7/§8/§9). V129 is forward-only, immutable-additive (nullable ADD
-                # COLUMN + one new index) on the two already-V128-owned identity tables, and RIDES the
-                # V128 byte-exact permanent-identity oracle rather than introducing a second authority.
-                # The canonical reference migrates to LATEST_SCHEMA_VERSION (=129), so its
-                # locators/move_signals CREATE SQL already carries the V129 columns/index and
-                # ``_v128_schema_current`` DETECTS a dropped V129 column (§9.1). These idempotent
-                # ``_v129_ensure_*`` helpers are the REPAIR pass (§9.3), run here on the already-failed-
-                # parity path — AFTER the V128 rebuild/repair, BEFORE the final revalidation — so a
-                # fresh rebuild AND an in-place V128→V129 upgrade converge to the byte-identical shape
-                # (§9.4). No V128 historical DDL is edited.
-                self._v129_ensure_locator_observation_columns(conn)
-                self._v129_ensure_reconcile_index(conn)
-                self._v129_ensure_move_signal_disposition_columns(conn)
-                if not self._v128_schema_current(conn):
-                    # The whole apply() transaction rolls back — the prior schema is preserved intact.
-                    # Attribute the fail-closed layer (§9.3): when the V128 CORE is otherwise intact and
-                    # ONLY the V129 additive layer is non-repairable (a malformed column-level CHECK /
-                    # incompatible declaration additive repair cannot fix), raise v129_schema_parity_
-                    # failed; any V128-core parity failure (which may also disturb V129) keeps the
-                    # unified v128_schema_parity_failed so existing V128 drift contracts are preserved.
-                    if self._v128_core_structural_ok(conn) and not (
-                        self._v129_schema_additions_present(conn)
+                if apply_v129:
+                    # --- V129: observation re-homing + serving-trust gate + move-signal disposition --
+                    # (ADR-003 R8 §4/§7/§8/§9 + R10 §R10.1/§R10.2). V129 is forward-only, immutable-
+                    # additive (nullable ADD COLUMN + one new index) on the two already-V128-owned
+                    # identity tables, and RIDES the V128 byte-exact permanent-identity oracle rather
+                    # than introducing a second authority. The canonical reference migrates to
+                    # LATEST_SCHEMA_VERSION (=129), so its locators/move_signals CREATE SQL already
+                    # carries the V129 columns/index and ``_v128_schema_current`` DETECTS a dropped V129
+                    # column (§9.1).
+                    #
+                    # F-001 (R10 §R10.1) — ORDER-AWARE PREFIX PREFLIGHT: classify BOTH V129-touched
+                    # tables from their ACTUAL ``PRAGMA table_info`` column order BEFORE any ADD COLUMN.
+                    # The prefix guard yields ONLY a classification and assigns NO reason code; on the
+                    # non-prefix (``nonrepairable_v129_shape``) path it makes NO schema change (declines
+                    # repair). D1's additive trailing-suffix repair runs ONLY when BOTH tables are a
+                    # canonical prefix, so a fresh rebuild AND an in-place V128→V129 upgrade converge to
+                    # the byte-identical shape (§9.4) and no out-of-order/partial column is ever appended
+                    # on the non-repairable path. No V128 historical DDL is edited.
+                    loc_cls = self._v129_classify_trailing_suffix(
+                        conn, "source_index_locators", _V129_LOCATOR_COLS
+                    )
+                    ms_cls = self._v129_classify_trailing_suffix(
+                        conn, "source_index_move_signals", _V129_MOVE_SIGNAL_COLS
+                    )
+                    if (
+                        loc_cls == "repairable_trailing_suffix"
+                        and ms_cls == "repairable_trailing_suffix"
                     ):
-                        raise RuntimeError("v129_schema_parity_failed")
-                    raise RuntimeError("v128_schema_parity_failed")
+                        # D1 (unchanged): additive ADD COLUMN of the canonical trailing suffix, in
+                        # canonical order, on both tables (present V129 columns are a canonical prefix,
+                        # so only the missing trailing suffix is appended → byte-identical head CREATE).
+                        self._v129_ensure_locator_observation_columns(conn)
+                        self._v129_ensure_move_signal_disposition_columns(conn)
+                    # Reconcile-index repair (DROP+recreate) — preserved unchanged from R9 (§R10.1);
+                    # a separate repair, always run (a same-name index that drifted is REPAIRED).
+                    self._v129_ensure_reconcile_index(conn)
+                    if not self._v128_schema_current(conn):
+                        # The whole apply() transaction rolls back — the prior schema is preserved
+                        # intact. F-002 (R10 §R10.2/§R10.3): in EVERY residual-failure case (repair
+                        # declined, or repair attempted and exact parity still false) the reason code is
+                        # determined SOLELY by the reference-derived exact-V128-core attribution — never
+                        # by the prefix guard. Exact V128 projection → ``v129_schema_parity_failed``; any
+                        # V128 drift (or an unbuildable/ambiguous projection) → ``v128_schema_parity_
+                        # failed``, never a pure-V129 reason before V128 correctness is positively proven.
+                        raise RuntimeError(self._v129_attribute_layer(conn))
+                else:
+                    # Controlled stop-at-128 reference-build seam (R10 §R10.6.2 / the V128-reference
+                    # construction acceptance criterion): realize the V128 core ONLY (no V129 additive
+                    # layer), gated by the same enumerative bootstrap the reference build already rides
+                    # (``_v128_core_structural_ok``, minus the V129 additions). Never a production path.
+                    if not self._v128_core_structural_ok(conn):
+                        raise RuntimeError("v128_schema_parity_failed")
             if conn.execute(
                 "SELECT version FROM schema_migrations WHERE version = 128"
             ).fetchone() is None:
@@ -10231,7 +10282,8 @@ class SQLiteMigrator:
                 )
             # V129 version record (ADR-003 R8 §8): the schema shape is realized/repaired above via the
             # V128-oracle-riding ``_v129_ensure_*`` pass; this idempotent gate records version 129 once.
-            if conn.execute(
+            # Skipped on the stop-at-128 reference-build seam so the 128-reference records only 128.
+            if apply_v129 and conn.execute(
                 "SELECT version FROM schema_migrations WHERE version = 129"
             ).fetchone() is None:
                 conn.execute(
@@ -11173,6 +11225,238 @@ class SQLiteMigrator:
         ).fetchone()
         recon_norm = " ".join((recon_sql[0] or "").split()) if recon_sql and recon_sql[0] else ""
         return "is_current_locator=1" in recon_norm
+
+    @staticmethod
+    def _v129_classify_trailing_suffix(
+        conn: sqlite3.Connection, table: str, canonical_v129: tuple[str, ...]
+    ) -> str:
+        """F-001 order-aware prefix guard (ADR-003 R10 §R10.1) — CLASSIFY one V129-touched table, assign
+        NO reason code, make NO schema change. Inspects the table's ACTUAL ordered column positions
+        (``PRAGMA table_info`` ``cid`` order) BEFORE any ``ADD COLUMN`` and returns:
+
+          * ``"repairable_trailing_suffix"`` — the present V129 columns are a canonical PREFIX
+            ``[c1…cj]`` appended as a trailing block after the V128 columns, each in its correct ordered
+            position (missing == the canonical trailing suffix ``[c(j+1)…ck]``). D1's additive repair
+            applies. The empty-prefix case (no V129 columns present yet — a pristine V128 DB / a whole-
+            suffix deletion) classifies here too.
+          * ``"nonrepairable_v129_shape"`` — the present V129 columns are NOT a canonical prefix (some
+            canonical ``ci`` absent while a later ``cj`` is present), or a present V129 column is out of
+            its canonical ordered position (interleaved among the V128 columns, or in the wrong intra-
+            suffix order). ``ADD COLUMN`` cannot re-position it and the byte-exact detection oracle is
+            order-sensitive, so repair is declined.
+
+        This is stricter than a name-filter set-prefix test: a present-but-mis-positioned V129 column is
+        detected because the ordered tail after the first V129 column must equal the canonical prefix of
+        that length. The eventual reason code is chosen downstream by the exact-V128-core attribution."""
+        ordered = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        v129_set = set(canonical_v129)
+        first_v129_idx = next(
+            (i for i, name in enumerate(ordered) if name in v129_set), len(ordered)
+        )
+        # Everything after the first present V129 column. For a repairable trailing block this must be
+        # exactly the canonical prefix of its own length (canonical order, no interleaved non-V129
+        # column, no out-of-order V129 column). ``ordered[:first_v129_idx]`` contains no V129 column by
+        # construction, so a V129 column appearing inside the V128 block forces ``first_v129_idx`` early
+        # and leaves a non-matching tail — classified non-repairable.
+        v129_tail = ordered[first_v129_idx:]
+        if v129_tail == list(canonical_v129[: len(v129_tail)]):
+            return "repairable_trailing_suffix"
+        return "nonrepairable_v129_shape"
+
+    @staticmethod
+    def _v129_attribute_layer(conn: sqlite3.Connection) -> str:
+        """F-002 reference-derived exact-V128-core attribution oracle (ADR-003 R10 §R10.2/§R10.3/
+        §R10.6.2). Invoked SOLELY after D3 byte-exact detection has failed AND the F-001 repair has not
+        restored parity, to choose the reason code — never as the detection oracle. Returns one of
+        ``"v129_schema_parity_failed"`` / ``"v128_schema_parity_failed"``.
+
+        It compares the COMPLETE accepted V128-owned surface (all ten ``_V128_OWNED_TABLES`` byte-exact
+        + every owned explicit index + the two V128 non-FK contracts) of the live DB against a
+        128-reference, with the reference-derived V129 delta (129 − 128) projected out ONLY from the two
+        V129-touched tables + ``idx_locators_reconcile``. Both references are built by the REAL migrator
+        on FRESH scratch connections (128 via the stop-at-128 seam; 129 via the head canonical schema) —
+        the delta is a reference-derived difference, NOT a hand-listed exclusion, and no enumerative
+        subset serves as the oracle:
+
+          * exact V128 projection equals the 128-reference (V128 layer proven exactly correct) →
+            ``v129_schema_parity_failed`` (a pure-V129 residual defect);
+          * ANY V128 drift → ``v128_schema_parity_failed``;
+          * unbuildable / unparseable / ambiguous projection (a reference cannot be built, the live
+            surface cannot be parsed, or the delta cannot be unambiguously projected) → fails closed with
+            ``v128_schema_parity_failed``, NEVER a pure-V129 reason — a pure-V129 verdict is permitted
+            only after exact V128 correctness is positively proven.
+        """
+        try:
+            ref128 = SQLiteMigrator._v128_canonical_schema_128()
+            ref129 = SQLiteMigrator._v128_canonical_schema()
+        except Exception:  # noqa: BLE001 — reference unbuildable → fail closed on the V128 layer
+            return "v128_schema_parity_failed"
+        try:
+            live_owned = _v128_schema_snapshot(conn)
+            live_contracts = {
+                table: _v128_extract_nonfk_contract(conn, table)
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES
+            }
+        except Exception:  # noqa: BLE001 — live surface unparseable → fail closed on the V128 layer
+            return "v128_schema_parity_failed"
+        if SQLiteMigrator._v129_projected_v128_core_equals_ref128(
+            live_owned, live_contracts, ref128, ref129
+        ):
+            return "v129_schema_parity_failed"
+        return "v128_schema_parity_failed"
+
+    @staticmethod
+    def _v129_projected_v128_core_equals_ref128(
+        live_owned: "dict[str, str]",
+        live_contracts: "dict[str, NonFkContract]",
+        ref128: "V128Reference",
+        ref129: "V128Reference",
+    ) -> bool:
+        """Compare the live V128-owned surface against ``ref128`` with the reference-derived V129 delta
+        projected out ONLY from the two V129-touched tables + the reconcile index (ADR-003 R10 §R10.3).
+        Returns True ONLY when the projected live V128-core equals ``ref128`` EXACTLY; any drift, or any
+        ambiguity/unbuildability, returns False (→ the caller attributes ``v128_schema_parity_failed``)."""
+        reconcile_key = "index:idx_locators_reconcile"
+        touched_keys = {"table:source_index_locators", "table:source_index_move_signals"}
+        expected_delta = touched_keys | {reconcile_key}
+        try:
+            ref128_owned = dict(ref128.owned_schema)
+            ref129_owned = dict(ref129.owned_schema)
+            # (1) The reference-derived owned-schema delta (129 − 128) MUST touch ONLY the two
+            # V129-touched tables + the reconcile index; anything else means the reference relationship
+            # is not the accepted-delta shape → ambiguous → fail closed (v128).
+            delta_keys = {
+                key
+                for key in set(ref128_owned) | set(ref129_owned)
+                if ref128_owned.get(key) != ref129_owned.get(key)
+            }
+            if delta_keys != expected_delta:
+                return False
+            # (2) The two V128 non-FK contracts are outside the V129 delta and MUST be identical between
+            # the references; if they differ the delta is not cleanly isolated → fail closed (v128).
+            if dict(ref128.nonfk_contracts) != dict(ref129.nonfk_contracts):
+                return False
+            # (3) Compare the COMPLETE V128-owned surface. The reconcile index is projected out entirely
+            # (it is a V129 addition, never present in ref128); the two touched tables are compared with
+            # their reference-derived V129 columns projected out; every OTHER owned object must compare
+            # EXACTLY UNCHANGED against ref128.
+            for key in set(live_owned) | set(ref128_owned):
+                if key == reconcile_key:
+                    continue
+                if key in touched_keys:
+                    if not SQLiteMigrator._v129_table_v128_core_matches(
+                        live_owned.get(key), ref128_owned.get(key), ref129_owned.get(key)
+                    ):
+                        return False
+                elif live_owned.get(key) != ref128_owned.get(key):
+                    return False
+            # (4) Both V128 non-FK contracts must compare EXACTLY unchanged against ref128.
+            for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                if live_contracts.get(table) != ref128.nonfk_contracts.get(table):
+                    return False
+            return True
+        except Exception:  # noqa: BLE001 — any parse/projection failure → fail closed (v128)
+            return False
+
+    @staticmethod
+    def _v129_table_v128_core_matches(
+        live_sql: "str | None", ref128_sql: "str | None", ref129_sql: "str | None"
+    ) -> bool:
+        """Project the reference-derived V129 columns out of one live V129-touched table and compare the
+        remaining V128 core to ``ref128`` (ADR-003 R10 §R10.3). The V129 delta column names are derived
+        as ``leading-idents(ref129) − leading-idents(ref128)`` (reference-derived, not hand-listed);
+        those columns are removed from the live table by name, order-preserving, and the result must
+        equal ``ref128`` (ordered top-level segments + table header) EXACTLY."""
+        if not live_sql or not ref128_sql or not ref129_sql:
+            return False
+        ref128_header, ref128_segs = SQLiteMigrator._v129_split_create(ref128_sql)
+        _ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
+        live_header, live_segs = SQLiteMigrator._v129_split_create(live_sql)
+        ref128_idents = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
+        delta_names = {
+            SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref129_segs
+        } - ref128_idents
+        delta_names.discard("")
+        if not delta_names:
+            # A V129-touched table with no derivable V129 delta is an ambiguous reference → fail closed.
+            return False
+        projected = [
+            seg
+            for seg in live_segs
+            if SQLiteMigrator._v129_seg_leading_ident(seg) not in delta_names
+        ]
+        return live_header == ref128_header and projected == ref128_segs
+
+    @staticmethod
+    def _v129_split_create(sql: str) -> "tuple[str, list[str]]":
+        """Split a normalized single-line ``CREATE TABLE name ( … )`` into its header (text before the
+        first top-level ``(``) and its ordered top-level column/constraint segments (via the shared
+        quote/paren-aware ``_v128_split_top_level``). Used only for the two V129-touched tables, whose
+        column list opens at the first ``(`` and closes at the final ``)`` (no trailing table options)."""
+        open_idx = sql.index("(")
+        close_idx = sql.rindex(")")
+        header = sql[:open_idx].strip()
+        body = sql[open_idx + 1 : close_idx]
+        segments = [seg.strip() for seg in _v128_split_top_level(body) if seg.strip()]
+        return header, segments
+
+    @staticmethod
+    def _v129_seg_leading_ident(segment: str) -> str:
+        """The leading (lowercased, unquoted) identifier of a top-level CREATE-TABLE segment. A column
+        segment yields its column name; a table-level constraint segment yields its leading keyword
+        (``check`` / ``foreign`` / ``unique`` / ``primary`` / ``constraint``) — none of which collide
+        with a V129 column name, so a reference-derived V129 delta name only ever matches a column."""
+        match = _V128_IDENT_RE.match(segment)
+        if match is None:
+            return ""
+        return _v128_unquote_ident(match.group(0))
+
+    @staticmethod
+    def _v128_canonical_schema_128() -> "V128Reference":
+        """Build (once per process, cached) the V128 attribution reference — the COMPLETE V128-owned
+        surface at version 128 (no V129 additive layer) — from a fresh scratch migrate STOPPED at
+        version 128 via the ``apply(target_version=128)`` seam (ADR-003 R10 §R10.6.2). Mirrors
+        ``_v128_canonical_schema`` exactly (single-flight, connection-bound builder state, public
+        borrowed-connection ``apply``) but stops at 128, so its two identity tables carry NO V129
+        columns and its owned index set has NO ``idx_locators_reconcile``. Never hand-replays or copies
+        V128 DDL and never mutates ``LATEST_SCHEMA_VERSION`` — the schema is realized by the real
+        migrator itself."""
+        global _V128_REFERENCE_128
+        if _V128_REFERENCE_128 is not None:
+            return _V128_REFERENCE_128
+        import shutil  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
+        with _V128_BUILD_LOCK_128:
+            if _V128_REFERENCE_128 is not None:  # double-check under the lock (single-flight)
+                return _V128_REFERENCE_128
+            tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref128_")
+            ref_conn: sqlite3.Connection | None = None
+            try:
+                ref_db = str(Path(tmpdir) / "v128_reference_128.sqlite")
+                ref_conn = get_connection(ref_db)
+                _V128_BUILD_STATE.conn = ref_conn
+                # Public borrowed-connection migration path, stopped at 128 (the controlled seam).
+                SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn, target_version=128)
+                owned = MappingProxyType(dict(_v128_schema_snapshot(ref_conn)))
+                contracts: dict[str, NonFkContract] = {}
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                    contracts[table] = _v128_extract_nonfk_contract(ref_conn, table)
+                reference = V128Reference(
+                    owned_schema=owned,
+                    nonfk_contracts=MappingProxyType(contracts),
+                )
+                _V128_REFERENCE_128 = reference  # publish atomically, only after all extraction succeeded
+                return reference
+            finally:
+                try:
+                    del _V128_BUILD_STATE.conn
+                except AttributeError:
+                    pass
+                if ref_conn is not None:
+                    ref_conn.close()
+                shutil.rmtree(tmpdir, ignore_errors=True)
 
     @staticmethod
     def _v128_reparent_nonfk_tables(conn: sqlite3.Connection) -> None:
