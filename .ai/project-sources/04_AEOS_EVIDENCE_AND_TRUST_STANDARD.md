@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,219 +9,239 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines what counts as evidence in AEOS, how evidence is evaluated, and how trust is assigned, degraded, or withheld. Its central requirement is simple: claims SHALL be supported by specific, relevant, reproducible evidence.
+This standard defines admissible evidence, provenance, exact-identity binding,
+representation scope, trust states, insufficiency, and fail-closed behavior.
 
 ## 2. Evidence Principles
 
-### 2.1 Specificity
+Evidence SHALL be:
 
-Evidence SHALL identify exactly what was observed, where, and under what conditions.
+- **specific** — identify exactly what was observed;
+- **reproducible** — include commands, inputs, environment, and outputs;
+- **relevant** — support only the claim actually verified;
+- **provenanced** — identify repository, runtime, CI, tool, or human source;
+- **current** — be fresh enough for the decision;
+- **identity-bound** — identify the exact artifact, SHA, environment, or runtime
+  observation;
+- **representation-aware** — identify which bytes or native object are
+  authenticated.
 
-### 2.2 Reproducibility
+Agent narrative and prior conversations are claim indexes, not proof.
 
-Evidence SHOULD include commands, inputs, environment, versions, and outputs sufficient for reproduction.
+## 3. Evidence Authority
 
-### 2.3 Relevance
+For deployed behavior, authenticated runtime evidence has priority. For
+engineering identity and lifecycle, authenticated repository and GitHub state
+has priority. Approved specifications and governance define expected behavior
+but do not prove implementation or runtime results.
 
-Evidence supports only the claim it actually verifies. A passing unit test does not prove production readiness unless the production claim is limited to behavior covered by that test.
+Publication systems are authoritative for their own object identity and
+publication history, not for repository execution state.
 
-### 2.4 Provenance
+## 4. Exact Repository Identity
 
-Evidence SHALL identify its source: repository, runtime, CI, terminal, log, database, API, screenshot, or human approval.
+Material repository evidence SHALL record, as applicable:
 
-### 2.5 Recency
+- repository and authenticated remote;
+- default and target branch;
+- worktree identity and path;
+- base SHA, exact head SHA, and merge base;
+- pull request and required checks;
+- dirty/untracked state;
+- reviewed or tested head;
+- accepted merge identity.
 
-Evidence SHALL be current enough for the decision. Stale evidence SHALL be identified and may require refresh.
+Evidence from one head SHALL NOT be presented as current-head evidence after a
+later commit without re-verification.
 
-## 3. Evidence Hierarchy
+## 5. Representation and Hash Scope
 
-### 3.1 Strong Evidence
+Each material evidence item SHOULD record:
 
-Strong evidence includes:
+```yaml
+representation:
+mime_type:
+hash_scope:
+sha256:
+source_relation:
+verification:
+```
 
-- direct repository inspection;
-- commit SHAs and diffs;
-- full terminal output;
+Valid hash scopes:
+
+- `stored_raw_bytes`
+- `source_bytes`
+- `exported_bytes`
+- `not_applicable`
+
+A hash authenticates only the identified representation. Cross-representation
+hash equivalence SHALL NOT be inferred.
+
+A native Google Doc has stable Drive identity and revision history but no
+portable raw-byte SHA-256. Its publication identity may be verified, while
+source-byte or export-byte claims require separately identified evidence.
+
+## 6. Evidence Strength
+
+### Strong evidence
+
+- authenticated repository state and diffs;
+- exact commit SHAs;
+- full command output and exit codes;
 - named tests with complete results;
-- CI job results;
-- runtime logs;
-- API responses;
-- database validation queries;
-- migration output;
-- deployment receipts;
+- CI checks bound to exact head;
+- runtime logs and API responses;
+- database validation;
+- migration and deployment receipts;
 - monitoring data;
-- screenshots for visual behavior.
+- representation-scoped hashes.
 
-### 3.2 Moderate Evidence
-
-Moderate evidence includes:
+### Moderate evidence
 
 - structured implementation reports;
-- summarized command output with command and context;
-- screenshots without full reproduction details;
-- static analysis reports;
-- logs with partial context.
+- summarized output with command and context;
+- static analysis;
+- partial logs or screenshots with limitations.
 
-### 3.3 Weak Evidence
-
-Weak evidence includes:
+### Weak evidence
 
 - agent claims;
-- natural-language summaries;
-- "tests passed" without command or output;
-- "looks correct";
-- code compiles;
-- one sample happy-path test;
-- unverifiable screenshots.
+- uncited summaries;
+- "tests passed" without identity or output;
+- compilation alone;
+- mock-only proof for integration-critical behavior;
+- publication receipt offered as technical correctness evidence.
 
-Weak evidence MAY guide further investigation but SHALL NOT support high-consequence decisions by itself.
+Weak evidence SHALL NOT support high-consequence conclusions alone.
 
-## 4. Evidence That Is Not Sufficient Alone
+## 7. Required Evidence by Claim
 
-The following are not independently sufficient for production conclusions:
+### Implemented
 
-- successful compilation;
-- passing unit tests;
-- mergeable PR status;
-- absence of reported errors;
-- agent confidence;
-- clean-looking code;
-- code review approval without evidence;
-- mock-based tests for integration-critical behavior.
+Requires diff, changed files, exact head, implementation summary, and acceptance
+traceability.
 
-## 5. Required Evidence by Claim
+### Tested
 
-### 5.1 "Implemented"
+Requires exact command, suite or node IDs, complete results, exact head, and
+environment.
 
-Requires:
+### Regression-safe
 
-- changed files;
-- relevant diff;
-- implementation summary;
-- acceptance criteria mapping.
+Requires proportional test selection, changed-surface analysis, failure
+classification, and applicable required-safe suites.
 
-### 5.2 "Tested"
+### Migration-safe
 
-Requires:
+Requires migration identity, forward evidence, recovery strategy, data
+integrity checks, and compatibility analysis.
 
-- exact command;
-- test names or suites;
-- full results;
-- commit SHA;
-- environment where run.
+### Reviewed or approved
 
-### 5.3 "Regression-Safe"
+Requires review identity, independent context, exact reviewed artifact and head,
+evidence basis, disposition, and stale-on-head-change rule.
 
-Requires:
+### Merged
 
-- baseline comparison;
-- relevant regression tests;
-- scope analysis;
-- changed surface review.
+Requires authenticated accepted target-branch identity. It does not prove
+cleanup, deployment, or production readiness.
 
-### 5.4 "Migration-Safe"
+### Closed
 
-Requires:
+Requires post-merge validation or explicit not-required decision plus a cleanup,
+retention, or blocker receipt.
 
-- migration files;
-- forward migration evidence;
-- rollback or recovery strategy;
-- data integrity checks;
-- compatibility analysis.
+### Production-ready
 
-### 5.5 "Production-Ready"
-
-Requires:
-
-- implementation audit;
-- production readiness review;
-- runtime validation;
-- observability confirmation;
-- rollback plan;
-- known risk disposition.
-
-## 6. Trust States
-
-AEOS uses the following trust states:
-
-- `trusted`: evidence is current, relevant, reproducible, and sufficient.
-- `partially_trusted`: evidence supports some claims but gaps remain.
-- `untrusted`: evidence is missing, stale, contradictory, or inadequate.
-- `not_evaluated`: evidence has not been reviewed.
-- `conflicting`: sources disagree materially.
-
-Trust SHALL be assigned to specific claims, not globally to a project.
-
-## 7. Fail-Closed Rules
-
-A review SHALL fail closed when:
-
-- source authority is unclear;
-- evidence conflicts and cannot be reconciled;
-- required test output is missing;
-- runtime behavior is unverified for runtime-critical changes;
-- migration evidence is missing for schema/data changes;
-- production deployment readiness is claimed without rollback evidence.
-
-Failing closed does not imply the implementation is defective. It means the evidence is inadequate for the requested conclusion.
+Requires separately scoped implementation audit, runtime validation,
+observability, rollback, and risk disposition.
 
 ## 8. Evidence Package Requirements
 
 An evidence package SHALL include:
 
-- package ID;
-- target repository;
-- branch;
-- base SHA;
-- head SHA;
-- dirty state;
-- commands executed;
-- outputs;
-- test totals;
-- failing node IDs, if any;
-- runtime validation;
-- migration validation;
+- package and run IDs;
+- goal, work item, and checkpoint;
+- repository, branch, worktree, base, and exact head;
+- environment identity;
+- commands, timestamps, exit codes, stdout, and stderr;
+- test totals and failing node IDs;
+- failure classifications and baseline evidence;
 - CI references;
-- limitations;
-- comparison to baseline where relevant.
+- runtime and migration evidence when applicable;
+- diff and artifact manifests;
+- representation and hash scope;
+- limitations and redactions;
+- immutable preservation of failed and invalid attempts.
 
-## 9. Evidence Review Procedure
+## 9. Branch and Worktree Closeout Evidence
 
-A reviewer SHALL:
+Cleanup or pruning claims require:
 
-1. Identify the claim.
-2. Identify required evidence for the claim.
-3. Inspect the provided evidence.
-4. Determine relevance.
-5. Determine sufficiency.
-6. Identify gaps.
-7. Assign trust state.
-8. Recommend next action.
+- complete relevant inventory;
+- no-prune remote fetch when remote state matters;
+- dirty/untracked preservation;
+- integration or patch-equivalence proof;
+- target-specific dry-run previews;
+- lock, storage, and process-use assessment;
+- separate authorization for each destructive or pruning action;
+- exact commands and outputs;
+- cleanup, retention, or blocker receipt.
 
-## 10. Handling Conflicting Evidence
+Absence of an item from a partial inventory is not proof that it does not exist.
 
-When evidence conflicts:
+## 10. Trust States
 
-- cite the conflicting sources;
-- prefer higher-authority sources;
-- check recency;
-- check environment differences;
-- do not average conclusions;
-- resolve with direct verification if possible;
-- otherwise classify as INSUFFICIENT EVIDENCE.
+Assign trust to individual claims:
 
-## 11. Evidence Redaction
+- `trusted`
+- `partially_trusted`
+- `untrusted`
+- `not_evaluated`
+- `conflicting`
 
-Evidence may be redacted for secrets, personal information, or sensitive operational details. Redaction SHALL preserve enough structure to validate the claim. Redacted evidence SHOULD state what was redacted and why.
+Use claim classifications:
 
-## 12. Evidence Anti-Patterns
+- `VERIFIED`
+- `CLAIMED_NOT_VERIFIED`
+- `ASSUMED`
+- `UNKNOWN`
+- `UNAVAILABLE`
+- `NOT_APPLICABLE`
 
-Noncompliant patterns include:
+## 11. Fail-Closed Rules
 
-- "All tests passed" with no command;
-- claiming runtime behavior from static code inspection alone;
-- hiding failures because they are "unrelated";
-- reporting partial terminal output as complete;
-- omitting the commit SHA;
-- using old CI results after new commits;
-- treating a local happy path as production proof.
+Use `INSUFFICIENT EVIDENCE` or block the transition when:
+
+- identity or source authority is unclear;
+- evidence is stale or conflicts;
+- exact test output is missing;
+- the reviewed head changed;
+- runtime behavior is claimed without runtime evidence;
+- migration evidence is missing;
+- representation scope is ambiguous;
+- cleanup is proposed without inventory and preservation;
+- production or risk conclusions exceed the evidence.
+
+Failing closed does not assert a defect; it limits the conclusion.
+
+## 12. Redaction and Sanitization
+
+Evidence may be redacted for secrets, personal information, or sensitive
+operations. Redaction SHALL preserve validation structure and record what was
+redacted, why, and how the sanitized derivative relates to the source.
+
+Never silently replace source evidence with a summary.
+
+## 13. Evidence Anti-Patterns
+
+Noncompliant behavior includes:
+
+- using old CI after a new commit;
+- claiming all tests passed without commands;
+- hiding failures as unrelated without classification;
+- using a Drive publication as repository truth;
+- claiming a native document matches source bytes without proof;
+- deleting failed runs;
+- treating mergeability or publication as readiness;
+- claiming branch cleanup from an incomplete inventory.
