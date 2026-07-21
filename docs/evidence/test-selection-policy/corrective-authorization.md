@@ -122,7 +122,7 @@ fails closed when these prerequisites are unavailable.
 **Branch:** `chore/proportional-test-selection-policy-v2`  
 **Parent SHA:** `a5b1cdb0220982db6d6c956e45d532b0c6187a5c`  
 **Pull request:** `#319`  
-**Status:** ACTIVE — bounded R3 corrective implementation  
+**Status:** CONSUMED — bounded R3 implementation complete; final exact-head validation and fresh independent re-review required  
 **Authority:** Direct operator instruction, “resolve the remaining blockers,” issued 2026-07-21 at approximately 12:43 America/New_York
 
 ### R3 review basis
@@ -143,26 +143,55 @@ all prior lineages except `PR319-GOV-F-008` / `PR319-RR-F-003`, and opened:
 - this authorization record;
 - PR #319 description and replacement exact-head evidence references.
 
-### Required R3 correction
+### Implemented R3 correction
 
-- separate required read inventory from the exact authorized changed-path set;
-- require exact changed-path equality and execute extra-path and missing-path negative fixtures;
-- carry collection and validator commands, exit codes, counts, zero-test-execution status,
-  and corresponding log/exit-code evidence hashes in receipt schema 2;
-- have final workflow enforcement verify receipt values against captured files;
-- execute negative fixtures for duplicate issue-form IDs, missing required discovery
-  fields, malformed dropdown options, interpreter without pytest, missing declared
-  dependencies, alternate generic interpreter fallbacks, and changed-path mutations;
-- preserve all prior failed and successful CI evidence;
-- generate a new exact-head artifact and route it to a fresh independent review.
+- separated required read sources from the exact authorized 19-path comparison and
+  required exact set equality;
+- added executable extra-path and missing-path negative fixtures;
+- added receipt schema-2 collection and validator sections carrying exact commands,
+  exit codes, collection counts, zero application-test execution, and stored-byte
+  hashes for logs and exit-code files;
+- added finalizer and verifier modes that cross-check receipt content against
+  captured evidence before the workflow may pass;
+- added negative fixtures for duplicate issue-form IDs, missing discovery fields,
+  malformed dropdown options, alternate generic interpreter fallbacks, interpreter
+  without pytest, and missing declared dependency imports;
+- validated dependency declarations in the root and construction subrepository
+  package metadata;
+- preserved failed R3 CI runs rather than relabeling them as successful.
+
+### Preserved R3 diagnostic lineage
+
+1. **Run 34 at `65df3ccab6984cfe943ab8beb73fe277c01f4660`:** exact-head checkout,
+   dependency installation, syntax, and bounded collection passed. The validator
+   rejected the alternate generic-fallback mutation through the required-token
+   assertion before the intended fallback diagnostic. Artifact `8503171052`,
+   archive digest
+   `sha256:cc11e38f0dba1e1c2060fd9a1e3af277bdf9f9667b45928d1b2551c79cc0102d`.
+2. **Run 35 at `f3ceebfb771445d654212368cefa0e8a304319a9`:** exact-head checkout,
+   dependency installation, syntax, and bounded collection passed. The validator
+   rejected the legacy issue-form mutation through the missing-description check
+   before the intended legacy-`about` diagnostic. Artifact `8503311397`, archive
+   digest
+   `sha256:d0123cd8904b0cf10bf5bdf959711f74ca72c38615f2a2c20b776ea31e6bec69`.
+
+Both failures were preserved and corrected by reordering semantic checks so the
+negative fixtures prove the intended invariant and diagnostic.
+
+### Required R3 completion evidence
+
+- exact-head syntax and bounded collection success;
+- all static, semantic, dependency, lifecycle, and adversarial checks passing;
+- finalized schema-2 receipt containing both command/exit-code pairs and evidence hashes;
+- verifier success against the captured log and exit-code files;
+- uploaded artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
 
 ### R3 exclusions
 
 R3 does not authorize changes to `scripts/test-safe.sh`, the issue form,
 application source, application tests, dependency declarations, schemas,
-migrations, runtime, deployment, credentials, secrets, or production surfaces
-unless a new adversarial fixture independently exposes a defect and the operator
-separately expands authorization.
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
 
 ## Exclusions
 
