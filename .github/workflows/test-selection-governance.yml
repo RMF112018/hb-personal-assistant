@@ -3,12 +3,24 @@ name: Test Selection Governance
 on:
   pull_request:
     paths:
+      - '.ai/project-sources/00_AEOS_MASTER_INDEX.md'
+      - '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md'
+      - '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md'
+      - '.github/ISSUE_TEMPLATE/test-failure.yml'
       - '.github/workflows/test-selection-governance.yml'
-      - 'scripts/validate-test-selection-governance.py'
+      - 'AGENTS.md'
+      - 'AI_OPERATING_MANUAL.md'
+      - 'CLAUDE.md'
+      - 'docs/decisions/**'
+      - 'docs/governance/**'
+      - 'docs/implementation-plans/github-first-control-plane-migration.md'
+      - 'docs/testing/forecasting-and-schedule-test-bundles.md'
       - 'docs/evidence/test-selection-policy/**'
+      - 'scripts/test-safe.sh'
+      - 'scripts/validate-test-selection-governance.py'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
@@ -20,17 +32,86 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Correct R6 diagnostic-specific fixture
-        env:
-          GH_BRANCH: ${{ github.event.pull_request.head.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validation and collection dependencies
         run: |
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmltcG9ydCB5YW1sClY9UGF0aCgnc2NyaXB0cy92YWxpZGF0ZS10ZXN0LXNlbGVjdGlvbi1nb3Zlcm5hbmNlLnB5JykKQj1QYXRoKCdkb2NzL2V2aWRlbmNlL3Rlc3Qtc2VsZWN0aW9uLXBvbGljeS9icmFuY2gtcmVnaXN0cmF0aW9uLnlhbWwnKQpBPVBhdGgoJ2RvY3MvZXZpZGVuY2UvdGVzdC1zZWxlY3Rpb24tcG9saWN5L2NvcnJlY3RpdmUtYXV0aG9yaXphdGlvbi5tZCcpCnY9Vi5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykKb2xkPScnJyAgICAgICAgICAgIGYicmVmZXJlbmNlIG1pc21hdGNoIGZvciB7ZmllbGR9IixcbicnJwpuZXc9JycnICAgICAgICAgICAgZiJyZWZlcmVuY2UgbWlzbWF0Y2ggZm9yIHtzZWN0aW9ufS57ZmllbGR9IixcbicnJwppZiB2LmNvdW50KG9sZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoZidleHBlY3RlZCBvbmUgb2xkIGRpYWdub3N0aWMsIGZvdW5kIHt2LmNvdW50KG9sZCl9JykKdj12LnJlcGxhY2Uob2xkLG5ldywxKQpWLndyaXRlX3RleHQodixlbmNvZGluZz0ndXRmLTgnKQoKYj1CLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKS5yc3RyaXAoKSsnJydcbiAgLSB0cmFuc2l0aW9uX2lkOiBUUi1CUi1URVNULVNFTEVDVElPTi1QT0xJQ1ktMDAxLUNIQU5HRVMtUjgyXG4gICAgZW50aXR5X3R5cGU6IGJyYW5jaFxuICAgIGVudGl0eV9pZDogQlItVEVTVC1TRUxFQ1RJT04tUE9MSUNZLTAwMVxuICAgIGZyb21fc3RhdGU6IFJFVklFV19QRU5ESU5HXG4gICAgdG9fc3RhdGU6IENIQU5HRVNfUkVRVUVTVEVEXG4gICAgb2NjdXJyZWRfYXQ6IDIwMjYtMDctMjFUMTY6NDM6MDAtMDQ6MDBcbiAgICBhY3RvcjogR2l0SHViIEFjdGlvbnMgZXhhY3QtaGVhZCBnb3Zlcm5hbmNlIGdhdGVcbiAgICBhdXRob3JpemF0aW9uX2lkOiBQUjMxOS1HT1YtQ0ktUjgyXG4gICAgZXZpZGVuY2VfcGFyZW50X3NoYTogNTQzNDkxZjk5NjAzNmJmMTIwMThiMmE3ZDQzOTE1NmRlODA4MmE2MFxuICAgIGV2aWRlbmNlOiBodHRwczovL2dpdGh1Yi5jb20vUk1GMTEyMDE4L2hiLXBlcnNvbmFsLWFzc2lzdGFudC9hY3Rpb25zL3J1bnMvMjk4NjY4NzM3NjhcbiAgICByZWFzb246IFI2IGV4YWN0LWhlYWQgZmluYWwgZW5mb3JjZW1lbnQgcmVqZWN0ZWQgYW4gb3V0ZGF0ZWQgdW5xdWFsaWZpZWQgZGlhZ25vc3RpYyBleHBlY3RhdGlvbjsgcHJlc2VydmUgdGhlIGZhaWx1cmUgYW5kIHJldHVybiB0byBjb3JyZWN0aW9uLlxuICAtIHRyYW5zaXRpb25faWQ6IFRSLUJSLVRFU1QtU0VMRUNUSU9OLVBPTElDWS0wMDEtQ09SUkVDVElWRS1SODJcbiAgICBlbnRpdHlfdHlwZTogYnJhbmNoXG4gICAgZW50aXR5X2lkOiBCUi1URVNULVNFTEVDVElPTi1QT0xJQ1ktMDAxXG4gICAgZnJvbV9zdGF0ZTogQ0hBTkdFU19SRVFVRVNURURcbiAgICB0b19zdGF0ZTogQUNUSVZFXG4gICAgb2NjdXJyZWRfYXQ6IDIwMjYtMDctMjFUMTY6NDQ6MDAtMDQ6MDBcbiAgICBhY3RvcjogT3BlbkFJIENoYXRHUFQsIG9wZXJhdG9yLWRpcmVjdGVkXG4gICAgYXV0aG9yaXphdGlvbl9pZDogQVVUSC1QUjMxOS1HT1YtQ09SUkVDVElWRS1SNi0yMDI2MDcyMS0wMDFcbiAgICBldmlkZW5jZV9wYXJlbnRfc2hhOiA1NDM0OTFmOTk2MDM2YmYxMjAxOGIyYTdkNDM5MTU2ZGU4MDgyYTYwXG4gICAgZXZpZGVuY2U6IGRvY3MvZXZpZGVuY2UvdGVzdC1zZWxlY3Rpb24tcG9saWN5L2NvcnJlY3RpdmUtYXV0aG9yaXphdGlvbi5tZFxuICAgIHJlYXNvbjogQ29ycmVjdCB0aGUgZGlhZ25vc3RpYy1zcGVjaWZpYyBmaXh0dXJlIGV4cGVjdGF0aW9uIHdpdGhpbiB0aGUgZXhpc3RpbmcgYm91bmRlZCBSNiBhdXRob3JpemF0aW9uLlxuICAtIHRyYW5zaXRpb25faWQ6IFRSLUJSLVRFU1QtU0VMRUNUSU9OLVBPTElDWS0wMDEtUkVWSUVXLVIxMVxuICAgIGVudGl0eV90eXBlOiBicmFuY2hcbiAgICBlbnRpdHlfaWQ6IEJSLVRFU1QtU0VMRUNUSU9OLVBPTElDWS0wMDFcbiAgICBmcm9tX3N0YXRlOiBBQ1RJVkVcbiAgICB0b19zdGF0ZTogUkVWSUVXX1BFTkRJTkdcbiAgICBvY2N1cnJlZF9hdDogMjAyNi0wNy0yMVQxNjo0NTowMC0wNDowMFxuICAgIGFjdG9yOiBPcGVuQUkgQ2hhdEdQVCwgb3BlcmF0b3ItZGlyZWN0ZWRcbiAgICBhdXRob3JpemF0aW9uX2lkOiBBVVRILVBSMzE5LUdPVi1DT1JSRUNUSVZFLVI2LTIwMjYwNzIxLTAwMVxuICAgIGV2aWRlbmNlX3BhcmVudF9zaGE6IDU0MzQ5MWY5OTYwMzZiZjEyMDE4YjJhN2Q0MzkxNTZkZTgwODJhNjBcbiAgICBldmlkZW5jZTogaHR0cHM6Ly9naXRodWIuY29tL1JNRjExMjAxOC9oYi1wZXJzb25hbC1hc3Npc3RhbnQvcHVsbC8zMTlcbiAgICByZWFzb246IERpYWdub3N0aWMtc3BlY2lmaWMgZml4dHVyZSBleHBlY3RhdGlvbiBjb3JyZWN0ZWQ7IHJvdXRlIHRoZSBleHRlcm5hbGx5IHJlc29sdmVkIGN1cnJlbnQgaGVhZCB0byByZXBsYWNlbWVudCBleGFjdC1oZWFkIENJIGFuZCBmcmVzaCBpbmRlcGVuZGVudCByZS1yZXZpZXcuXG4nJycKeWFtbC5zYWZlX2xvYWQoYikKQi53cml0ZV90ZXh0KGIsZW5jb2Rpbmc9J3V0Zi04JykKCmE9QS5yZWFkX3RleHQoZW5jb2Rpbmc9J3V0Zi04JykucnN0cmlwKCkrJycnXG5cbiMjIyBQcmVzZXJ2ZWQgUjYgZXhhY3QtaGVhZCBkaWFnbm9zdGljXG5cbi0gUnVuIDgyIChgMjk4NjY4NzM3NjhgKSBhdCBgNTQzNDkxZjk5NjAzNmJmMTIwMThiMmE3ZDQzOTE1NmRlODA4MmE2MGAgcGFzc2VkIHN5bnRheCwgYm91bmRlZCBjb2xsZWN0aW9uLCB2YWxpZGF0b3IgZXhlY3V0aW9uLCByZWNlaXB0IGZpbmFsaXphdGlvbiwgYW5kIGFydGlmYWN0IHVwbG9hZC4gRmluYWwgZW5mb3JjZW1lbnQgZmFpbGVkIGJlY2F1c2UgdGhlIGluaGVyaXRlZCBmaW5hbC1yZWNlaXB0IHJlZmVyZW5jZSBmaXh0dXJlIGV4cGVjdGVkIHRoZSBmb3JtZXIgdW5xdWFsaWZpZWQgYGxvZ19maWxlYCBkaWFnbm9zdGljIHdoaWxlIFI2IGVtaXRzIHRoZSBzdHJvbmdlciBxdWFsaWZpZWQgYGNvbGxlY3Rpb24ubG9nX2ZpbGVgIGRpYWdub3N0aWMuXG4tIFRoZSBydW4gYW5kIGFydGlmYWN0IHJlbWFpbiBwcmVzZXJ2ZWQgYXMgZmFpbGVkIGltcGxlbWVudGF0aW9uIGV2aWRlbmNlLiBUaGUgY29ycmVjdGlvbiBjaGFuZ2VzIG9ubHkgdGhlIGZpeHR1cmUncyBleHBlY3RlZCBkaWFnbm9zdGljIHN1YnN0cmluZyBhbmQgZG9lcyBub3Qgd2Vha2VuIHJlY2VpcHQgcmVmZXJlbmNlIGF1dGhlbnRpY2F0aW9uLlxuJycnCkEud3JpdGVfdGV4dChhKydcbicsZW5jb2Rpbmc9J3V0Zi04JykK' | base64 --decode > /tmp/r6-diag-fix.py
-          python /tmp/r6-diag-fix.py
+          python -m pip install -e '.[dev]'
+          python -m pip install -e '.[mcp,analytics-ui]' \
+            -e 'subrepos/construction-financial-review[dev]'
+
+      - name: Validate executable syntax
+        run: |
+          bash -n scripts/test-safe.sh
           python -m py_compile scripts/validate-test-selection-governance.py
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add scripts/validate-test-selection-governance.py \
-            docs/evidence/test-selection-policy/branch-registration.yaml \
-            docs/evidence/test-selection-policy/corrective-authorization.md
-          git commit -m 'fix: align PR319 qualified reference diagnostics'
-          git push origin "HEAD:${GH_BRANCH}"
+
+      - name: Exercise bounded canonical collection
+        env:
+          PYTHON: ${{ env.pythonLocation }}/bin/python
+        run: |
+          set +e
+          bash scripts/test-safe.sh --collect-only --python-only 2>&1 | tee pr319-safe-collection.log
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > pr319-safe-collection.exitcode
+          exit 0
+
+      - name: Validate governance contracts at exact head
+        run: |
+          set +e
+          python scripts/validate-test-selection-governance.py validate --github-head-sha '${{ github.event.pull_request.head.sha }}' \
+            --github-base-sha '${{ github.event.pull_request.base.sha }}' \
+            --pr-number '${{ github.event.pull_request.number }}' \
+            --branch-name '${{ github.event.pull_request.head.ref }}' \
+            --identity-source 'github-actions-pull-request-event' \
+            --collection-log pr319-safe-collection.log \
+            --collection-exitcode-file pr319-safe-collection.exitcode \
+            --validator-log-name pr319-governance-validator.log \
+            --validator-exitcode-name pr319-governance-validator.exitcode \
+            --output pr319-governance-validation.partial.json \
+            2>&1 | tee pr319-governance-validator.log
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > pr319-governance-validator.exitcode
+          exit 0
+
+      - name: Finalize schema-2 receipt evidence
+        if: always()
+        run: |
+          python scripts/validate-test-selection-governance.py finalize-receipt \
+            --input pr319-governance-validation.partial.json \
+            --output pr319-governance-validation.json \
+            --validator-log pr319-governance-validator.log \
+            --validator-exitcode-file pr319-governance-validator.exitcode
+
+      - name: Upload validation and collection evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr319-governance-validation-${{ github.event.pull_request.head.sha }}
+          path: |
+            pr319-governance-validation.json
+            pr319-governance-validation.partial.json
+            pr319-governance-validator.log
+            pr319-governance-validator.exitcode
+            pr319-safe-collection.log
+            pr319-safe-collection.exitcode
+          if-no-files-found: error
+
+      - name: Enforce authenticated receipt and captured evidence consistency
+        if: always()
+        run: |
+          python scripts/validate-test-selection-governance.py verify-receipt \
+            --receipt pr319-governance-validation.json \
+            --partial-receipt pr319-governance-validation.partial.json \
+            --collection-log pr319-safe-collection.log \
+            --collection-exitcode-file pr319-safe-collection.exitcode \
+            --validator-log pr319-governance-validator.log \
+            --validator-exitcode-file pr319-governance-validator.exitcode \
+            --expected-repository 'RMF112018/hb-personal-assistant' \
+            --expected-pr-number '${{ github.event.pull_request.number }}' \
+            --expected-branch '${{ github.event.pull_request.head.ref }}' \
+            --expected-base-sha '${{ github.event.pull_request.base.sha }}' \
+            --expected-head-sha '${{ github.event.pull_request.head.sha }}' \
+            --expected-identity-source 'github-actions-pull-request-event'
