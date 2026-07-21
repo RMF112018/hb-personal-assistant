@@ -1,29 +1,60 @@
-schema_version: 1
+schema_version: 2
 goal_id: GOAL-REPLACE-ME
 repository:
   path: /absolute/path/recorded-at-runtime
   remote: owner/repository
+  default_branch: main
+  branch: null
+  worktree_id: null
+  worktree_path: null
+  base_sha: null
+  head_sha: null
+  pull_request: null
 governing_sources:
-  - CLAUDE.md
   - AGENTS.md
+  - AI_OPERATING_MANUAL.md
   - .ai/project-sources/00_AEOS_MASTER_INDEX.md
-authority_order:
-  - current_repository_and_runtime_evidence
-  - approved_repository_specific_specifications
-  - repository_local_policies
+  - docs/decisions/ADR-019-github-first-engineering-control-plane.md
+  - docs/governance/branch-worktree-lifecycle-policy.md
+truth_precedence:
+  - authenticated_runtime_evidence
+  - authenticated_repository_and_github_state
+  - repository_governance_and_approved_specifications
   - aeos_governance
-  - current_operator_instruction
-  - prior_context
+  - approved_publication_reference_governance
+  - prior_context_as_claims
+  - model_memory
+action_authority:
+  task_intent_source: current_operator_instruction
+  operator_controls_state_transitions: true
+  operator_only_risk_acceptance: true
+  access_or_publication_grants_authority: false
+  prior_approval_applies_to_changed_identity: false
+publication_boundary:
+  drive_may_publish_repository_identity: true
+  drive_may_define_active_engineering_state: false
+  duplicate_active_state_ledger_allowed: false
 prohibited_without_explicit_authorization:
   - push
   - merge
   - force_push
   - rewrite_history
   - reset_hard
-  - delete_branch
-  - delete_worktree
+  - broad_clean
+  - remove_worktree
+  - delete_local_branch
+  - delete_remote_branch
+  - prune_worktree_metadata
+  - prune_remote_references
   - deploy
+  - activate_production
   - modify_secrets
   - irreversible_migration
   - weaken_tests_or_thresholds
   - accept_risk
+  - activate_next_state
+closeout_requirements:
+  merge_transitions_to: MERGED_PENDING_CLEANUP
+  post_merge_validation_required_or_explicitly_not_required: true
+  preservation_precedes_pruning: true
+  cleanup_retention_or_blocker_receipt_required: true
