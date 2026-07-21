@@ -115,9 +115,58 @@ fails closed when these prerequisites are unavailable.
 - accurate distinction between head-SHA governance evidence and synthetic
   pull-request merge-result forecasting evidence.
 
+## Corrective cycle R3
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `a5b1cdb0220982db6d6c956e45d532b0c6187a5c`  
+**Pull request:** `#319`  
+**Status:** ACTIVE — bounded R3 corrective implementation  
+**Authority:** Direct operator instruction, “resolve the remaining blockers,” issued 2026-07-21 at approximately 12:43 America/New_York
+
+### R3 review basis
+
+The fresh independent R2 re-review of exact head
+`a5b1cdb0220982db6d6c956e45d532b0c6187a5c` returned `REVISE`. It verified
+all prior lineages except `PR319-GOV-F-008` / `PR319-RR-F-003`, and opened:
+
+- `PR319-RR2-F-001` — changed-path validation did not enforce the exact authorized 19-path set;
+- `PR319-RR2-F-002` — receipt schema 2 omitted the collection command and collection exit code;
+- `PR319-RR2-F-003` — required negative fixtures and dependency-failure probes were incomplete.
+
+### Authorized R3 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml`;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Required R3 correction
+
+- separate required read inventory from the exact authorized changed-path set;
+- require exact changed-path equality and execute extra-path and missing-path negative fixtures;
+- carry collection and validator commands, exit codes, counts, zero-test-execution status,
+  and corresponding log/exit-code evidence hashes in receipt schema 2;
+- have final workflow enforcement verify receipt values against captured files;
+- execute negative fixtures for duplicate issue-form IDs, missing required discovery
+  fields, malformed dropdown options, interpreter without pytest, missing declared
+  dependencies, alternate generic interpreter fallbacks, and changed-path mutations;
+- preserve all prior failed and successful CI evidence;
+- generate a new exact-head artifact and route it to a fresh independent review.
+
+### R3 exclusions
+
+R3 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces
+unless a new adversarial fixture independently exposes a defect and the operator
+separately expands authorization.
+
 ## Exclusions
 
-Neither corrective cycle authorizes merge, cleanup, Phase B activation,
-deployment, migration, production mutation, secret changes, destructive Git
-operations, risk acceptance, or self-review. A fresh independent re-review must
-assess the final corrective head.
+No corrective cycle authorizes merge, cleanup, Phase B activation, deployment,
+migration, production mutation, secret changes, destructive Git operations,
+risk acceptance, or self-review. A fresh independent re-review must assess the
+final corrective head.
