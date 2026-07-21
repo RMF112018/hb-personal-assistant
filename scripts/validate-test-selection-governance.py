@@ -182,6 +182,7 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     require_contains(safe_script, "tests", "safe suite")
     require_contains(safe_script, "npm test", "safe suite")
     require_contains(safe_script, "unsupported argument", "safe suite")
+    require_contains(safe_script, "cannot be combined with --frontend-only", "safe suite")
 
     branch_path = "docs/evidence/test-selection-policy/branch-registration.yaml"
     branch = parsed_yaml[branch_path]
@@ -264,18 +265,30 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     for key, value in expected_target.items():
         if target.get(key) != value:
             fail(f"permanent-identity supersession mismatch for {key}")
+    clauses = target.get("affected_clauses")
+    expected_sections = {
+        "Governance (AEOS) — role-separated, applies to EACH unit",
+        "Verification (each unit)",
+    }
+    if not isinstance(clauses, list) or {
+        item.get("section") for item in clauses if isinstance(item, dict)
+    } != expected_sections:
+        fail("permanent-identity supersession lacks exact affected clauses")
 
     issue_form = parsed_yaml[".github/ISSUE_TEMPLATE/test-failure.yml"]
     ids = {entry.get("id") for entry in issue_form.get("body", []) if isinstance(entry, dict)}
     required_issue_ids = {
         "source_work_item",
+        "discovered_at",
         "failing_ids",
         "classification",
         "triage_owner",
         "evidence",
         "affected_gate",
+        "current_disposition",
         "authorization_state",
         "corrective_identity",
+        "closure_evidence",
     }
     if not required_issue_ids.issubset(ids):
         fail(f"test-failure issue form missing IDs: {sorted(required_issue_ids - ids)}")
