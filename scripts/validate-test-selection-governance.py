@@ -27,8 +27,6 @@ COLLECTION_COMMAND = [
     "--python-only",
 ]
 
-# Sources that must be readable for semantic validation. Some are intentionally
-# unchanged reference inputs and therefore are not authorized changed paths.
 REQUIRED_READ_PATHS = (
     ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
     ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
@@ -55,8 +53,6 @@ REQUIRED_READ_PATHS = (
     "frontend/package.json",
 )
 
-# Exact base-to-head contract for PR #319. This is deliberately independent of
-# REQUIRED_READ_PATHS so unchanged governing sources cannot silently become edits.
 AUTHORIZED_CHANGED_PATHS = {
     ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
     ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
@@ -377,6 +373,16 @@ def validate_safe_suite_static(safe_script: str) -> None:
         if forbidden in safe_script:
             fail(f"safe suite contains operator-specific absolute path: {forbidden}")
 
+    generic_patterns = (
+        r"PYTHON_BIN\s*=\s*['\"]python3?['\"]",
+        r"candidate\s*=\s*['\"]python3?['\"]",
+        r"\$\{PYTHON:-\s*python3?\}",
+        r"command\s+-v(?:\s+--)?\s+['\"]?python3?['\"]?",
+    )
+    for pattern in generic_patterns:
+        if re.search(pattern, safe_script):
+            fail(f"safe suite contains generic interpreter fallback pattern: {pattern}")
+
     required_tokens = (
         'candidate="$ROOT/.venv/bin/python"',
         "Python 3.12 or newer",
@@ -389,16 +395,6 @@ def validate_safe_suite_static(safe_script: str) -> None:
     )
     for token in required_tokens:
         require_contains(safe_script, token, "safe suite")
-
-    generic_patterns = (
-        r"PYTHON_BIN\s*=\s*['\"]python3?['\"]",
-        r"candidate\s*=\s*['\"]python3?['\"]",
-        r"\$\{PYTHON:-\s*python3?\}",
-        r"command\s+-v(?:\s+--)?\s+['\"]?python3?['\"]?",
-    )
-    for pattern in generic_patterns:
-        if re.search(pattern, safe_script):
-            fail(f"safe suite contains generic interpreter fallback pattern: {pattern}")
 
 
 def run_safe_suite_static_negative_fixtures(safe_script: str) -> None:
@@ -989,7 +985,7 @@ def main() -> int:
         elif args.mode == "verify-receipt":
             verify_receipt(args)
             print(json.dumps({"result": "PASS", "receipt": args.receipt}, indent=2))
-        else:  # pragma: no cover
+        else:
             fail(f"unsupported mode: {args.mode}")
     except Exception as exc:
         print(
