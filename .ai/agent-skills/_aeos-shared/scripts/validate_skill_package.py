@@ -55,10 +55,10 @@ REQUIRED_SKILL_TERMS = {
     "aeos-repository-truth": ["no-prune", "worktree", "preservation"],
     "aeos-checkpoint-manager": ["MERGED_PENDING_CLEANUP", "closeout receipt", "exact repository"],
     "aeos-implementation-planner": ["worktree", "proportional", "post-merge"],
-    "aeos-work-package-executor": ["registered branch/worktree", "classify every failure", "exact head"],
+    "aeos-work-package-executor": ["registered branch and worktree", "classify every failure", "exact head"],
     "aeos-evidence-packager": ["representation", "hash_scope", "repository_head"],
     "aeos-independent-auditor": ["exact reviewed head", "later commit", "required-safe"],
-    "aeos-finding-reconciler": ["corrected exact head", "VERIFIED FIXED", "separate authorization"],
+    "aeos-finding-reconciler": ["corrected exact head", "VERIFIED FIXED", "separately authorized"],
 }
 FRONT_MATTER = re.compile(r"\A---\s*\n(?P<header>.*?)\n---\s*\n", re.DOTALL)
 
