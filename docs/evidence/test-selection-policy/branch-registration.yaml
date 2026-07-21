@@ -25,7 +25,7 @@ next_review_at: null
 validation:
   application_tests: not_applicable
   executable_governance_validation: required
-  reason: R5 binds provisional-to-final receipt lineage and exact unique path arrays; validate only those surfaces plus bounded collection.
+  reason: R6 independently authenticates all receipt claims, provisional validator references, and the complete diagnostic-specific mutation matrix; validate only those surfaces plus bounded collection.
   compare_base: 8b44cbd216d531a1894b4257355469edf922029f
 transitions:
   - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REGISTER
@@ -326,3 +326,36 @@ transitions:
     evidence_parent_sha: 230fe55eddf44ed60d6c6434fe7c3121d369f238
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
     reason: R5 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T16:27:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR5
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: external-review:PR319-GOV-RR5@0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    reason: Fresh independent R5 re-review returned REVISE with blocking PR319-RR5-F-001 through F-003.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R9
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T16:28:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R6 correction of provisional reference authentication, independent receipt-claim validation, and complete mutation fixtures.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R10
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T16:29:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R6 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.

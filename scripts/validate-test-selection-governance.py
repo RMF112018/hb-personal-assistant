@@ -969,47 +969,107 @@ def validate_exact_path_array(receipt: dict[str, Any], field: str) -> None:
         fail(f"receipt {field} does not equal exact sorted authorized paths")
 
 
-def validate_partial_receipt_payload(
-    partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
+def expected_checks_payload() -> dict[str, str]:
+    return {
+        "yaml_and_frontmatter_inventory": "PASS",
+        "branch_transition_graph": "PASS",
+        "external_tip_semantics": "PASS",
+        "standard_07_11_consistency": "PASS",
+        "safe_suite_static_contract": "PASS",
+        "safe_suite_static_negative_fixtures": "PASS",
+        "safe_suite_adversarial_probes": "PASS",
+        "safe_suite_individual_dependency_probes": "PASS",
+        "safe_suite_dependency_declarations": "PASS",
+        "issue_form_schema": "PASS",
+        "issue_form_negative_fixtures": "PASS",
+        "authority_statuses": "PASS",
+        "permanent_identity_traceability": "PASS",
+        "authorized_diff_scope_exact": "PASS",
+        "authorized_diff_scope_negative_fixtures": "PASS",
+        "workflow_exact_head_collection_and_receipt_contract": "PASS",
+    }
+
+
+def expected_environment_payload() -> dict[str, Any]:
+    return {
+        "python": sys.version.split()[0],
+        "python_executable": sys.executable,
+        "platform": platform.platform(),
+        "github_actions": os.environ.get("GITHUB_ACTIONS") == "true",
+    }
+
+
+def expected_hash_scope_payload() -> dict[str, str]:
+    return {
+        "repository_sources": "observed UTF-8 source bytes at the exact validated head; not an external expected-hash manifest",
+        "artifact_evidence": "stored raw bytes for collection and validator logs and exit-code files",
+    }
+
+
+def expected_observed_file_hashes(args: argparse.Namespace) -> dict[str, str]:
+    root = Path(getattr(args, "repo_root", ".")).resolve()
+    if not (root / ".git").exists():
+        fail(f"not a Git checkout: {root}")
+    head = git_output(root, "rev-parse", "HEAD")
+    if head != args.expected_head_sha:
+        fail(
+            f"receipt verification checkout HEAD {head} does not match authenticated head "
+            f"{args.expected_head_sha}"
+        )
+    texts = {rel: read_text(root, rel) for rel in REQUIRED_READ_PATHS}
+    return {rel: sha256_bytes(text.encode("utf-8")) for rel, text in texts.items()}
+
+
+def require_exact_keys(mapping: Any, expected: set[str], label: str) -> dict[str, Any]:
+    if not isinstance(mapping, dict):
+        fail(f"{label} must be a mapping")
+    observed = set(mapping)
+    if observed != expected:
+        fail(
+            f"{label} keys mismatch: unexpected={sorted(observed - expected)}; "
+            f"missing={sorted(expected - observed)}"
+        )
+    return mapping
+
+
+def validate_receipt_claims(
+    receipt: dict[str, Any], args: argparse.Namespace, *, provisional: bool
 ) -> None:
-    if partial.get("evidence_sha256") != compute_evidence_hash(partial):
-        fail("partial receipt evidence SHA-256 mismatch")
-    if partial.get("schema_version") != 2 or partial.get("result") != "PASS":
-        fail("partial receipt is not schema-2 PASS")
-    if "finalizer" in partial:
+    label = "provisional" if provisional else "final"
+    expected_hash = compute_evidence_hash(receipt)
+    if receipt.get("evidence_sha256") != expected_hash:
+        if provisional:
+            fail("partial receipt evidence SHA-256 mismatch")
+        fail("receipt evidence SHA-256 mismatch")
+    if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
+        if provisional:
+            fail("partial receipt is not schema-2 PASS")
+        fail("final receipt is not schema-2 PASS")
+    if provisional and "finalizer" in receipt:
         fail("provisional receipt must not contain finalizer")
 
-    partial_validator = partial.get("validator")
-    final_validator = final.get("validator")
-    if not isinstance(partial_validator, dict) or not isinstance(final_validator, dict):
-        fail("provisional or final receipt lacks validator section")
-    if partial_validator.get("log_sha256") is not None:
-        fail("provisional receipt validator log hash must be null")
-    if partial_validator.get("exitcode_file_sha256") is not None:
-        fail("provisional receipt validator exit-code hash must be null")
-
-    expected = copy.deepcopy(partial)
-    expected_validator = expected["validator"]
-    expected_validator["log_file"] = args.validator_log
-    expected_validator["log_sha256"] = final_validator.get("log_sha256")
-    expected_validator["exitcode_file"] = args.validator_exitcode_file
-    expected_validator["exitcode_file_sha256"] = final_validator.get(
-        "exitcode_file_sha256"
-    )
-    expected["finalizer"] = {
-        "command": expected_finalizer_command(args),
-        "exit_code": 0,
+    top_level = {
+        "schema_version",
+        "result",
+        "repository",
+        "pull_request",
+        "branch",
+        "base_sha",
+        "head_sha",
+        "identity_source",
+        "changed_files",
+        "authorized_changed_paths",
+        "collection",
+        "validator",
+        "checks",
+        "environment",
+        "hash_scope",
+        "observed_file_sha256",
+        "evidence_sha256",
     }
-    expected["evidence_sha256"] = final.get("evidence_sha256")
-    if expected != final:
-        fail("provisional-to-final receipt delta mismatch")
-
-
-def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) -> None:
-    if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
-        fail("final receipt is not schema-2 PASS")
-    if receipt.get("evidence_sha256") != compute_evidence_hash(receipt):
-        fail("receipt evidence SHA-256 mismatch")
+    if not provisional:
+        top_level.add("finalizer")
+    require_exact_keys(receipt, top_level, f"{label} receipt top-level fields")
 
     expected_identity = {
         "repository": args.expected_repository,
@@ -1021,28 +1081,63 @@ def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) ->
     }
     for field, expected in expected_identity.items():
         if receipt.get(field) != expected:
-            fail(f"receipt authenticated identity mismatch for {field}")
+            fail(f"{label} receipt authenticated identity mismatch for {field}")
 
-    collection = receipt.get("collection")
-    validator = receipt.get("validator")
-    if not isinstance(collection, dict) or not isinstance(validator, dict):
-        fail("receipt lacks collection or validator section")
+    collection = require_exact_keys(
+        receipt.get("collection"),
+        {
+            "command",
+            "exit_code",
+            "selected_tests",
+            "total_tests",
+            "deselected_tests",
+            "collection_errors",
+            "application_tests_executed",
+            "log_file",
+            "log_sha256",
+            "exitcode_file",
+            "exitcode_file_sha256",
+        },
+        f"{label} receipt collection",
+    )
+    validator = require_exact_keys(
+        receipt.get("validator"),
+        {
+            "command",
+            "exit_code",
+            "log_file",
+            "log_sha256",
+            "exitcode_file",
+            "exitcode_file_sha256",
+        },
+        f"{label} receipt validator",
+    )
     if collection.get("command") != COLLECTION_COMMAND:
-        fail("receipt collection command mismatch")
+        fail(f"{label} receipt collection command mismatch")
     if validator.get("command") != expected_validator_command(args):
-        fail("receipt validator command mismatch")
+        fail(f"{label} receipt validator command mismatch")
     if collection.get("application_tests_executed") != 0:
-        fail("receipt must record zero application tests executed")
+        fail(f"{label} receipt must record zero application tests executed")
 
     expected_references = (
-        (collection, "log_file", args.collection_log),
-        (collection, "exitcode_file", args.collection_exitcode_file),
-        (validator, "log_file", args.validator_log),
-        (validator, "exitcode_file", args.validator_exitcode_file),
+        (collection, "collection.log_file", "log_file", args.collection_log),
+        (
+            collection,
+            "collection.exitcode_file",
+            "exitcode_file",
+            args.collection_exitcode_file,
+        ),
+        (validator, "validator.log_file", "log_file", args.validator_log),
+        (
+            validator,
+            "validator.exitcode_file",
+            "exitcode_file",
+            args.validator_exitcode_file,
+        ),
     )
-    for section, field, expected in expected_references:
+    for section, qualified, field, expected in expected_references:
         if section.get(field) != expected:
-            fail(f"receipt evidence-file reference mismatch for {field}")
+            fail(f"{label} receipt evidence-file reference mismatch for {qualified}")
 
     collection_log = Path(args.collection_log).resolve()
     collection_exit_path = Path(args.collection_exitcode_file).resolve()
@@ -1054,31 +1149,115 @@ def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) ->
     if collection_exit != 0 or validator_exit != 0:
         fail("captured collection and validator exit codes must both be zero")
     if collection.get("exit_code") != collection_exit:
-        fail("receipt collection exit code mismatch")
+        fail(f"{label} receipt collection exit code mismatch")
     if validator.get("exit_code") != validator_exit:
-        fail("receipt validator exit code mismatch")
+        fail(f"{label} receipt validator exit code mismatch")
 
-    evidence_checks = (
-        (collection, "log_sha256", collection_log),
-        (collection, "exitcode_file_sha256", collection_exit_path),
-        (validator, "log_sha256", validator_log),
-        (validator, "exitcode_file_sha256", validator_exit_path),
+    collection_evidence = (
+        ("log_sha256", collection_log),
+        ("exitcode_file_sha256", collection_exit_path),
     )
-    for section, key, path in evidence_checks:
-        if section.get(key) != sha256_file(path):
-            fail(f"receipt evidence hash mismatch for {path.name}")
+    for key, path in collection_evidence:
+        if collection.get(key) != sha256_file(path):
+            fail(f"{label} receipt evidence hash mismatch for {path.name}")
+
+    if provisional:
+        if validator.get("log_sha256") is not None:
+            fail("provisional receipt validator log hash must be null")
+        if validator.get("exitcode_file_sha256") is not None:
+            fail("provisional receipt validator exit-code hash must be null")
+    else:
+        validator_evidence = (
+            ("log_sha256", validator_log),
+            ("exitcode_file_sha256", validator_exit_path),
+        )
+        for key, path in validator_evidence:
+            if validator.get(key) != sha256_file(path):
+                fail(f"final receipt evidence hash mismatch for {path.name}")
 
     counts = parse_collection_log(
         collection_log.read_text(encoding="utf-8", errors="replace")
     )
     for key, value in counts.items():
         if collection.get(key) != value:
-            fail(f"receipt collection field {key} does not match log")
+            fail(f"{label} receipt collection field {key} does not match log")
+
+    checks = require_exact_keys(
+        receipt.get("checks"), set(expected_checks_payload()), f"{label} receipt checks"
+    )
+    for key, expected in expected_checks_payload().items():
+        if checks.get(key) != expected:
+            fail(f"{label} receipt checks mismatch for {key}")
+
+    environment = require_exact_keys(
+        receipt.get("environment"),
+        set(expected_environment_payload()),
+        f"{label} receipt environment",
+    )
+    for key, expected in expected_environment_payload().items():
+        if environment.get(key) != expected:
+            fail(f"{label} receipt environment mismatch for {key}")
+
+    hash_scope = require_exact_keys(
+        receipt.get("hash_scope"),
+        set(expected_hash_scope_payload()),
+        f"{label} receipt hash_scope",
+    )
+    for key, expected in expected_hash_scope_payload().items():
+        if hash_scope.get(key) != expected:
+            fail(f"{label} receipt hash scope mismatch for {key}")
+
+    observed = require_exact_keys(
+        receipt.get("observed_file_sha256"),
+        set(REQUIRED_READ_PATHS),
+        f"{label} receipt observed_file_sha256",
+    )
+    for rel, expected in expected_observed_file_hashes(args).items():
+        if observed.get(rel) != expected:
+            fail(f"{label} receipt observed source hash mismatch for {rel}")
 
     validate_exact_path_array(receipt, "changed_files")
     validate_exact_path_array(receipt, "authorized_changed_paths")
 
+    if not provisional:
+        finalizer = require_exact_keys(
+            receipt.get("finalizer"), {"command", "exit_code"}, "final receipt finalizer"
+        )
+        if finalizer.get("command") != expected_finalizer_command(args):
+            fail("final receipt finalizer command mismatch")
+        if finalizer.get("exit_code") != 0:
+            fail("final receipt finalizer exit code mismatch")
 
+
+def verify_receipt_pair(
+    partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
+) -> None:
+    verify_receipt_payload(final, args)
+    validate_partial_receipt_payload(partial, final, args)
+
+
+def validate_partial_receipt_payload(
+    partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
+) -> None:
+    validate_receipt_claims(partial, args, provisional=True)
+
+    expected = copy.deepcopy(partial)
+    expected_validator = expected["validator"]
+    expected_validator["log_sha256"] = sha256_file(Path(args.validator_log).resolve())
+    expected_validator["exitcode_file_sha256"] = sha256_file(
+        Path(args.validator_exitcode_file).resolve()
+    )
+    expected["finalizer"] = {
+        "command": expected_finalizer_command(args),
+        "exit_code": 0,
+    }
+    expected["evidence_sha256"] = compute_evidence_hash(expected)
+    if expected != final:
+        fail("provisional-to-final receipt delta mismatch")
+
+
+def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) -> None:
+    validate_receipt_claims(receipt, args, provisional=False)
 
 def mutate_and_rehash(
     receipt: dict[str, Any], mutation: Callable[[dict[str, Any]], None]
@@ -1153,6 +1332,7 @@ def run_receipt_negative_fixtures(
         )
 
 
+
 def run_partial_receipt_negative_fixtures(
     partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
 ) -> None:
@@ -1164,36 +1344,133 @@ def run_partial_receipt_negative_fixtures(
         "partial receipt evidence SHA-256 mismatch",
     )
 
-    wrong_schema = mutate_and_rehash(
-        partial, lambda data: data.__setitem__("schema_version", 3)
-    )
-    expect_failure(
-        lambda: validate_partial_receipt_payload(wrong_schema, final, args),
-        "provisional receipt schema mutation",
-        "partial receipt is not schema-2 PASS",
-    )
-
-    wrong_result = mutate_and_rehash(
-        partial, lambda data: data.__setitem__("result", "FAIL")
-    )
-    expect_failure(
-        lambda: validate_partial_receipt_payload(wrong_result, final, args),
-        "provisional receipt result mutation",
-        "partial receipt is not schema-2 PASS",
-    )
-
-    unauthorized = mutate_and_rehash(
-        partial,
-        lambda data: data["environment"].__setitem__(
-            "platform", "substituted-platform"
+    direct_cases: tuple[
+        tuple[str, Callable[[dict[str, Any]], None], str], ...
+    ] = (
+        (
+            "provisional receipt schema mutation",
+            lambda data: data.__setitem__("schema_version", 3),
+            "partial receipt is not schema-2 PASS",
+        ),
+        (
+            "provisional receipt result mutation",
+            lambda data: data.__setitem__("result", "FAIL"),
+            "partial receipt is not schema-2 PASS",
+        ),
+        (
+            "provisional identity mutation",
+            lambda data: data.__setitem__("repository", "example/other"),
+            "provisional receipt authenticated identity mismatch for repository",
+        ),
+        (
+            "provisional validator command mutation",
+            lambda data: data["validator"].__setitem__(
+                "command", ["python", "other-validator.py"]
+            ),
+            "provisional receipt validator command mismatch",
+        ),
+        (
+            "provisional collection mutation",
+            lambda data: data["collection"].__setitem__(
+                "command", ["bash", "other-safe-suite.sh"]
+            ),
+            "provisional receipt collection command mismatch",
+        ),
+        (
+            "provisional changed-path mutation",
+            lambda data: data["changed_files"].append("unexpected/path.txt"),
+            "changed_files does not equal exact sorted authorized paths",
+        ),
+        (
+            "provisional finalizer insertion",
+            lambda data: data.__setitem__(
+                "finalizer", {"command": ["false"], "exit_code": 1}
+            ),
+            "provisional receipt must not contain finalizer",
+        ),
+        (
+            "provisional validator log hash populated early",
+            lambda data: data["validator"].__setitem__("log_sha256", "0" * 64),
+            "provisional receipt validator log hash must be null",
+        ),
+        (
+            "provisional validator exit hash populated early",
+            lambda data: data["validator"].__setitem__(
+                "exitcode_file_sha256", "0" * 64
+            ),
+            "provisional receipt validator exit-code hash must be null",
+        ),
+        (
+            "provisional validator log reference substitution",
+            lambda data: data["validator"].__setitem__(
+                "log_file", "substituted-validator.log"
+            ),
+            "provisional receipt evidence-file reference mismatch for validator.log_file",
+        ),
+        (
+            "provisional validator exit reference substitution",
+            lambda data: data["validator"].__setitem__(
+                "exitcode_file", "substituted-validator.exitcode"
+            ),
+            "provisional receipt evidence-file reference mismatch for validator.exitcode_file",
+        ),
+        (
+            "provisional unknown field insertion",
+            lambda data: data.__setitem__("unauthenticated_claim", "value"),
+            "provisional receipt top-level fields keys mismatch",
         ),
     )
-    expect_failure(
-        lambda: validate_partial_receipt_payload(unauthorized, final, args),
-        "unauthorized provisional-to-final delta",
-        "provisional-to-final receipt delta mismatch",
-    )
+    for label, mutation, diagnostic in direct_cases:
+        mutated = mutate_and_rehash(partial, mutation)
+        expect_failure(
+            lambda data=mutated: validate_partial_receipt_payload(data, final, args),
+            label,
+            diagnostic,
+        )
 
+    paired_cases: tuple[
+        tuple[str, Callable[[dict[str, Any]], None], str], ...
+    ] = (
+        (
+            "paired checks claim mutation",
+            lambda data: data["checks"].__setitem__("authority_statuses", "FAIL"),
+            "final receipt checks mismatch for authority_statuses",
+        ),
+        (
+            "paired environment claim mutation",
+            lambda data: data["environment"].__setitem__(
+                "platform", "substituted-platform"
+            ),
+            "final receipt environment mismatch for platform",
+        ),
+        (
+            "paired observed source hash mutation",
+            lambda data: data["observed_file_sha256"].__setitem__(
+                "AGENTS.md", "0" * 64
+            ),
+            "final receipt observed source hash mismatch for AGENTS.md",
+        ),
+        (
+            "paired hash-scope claim mutation",
+            lambda data: data["hash_scope"].__setitem__(
+                "repository_sources", "substituted-scope"
+            ),
+            "final receipt hash scope mismatch for repository_sources",
+        ),
+        (
+            "paired unknown field insertion",
+            lambda data: data.__setitem__("unauthenticated_claim", "value"),
+            "final receipt top-level fields keys mismatch",
+        ),
+    )
+    for label, mutation, diagnostic in paired_cases:
+        mutated_partial = mutate_and_rehash(partial, mutation)
+        mutated_final = mutate_and_rehash(final, mutation)
+        expect_failure(
+            lambda p=mutated_partial, f=mutated_final: verify_receipt_pair(p, f, args),
+            label,
+            diagnostic,
+        )
 
 def read_json_receipt(path: Path, label: str) -> dict[str, Any]:
     if not path.is_file():
@@ -1205,6 +1482,7 @@ def read_json_receipt(path: Path, label: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         fail(f"{label} receipt must be a JSON object")
     return payload
+
 
 
 def run_partial_receipt_file_negative_fixtures(
@@ -1227,6 +1505,14 @@ def run_partial_receipt_file_negative_fixtures(
             "invalid provisional receipt JSON",
         )
 
+        non_object = temp / "non-object.json"
+        non_object.write_text("[]", encoding="utf-8")
+        expect_failure(
+            lambda: read_json_receipt(non_object, "provisional"),
+            "non-object provisional receipt file",
+            "provisional receipt must be a JSON object",
+        )
+
         substituted = temp / "substituted.json"
         substituted.write_text(json.dumps(final), encoding="utf-8")
         substituted_payload = read_json_receipt(substituted, "provisional")
@@ -1237,7 +1523,6 @@ def run_partial_receipt_file_negative_fixtures(
             "substituted provisional receipt file",
             "provisional receipt must not contain finalizer",
         )
-
 
 def verify_receipt(args: argparse.Namespace) -> None:
     receipt_path = Path(args.receipt).resolve()

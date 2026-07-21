@@ -310,3 +310,60 @@ No corrective cycle authorizes merge, cleanup, Phase B activation, deployment,
 migration, production mutation, secret changes, destructive Git operations,
 risk acceptance, or self-review. A fresh independent re-review must assess the
 final corrective head.
+
+## Corrective cycle R6
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R6 implementation complete; exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the blocking issue,” issued 2026-07-21 at approximately 16:27 America/New_York
+
+### R6 review basis
+
+The fresh independent R5 re-review of exact head
+`0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7` returned `REVISE` and opened:
+
+- `PR319-RR5-F-001` — provisional validator log and exit-code references were overwritten before authentication;
+- `PR319-RR5-F-002` — checks, environment, observed source hashes, and hash-scope claims could be changed identically in both receipts and remain self-consistent;
+- `PR319-RR5-F-003` — the diagnostic-specific provisional mutation fixture matrix was incomplete.
+
+### Authorized R6 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml` only as required to produce replacement exact-head evidence and restored read-only final state;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R6 correction
+
+- authenticates provisional collection and validator evidence references before constructing the final receipt;
+- requires exact top-level and nested receipt schemas and rejects unknown fields;
+- independently validates the complete checks mapping and all `PASS` values;
+- independently validates Python, interpreter, platform, and GitHub Actions environment claims;
+- independently recomputes every `observed_file_sha256` entry from the exact authenticated checkout;
+- enforces exact hash-scope declarations;
+- constructs the final receipt only from the authenticated provisional receipt plus actual validator stored-byte hashes and the exact finalizer command;
+- adds diagnostic-specific fixtures for non-object JSON, identity, validator command, collection, changed paths, finalizer insertion, premature validator hashes, provisional validator reference substitutions, unknown fields, and paired checks/environment/source-hash/hash-scope substitutions;
+- preserves all prior successful and failed evidence unchanged.
+
+### Required R6 completion evidence
+
+- Python and workflow syntax success;
+- bounded canonical collection with zero application tests executed;
+- all field-specific and paired mutation fixtures passing through their intended diagnostics;
+- finalized schema-2 receipt and authenticated provisional-to-final enforcement;
+- replacement six-file artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R6 exclusions
+
+R6 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+It does not authorize merge, cleanup, Phase B, deployment, migration,
+production activation, risk acceptance, or self-review.
+
