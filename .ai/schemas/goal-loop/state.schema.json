@@ -12,7 +12,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "enum": [1, 2]
     },
     "goal_id": {
       "type": "string",
@@ -20,23 +20,112 @@
     },
     "state": {
       "type": "string",
-      "minLength": 1
+      "enum": [
+        "GOVERNANCE_INITIALIZATION",
+        "REPOSITORY_TRUTH",
+        "ARCHITECTURE",
+        "IMPLEMENTATION_PLANNING",
+        "PLAN_EXTERNAL_REVIEW",
+        "IMPLEMENTATION",
+        "IMPLEMENTATION_EXTERNAL_AUDIT",
+        "CORRECTIVE_IMPLEMENTATION",
+        "CORRECTIVE_EXTERNAL_AUDIT",
+        "MERGE_READINESS",
+        "MERGE_AUTHORIZATION",
+        "MERGED_PENDING_CLEANUP",
+        "POST_MERGE_VALIDATION",
+        "BRANCH_WORKTREE_CLOSEOUT",
+        "BOUNDED_CLOSURE_ASSESSMENT",
+        "CLOSED"
+      ]
     },
     "status": {
+      "type": "string",
       "enum": [
         "NOT_STARTED",
         "IN_PROGRESS",
         "READY_FOR_REVIEW",
+        "REVIEW_BLOCKED",
         "BLOCKED",
-        "COMPLETE"
+        "COMPLETE",
+        "CLEANUP_AUTHORIZED",
+        "RETAINED",
+        "CLEANUP_BLOCKED",
+        "CLOSED"
       ]
     },
+    "iteration": {
+      "type": "integer",
+      "minimum": 0
+    },
     "repository": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "remote": {"type": ["string", "null"]},
+        "default_branch": {"type": ["string", "null"]},
+        "baseline_sha": {"type": ["string", "null"]},
+        "current_sha": {"type": ["string", "null"]},
+        "base_sha": {"type": ["string", "null"]},
+        "head_sha": {"type": ["string", "null"]},
+        "branch": {"type": ["string", "null"]},
+        "worktree_id": {"type": ["string", "null"]},
+        "worktree_path": {"type": ["string", "null"]},
+        "pull_request": {"type": ["integer", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "merge_status": {"type": "string", "enum": ["NOT_MERGED", "MERGE_AUTHORIZED", "MERGED_PENDING_CLEANUP", "MERGED"]},
+        "post_merge_validation": {"type": "string", "enum": ["NOT_APPLICABLE", "PENDING", "COMPLETE", "NOT_REQUIRED", "BLOCKED"]},
+        "cleanup_disposition": {"type": "string", "enum": ["NOT_APPLICABLE", "PENDING", "AUTHORIZED", "COMPLETE", "RETAINED", "BLOCKED"]},
+        "closure_status": {"type": "string", "enum": ["OPEN", "PENDING", "READY", "CLOSED", "BLOCKED"]}
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "properties": {
+        "review_id": {"type": ["string", "null"]},
+        "reviewed_head_sha": {"type": ["string", "null"]},
+        "disposition": {"type": ["string", "null"]},
+        "stale_on_head_change": {"const": true}
+      },
+      "additionalProperties": false
     },
     "authorization": {
-      "type": "object"
-    }
+      "type": "object",
+      "properties": {
+        "required": {"type": "boolean"},
+        "authorization_id": {"type": ["string", "null"]},
+        "authorized_state": {"type": ["string", "null"]},
+        "authorized_action": {"type": ["string", "null"]},
+        "authorized_identity": {"type": ["string", "null"]},
+        "artifact_hash": {"type": ["string", "null"]},
+        "expires_on_repository_drift": {"type": "boolean"}
+      },
+      "required": ["required", "expires_on_repository_drift"],
+      "additionalProperties": false
+    },
+    "current_work_item": {"type": ["string", "null"]},
+    "expected_artifacts": {"type": "array"},
+    "last_checkpoint": {"type": ["string", "null"]},
+    "requested_next_state": {"type": ["string", "null"]},
+    "updated_at": {"type": ["string", "null"]}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": 2}}},
+      "then": {
+        "required": ["lifecycle", "review"],
+        "properties": {
+          "repository": {"required": ["remote", "default_branch", "base_sha", "head_sha", "branch", "worktree_id", "worktree_path", "pull_request"]},
+          "lifecycle": {"required": ["merge_status", "post_merge_validation", "cleanup_disposition", "closure_status"]},
+          "review": {"required": ["stale_on_head_change"]}
+        }
+      }
+    }
+  ],
   "additionalProperties": true
 }
