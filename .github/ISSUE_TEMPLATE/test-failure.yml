@@ -1,0 +1,76 @@
+name: Test failure triage
+about: Preserve and disposition a discovered test failure
+labels:
+  - test-failure
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The issue number is the stable failure identity: `TF-<issue-number>`.
+        Creating this record does not authorize corrective implementation.
+  - type: input
+    id: source_work_item
+    attributes:
+      label: Source work item
+      description: Goal/work-item or PR that discovered the failure.
+    validations:
+      required: true
+  - type: input
+    id: failing_ids
+    attributes:
+      label: Exact failing test IDs
+      description: Exact pytest node IDs or equivalent stable test identifiers.
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Classification state
+      options:
+        - RELATIONSHIP_UNKNOWN
+        - CANDIDATE_REGRESSION
+        - REPRODUCIBLE_PRE_EXISTING_DEFECT
+        - INVALID_OR_STALE_TEST
+        - FLAKY_OR_NONDETERMINISTIC
+        - ENVIRONMENT_OR_CONFIGURATION_FAILURE
+    validations:
+      required: true
+  - type: input
+    id: triage_owner
+    attributes:
+      label: Triage owner
+      description: Person or governed controller accountable for disposition.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Base and candidate evidence
+      description: Commands, SHAs, environment fingerprint, outputs, and evidence links.
+    validations:
+      required: true
+  - type: input
+    id: affected_gate
+    attributes:
+      label: Affected criterion or gate
+      description: Acceptance criterion, checkpoint, merge gate, or release gate blocked.
+    validations:
+      required: true
+  - type: dropdown
+    id: authorization_state
+    attributes:
+      label: Corrective authorization state
+      options:
+        - AWAITING_AUTHORIZATION
+        - AUTHORIZED
+        - NOT_AUTHORIZED
+        - NOT_REQUIRED
+    validations:
+      required: true
+  - type: textarea
+    id: corrective_identity
+    attributes:
+      label: Corrective work identity
+      description: Authorization, work item, branch/worktree, review, integration, and closure evidence when available.
+    validations:
+      required: false
