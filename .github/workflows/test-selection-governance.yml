@@ -99,12 +99,19 @@ jobs:
             pr319-safe-collection.exitcode
           if-no-files-found: error
 
-      - name: Enforce receipt and captured evidence consistency
+      - name: Enforce authenticated receipt and captured evidence consistency
         if: always()
         run: |
           python scripts/validate-test-selection-governance.py verify-receipt \
             --receipt pr319-governance-validation.json \
+            --partial-receipt pr319-governance-validation.partial.json \
             --collection-log pr319-safe-collection.log \
             --collection-exitcode-file pr319-safe-collection.exitcode \
             --validator-log pr319-governance-validator.log \
-            --validator-exitcode-file pr319-governance-validator.exitcode
+            --validator-exitcode-file pr319-governance-validator.exitcode \
+            --expected-repository 'RMF112018/hb-personal-assistant' \
+            --expected-pr-number '${{ github.event.pull_request.number }}' \
+            --expected-branch '${{ github.event.pull_request.head.ref }}' \
+            --expected-base-sha '${{ github.event.pull_request.base.sha }}' \
+            --expected-head-sha '${{ github.event.pull_request.head.sha }}' \
+            --expected-identity-source 'github-actions-pull-request-event'
