@@ -481,48 +481,242 @@ def _const_str(node: ast.AST) -> str | None:
     return None
 
 
-def _scope_assigns(func: ast.AST) -> dict[str, list]:
-    """name -> source-ordered [(op, rhs)] for str-building assigns in this function's own scope."""
-    rows: list[tuple[int, int, str, str, ast.AST]] = []
+# ---- F-001 R3B: fail-closed, call-site-aware, control-flow-safe reaching-definition analyzer ----
+# Stable rejection categories (PLAN-R3B-F-013/F-014/F-018). Each is attached to the raised
+# ``DualAuthorityGuardError`` as ``.category`` so a negative fixture asserts the INTENDED path, not
+# merely that *some* exception fired.
+_CAT_FORBIDDEN = "forbidden_dual_authority_occurrence"
+_CAT_AMBIGUOUS = "ambiguous_control_flow"
+_CAT_APPEND = "unsupported_append_control_flow"
+_CAT_LIMIT = "candidate_expansion_limit"
+_CAT_UNRECON = "unreconstructable_sql"
+_CAT_ALIAS = "unsupported_execute_alias"
+_CAT_GETATTR = "unsupported_dynamic_getattr"
+_CAT_SCRIPT = "unsupported_sql_execution_form"
+_CAT_CYCLE = "cyclic_definition"
+_CAT_INCONSISTENT = "inconsistent_candidate_classification"
+
+# Bounded enumeration (PLAN-R3B-F-008/F-022): at most N=5 admissible one-shot conditional append sites
+# per execute call (≤ 32 candidate strings). AST inspection at 74697519 shows observed max = 3
+# (search_source_files), so N=5 carries 2 sites of headroom.
+_MAX_COND_APPEND_SITES = 5
+_MAX_CANDIDATES = 32
+
+# Compound-statement AST node types whose body-like fields introduce a control-flow container.
+_BLOCK_TYPES = tuple(
+    t
+    for t in (
+        ast.If, ast.For, ast.AsyncFor, ast.While, ast.With, ast.AsyncWith, ast.Try,
+        ast.ExceptHandler, getattr(ast, "TryStar", None), getattr(ast, "Match", None),
+        getattr(ast, "match_case", None),
+    )
+    if isinstance(t, type)
+)
+_BRANCH_FIELDS = ("body", "orelse", "finalbody", "handlers", "cases")
+
+
+def _guard(category: str, message: str) -> DualAuthorityGuardError:
+    """Build a categorized :class:`DualAuthorityGuardError` (``.category`` = stable reason code)."""
+    err = DualAuthorityGuardError(f"{category}: {message}")
+    err.category = category  # type: ignore[attr-defined]
+    return err
+
+
+def _pos(node: ast.AST) -> tuple[int, int]:
+    return (getattr(node, "lineno", 0), getattr(node, "col_offset", 0))
+
+
+class _Recon:
+    """Reconstruction result for one SQL expression at one execute call: the deterministic §(a3)
+    representative (all admissible appends applied, source order), the full set of runtime candidate
+    strings (conditional appends forked), and the count of admissible conditional append sites."""
+
+    __slots__ = ("rep", "candidates", "cond")
+
+    def __init__(self, rep: str, candidates, cond: int) -> None:
+        self.rep = rep
+        self.candidates = frozenset(candidates)
+        self.cond = cond
+
+
+def _scope_parents(func: ast.AST) -> tuple[dict, dict]:
+    """``child -> parent`` and ``child -> field-name-in-parent`` maps for ``func``'s OWN scope (never
+    descending into a nested FunctionDef/AsyncFunctionDef/Lambda)."""
+    parents: dict = {}
+    field_of: dict = {}
+
+    def visit(node: ast.AST) -> None:
+        for fname, value in ast.iter_fields(node):
+            children = value if isinstance(value, list) else [value]
+            for child in children:
+                if isinstance(child, ast.AST):
+                    parents[child] = node
+                    field_of[child] = fname
+                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                        continue
+                    visit(child)
+
+    visit(func)
+    return parents, field_of
+
+
+def _stmt_chain(node: ast.AST, parents: dict, field_of: dict) -> list:
+    """The control-flow container chain enclosing ``node`` (outermost → innermost) as
+    ``[(compound_stmt, branch_field), ...]`` — the syntactic path used (no CFG) to distinguish a
+    straight-line/linear step from a control-flow-nested one."""
+    chain: list = []
+    cur = node
+    while cur in parents:
+        p = parents[cur]
+        fld = field_of.get(cur)
+        if isinstance(p, _BLOCK_TYPES) and fld in _BRANCH_FIELDS:
+            chain.append((p, fld))
+        cur = p
+    chain.reverse()
+    return chain
+
+
+def _classify_reach(a_node: ast.AST, op: str, ctx: dict) -> str:
+    """Classify a lexically-preceding assignment ``a_node`` (``op`` ∈ {``=``, ``+=``}) relative to the
+    governed execute call ``ctx['call']`` — PURELY SYNTACTIC (PLAN-R3B-F-013/F-014, operator + container,
+    NEVER string similarity). Returns ``'replace'`` (unconditional/same-block ``=``), ``'uappend'``
+    (straight-line unconditional ``+=``), or ``'cappend'`` (admissible one-shot conditional ``+=``);
+    otherwise raises the category-specific guard."""
+    call = ctx["call"]
+    ca = _stmt_chain(a_node, ctx["parents"], ctx["field_of"])
+    ck = _stmt_chain(call, ctx["parents"], ctx["field_of"])
+    i = 0
+    while i < len(ca) and i < len(ck) and ca[i] == ck[i]:
+        i += 1
+    extra_a = ca[i:]
+    if not extra_a:
+        # Same immediate block, or an ancestor block shared with the call, entered before the call:
+        # straight-line. A `=` is the §(a2) same-block/linear single value; a `+=` is unconditional.
+        return "replace" if op == "=" else "uappend"
+    if len(extra_a) == 1:
+        stmt, fld = extra_a[0]
+        if (
+            op == "+="
+            and isinstance(stmt, ast.If)
+            and fld == "body"
+            and not stmt.orelse
+            and _pos(stmt) < _pos(call)
+        ):
+            # AugAssign(Add) directly in the body of a simple `if` (no else/elif) on the
+            # unconditionally-entered path to the call → admissible ONE-SHOT conditional append.
+            return "cappend"
+    if op == "+=":
+        raise _guard(
+            _CAT_APPEND,
+            f"append to '{getattr(a_node.target, 'id', '?') if hasattr(a_node, 'target') else '?'}' "
+            "in unsupported control flow (loop-accumulated / try / except / match / if-else / nested)",
+        )
+    raise _guard(
+        _CAT_AMBIGUOUS,
+        "control-flow-nested assignment can produce a distinct reaching value (KILL by AST node type)",
+    )
+
+
+def _name_assignments(func: ast.AST) -> dict:
+    """``name -> [(node, op, rhs), ...]`` for every ``=``-family / ``+=`` (str-building) binding of a
+    Name in ``func``'s own scope. RETAINS each assignment node so discovery can filter to
+    lexically-preceding steps and classify its control-flow container."""
+    out: dict = {}
     for n in _own_scope_nodes(func):
         if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
-            rows.append((n.lineno, n.col_offset, "=", n.targets[0].id, n.value))
+            out.setdefault(n.targets[0].id, []).append((n, "=", n.value))
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.value is not None:
+            out.setdefault(n.target.id, []).append((n, "=", n.value))
         elif isinstance(n, ast.AugAssign) and isinstance(n.target, ast.Name) and isinstance(n.op, ast.Add):
-            rows.append((n.lineno, n.col_offset, "+=", n.target.id, n.value))
-    rows.sort(key=lambda r: (r[0], r[1]))
-    assigns: dict[str, list] = {}
-    for _ln, _co, op, name, rhs in rows:
-        assigns.setdefault(name, []).append((op, rhs))
-    return assigns
+            out.setdefault(n.target.id, []).append((n, "+=", n.value))
+        elif isinstance(n, ast.NamedExpr) and isinstance(n.target, ast.Name):
+            out.setdefault(n.target.id, []).append((n, "=", n.value))
+    return out
 
 
-def _reconstruct(node: ast.AST, assigns: dict[str, list], seen: frozenset = frozenset()) -> str:
-    """Reduce an expr to its SQL string, following simple Name assignments / ``+`` / ``%`` / f-string /
-    conditional fragments. Raise :class:`_Unreconstructable` on anything that cannot be reduced —
-    NEVER a silent skip."""
+def _combine(left: _Recon, right: _Recon) -> _Recon:
+    """Concatenate two reconstructions (BinOp ``+`` / JoinedStr fold): representative = rep+rep, the
+    candidate set is the (bounded) Cartesian product, conditional-site counts add."""
+    cands = {a + b for a in left.candidates for b in right.candidates}
+    if len(cands) > _MAX_CANDIDATES:
+        raise _guard(_CAT_LIMIT, "candidate product exceeds the 32-string bound")
+    return _Recon(left.rep + right.rep, cands, left.cond + right.cond)
+
+
+def _reconstruct_expr(node: ast.AST, ctx: dict, seen: frozenset) -> _Recon:
+    """Reduce an expression to its runtime SQL candidate set + §(a3) representative, following simple
+    Name reaching-definitions / ``+`` / ``%`` / f-string / conditional fragments. Fail closed
+    (category-specific ``DualAuthorityGuardError``) on anything not reducible — NEVER a silent skip.
+    The governed execute call position (``ctx['call']``) threads through every recursion (F-016)."""
     s = _const_str(node)
     if s is not None:
-        return s
+        return _Recon(s, {s}, 0)
+    if isinstance(node, ast.Constant):
+        raise _guard(_CAT_UNRECON, f"non-string constant SQL argument ({node.value!r})")
     if isinstance(node, ast.JoinedStr):
-        return "".join(_const_str(v) if _const_str(v) is not None else "{}" for v in node.values)
+        joined = "".join(
+            _const_str(v) if _const_str(v) is not None else "{}" for v in node.values
+        )
+        return _Recon(joined, {joined}, 0)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        return _reconstruct(node.left, assigns, seen) + _reconstruct(node.right, assigns, seen)
+        return _combine(
+            _reconstruct_expr(node.left, ctx, seen), _reconstruct_expr(node.right, ctx, seen)
+        )
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
-        # "<literal with %-placeholders> " % (...) — the table/column names live in the literal left.
-        return _reconstruct(node.left, assigns, seen)
+        # "<literal with %-placeholders>" % (...) — the table/column names live in the literal left.
+        return _reconstruct_expr(node.left, ctx, seen)
     if isinstance(node, ast.IfExp):
         # conditional SQL fragment: keep BOTH branches so a forbidden token in either stays visible.
-        return _reconstruct(node.body, assigns, seen) + _reconstruct(node.orelse, assigns, seen)
+        return _combine(
+            _reconstruct_expr(node.body, ctx, seen), _reconstruct_expr(node.orelse, ctx, seen)
+        )
     if isinstance(node, ast.Name):
-        if node.id in seen or node.id not in assigns:
-            raise _Unreconstructable(node.id)
-        seen = seen | {node.id}
-        val = ""
-        for op, rhs in assigns[node.id]:
-            piece = _reconstruct(rhs, assigns, seen)
-            val = piece if op == "=" else val + piece
-        return val
-    raise _Unreconstructable(type(node).__name__)
+        return _reconstruct_name(node.id, ctx, seen)
+    raise _guard(_CAT_UNRECON, f"unreconstructable SQL expression ({type(node).__name__})")
+
+
+def _reconstruct_name(name: str, ctx: dict, seen: frozenset) -> _Recon:
+    """Reaching-definition reconstruction of a Name at ``ctx['call']`` — SOURCE-ORDERED event stream
+    (PLAN-R3B-F-008/F-022, NO pre-folding): unconditional ``=`` replaces the candidate set; unconditional
+    ``+=`` appends to every candidate; an admissible one-shot conditional ``+=`` forks {unchanged} ∪
+    {appended}; dedup after EVERY event; the 32-candidate bound after EVERY fork. The representative
+    takes the applied branch at every conditional append (§(a3))."""
+    if name in seen:
+        raise _guard(_CAT_CYCLE, f"cyclic/recursive definition of '{name}'")
+    seen = seen | {name}
+    call_pos = _pos(ctx["call"])
+    events = [
+        (_pos(a_node), a_node, op, rhs)
+        for (a_node, op, rhs) in ctx["assignmap"].get(name, [])
+        if _pos(a_node) < call_pos  # assignments AT/AFTER the call are excluded (post-call bypass fix)
+    ]
+    if not events:
+        raise _guard(_CAT_UNRECON, f"no reaching definition for '{name}' before the call")
+    events.sort(key=lambda e: e[0])
+    rep: str | None = None
+    candidates: set[str] | None = None
+    cond = 0
+    for _p, a_node, op, rhs in events:
+        kind = _classify_reach(a_node, op, ctx)
+        sub = _reconstruct_expr(rhs, ctx, seen)
+        if kind == "replace":
+            rep, candidates, cond = sub.rep, set(sub.candidates), sub.cond
+        elif candidates is None or rep is None:
+            raise _guard(_CAT_UNRECON, f"append to '{name}' with no reconstructable preceding value")
+        elif kind == "uappend":
+            rep = rep + sub.rep
+            candidates = {c + d for c in candidates for d in sub.candidates}
+            cond += sub.cond
+        else:  # cappend — fork {unchanged} ∪ {appended}
+            rep = rep + sub.rep
+            candidates = candidates | {c + d for c in candidates for d in sub.candidates}
+            cond += 1 + sub.cond
+        if cond > _MAX_COND_APPEND_SITES:
+            raise _guard(_CAT_LIMIT, f"'{name}' exceeds N={_MAX_COND_APPEND_SITES} conditional append sites")
+        if len(candidates) > _MAX_CANDIDATES:
+            raise _guard(_CAT_LIMIT, f"'{name}' exceeds the 32-candidate bound")
+    assert rep is not None and candidates is not None
+    return _Recon(rep, candidates, cond)
 
 
 def _norm_sql(sql: str) -> str:
@@ -545,16 +739,77 @@ def _classify(symbol: str, sql: str) -> str:
     return "CA"
 
 
+def _forbidden_reason(symbol: str, sql: str) -> str | None:
+    """PC-AC-ID-001 dual-authority violation in a normalized candidate SQL, or None. Applied to EVERY
+    runtime candidate (§(a1)) — a forbidden pattern reachable on ANY branch fails closed."""
+    if "INSERT INTO source_index_entities" in sql and symbol != "_mint_entity":
+        return f"source_index_entities insert outside _mint_entity: {symbol}"
+    if "INSERT INTO source_index_locators" in sql and symbol != "_insert_current_locator":
+        return f"source_index_locators insert outside _insert_current_locator: {symbol}"
+    if sql.startswith("UPDATE source_index_locators SET"):
+        set_clause = sql[len("UPDATE source_index_locators SET"):].split(" WHERE ")[0]
+        written = set(re.findall(r"([a-z_]+)\s*=", set_clause))
+        if (written & {"is_current_locator", "tombstoned_at", "source_id"}
+                and symbol != "_demote_current_locator"):
+            return f"raw current-locator/address write outside the lifecycle: {symbol}"
+    if "renamed_from_source_id" in sql:
+        return f"forbidden renamed_from_source_id lineage authority: {symbol}"
+    if re.search(r"\bsrc_source_id\b", sql):
+        return f"un-re-keyed src_source_id column: {symbol}"
+    if ("source_index_locators" not in sql and "source_intelligence_events" not in sql
+            and re.search(r"\bsource_id\b", sql)):
+        return f"raw parent-address source_id on a content table: {symbol}"
+    return None
+
+
+def _scan_unsupported_forms(tree: ast.AST) -> None:
+    """Bounded fail-closed alias / dynamic-getattr / executescript policy (PLAN-R3-F-002/F-010/F-019/
+    F-020), applied to EVERY own-scope function — independent of whether that function also contains a
+    directly-discovered execute call: any ``.execute``/``.executemany`` Attribute that is not the immediate
+    func of a discovered Call → ``unsupported_execute_alias``; any ``executescript`` reference →
+    ``unsupported_sql_execution_form``; any ``getattr`` with a non-literal attribute-name →
+    ``unsupported_dynamic_getattr`` (constant ``getattr(x, 'execute'|'executescript')`` covered too)."""
+    for func in ast.walk(tree):
+        if not isinstance(func, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        nodes = list(_own_scope_nodes(func))
+        direct = {
+            id(n.func)
+            for n in nodes
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr in ("execute", "executemany")
+        }
+        for n in nodes:
+            if isinstance(n, ast.Attribute):
+                if n.attr == "executescript":
+                    raise _guard(_CAT_SCRIPT, f"executescript reference in {func.name}")
+                if n.attr in ("execute", "executemany") and id(n) not in direct:
+                    raise _guard(_CAT_ALIAS, f"aliased .{n.attr} bound method in {func.name}")
+            elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                  and n.func.id == "getattr" and len(n.args) >= 2):
+                attr = _const_str(n.args[1])
+                if attr is None:
+                    raise _guard(_CAT_GETATTR, f"non-literal getattr attribute in {func.name}")
+                if attr == "executescript":
+                    raise _guard(_CAT_SCRIPT, f"getattr(_, 'executescript') in {func.name}")
+                if attr in ("execute", "executemany"):
+                    raise _guard(_CAT_ALIAS, f"getattr(_, '{attr}') in {func.name}")
+
+
 def _discover_occurrences(src: str) -> list[tuple[str, int, str, str]]:
     """(symbol, ordinal, authority_class, normalized_sql) for every execute/executemany touching a
-    registered table. Reconstructs each statement or FAILS CLOSED (``DualAuthorityGuardError``). The
-    ordinal is the call's source-order position among ALL execute/executemany in the enclosing symbol."""
+    registered table. Reconstructs each statement's runtime candidate set (source-ordered event stream)
+    or FAILS CLOSED (``DualAuthorityGuardError``); emits EXACTLY ONE deterministic §(a3) representative
+    per call. The ordinal is the call's source-order position among ALL execute/executemany in the
+    enclosing symbol."""
     tree = ast.parse(src)
+    _scan_unsupported_forms(tree)
     occ: list[tuple[str, int, str, str]] = []
     for func in ast.walk(tree):
         if not isinstance(func, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        assigns = _scope_assigns(func)
+        parents, field_of = _scope_parents(func)
+        assignmap = _name_assignments(func)
         calls = [
             n for n in _own_scope_nodes(func)
             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
@@ -563,17 +818,33 @@ def _discover_occurrences(src: str) -> list[tuple[str, int, str, str]]:
         calls.sort(key=lambda n: (n.lineno, n.col_offset))
         for ordinal, n in enumerate(calls):
             if not n.args:
-                raise DualAuthorityGuardError(
-                    f"execute with no SQL argument in {func.name} @L{n.lineno} (cannot prove safe)"
+                raise _guard(
+                    _CAT_UNRECON,
+                    f"execute with no SQL argument in {func.name} @L{n.lineno} (cannot prove safe)",
                 )
-            try:
-                sql = _norm_sql(_reconstruct(n.args[0], assigns))
-            except _Unreconstructable as exc:
-                raise DualAuthorityGuardError(
-                    f"unreconstructable SQL in {func.name} @L{n.lineno} ({exc}) — fail closed"
-                ) from exc
-            if any(t in sql for t in _REGISTERED_TABLES):
-                occ.append((func.name, ordinal, _classify(func.name, sql), sql))
+            ctx = {"call": n, "parents": parents, "field_of": field_of, "assignmap": assignmap}
+            recon = _reconstruct_expr(n.args[0], ctx, frozenset())
+            # §(a1) safety: EVERY runtime candidate is reconstructed + checked (not only base+suffix).
+            cand_norms = {_norm_sql(csql) for csql in recon.candidates}
+            for csql in cand_norms:
+                reason = _forbidden_reason(func.name, csql)
+                if reason is not None:
+                    raise _guard(_CAT_FORBIDDEN, reason)
+            rep_sql = _norm_sql(recon.rep)
+            if any(t in rep_sql for t in _REGISTERED_TABLES):
+                # §(a3): the representative is emitted ONLY if every candidate shares the same
+                # registered-table set + authority class (differ only in non-authority clauses).
+                tabsets = {
+                    frozenset(t for t in _REGISTERED_TABLES if t in csql) for csql in cand_norms
+                }
+                classes = {_classify(func.name, csql) for csql in cand_norms}
+                if len(tabsets) > 1 or len(classes) > 1:
+                    raise _guard(
+                        _CAT_INCONSISTENT,
+                        f"candidates disagree on registered-table set / class in {func.name} "
+                        f"@L{n.lineno} (fail closed, no occurrence)",
+                    )
+                occ.append((func.name, ordinal, _classify(func.name, rep_sql), rep_sql))
     return occ
 
 
@@ -787,3 +1058,520 @@ def test_f001_negative_unreconstructable_sql() -> None:
     )
     with pytest.raises(DualAuthorityGuardError):
         _verify_dual_authority(evil)
+
+
+# ============================================================================================
+# F-001 R3B — analyzer helpers + control-flow / alias / append / bound fixtures
+# (each negative asserts its SPECIFIC category; positives are DISCOVERED unchanged)
+# ============================================================================================
+
+def _analyze_call(src: str, func_name: str) -> "_Recon":
+    """Reconstruct the FIRST execute call in ``func_name`` → its _Recon (rep + candidate set + cond
+    sites). Used by the F-022 fixtures to assert the EXACT reconstructed candidates + representative."""
+    tree = ast.parse(src)
+    func = next(
+        f for f in ast.walk(tree)
+        if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)) and f.name == func_name
+    )
+    parents, field_of = _scope_parents(func)
+    assignmap = _name_assignments(func)
+    calls = sorted(
+        (n for n in _own_scope_nodes(func)
+         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+         and n.func.attr in ("execute", "executemany")),
+        key=lambda n: (n.lineno, n.col_offset),
+    )
+    n = calls[0]
+    ctx = {"call": n, "parents": parents, "field_of": field_of, "assignmap": assignmap}
+    return _reconstruct_expr(n.args[0], ctx, frozenset())
+
+
+def _reject_cat(src: str, category: str) -> None:
+    """The analyzer REJECTS ``src`` with EXACTLY ``category`` (not merely some exception)."""
+    with pytest.raises(DualAuthorityGuardError) as ei:
+        _verify_dual_authority(src)
+    assert getattr(ei.value, "category", None) == category, (category, str(ei.value))
+
+
+# ---- (i)-(v) reaching-def KILL rejections ----
+
+def test_f001_neg_i_post_call_reassignment_forbidden() -> None:
+    # The forbidden pre-call INSERT is NOT hidden by a post-call reassignment (excluded) → forbidden.
+    _reject_cat(
+        "def _e(c):\n"
+        "    sql = \"INSERT INTO source_index_entities (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n"
+        "    sql = \"SELECT 1\"\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_f001_neg_ii_forbidden_then_conditional_safe_kill() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    sql = \"INSERT INTO source_index_entities (source_entity_id) VALUES (?)\"\n"
+        "    if cond:\n"
+        "        sql = \"SELECT 1\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+def test_f001_neg_iii_safe_then_conditional_forbidden_kill() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    sql = \"SELECT 1\"\n"
+        "    if cond:\n"
+        "        sql = \"INSERT INTO source_index_entities (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+def test_f001_neg_iv_branch_specific_kill() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    if cond:\n"
+        "        sql = \"INSERT INTO source_index_entities (source_entity_id) VALUES (?)\"\n"
+        "    else:\n"
+        "        sql = \"SELECT 1\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+def test_f001_neg_v_loop_kill_feeding_post_loop_call() -> None:
+    _reject_cat(
+        "def _e(c, items):\n"
+        "    for item in items:\n"
+        "        sql = \"INSERT INTO source_index_entities (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+# ---- (xii)-(xiii) append building a forbidden reference ----
+
+def test_f001_neg_xii_cumulative_straightline_forbidden() -> None:
+    _reject_cat(
+        "def _e(c, x):\n"
+        "    sql = \"UPDATE source_intelligence_metadata SET \"\n"
+        "    sql += \"source_id=? \"\n"
+        "    sql += \"WHERE source_entity_id=?\"\n"
+        "    c.execute(sql, (x, x))\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_f001_neg_xiii_conditional_append_forbidden_ref() -> None:
+    # A one-shot conditional += whose folded base+suffix contains a forbidden content-table source_id
+    # write → forbidden_dual_authority_occurrence (NOT ambiguous_control_flow).
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    sql = \"SELECT 1\"\n"
+        "    if cond:\n"
+        "        sql += \" ; UPDATE source_intelligence_metadata SET source_id=? WHERE source_entity_id=?\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+# ---- (vi)-(xi),(xiv) alias / dynamic getattr rejections ----
+
+def test_f001_neg_vi_ordinary_execute_alias() -> None:
+    _reject_cat("def _e(c):\n    run = c.execute\n    run(\"SELECT 1\")\n", _CAT_ALIAS)
+
+
+def test_f001_neg_vii_annotated_execute_alias() -> None:
+    _reject_cat("def _e(c):\n    run: object = c.execute\n", _CAT_ALIAS)
+
+
+def test_f001_neg_viii_destructuring_execute_alias() -> None:
+    _reject_cat("def _e(c):\n    (run,) = (c.execute,)\n", _CAT_ALIAS)
+
+
+def test_f001_neg_ix_constant_getattr_execute_alias() -> None:
+    _reject_cat("def _e(c):\n    run = getattr(c, \"execute\")\n    run(\"SELECT 1\")\n", _CAT_ALIAS)
+
+
+def test_f001_neg_x_walrus_execute_alias() -> None:
+    _reject_cat("def _e(c):\n    if (run := c.execute):\n        run(\"SELECT 1\")\n", _CAT_ALIAS)
+
+
+def test_f001_neg_xi_nonliteral_getattr() -> None:
+    _reject_cat(
+        "def _e(c):\n    name = \"execute\"\n    run = getattr(c, name)\n    run(\"SELECT 1\")\n",
+        _CAT_GETATTR,
+    )
+
+
+def test_f001_neg_xi_nonliteral_getattr_passed_as_argument() -> None:
+    # Not gated on a direct .execute: a non-literal getattr passed straight to a helper still rejects.
+    _reject_cat(
+        "def _e(c, helper):\n    method = \"execute\"\n    helper(getattr(c, method))\n",
+        _CAT_GETATTR,
+    )
+
+
+def test_f001_neg_xiv_only_execution_is_variable_getattr() -> None:
+    # F-019: a function whose ONLY execution path is a variable-derived getattr (no direct .execute).
+    _reject_cat(
+        "def _e(c, sql):\n    m = \"execute\"\n    fn = getattr(c, m)\n    return fn(sql)\n",
+        _CAT_GETATTR,
+    )
+
+
+# ---- (xv) executescript unsupported execution form ----
+
+def test_f001_neg_xv_executescript_direct() -> None:
+    _reject_cat("def _e(c):\n    c.executescript(\"SELECT 1; SELECT 2\")\n", _CAT_SCRIPT)
+
+
+def test_f001_neg_xv_executescript_alias() -> None:
+    _reject_cat("def _e(c):\n    run = c.executescript\n    run(\"SELECT 1\")\n", _CAT_SCRIPT)
+
+
+def test_f001_neg_xv_executescript_getattr() -> None:
+    _reject_cat("def _e(c):\n    run = getattr(c, \"executescript\")\n", _CAT_SCRIPT)
+
+
+# ---- (xvi) node-type KILL rejection despite append-like RHS ----
+
+def test_f001_neg_xvi_conditional_kill_with_append_like_rhs() -> None:
+    # A conditional `=` whose RHS is base+suffix is STILL an ambiguous KILL (decided by node type,
+    # never by the append-like appearance of the RHS).
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    base = \"SELECT source_entity_id FROM source_intelligence_sources WHERE x=?\"\n"
+        "    sql = base\n"
+        "    if cond:\n"
+        "        sql = base + \" AND y=?\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+# ---- (xvii)-(xix) unsupported append multiplicity ----
+
+def test_f001_neg_xvii_loop_append_post_loop_call() -> None:
+    _reject_cat(
+        "def _e(c, items):\n"
+        "    sql = \"SELECT source_entity_id FROM source_intelligence_sources\"\n"
+        "    for item in items:\n"
+        "        sql += \" x\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_APPEND,
+    )
+
+
+def test_f001_neg_xviii_if_else_append_pair() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    sql = \"SELECT source_entity_id FROM source_intelligence_sources\"\n"
+        "    if cond:\n"
+        "        sql += \" a\"\n"
+        "    else:\n"
+        "        sql += \" b\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_APPEND,
+    )
+
+
+def test_f001_neg_xix_try_except_append() -> None:
+    _reject_cat(
+        "def _e(c):\n"
+        "    sql = \"SELECT source_entity_id FROM source_intelligence_sources\"\n"
+        "    try:\n"
+        "        sql += \" a\"\n"
+        "    except Exception:\n"
+        "        pass\n"
+        "    c.execute(sql, ())\n",
+        _CAT_APPEND,
+    )
+
+
+# ---- (xx) N+1 admissible append sites → candidate_expansion_limit ----
+
+_N_PLUS_ONE_SRC = (
+    "def _e(c, a, b, d, e, f, g):\n"
+    "    sql = \"SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1\"\n"
+    "    if a:\n        sql += \" AND c1=?\"\n"
+    "    if b:\n        sql += \" AND c2=?\"\n"
+    "    if d:\n        sql += \" AND c3=?\"\n"
+    "    if e:\n        sql += \" AND c4=?\"\n"
+    "    if f:\n        sql += \" AND c5=?\"\n"
+    "    if g:\n        sql += \" AND c6=?\"\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_f001_neg_xx_n_plus_one_expansion_limit() -> None:
+    _reject_cat(_N_PLUS_ONE_SRC, _CAT_LIMIT)
+
+
+# ---- Positives (DISCOVERED, no raise) ----
+
+_P0_SRC = (
+    "def _p0(c, a, b, d, e, f):\n"
+    "    sql = \"SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1\"\n"
+    "    if a:\n        sql += \" AND c1=?\"\n"
+    "    if b:\n        sql += \" AND c2=?\"\n"
+    "    if d:\n        sql += \" AND c3=?\"\n"
+    "    if e:\n        sql += \" AND c4=?\"\n"
+    "    if f:\n        sql += \" AND c5=?\"\n"
+    "    c.execute(sql, ())\n"
+)
+_P1_SRC = (
+    "def _p1(c, flag):\n"
+    "    sql = \"SELECT source_entity_id FROM source_intelligence_sources\"\n"
+    "    if flag:\n        sql += \" WHERE aux=?\"\n"
+    "    c.execute(sql, ())\n"
+)
+_P2_SRC = (
+    "def _p2(c, items):\n"
+    "    base_sql = \"SELECT source_entity_id FROM source_intelligence_sources WHERE k=?\"\n"
+    "    for item in items:\n"
+    "        sql = base_sql\n"
+    "        c.execute(sql, (item,))\n"
+)
+
+
+def test_f001_pos_p0_n5_boundary_all_candidates_enumerated() -> None:
+    recon = _analyze_call(_P0_SRC, "_p0")
+    assert recon.cond == 5
+    assert len(recon.candidates) == 32  # 2**5, at the bound (not exceeding)
+    rep = _norm_sql(recon.rep)
+    assert rep == ("SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1 "
+                   "AND c1=? AND c2=? AND c3=? AND c4=? AND c5=?")
+    occ = _discover_occurrences(_P0_SRC)  # DISCOVERED (no raise), exactly one occurrence
+    assert occ == [("_p0", 0, "CA", rep)]
+
+
+def test_f001_pos_p1_benign_conditional_append_discovered() -> None:
+    recon = _analyze_call(_P1_SRC, "_p1")
+    assert recon.candidates == frozenset({
+        "SELECT source_entity_id FROM source_intelligence_sources",
+        "SELECT source_entity_id FROM source_intelligence_sources WHERE aux=?",
+    })
+    occ = _discover_occurrences(_P1_SRC)
+    assert occ == [
+        ("_p1", 0, "CA", "SELECT source_entity_id FROM source_intelligence_sources WHERE aux=?")
+    ]
+
+
+def test_f001_pos_p2_same_block_nested_assignment_discovered() -> None:
+    occ = _discover_occurrences(_P2_SRC)
+    assert occ == [
+        ("_p2", 0, "CA", "SELECT source_entity_id FROM source_intelligence_sources WHERE k=?")
+    ]
+
+
+# ---- F-022 source-order interleaved fixtures (exact candidates + representative) ----
+
+def test_f022_conditional_then_unconditional() -> None:
+    src = (
+        "def _e(c, cond):\n"
+        "    sql = \"A\"\n"
+        "    if cond:\n        sql += \"B\"\n"
+        "    sql += \"C\"\n"
+        "    c.execute(sql, ())\n"
+    )
+    recon = _analyze_call(src, "_e")
+    assert recon.candidates == frozenset({"AC", "ABC"}) and recon.rep == "ABC"
+
+
+def test_f022_unconditional_then_conditional() -> None:
+    src = (
+        "def _e(c, cond):\n"
+        "    sql = \"A\"\n"
+        "    sql += \"B\"\n"
+        "    if cond:\n        sql += \"C\"\n"
+        "    c.execute(sql, ())\n"
+    )
+    recon = _analyze_call(src, "_e")
+    assert recon.candidates == frozenset({"AB", "ABC"}) and recon.rep == "ABC"
+
+
+def test_f022_two_conditionals_split_by_unconditional() -> None:
+    # The search_source_files shape: unconditional appends are NEVER pre-folded across conditional sites.
+    src = (
+        "def _e(c, c1, c2):\n"
+        "    sql = \"A\"\n"
+        "    if c1:\n        sql += \"B\"\n"
+        "    sql += \"C\"\n"
+        "    if c2:\n        sql += \"D\"\n"
+        "    c.execute(sql, ())\n"
+    )
+    recon = _analyze_call(src, "_e")
+    assert recon.candidates == frozenset({"AC", "ABC", "ACD", "ABCD"})
+    assert recon.rep == "ABCD" and recon.cond == 2
+
+
+def test_f022_boundary_forming_identifier_across_fragments() -> None:
+    # Two fragments jointly form a registered-table identifier neither contains alone — the analyzer
+    # reconstructs the FULL joined candidate (so token-at-boundary detection is possible).
+    src = (
+        "def _e(c, cond):\n"
+        "    sql = \"SELECT 1 FROM source_intelligence_\"\n"
+        "    if cond:\n        sql += \"sources WHERE aux=?\"\n"
+        "    c.execute(sql, ())\n"
+    )
+    recon = _analyze_call(src, "_e")
+    assert recon.candidates == frozenset({
+        "SELECT 1 FROM source_intelligence_",
+        "SELECT 1 FROM source_intelligence_sources WHERE aux=?",
+    })
+    assert recon.rep == "SELECT 1 FROM source_intelligence_sources WHERE aux=?"
+
+
+# ============================================================================================
+# F-002 R3B — tri-state collision-aware dst_ref READ resolution (7 bare rows + prefixed + F-023)
+# ============================================================================================
+
+def _resolve_dst(repo: SourceIndexRepository, ref: str) -> str | None:
+    with sqlite3.connect(repo.db_path) as c:
+        return repo._resolve_dst_ref_entity(c, ref)
+
+
+def _add_locator(repo: SourceIndexRepository, *, source_id: str, entity_id: str, rel: str) -> None:
+    """Inject a NON-current (demoted) locator carrying ``source_id`` for ``entity_id`` — used to
+    construct legacy NO_MATCH / UNIQUE / AMBIGUOUS states over the DISTINCT resolver."""
+    with sqlite3.connect(repo.db_path) as c:
+        c.execute(
+            "INSERT INTO source_index_locators(locator_id, source_entity_id, source_id, "
+            "source_root_key, rel_path, is_current_locator, tombstoned_at, generation_seq) "
+            "VALUES (?,?,?,?,?,0,?,?)",
+            (uuid.uuid4().hex, entity_id, source_id, "proj", rel,
+             "2000-01-01T00:00:00+00:00", 900),
+        )
+        c.commit()
+
+
+def _v1_ref(source_id: str) -> str:
+    from hb_assistant.obsidian_mcp.source_connector_models import (
+        _SOURCE_REF_PREFIX,
+        _b64u_encode,
+        _source_id_checksum,
+    )
+    return _SOURCE_REF_PREFIX + _b64u_encode(
+        f"{source_id}{_source_id_checksum(source_id)}".encode("ascii")
+    )
+
+
+def _entity_count(repo: SourceIndexRepository) -> int:
+    with sqlite3.connect(repo.db_path) as c:
+        return c.execute("SELECT COUNT(*) FROM source_index_entities").fetchone()[0]
+
+
+# ---- the seven bare-value tri-state rows (PLAN-R3B-F-020) ----
+
+def test_f002_bare_row1_entity_nomatch_legacy_ambiguous(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    e2 = repo.upsert_source_file(_file("b.md", sha="s2", mtime=2, excerpt="y"))
+    v = "a" * 32  # canonical bare, NOT an entity id
+    _add_locator(repo, source_id=v, entity_id=e1, rel="p1")
+    _add_locator(repo, source_id=v, entity_id=e2, rel="p2")
+    before = _entity_count(repo)
+    assert _resolve_dst(repo, v) is None       # legacy AMBIGUOUS + entity none → None
+    assert _entity_count(repo) == before       # no entity created/rebound
+
+
+def test_f002_bare_row2_entity_match_legacy_ambiguous(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    e2 = repo.upsert_source_file(_file("b.md", sha="s2", mtime=2, excerpt="y"))
+    _add_locator(repo, source_id=e1, entity_id=e1, rel="p1")
+    _add_locator(repo, source_id=e1, entity_id=e2, rel="p2")  # source_id=e1 → {e1,e2} AMBIGUOUS
+    assert _resolve_dst(repo, e1) is None       # ambiguous legacy OVERRIDES the entity hit
+
+
+def test_f002_bare_row3_entity_match_legacy_nomatch(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    assert _resolve_dst(repo, e1) == e1         # write-path compatibility case
+
+
+def test_f002_bare_row4_entity_nomatch_legacy_unique(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    legacy = _legacy_source_id(repo, e1)        # a hash source_id, not an entity id
+    assert _resolve_dst(repo, legacy) == e1     # legacy UNIQUE, entity none → legacy entity
+
+
+def test_f002_bare_row5_both_unique_same(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    _add_locator(repo, source_id=e1, entity_id=e1, rel="p1")  # source_id=e1 UNIQUE → e1
+    assert _resolve_dst(repo, e1) == e1         # both domains agree → entity
+
+
+def test_f002_bare_row6_both_unique_different_collision(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    e2 = repo.upsert_source_file(_file("b.md", sha="s2", mtime=2, excerpt="y"))
+    _add_locator(repo, source_id=e1, entity_id=e2, rel="p1")  # entity(e1)=e1 but legacy UNIQUE→e2
+    assert _resolve_dst(repo, e1) is None       # cross-domain collision → None
+
+
+def test_f002_bare_row7_neither_domain(repo: SourceIndexRepository) -> None:
+    assert _resolve_dst(repo, "b" * 32) is None
+
+
+# ---- prefixed hbsrc1_ / hbsrc2_ ----
+
+def test_f002_prefixed_hbsrc1_decodes_and_resolves(repo: SourceIndexRepository) -> None:
+    # THE R2-F-002 bug: a canonical hbsrc1_ legacy ref must decode to its handle and resolve DISTINCT.
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    legacy = _legacy_source_id(repo, e1)
+    assert _resolve_dst(repo, _v1_ref(legacy)) == e1
+
+
+def test_f002_prefixed_hbsrc1_no_match(repo: SourceIndexRepository) -> None:
+    assert _resolve_dst(repo, _v1_ref("c" * 32)) is None
+
+
+def test_f002_prefixed_hbsrc1_ambiguous(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    e2 = repo.upsert_source_file(_file("b.md", sha="s2", mtime=2, excerpt="y"))
+    v = "d" * 32
+    _add_locator(repo, source_id=v, entity_id=e1, rel="p1")
+    _add_locator(repo, source_id=v, entity_id=e2, rel="p2")
+    assert _resolve_dst(repo, _v1_ref(v)) is None      # prefixed AMBIGUOUS legacy → None
+
+
+def test_f002_prefixed_hbsrc2_entity(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    assert _resolve_dst(repo, encode_source_ref(e1)) == e1
+
+
+def test_f002_prefixed_hbsrc2_nonexistent(repo: SourceIndexRepository) -> None:
+    assert _resolve_dst(repo, encode_source_ref(uuid.uuid4().hex)) is None
+
+
+def test_f002_prefixed_hbsrc2_tampered(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    ref = encode_source_ref(e1)
+    i = len("hbsrc2_") + 4
+    tampered = ref[:i] + ("A" if ref[i] != "A" else "B") + ref[i + 1:]
+    assert _resolve_dst(repo, tampered) is None
+
+
+# ---- F-023 canonical bare validation (malformed / unknown prefix → None BEFORE any lookup) ----
+
+def test_f002_f023_malformed_bare_none_before_lookup(repo: SourceIndexRepository) -> None:
+    # Deliberately insert a locator whose source_id IS the malformed value; it must STILL not resolve
+    # (canonical validation rejects the input before any domain lookup).
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    bad = "not-canonical-hex-value"
+    _add_locator(repo, source_id=bad, entity_id=e1, rel="p1")
+    assert _resolve_dst(repo, bad) is None
+
+
+def test_f002_f023_unsupported_hbsrc3_prefix_none(repo: SourceIndexRepository) -> None:
+    e1 = repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    bad = "hbsrc3_" + ("a" * 32)
+    _add_locator(repo, source_id=bad, entity_id=e1, rel="p1")  # even with matching data present
+    assert _resolve_dst(repo, bad) is None
+
+
+def test_f002_resolver_creates_no_entity(repo: SourceIndexRepository) -> None:
+    repo.upsert_source_file(_file("a.md", sha="s1", mtime=1, excerpt="x"))
+    before = _entity_count(repo)
+    for ref in ("b" * 32, _v1_ref("c" * 32), "hbsrc3_" + "a" * 32, "bad"):
+        _resolve_dst(repo, ref)
+    assert _entity_count(repo) == before

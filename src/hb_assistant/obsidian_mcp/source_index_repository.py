@@ -25,8 +25,20 @@ from typing import Any
 from hb_assistant.store.connection import borrow_connection, transaction
 from hb_assistant.store.source_intelligence_tables import fts5_available
 
-from .source_connector_models import classify_source_ref, encode_source_ref, sanitize_fts_query
+from .source_connector_models import (
+    SourceConnectorValidationError,
+    classify_source_ref,
+    encode_source_ref,
+    sanitize_fts_query,
+)
 from .source_skip_codes import normalize_skip_code
+
+# F-015 tri-state legacy-resolution outcomes over the DISTINCT locator resolver. UNIQUE carries the
+# single resolved entity; NO_MATCH (0 rows) and AMBIGUOUS (>=2 rows) are kept DISTINCT so the bare-value
+# dst_ref resolver can fail closed on ambiguity without conflating it with no-match.
+_LEGACY_NO_MATCH = "NO_MATCH"
+_LEGACY_UNIQUE = "UNIQUE"
+_LEGACY_AMBIGUOUS = "AMBIGUOUS"
 
 
 class LifecycleOracleError(RuntimeError):
@@ -253,15 +265,26 @@ class SourceIndexRepository:
             params.append(source_root_key)
         return c.execute(sql, tuple(params)).fetchone()
 
-    def _resolve_entity_by_source_id(self, c: sqlite3.Connection, source_id: str) -> str | None:
-        """PC-AC-ID-005 on an OPEN connection — DISTINCT legacy resolver: exactly-1 → that entity (LIVE
-        or TOMBSTONED); 0 or >=2 → None (UNRESOLVED). NEVER disambiguates by ``is_current_locator`` /
-        ``generation_seq`` (that was the stale-handle rebinding bug)."""
+    def _resolve_entity_by_source_id(
+        self, c: sqlite3.Connection, source_id: str
+    ) -> tuple[str, str | None]:
+        """PC-AC-ID-005 on an OPEN connection — DISTINCT legacy resolver, TRI-STATE (F-015). Returns
+        ``(state, entity_id)`` where ``state`` ∈ {``NO_MATCH``, ``UNIQUE``, ``AMBIGUOUS``}: exactly-1
+        DISTINCT source_entity_id → ``(UNIQUE, that entity)`` (LIVE or TOMBSTONED); 0 rows →
+        ``(NO_MATCH, None)``; >=2 → ``(AMBIGUOUS, None)`` (UNRESOLVED). The single query is unchanged; the
+        extra state lets the bare-value ``dst_ref`` resolver distinguish no-match from ambiguous (which the
+        prior optional return conflated). NEVER disambiguates by ``is_current_locator`` / ``generation_seq``
+        (that was the stale-handle rebinding bug). Callers that only need the optional entity read the
+        second element (``None`` unless UNIQUE)."""
         rows = c.execute(
             "SELECT DISTINCT source_entity_id FROM source_index_locators WHERE source_id=?",
             (source_id,),
         ).fetchall()
-        return rows[0][0] if len(rows) == 1 else None
+        if not rows:
+            return (_LEGACY_NO_MATCH, None)
+        if len(rows) == 1:
+            return (_LEGACY_UNIQUE, rows[0][0])
+        return (_LEGACY_AMBIGUOUS, None)
 
     def resolve_entity(
         self,
@@ -286,7 +309,8 @@ class SourceIndexRepository:
                     (value,),
                 ).fetchone()
                 return row[0] if row else None
-            return self._resolve_entity_by_source_id(c, value)
+            # bare/v1 legacy handle → DISTINCT resolver; only a UNIQUE match resolves (0 and >=2 → None).
+            return self._resolve_entity_by_source_id(c, value)[1]
 
     def _assert_lifecycle_oracle(
         self, c: sqlite3.Connection, entity_id: str | None = None
@@ -584,22 +608,50 @@ class SourceIndexRepository:
 
     def _resolve_dst_ref_entity(self, c: sqlite3.Connection, dst_ref: str) -> str | None:
         """Fail-closed resolution of a relationship ``dst_ref`` (a 'source' target) to a
-        ``source_entity_id`` (R11 §2a/§2b). Accepts a go-forward v2 entity ref, a bare entity id, or a
-        legacy locator ``source_id`` (DISTINCT resolver). None on unresolved/tamper."""
+        ``source_entity_id`` (R11 §2a/§2b; F-002 R3B). Shared by the READ path (``list_relationships``)
+        and the go-forward WRITE (``_dst_ref_for_write``, which passes a BARE entity id).
+
+        * A PREFIXED ``hbsrc1_``/``hbsrc2_`` ref is classified via the codec (malformed → ``None``): a v2
+          (``hbsrc2_``) entity ref resolves in the ENTITY domain; a v1 (``hbsrc1_``) decoded legacy ref via
+          the DISTINCT resolver (0 and >=2 → ``None``; there is no entity competitor for a prefixed legacy
+          ref, so the tri-state UNIQUE check is the exact fail-closed criterion).
+        * A BARE value is FIRST canonically validated (F-023) via ``classify_source_ref(source_id=...)`` —
+          a malformed length / non-canonical char / unknown ``hbsrc``-style prefix (e.g. ``hbsrc3_``) fails
+          closed to ``None`` BEFORE any lookup; the returned classification establishes NO precedence. The
+          validated value is then resolved INDEPENDENTLY in the entity domain and the legacy domain
+          (tri-state) with the exact 7-outcome contract: legacy ``AMBIGUOUS`` → ``None`` regardless of the
+          entity; entity none + ``NO_MATCH`` → ``None``; entity unique + ``NO_MATCH`` → the entity (the
+          write-path compatibility case); entity none + ``UNIQUE`` → the legacy entity; both ``UNIQUE`` and
+          equal → that entity; both ``UNIQUE`` and different → ``None`` (cross-domain collision). No
+          precedence, no disjoint-domain assumption, and no path creates/rewrites/rebinds an entity."""
         ref = str(dst_ref or "")
-        if ref.startswith("hbsrc2_"):
-            try:
-                _, value = classify_source_ref(source_ref=ref)
-            except Exception:  # noqa: BLE001 — malformed ref fails closed
-                return None
-        else:
-            value = ref
-        row = c.execute(
+        prefixed = ref.startswith("hbsrc1_") or ref.startswith("hbsrc2_")
+        try:
+            if prefixed:
+                kind, value = classify_source_ref(source_ref=ref)
+            else:
+                kind, value = classify_source_ref(source_id=ref)  # F-023 canonical bare validation
+        except SourceConnectorValidationError:
+            return None
+        # Single entity-domain lookup (the frozen dual-authority occurrence for this method).
+        entity_row = c.execute(
             "SELECT source_entity_id FROM source_index_entities WHERE source_entity_id=?", (value,)
         ).fetchone()
-        if row is not None:
-            return row[0]
-        return self._resolve_entity_by_source_id(c, value)
+        entity_id = entity_row[0] if entity_row is not None else None
+        if prefixed and kind == "entity":
+            return entity_id  # hbsrc2_ v2 entity ref → entity domain only
+        state, legacy_id = self._resolve_entity_by_source_id(c, value)
+        if prefixed:
+            # hbsrc1_ decoded legacy ref → DISTINCT resolver only (0 and >=2 → None).
+            return legacy_id if state == _LEGACY_UNIQUE else None
+        # BARE — independent both-domain resolution, 7-outcome contract (no precedence).
+        if state == _LEGACY_AMBIGUOUS:
+            return None
+        if state == _LEGACY_NO_MATCH:
+            return entity_id
+        if entity_id is None:
+            return legacy_id
+        return entity_id if entity_id == legacy_id else None
 
     def _dst_ref_for_write(
         self, c: sqlite3.Connection, dst_kind: str, dst_ref: Any
