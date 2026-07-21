@@ -35,6 +35,37 @@ and the exact current authorization and selected canonical skill.
 
 Lower-authority material must not override higher-authority evidence.
 
+## Engineering Control-Plane Authority
+
+For `RMF112018/hb-personal-assistant`, the repository and GitHub are the
+canonical engineering execution control plane:
+
+- repository and GitHub records define the active goal pointer, work item,
+  authorization pointer, branch, base SHA, head SHA, pull request, review state,
+  merge state, and checkpoint identity;
+- deployed runtime evidence is authoritative for operational and production
+  behavior claims;
+- the Google Drive Software Delivery Control Center is a publication,
+  collaboration, reference, and external-handoff surface;
+- Drive content must not independently override or authorize repository
+  execution state;
+- existing Drive artifacts remain historical evidence, but new Drive-native
+  mechanisms that independently track active engineering execution state are
+  frozen during the GitHub-first migration;
+- final lifecycle authorization, risk acceptance, merge, deployment, and
+  production activation remain operator decisions.
+
+Independent review must identify the exact repository or pull-request head SHA
+reviewed. A review of an earlier head is not current-head approval after the head
+changes unless a governing policy explicitly establishes a narrower result.
+
+The governing decision and migration plan are:
+
+```text
+docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/implementation-plans/github-first-control-plane-migration.md
+```
+
 ## Canonical Agent Skills
 
 The sole canonical AEOS skill corpus is:
