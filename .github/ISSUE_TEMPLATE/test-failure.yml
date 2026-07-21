@@ -1,5 +1,5 @@
 name: Test failure triage
-about: Preserve and disposition a discovered test failure
+description: Preserve, classify, assign, and close a discovered test failure
 labels:
   - test-failure
 body:
@@ -12,7 +12,7 @@ body:
     id: source_work_item
     attributes:
       label: Source work item
-      description: Goal/work-item or PR that discovered the failure.
+      description: Goal, work item, pull request, or checkpoint that discovered the failure.
     validations:
       required: true
   - type: input
@@ -23,10 +23,33 @@ body:
     validations:
       required: true
   - type: input
+    id: candidate_sha
+    attributes:
+      label: Candidate SHA
+      description: Exact commit SHA where the failure was observed.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: Complete command and arguments that produced the failure.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Material environment
+      description: Interpreter, dependencies, operating system, fixtures, inputs, and relevant configuration.
+    validations:
+      required: true
+  - type: textarea
     id: failing_ids
     attributes:
       label: Exact failing test IDs
-      description: Exact pytest node IDs or equivalent stable test identifiers.
+      description: Exact pytest node IDs or equivalent stable failure identifiers.
+      render: text
     validations:
       required: true
   - type: dropdown
@@ -50,10 +73,10 @@ body:
     validations:
       required: true
   - type: textarea
-    id: evidence
+    id: base_evidence
     attributes:
       label: Base and candidate evidence
-      description: Commands, SHAs, environment fingerprint, outputs, and evidence links.
+      description: Base SHA, equivalent command/environment, outputs, causal evidence, and evidence links.
     validations:
       required: true
   - type: input
@@ -93,13 +116,27 @@ body:
     id: corrective_identity
     attributes:
       label: Corrective work identity
-      description: Authorization, work item, branch/worktree, review, integration, and closure evidence when available.
+      description: Authorization, work item, branch, worktree, and implementing owner when available.
+    validations:
+      required: false
+  - type: textarea
+    id: review_result
+    attributes:
+      label: Independent review result
+      description: Exact reviewed SHA, reviewer context, disposition, and remaining findings when available.
+    validations:
+      required: false
+  - type: textarea
+    id: integrated_candidate_result
+    attributes:
+      label: Integrated-candidate result
+      description: Combined-candidate SHA, applicable gate commands, and exact results when available.
     validations:
       required: false
   - type: textarea
     id: closure_evidence
     attributes:
-      label: Review, integration, and closure evidence
-      description: Exact review result, combined-candidate validation, final disposition, and closure evidence when available.
+      label: Closure evidence
+      description: Final disposition, verified correction, integration identity, and closure authority when available.
     validations:
       required: false
