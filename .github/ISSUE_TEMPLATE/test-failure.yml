@@ -1,0 +1,142 @@
+name: Test failure triage
+description: Preserve, classify, assign, and close a discovered test failure
+labels:
+  - test-failure
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The issue number is the stable failure identity: `TF-<issue-number>`.
+        Creating this record does not authorize corrective implementation.
+  - type: input
+    id: source_work_item
+    attributes:
+      label: Source work item
+      description: Goal, work item, pull request, or checkpoint that discovered the failure.
+    validations:
+      required: true
+  - type: input
+    id: discovered_at
+    attributes:
+      label: Discovery timestamp
+      description: ISO-8601 time when the failure was first observed.
+    validations:
+      required: true
+  - type: input
+    id: candidate_sha
+    attributes:
+      label: Candidate SHA
+      description: Exact commit SHA where the failure was observed.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: Complete command and arguments that produced the failure.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Material environment
+      description: Interpreter, dependencies, operating system, fixtures, inputs, and relevant configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: failing_ids
+    attributes:
+      label: Exact failing test IDs
+      description: Exact pytest node IDs or equivalent stable failure identifiers.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Classification state
+      options:
+        - RELATIONSHIP_UNKNOWN
+        - CANDIDATE_REGRESSION
+        - REPRODUCIBLE_PRE_EXISTING_DEFECT
+        - INVALID_OR_STALE_TEST
+        - FLAKY_OR_NONDETERMINISTIC
+        - ENVIRONMENT_OR_CONFIGURATION_FAILURE
+    validations:
+      required: true
+  - type: input
+    id: triage_owner
+    attributes:
+      label: Triage owner
+      description: Person or governed controller accountable for disposition.
+    validations:
+      required: true
+  - type: textarea
+    id: base_evidence
+    attributes:
+      label: Base and candidate evidence
+      description: Base SHA, equivalent command/environment, outputs, causal evidence, and evidence links.
+    validations:
+      required: true
+  - type: input
+    id: affected_gate
+    attributes:
+      label: Affected criterion or gate
+      description: Acceptance criterion, checkpoint, merge gate, or release gate blocked.
+    validations:
+      required: true
+  - type: dropdown
+    id: current_disposition
+    attributes:
+      label: Current disposition
+      options:
+        - BLOCKING_CURRENT_CHECKPOINT
+        - PRIMARY_WORK_ITEM_CORRECTION
+        - AWAITING_CORRECTIVE_AUTHORIZATION
+        - CORRECTIVE_WORK_AUTHORIZED
+        - IN_CORRECTION
+        - AWAITING_INDEPENDENT_REVIEW
+        - AWAITING_INTEGRATION
+        - CLOSED_VERIFIED
+    validations:
+      required: true
+  - type: dropdown
+    id: authorization_state
+    attributes:
+      label: Corrective authorization state
+      options:
+        - AWAITING_AUTHORIZATION
+        - AUTHORIZED
+        - NOT_AUTHORIZED
+        - NOT_REQUIRED
+    validations:
+      required: true
+  - type: textarea
+    id: corrective_identity
+    attributes:
+      label: Corrective work identity
+      description: Authorization, work item, branch, worktree, and implementing owner when available.
+    validations:
+      required: false
+  - type: textarea
+    id: review_result
+    attributes:
+      label: Independent review result
+      description: Exact reviewed SHA, reviewer context, disposition, and remaining findings when available.
+    validations:
+      required: false
+  - type: textarea
+    id: integrated_candidate_result
+    attributes:
+      label: Integrated-candidate result
+      description: Combined-candidate SHA, applicable gate commands, and exact results when available.
+    validations:
+      required: false
+  - type: textarea
+    id: closure_evidence
+    attributes:
+      label: Closure evidence
+      description: Final disposition, verified correction, integration identity, and closure authority when available.
+    validations:
+      required: false

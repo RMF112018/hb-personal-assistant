@@ -1,0 +1,374 @@
+# PR #319 Corrective Authorization Record
+
+## Corrective cycle R1
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `3f008f4ba7e64a0036ecee913a9eaab24cfa1e75`  
+**Pull request:** `#319`  
+**Status:** Consumed by bounded corrective implementation  
+**Authority:** Direct operator instruction in the Software Delivery Control Room project on 2026-07-21
+
+### Authorized objective
+
+Resolve `PR319-GOV-F-001` through `PR319-GOV-F-008` from the independent
+review of exact head `3f008f4ba7e64a0036ecee913a9eaab24cfa1e75`.
+
+### Authorized scope
+
+- lifecycle identity semantics and branch registration evidence;
+- canonical safe-suite command and documentation;
+- Standard 07/11 precedence;
+- durable test-failure triage controls;
+- decision review status;
+- Phase A authority-status reconciliation;
+- exact permanent-identity plan traceability;
+- governance validation and exact-head evidence;
+- PR description and external validation receipt.
+
+## Corrective cycle R2
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `43abb04a549d927334959fd2e40745296a6281c2`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded corrective implementation complete; fresh re-review required  
+**Authority:** Direct operator instruction, “resolve the remaining failing items,” issued 2026-07-21 at approximately 11:29 America/New_York
+
+### Review basis
+
+The fresh independent re-review of exact head
+`43abb04a549d927334959fd2e40745296a6281c2` returned `REVISE` and preserved
+these blocking lineages:
+
+- `PR319-GOV-F-002` / `PR319-RR-F-001` — non-portable interpreter resolution;
+- `PR319-GOV-F-004` / `PR319-RR-F-002` — invalid GitHub issue-form top-level schema;
+- `PR319-GOV-F-008` / `PR319-RR-F-003` — insufficient semantic validation;
+- `PR319-RR-F-004` — inaccurate forecasting evidence classification (non-blocking alone).
+
+### Authorized R2 scope
+
+- `scripts/test-safe.sh`;
+- `.github/ISSUE_TEMPLATE/test-failure.yml`;
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml`;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and exact-head evidence references.
+
+### Implemented correction
+
+- removed generic and operator-specific Python fallback paths;
+- required an explicit interpreter or active-worktree `.venv`, executable status,
+  Python 3.12+, and the complete canonical safe-suite dependency set;
+- replaced invalid issue-form `about` metadata with `description` and added exact
+  candidate, command, environment, base evidence, review, integration, and
+  closure fields;
+- replaced token-only assertions with issue-form semantic validation, negative
+  fixtures, safe-suite invalid-input probes, fake-interpreter probes, exact
+  lifecycle-state checks, complete governed YAML/front-matter parsing, and
+  explicit receipt command and exit code;
+- added exact-head CI installation, bounded `--collect-only --python-only`
+  execution, always-uploaded diagnostics, and final exit-code enforcement;
+- required forecasting CI to be described as synthetic PR merge-result evidence,
+  not exact-head governance or full-suite evidence.
+
+### Preserved validation lineage
+
+1. **Run 24 at `65e30e7435e10153c4862ed6b70b8e7bb5d2a048`:** failed during bounded
+   collection before validator execution. No tests ran. The failure was preserved.
+2. **Run 25 at `63a355480dcfebfbaa1f8b3d960d0f45f96ca3ae`:** diagnostic artifact
+   `8501091180` proved validator exit `0` and collection exit `2`; collection
+   reported 75 import errors caused only by absent `mcp`, `fastapi`, and `numpy`
+   prerequisites. No tests ran.
+3. **Run 27 at `2572454ec1cd3c0f43a7d548c569075ce3e9e169`:** complete declared
+   environment installed; collection exit `0`; validator exit `0`; enforcement
+   passed. Collection result: `10039/10100 tests collected (61 deselected)` with
+   zero collection errors and no test execution. Artifact `8501204875`, archive
+   digest `sha256:2bcda99bac659e50bde296556f19a50b9701e0559df88a73c5e11185ba8486e0`,
+   receipt evidence SHA-256
+   `23e6268c2240fb65e6347a170e22dcec81aeb42a269e160d96ce3ae85a4f29db`.
+
+### Canonical Python prerequisite command
+
+```bash
+python -m pip install -e '.[dev]'
+python -m pip install -e '.[mcp,analytics-ui]' \
+  -e 'subrepos/construction-financial-review[dev]'
+```
+
+This installs the root development, MCP, and analytics UI dependencies and the
+construction subpackage's declared NumPy/SciPy dependencies. The safe script
+fails closed when these prerequisites are unavailable.
+
+### Required final validation
+
+- shell syntax validation;
+- Python syntax validation;
+- complete GitHub issue-form semantic validation with negative fixtures;
+- fail-closed interpreter, minimum-version, and dependency probes;
+- safe-suite invalid-argument and contradictory-mode probes;
+- bounded canonical Python collection only, with no application tests executed;
+- exact-head governance workflow and artifact receipt;
+- accurate distinction between head-SHA governance evidence and synthetic
+  pull-request merge-result forecasting evidence.
+
+## Corrective cycle R3
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `a5b1cdb0220982db6d6c956e45d532b0c6187a5c`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R3 implementation complete; final exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the remaining blockers,” issued 2026-07-21 at approximately 12:43 America/New_York
+
+### R3 review basis
+
+The fresh independent R2 re-review of exact head
+`a5b1cdb0220982db6d6c956e45d532b0c6187a5c` returned `REVISE`. It verified
+all prior lineages except `PR319-GOV-F-008` / `PR319-RR-F-003`, and opened:
+
+- `PR319-RR2-F-001` — changed-path validation did not enforce the exact authorized 19-path set;
+- `PR319-RR2-F-002` — receipt schema 2 omitted the collection command and collection exit code;
+- `PR319-RR2-F-003` — required negative fixtures and dependency-failure probes were incomplete.
+
+### Authorized R3 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml`;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R3 correction
+
+- separated required read sources from the exact authorized 19-path comparison and
+  required exact set equality;
+- added executable extra-path and missing-path negative fixtures;
+- added receipt schema-2 collection and validator sections carrying exact commands,
+  exit codes, collection counts, zero application-test execution, and stored-byte
+  hashes for logs and exit-code files;
+- added finalizer and verifier modes that cross-check receipt content against
+  captured evidence before the workflow may pass;
+- added negative fixtures for duplicate issue-form IDs, missing discovery fields,
+  malformed dropdown options, alternate generic interpreter fallbacks, interpreter
+  without pytest, and missing declared dependency imports;
+- validated dependency declarations in the root and construction subrepository
+  package metadata;
+- preserved failed R3 CI runs rather than relabeling them as successful.
+
+### Preserved R3 diagnostic lineage
+
+1. **Run 34 at `65df3ccab6984cfe943ab8beb73fe277c01f4660`:** exact-head checkout,
+   dependency installation, syntax, and bounded collection passed. The validator
+   rejected the alternate generic-fallback mutation through the required-token
+   assertion before the intended fallback diagnostic. Artifact `8503171052`,
+   archive digest
+   `sha256:cc11e38f0dba1e1c2060fd9a1e3af277bdf9f9667b45928d1b2551c79cc0102d`.
+2. **Run 35 at `f3ceebfb771445d654212368cefa0e8a304319a9`:** exact-head checkout,
+   dependency installation, syntax, and bounded collection passed. The validator
+   rejected the legacy issue-form mutation through the missing-description check
+   before the intended legacy-`about` diagnostic. Artifact `8503311397`, archive
+   digest
+   `sha256:d0123cd8904b0cf10bf5bdf959711f74ca72c38615f2a2c20b776ea31e6bec69`.
+
+Both failures were preserved and corrected by reordering semantic checks so the
+negative fixtures prove the intended invariant and diagnostic.
+
+### Required R3 completion evidence
+
+- exact-head syntax and bounded collection success;
+- all static, semantic, dependency, lifecycle, and adversarial checks passing;
+- finalized schema-2 receipt containing both command/exit-code pairs and evidence hashes;
+- verifier success against the captured log and exit-code files;
+- uploaded artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R3 exclusions
+
+R3 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+
+## Corrective cycle R4
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R4-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `e7e4e999b11e29864b5d7876bb52a51583b38885`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R4 implementation complete; exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the blocking defects,” issued 2026-07-21 at approximately 14:44 America/New_York
+
+### R4 review basis
+
+The fresh independent R3 re-review of exact head
+`e7e4e999b11e29864b5d7876bb52a51583b38885` returned `REVISE` and opened:
+
+- `PR319-RR3-F-001` — final receipt verification was not bound to authenticated repository, PR, branch, base, head, and identity-source values;
+- `PR319-RR3-F-002` — validator command and receipt evidence-file references were not enforced;
+- `PR319-RR3-F-003` — MCP, FastAPI, NumPy, and SciPy absence were not independently simulated and proven.
+
+### Authorized R4 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml`;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R4 correction
+
+- added required external verifier inputs for repository, PR number, branch, base SHA,
+  head SHA, and identity source and compares each receipt field exactly;
+- reconstructs and enforces the exact validator invocation from authenticated identity
+  and fixed evidence arguments;
+- compares every receipt log and exit-code reference to the exact verifier-supplied
+  evidence filename before checking stored-byte hashes;
+- executes rehashed negative fixtures for all six identity fields, the validator
+  command, and all four collection/validator evidence-file references;
+- replaces the aggregate dependency fixture with separate `pytest`, `mcp`, `fastapi`,
+  `numpy`, and `scipy` missing-module simulations;
+- each module probe parses the import statement, records the observed module set,
+  proves the named module caused failure, and confirms pytest was not invoked;
+- normalizes requirement names before validating package declarations;
+- preserves runs 34, 35, and 38 unchanged as historical evidence.
+
+### Required R4 completion evidence
+
+- exact-head syntax and bounded collection success;
+- module-specific dependency probes passing for all five required modules;
+- authenticated identity, command, and evidence-reference negative fixtures passing;
+- finalized schema-2 receipt and verifier success;
+- uploaded artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R4 exclusions
+
+R4 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+
+## Corrective cycle R5
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R5-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `230fe55eddf44ed60d6c6434fe7c3121d369f238`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R5 implementation complete; exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the blocking issues,” issued 2026-07-21 at approximately 15:34 America/New_York
+
+### R5 review basis
+
+The fresh independent R4 re-review of exact head
+`230fe55eddf44ed60d6c6434fe7c3121d369f238` returned `REVISE`. It verified
+all prior findings fixed and opened:
+
+- `PR319-RR4-F-001` — the required provisional receipt was not read, validated, or bound to the final receipt;
+- `PR319-RR4-F-002` — changed-path arrays permitted duplicate entries through set reduction.
+
+### Authorized R5 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml` only as needed for bounded execution and final restoration;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R5 correction
+
+- validates the provisional receipt as schema 2, `PASS`, and evidence-hash intact;
+- enforces an explicit provisional-to-final allowed-delta contract;
+- permits only validator stored-byte hash population, exact finalizer insertion, and evidence-hash recomputation;
+- adds missing, malformed, tampered, substituted, schema/result, and unauthorized-delta provisional-receipt fixtures;
+- requires both path arrays to be exact sorted lists of unique strings;
+- adds duplicate-entry fixtures for both path arrays;
+- preserves run 44 and the R4 review as historical evidence.
+
+### Required R5 completion evidence
+
+- restored read-only workflow permissions and no bootstrap implementation step at the final head;
+- Python and workflow syntax success;
+- provisional-to-final lineage and duplicate-path fixtures passing;
+- bounded canonical collection with zero application-test execution;
+- exact-head finalized artifact and enforcement success;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R5 exclusions
+
+R5 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+
+## Exclusions
+
+No corrective cycle authorizes merge, cleanup, Phase B activation, deployment,
+migration, production mutation, secret changes, destructive Git operations,
+risk acceptance, or self-review. A fresh independent re-review must assess the
+final corrective head.
+
+## Corrective cycle R6
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R6 implementation complete; exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the blocking issue,” issued 2026-07-21 at approximately 16:27 America/New_York
+
+### R6 review basis
+
+The fresh independent R5 re-review of exact head
+`0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7` returned `REVISE` and opened:
+
+- `PR319-RR5-F-001` — provisional validator log and exit-code references were overwritten before authentication;
+- `PR319-RR5-F-002` — checks, environment, observed source hashes, and hash-scope claims could be changed identically in both receipts and remain self-consistent;
+- `PR319-RR5-F-003` — the diagnostic-specific provisional mutation fixture matrix was incomplete.
+
+### Authorized R6 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml` only as required to produce replacement exact-head evidence and restored read-only final state;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R6 correction
+
+- authenticates provisional collection and validator evidence references before constructing the final receipt;
+- requires exact top-level and nested receipt schemas and rejects unknown fields;
+- independently validates the complete checks mapping and all `PASS` values;
+- independently validates Python, interpreter, platform, and GitHub Actions environment claims;
+- independently recomputes every `observed_file_sha256` entry from the exact authenticated checkout;
+- enforces exact hash-scope declarations;
+- constructs the final receipt only from the authenticated provisional receipt plus actual validator stored-byte hashes and the exact finalizer command;
+- adds diagnostic-specific fixtures for non-object JSON, identity, validator command, collection, changed paths, finalizer insertion, premature validator hashes, provisional validator reference substitutions, unknown fields, and paired checks/environment/source-hash/hash-scope substitutions;
+- preserves all prior successful and failed evidence unchanged.
+
+### Required R6 completion evidence
+
+- Python and workflow syntax success;
+- bounded canonical collection with zero application tests executed;
+- all field-specific and paired mutation fixtures passing through their intended diagnostics;
+- finalized schema-2 receipt and authenticated provisional-to-final enforcement;
+- replacement six-file artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R6 exclusions
+
+R6 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+It does not authorize merge, cleanup, Phase B, deployment, migration,
+production activation, risk acceptance, or self-review.
+
+### Preserved R6 exact-head diagnostic
+
+- Run 82 (`29866873768`) at `543491f996036bf12018b2a7d439156de8082a60` passed syntax, bounded collection, validator execution, receipt finalization, and artifact upload. Final enforcement failed because the inherited final-receipt reference fixture expected the former unqualified `log_file` diagnostic while R6 emits the stronger qualified `collection.log_file` diagnostic.
+- The run and artifact remain preserved as failed implementation evidence. The correction changes only the fixture's expected diagnostic substring and does not weaken receipt reference authentication.
+

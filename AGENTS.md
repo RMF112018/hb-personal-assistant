@@ -94,6 +94,36 @@ use `git reset --hard`, broad `git clean`, forced worktree removal, or
 `git branch -D`. Local worktree removal, local branch deletion, and remote
 branch deletion are separate governed actions.
 
+## Test Selection and Failure Disposition
+
+All agents must read and follow:
+
+```text
+.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md
+docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md
+```
+
+Testing must be proportional to the active objective and demonstrated blast
+radius. Every mandatory suite must map to an acceptance criterion, changed
+behavior or dependency, shared-infrastructure risk, named regression risk, or
+merge/release gate. Do not run broad suites or unrelated canaries after every
+edit or agent turn.
+
+Every failure must be preserved and classified. A failure may be treated as
+pre-existing only when it reproduces on the immutable base SHA under a
+materially equivalent command and environment, or equivalent direct evidence
+establishes causality. A filename or domain label is not sufficient.
+
+A candidate regression remains in the active work item. A proven pre-existing
+failure requires a separately authorized corrective work item. Parallel
+correction requires a separately registered branch/worktree, non-overlapping
+edit ownership, separate evidence and review, and no shared schema, migrator,
+global-fixture, dependency, security, or other common-surface conflict. The
+primary agent may not self-authorize or activate that corrective stream.
+
+Focused implementation may continue under those conditions, but no integrated
+candidate is merge-ready while a required safe test has an unresolved failure.
+
 ## Canonical Agent Skills
 
 The sole canonical AEOS skill corpus is:
@@ -144,7 +174,9 @@ Agents must:
 - distinguish verified facts, unverified claims, assumptions, unknowns, and
   unavailable evidence;
 - produce evidence for implementation and readiness claims;
+- select tests under the repository test-selection standard;
 - run required tests or explain exactly why they were not run;
+- classify and preserve every observed failure;
 - report deviations before proceeding;
 - preserve failed and invalid evidence runs;
 - leave findings and disposition history traceable;
@@ -166,6 +198,8 @@ Agents must not, without explicit operator approval:
 - deploy or activate production services;
 - run irreversible migrations;
 - weaken tests, thresholds, evidence requirements, or safeguards;
+- waive, hide, or silently ignore a failing required test;
+- expand the active work item to correct unrelated failures;
 - remove unrelated safeguards or tests;
 - accept risk;
 - approve their own plan or implementation;
@@ -180,6 +214,8 @@ When multiple agents participate:
 - an audit context must not patch the implementation it is auditing;
 - external model recommendations do not constitute operator authorization;
 - corrective implementation may address only authorized findings;
+- parallel failure correction requires a separate work item, authorization,
+  registered branch/worktree, evidence package, and review context;
 - a model may recommend a next gate but may not approve it.
 
 ## Required Final Report
@@ -193,12 +229,15 @@ Implementation and corrective agents must provide:
 5. Files changed.
 6. Implementation summary.
 7. Acceptance-criteria matrix.
-8. Tests executed and exact results.
-9. Evidence paths and hashes.
-10. Deviations.
-11. Known issues, residual risks, and unverified areas.
-12. Final Git status.
-13. Branch/worktree lifecycle state and cleanup, retention, or blocker receipt.
-14. Recommended next gate.
+8. Tests executed, selection rationale, and exact results.
+9. Failure classifications and base/candidate evidence.
+10. Corrective work-item and branch identities when applicable.
+11. Evidence paths and hashes.
+12. Deviations.
+13. Known issues, residual risks, and unverified areas.
+14. Integrated-green status.
+15. Final Git status.
+16. Branch/worktree lifecycle state and cleanup, retention, or blocker receipt.
+17. Recommended next gate.
 
 A recommendation is not an authorization.
