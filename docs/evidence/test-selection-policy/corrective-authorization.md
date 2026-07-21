@@ -200,7 +200,7 @@ migrations, runtime, deployment, credentials, secrets, or production surfaces.
 **Branch:** `chore/proportional-test-selection-policy-v2`  
 **Parent SHA:** `e7e4e999b11e29864b5d7876bb52a51583b38885`  
 **Pull request:** `#319`  
-**Status:** ACTIVE — bounded R4 corrective implementation  
+**Status:** CONSUMED — bounded R4 implementation complete; exact-head validation and fresh independent re-review required  
 **Authority:** Direct operator instruction, “resolve the blocking defects,” issued 2026-07-21 at approximately 14:44 America/New_York
 
 ### R4 review basis
@@ -220,15 +220,31 @@ The fresh independent R3 re-review of exact head
 - this authorization record;
 - PR #319 description and replacement exact-head evidence references.
 
-### Required R4 correction
+### Implemented R4 correction
 
-- pass externally authenticated repository, PR, branch, base SHA, head SHA, and identity-source values into `verify-receipt` and compare each exactly;
-- enforce the exact semantic validator command and all receipt evidence-file references;
-- add mutation fixtures for every identity field, validator command, and collection/validator evidence filename;
-- implement separate missing-module simulations and probes for `pytest`, `mcp`, `fastapi`, `numpy`, and `scipy` without keying solely on one literal combined-import string;
-- prove each module-specific probe exits before pytest execution and produces the expected fail-closed diagnostic;
-- preserve runs 34, 35, and 38 unchanged as historical evidence;
-- generate a new exact-head artifact and route it to a fresh independent review.
+- added required external verifier inputs for repository, PR number, branch, base SHA,
+  head SHA, and identity source and compares each receipt field exactly;
+- reconstructs and enforces the exact validator invocation from authenticated identity
+  and fixed evidence arguments;
+- compares every receipt log and exit-code reference to the exact verifier-supplied
+  evidence filename before checking stored-byte hashes;
+- executes rehashed negative fixtures for all six identity fields, the validator
+  command, and all four collection/validator evidence-file references;
+- replaces the aggregate dependency fixture with separate `pytest`, `mcp`, `fastapi`,
+  `numpy`, and `scipy` missing-module simulations;
+- each module probe parses the import statement, records the observed module set,
+  proves the named module caused failure, and confirms pytest was not invoked;
+- normalizes requirement names before validating package declarations;
+- preserves runs 34, 35, and 38 unchanged as historical evidence.
+
+### Required R4 completion evidence
+
+- exact-head syntax and bounded collection success;
+- module-specific dependency probes passing for all five required modules;
+- authenticated identity, command, and evidence-reference negative fixtures passing;
+- finalized schema-2 receipt and verifier success;
+- uploaded artifact bound to the final exact head;
+- fresh independent re-review before operator acceptance or merge consideration.
 
 ### R4 exclusions
 
