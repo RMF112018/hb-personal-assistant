@@ -2,53 +2,65 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AEOS Checkpoint Request",
   "type": "object",
-  "required": [
-    "schema_version",
-    "checkpoint_id",
-    "goal_id",
-    "current_state",
-    "disposition",
-    "repository",
-    "artifacts",
-    "operator_action_required"
-  ],
+  "required": ["schema_version", "checkpoint_id", "goal_id", "current_state", "disposition", "repository", "artifacts", "operator_action_required"],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "checkpoint_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "goal_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "current_state": {
-      "type": "string",
-      "minLength": 1
-    },
+    "schema_version": {"enum": [1, 2]},
+    "checkpoint_id": {"type": "string", "minLength": 1},
+    "goal_id": {"type": "string", "minLength": 1},
+    "current_state": {"type": "string", "minLength": 1},
+    "state_status": {"type": "string"},
     "disposition": {
-      "enum": [
-        "READY_FOR_EXTERNAL_REVIEW",
-        "IMPLEMENTATION_COMPLETE_PENDING_AUDIT",
-        "CORRECTIVE_WORK_READY_FOR_REAUDIT",
-        "BLOCKED",
-        "INSUFFICIENT_EVIDENCE",
-        "ENVIRONMENT_INVALID",
-        "FAILED_BOUNDED",
-        "OPERATOR_AUTHORIZATION_REQUIRED"
-      ]
+      "type": "string",
+      "enum": ["READY_FOR_EXTERNAL_REVIEW", "IMPLEMENTATION_COMPLETE_PENDING_AUDIT", "CORRECTIVE_WORK_READY_FOR_REAUDIT", "READY_FOR_MERGE_REVIEW", "MERGED_PENDING_CLEANUP", "POST_MERGE_VALIDATION_COMPLETE", "CLOSEOUT_READY_FOR_OPERATOR_DECISION", "BLOCKED", "INSUFFICIENT_EVIDENCE", "ENVIRONMENT_INVALID", "FAILED_BOUNDED", "OPERATOR_AUTHORIZATION_REQUIRED"]
     },
     "repository": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "path": {"type": ["string", "null"]},
+        "remote": {"type": ["string", "null"]},
+        "branch": {"type": ["string", "null"]},
+        "worktree_id": {"type": ["string", "null"]},
+        "worktree_path": {"type": ["string", "null"]},
+        "baseline_sha": {"type": ["string", "null"]},
+        "current_sha": {"type": ["string", "null"]},
+        "base_sha": {"type": ["string", "null"]},
+        "head_sha": {"type": ["string", "null"]},
+        "pull_request": {"type": ["integer", "null"]},
+        "dirty": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
     },
-    "artifacts": {
-      "type": "array"
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "merge_status": {"type": "string"},
+        "post_merge_validation": {"type": "string"},
+        "cleanup_disposition": {"type": "string"},
+        "closure_status": {"type": "string"}
+      },
+      "additionalProperties": false
     },
-    "operator_action_required": {
-      "const": true
-    }
+    "artifacts": {"type": "array"},
+    "claims": {"type": "object"},
+    "test_failures": {"type": "array"},
+    "deviations": {"type": "array"},
+    "unresolved_findings": {"type": "array"},
+    "closeout_receipts": {"type": "array"},
+    "requested_next_state": {"type": ["string", "null"]},
+    "operator_action_required": {"const": true},
+    "created_at": {"type": ["string", "null"]}
   },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": 2}}},
+      "then": {
+        "required": ["state_status", "lifecycle", "claims", "test_failures", "closeout_receipts"],
+        "properties": {
+          "repository": {"required": ["remote", "branch", "worktree_id", "worktree_path", "base_sha", "head_sha", "pull_request", "dirty"]},
+          "lifecycle": {"required": ["merge_status", "post_merge_validation", "cleanup_disposition", "closure_status"]}
+        }
+      }
+    }
+  ],
   "additionalProperties": true
 }
