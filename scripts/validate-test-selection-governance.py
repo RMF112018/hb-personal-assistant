@@ -4,14 +4,17 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
-from typing import Any
+import tempfile
+from typing import Any, Callable
 
 import yaml
 
@@ -38,27 +41,16 @@ REQUIRED_PATHS = (
     "scripts/validate-test-selection-governance.py",
 )
 
-ALLOWED_CHANGED_PATHS = {
+ALLOWED_CHANGED_PATHS = set(REQUIRED_PATHS)
+
+EXPECTED_FRONTMATTER_PATHS = {
     ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
     ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
     ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
-    ".github/ISSUE_TEMPLATE/test-failure.yml",
-    ".github/workflows/test-selection-governance.yml",
-    "AGENTS.md",
-    "AI_OPERATING_MANUAL.md",
-    "CLAUDE.md",
     "docs/decisions/ADR-019-github-first-engineering-control-plane.md",
     "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md",
-    "docs/decisions/README.md",
-    "docs/governance/README.md",
     "docs/governance/branch-worktree-lifecycle-policy.md",
-    "docs/governance/test-failure-triage.md",
     "docs/implementation-plans/github-first-control-plane-migration.md",
-    "docs/testing/forecasting-and-schedule-test-bundles.md",
-    "docs/evidence/test-selection-policy/branch-registration.yaml",
-    "docs/evidence/test-selection-policy/corrective-authorization.md",
-    "scripts/test-safe.sh",
-    "scripts/validate-test-selection-governance.py",
 }
 
 NORMAL_TRANSITIONS = {
@@ -79,6 +71,40 @@ NORMAL_TRANSITIONS = {
     ("CLEANUP_VERIFIED", "CLOSED"),
 }
 
+REQUIRED_ISSUE_IDS = {
+    "source_work_item",
+    "discovered_at",
+    "candidate_sha",
+    "command",
+    "environment",
+    "failing_ids",
+    "classification",
+    "triage_owner",
+    "base_evidence",
+    "affected_gate",
+    "current_disposition",
+    "authorization_state",
+    "corrective_identity",
+    "review_result",
+    "integrated_candidate_result",
+    "closure_evidence",
+}
+
+DISCOVERY_REQUIRED_ISSUE_IDS = {
+    "source_work_item",
+    "discovered_at",
+    "candidate_sha",
+    "command",
+    "environment",
+    "failing_ids",
+    "classification",
+    "triage_owner",
+    "base_evidence",
+    "affected_gate",
+    "current_disposition",
+    "authorization_state",
+}
+
 
 def fail(message: str) -> None:
     raise ValueError(message)
@@ -91,14 +117,14 @@ def read_text(root: Path, rel: str) -> str:
     return path.read_text(encoding="utf-8-sig")
 
 
-def parse_frontmatter(root: Path, rel: str) -> tuple[dict[str, Any], str]:
-    text = read_text(root, rel)
+def parse_frontmatter_text(text: str, rel: str) -> tuple[dict[str, Any], str]:
     if not text.startswith("---\n"):
         fail(f"missing YAML front matter: {rel}")
-    try:
-        _, front, body = text.split("---", 2)
-    except ValueError as exc:
-        raise ValueError(f"invalid front matter boundary: {rel}") from exc
+    end = text.find("\n---\n", 4)
+    if end < 0:
+        fail(f"invalid front matter boundary: {rel}")
+    front = text[4:end]
+    body = text[end + 5 :]
     data = yaml.safe_load(front)
     if not isinstance(data, dict):
         fail(f"front matter is not a mapping: {rel}")
@@ -119,6 +145,202 @@ def require_contains(text: str, needle: str, rel: str) -> None:
         fail(f"{rel} missing required contract: {needle}")
 
 
+def expect_failure(action: Callable[[], None], label: str) -> None:
+    try:
+        action()
+    except ValueError:
+        return
+    fail(f"negative validation fixture unexpectedly passed: {label}")
+
+
+def validate_issue_form(issue_form: Any) -> None:
+    if not isinstance(issue_form, dict):
+        fail("test-failure issue form is not a mapping")
+    required_top = {"name", "description", "body"}
+    missing_top = required_top - set(issue_form)
+    if missing_top:
+        fail(f"test-failure issue form missing top-level fields: {sorted(missing_top)}")
+    if "about" in issue_form:
+        fail("GitHub issue forms use top-level description, not about")
+    for field in ("name", "description"):
+        value = issue_form.get(field)
+        if not isinstance(value, str) or not value.strip():
+            fail(f"test-failure issue form {field} must be a non-empty string")
+    labels = issue_form.get("labels", [])
+    if not isinstance(labels, list) or any(not isinstance(item, str) for item in labels):
+        fail("test-failure issue form labels must be a list of strings")
+    body = issue_form.get("body")
+    if not isinstance(body, list) or not body:
+        fail("test-failure issue form body must be a non-empty list")
+
+    ids: set[str] = set()
+    required_by_id: dict[str, bool] = {}
+    for index, entry in enumerate(body):
+        if not isinstance(entry, dict):
+            fail(f"issue-form body entry {index} is not a mapping")
+        field_type = entry.get("type")
+        if field_type not in {"markdown", "input", "textarea", "dropdown", "checkboxes"}:
+            fail(f"issue-form body entry {index} has unsupported type: {field_type}")
+        attributes = entry.get("attributes")
+        if not isinstance(attributes, dict):
+            fail(f"issue-form body entry {index} lacks attributes mapping")
+        if field_type == "markdown":
+            if not isinstance(attributes.get("value"), str) or not attributes["value"].strip():
+                fail(f"issue-form markdown entry {index} lacks value")
+            continue
+
+        field_id = entry.get("id")
+        if not isinstance(field_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", field_id):
+            fail(f"issue-form entry {index} has invalid id")
+        if field_id in ids:
+            fail(f"issue-form duplicate id: {field_id}")
+        ids.add(field_id)
+        if not isinstance(attributes.get("label"), str) or not attributes["label"].strip():
+            fail(f"issue-form field {field_id} lacks label")
+        if field_type == "dropdown":
+            options = attributes.get("options")
+            if not isinstance(options, list) or len(options) < 2 or any(
+                not isinstance(option, str) or not option.strip() for option in options
+            ):
+                fail(f"issue-form dropdown {field_id} requires at least two string options")
+        validations = entry.get("validations", {})
+        if not isinstance(validations, dict):
+            fail(f"issue-form field {field_id} validations must be a mapping")
+        required = validations.get("required", False)
+        if not isinstance(required, bool):
+            fail(f"issue-form field {field_id} required must be boolean")
+        required_by_id[field_id] = required
+
+    missing_ids = REQUIRED_ISSUE_IDS - ids
+    if missing_ids:
+        fail(f"test-failure issue form missing IDs: {sorted(missing_ids)}")
+    not_required = sorted(
+        field_id for field_id in DISCOVERY_REQUIRED_ISSUE_IDS if not required_by_id.get(field_id)
+    )
+    if not_required:
+        fail(f"discovery-time issue fields must be required: {not_required}")
+
+
+def run_probe(
+    root: Path, *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", "scripts/test-safe.sh", *args],
+        cwd=root,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def require_probe_result(
+    proc: subprocess.CompletedProcess[str], expected_code: int, needle: str, label: str
+) -> None:
+    combined = proc.stdout + proc.stderr
+    if proc.returncode != expected_code or needle not in combined:
+        fail(
+            f"safe-suite probe {label} failed: code={proc.returncode}, "
+            f"expected={expected_code}, output={combined!r}"
+        )
+
+
+def validate_safe_suite(root: Path, safe_script: str) -> None:
+    for forbidden in ("/Users/", "/home/", "C:\\Users\\"):
+        if forbidden in safe_script:
+            fail(f"safe suite contains operator-specific absolute path: {forbidden}")
+    required_tokens = (
+        'candidate="$ROOT/.venv/bin/python"',
+        "Python 3.12 or newer",
+        "import pytest",
+        "not integration and not manual and not live",
+        'export PYTHONPATH="$ROOT/src:$ROOT/subrepos/construction-financial-review/src',
+        "npm test",
+        "unsupported argument",
+        "cannot be combined with --frontend-only",
+    )
+    for token in required_tokens:
+        require_contains(safe_script, token, "safe suite")
+    if re.search(r'PYTHON_BIN=["\']python["\']', safe_script):
+        fail("safe suite must not fall back to a generic python command")
+
+    base_env = os.environ.copy()
+    invalid_arg = run_probe(root, "tests/test_example.py", env=base_env)
+    require_probe_result(invalid_arg, 2, "unsupported argument", "arbitrary target")
+    no_component = run_probe(root, "--python-only", "--frontend-only", env=base_env)
+    require_probe_result(no_component, 2, "no suite component selected", "contradictory modes")
+    bad_collect = run_probe(root, "--collect-only", "--frontend-only", env=base_env)
+    require_probe_result(
+        bad_collect, 2, "cannot be combined with --frontend-only", "frontend collect-only"
+    )
+
+    missing_env = base_env | {"PYTHON": "/definitely/not/a/python/executable"}
+    missing = run_probe(root, "--collect-only", "--python-only", env=missing_env)
+    require_probe_result(missing, 3, "no compliant Python interpreter", "missing interpreter")
+
+    spaced_env = base_env | {"PYTHON": "python -O"}
+    spaced = run_probe(root, "--collect-only", "--python-only", env=spaced_env)
+    require_probe_result(spaced, 3, "exactly one executable", "interpreter arguments")
+
+    with tempfile.TemporaryDirectory(prefix="pr319-safe-suite-") as tmp:
+        temp = Path(tmp)
+        log_path = temp / "probe.json"
+        good = temp / "python-good"
+        good.write_text(
+            """#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import sys
+args = sys.argv[1:]
+if args[:1] == ['-c']:
+    code = args[1] if len(args) > 1 else ''
+    if 'sys.version_info' in code or 'import pytest' in code:
+        raise SystemExit(0)
+if args[:2] == ['-m', 'pytest']:
+    Path(os.environ['SAFE_SUITE_PROBE_LOG']).write_text(json.dumps(args), encoding='utf-8')
+    raise SystemExit(0)
+raise SystemExit(9)
+""",
+            encoding="utf-8",
+        )
+        good.chmod(0o755)
+        good_env = base_env | {
+            "PYTHON": str(good),
+            "SAFE_SUITE_PROBE_LOG": str(log_path),
+        }
+        good_run = run_probe(root, "--collect-only", "--python-only", env=good_env)
+        if good_run.returncode != 0:
+            fail(f"safe-suite compliant interpreter probe failed: {good_run.stderr}")
+        observed = json.loads(log_path.read_text(encoding="utf-8"))
+        expected = [
+            "-m",
+            "pytest",
+            "-m",
+            "not integration and not manual and not live",
+            "tests",
+            "--collect-only",
+        ]
+        if observed != expected:
+            fail(f"safe-suite pytest arguments differ: {observed}")
+
+        old = temp / "python-old"
+        old.write_text(
+            """#!/usr/bin/env python3
+import sys
+args = sys.argv[1:]
+if args[:1] == ['-c'] and len(args) > 1 and 'sys.version_info' in args[1]:
+    raise SystemExit(1)
+raise SystemExit(0)
+""",
+            encoding="utf-8",
+        )
+        old.chmod(0o755)
+        old_env = base_env | {"PYTHON": str(old)}
+        old_run = run_probe(root, "--collect-only", "--python-only", env=old_env)
+        require_probe_result(old_run, 3, "Python 3.12 or newer", "old interpreter")
+
+
 def validate(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.repo_root).resolve()
     if not (root / ".git").exists():
@@ -130,59 +352,73 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
 
     changed = [
         line
-        for line in git_output(root, "diff", "--name-only", args.github_base_sha, head).splitlines()
+        for line in git_output(
+            root, "diff", "--name-only", args.github_base_sha, head
+        ).splitlines()
         if line
     ]
     unexpected = sorted(set(changed) - ALLOWED_CHANGED_PATHS)
     if unexpected:
         fail(f"unauthorized changed paths: {unexpected}")
 
-    for rel in REQUIRED_PATHS:
-        read_text(root, rel)
+    texts = {rel: read_text(root, rel) for rel in REQUIRED_PATHS}
 
-    frontmatter_paths = (
-        ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
-        ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
-        ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
-        "docs/decisions/ADR-019-github-first-engineering-control-plane.md",
-        "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md",
-        "docs/governance/branch-worktree-lifecycle-policy.md",
-        "docs/implementation-plans/github-first-control-plane-migration.md",
-    )
-    parsed_frontmatter = {rel: parse_frontmatter(root, rel)[0] for rel in frontmatter_paths}
+    parsed_frontmatter: dict[str, dict[str, Any]] = {}
+    detected_frontmatter: set[str] = set()
+    for rel, text in texts.items():
+        if rel.endswith(".md") and text.startswith("---\n"):
+            detected_frontmatter.add(rel)
+            parsed_frontmatter[rel] = parse_frontmatter_text(text, rel)[0]
+    missing_frontmatter = EXPECTED_FRONTMATTER_PATHS - detected_frontmatter
+    if missing_frontmatter:
+        fail(f"expected governed front matter missing: {sorted(missing_frontmatter)}")
 
-    yaml_paths = (
-        ".github/ISSUE_TEMPLATE/test-failure.yml",
-        ".github/workflows/test-selection-governance.yml",
-        "docs/evidence/test-selection-policy/branch-registration.yaml",
+    parsed_yaml: dict[str, dict[str, Any]] = {}
+    yaml_paths = sorted(
+        rel for rel in REQUIRED_PATHS if rel.endswith((".yml", ".yaml"))
     )
-    parsed_yaml: dict[str, Any] = {}
     for rel in yaml_paths:
-        data = yaml.safe_load(read_text(root, rel))
+        data = yaml.safe_load(texts[rel])
         if not isinstance(data, dict):
             fail(f"YAML document is not a mapping: {rel}")
         parsed_yaml[rel] = data
 
-    standard07 = read_text(root, ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md")
-    standard11 = read_text(root, ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md")
-    agents = read_text(root, "AGENTS.md")
-    claude = read_text(root, "CLAUDE.md")
-    testing = read_text(root, "docs/testing/forecasting-and-schedule-test-bundles.md")
-    safe_script = read_text(root, "scripts/test-safe.sh")
+    standard07 = texts[".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md"]
+    standard11 = texts[".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md"]
+    agents = texts["AGENTS.md"]
+    claude = texts["CLAUDE.md"]
+    testing = texts["docs/testing/forecasting-and-schedule-test-bundles.md"]
+    safe_script = texts["scripts/test-safe.sh"]
+    workflow = texts[".github/workflows/test-selection-governance.yml"]
 
     require_contains(standard07, "unmapped broad suite", "Standard 07")
     require_contains(standard07, "conflicts with Standard 11", "Standard 07")
     require_contains(standard07, "bash scripts/test-safe.sh", "Standard 07")
     require_contains(standard11, "bash scripts/test-safe.sh", "Standard 11")
     require_contains(standard11, "TF-<issue-number>", "Standard 11")
-    require_contains(agents, ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md", "AGENTS.md")
-    require_contains(claude, ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md", "CLAUDE.md")
+    require_contains(
+        agents,
+        ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
+        "AGENTS.md",
+    )
+    require_contains(
+        claude,
+        ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
+        "CLAUDE.md",
+    )
     require_contains(testing, "bash scripts/test-safe.sh", "testing guide")
-    require_contains(safe_script, "not integration and not manual and not live", "safe suite")
-    require_contains(safe_script, "tests", "safe suite")
-    require_contains(safe_script, "npm test", "safe suite")
-    require_contains(safe_script, "unsupported argument", "safe suite")
-    require_contains(safe_script, "cannot be combined with --frontend-only", "safe suite")
+
+    validate_safe_suite(root, safe_script)
+
+    workflow_tokens = (
+        "ref: ${{ github.event.pull_request.head.sha }}",
+        "python-version: '3.12'",
+        "python -m pip install -e '.[dev]'",
+        "bash scripts/test-safe.sh --collect-only --python-only",
+        "--github-head-sha '${{ github.event.pull_request.head.sha }}'",
+    )
+    for token in workflow_tokens:
+        require_contains(workflow, token, "governance workflow")
 
     branch_path = "docs/evidence/test-selection-policy/branch-registration.yaml"
     branch = parsed_yaml[branch_path]
@@ -235,11 +471,21 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         observed_state = item.get("to_state")
     if observed_state != branch.get("lifecycle_state"):
         fail("final transition state does not match lifecycle_state")
+    if observed_state != "REVIEW_PENDING":
+        fail("PR #319 branch must be REVIEW_PENDING for exact-head re-review")
 
-    adr = parsed_frontmatter["docs/decisions/ADR-019-github-first-engineering-control-plane.md"]
-    policy = parsed_frontmatter["docs/governance/branch-worktree-lifecycle-policy.md"]
-    plan = parsed_frontmatter["docs/implementation-plans/github-first-control-plane-migration.md"]
-    decision = parsed_frontmatter["docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md"]
+    adr = parsed_frontmatter[
+        "docs/decisions/ADR-019-github-first-engineering-control-plane.md"
+    ]
+    policy = parsed_frontmatter[
+        "docs/governance/branch-worktree-lifecycle-policy.md"
+    ]
+    plan = parsed_frontmatter[
+        "docs/implementation-plans/github-first-control-plane-migration.md"
+    ]
+    decision = parsed_frontmatter[
+        "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md"
+    ]
 
     if adr.get("status") != "Accepted — Phase A":
         fail("ADR-019 status is not Accepted — Phase A")
@@ -276,54 +522,59 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         fail("permanent-identity supersession lacks exact affected clauses")
 
     issue_form = parsed_yaml[".github/ISSUE_TEMPLATE/test-failure.yml"]
-    ids = {entry.get("id") for entry in issue_form.get("body", []) if isinstance(entry, dict)}
-    required_issue_ids = {
-        "source_work_item",
-        "discovered_at",
-        "failing_ids",
-        "classification",
-        "triage_owner",
-        "evidence",
-        "affected_gate",
-        "current_disposition",
-        "authorization_state",
-        "corrective_identity",
-        "closure_evidence",
-    }
-    if not required_issue_ids.issubset(ids):
-        fail(f"test-failure issue form missing IDs: {sorted(required_issue_ids - ids)}")
+    validate_issue_form(issue_form)
+    missing_description = copy.deepcopy(issue_form)
+    missing_description.pop("description", None)
+    expect_failure(
+        lambda: validate_issue_form(missing_description),
+        "issue form missing description",
+    )
+    legacy_about = copy.deepcopy(issue_form)
+    legacy_about["about"] = legacy_about.pop("description")
+    expect_failure(
+        lambda: validate_issue_form(legacy_about),
+        "issue form legacy about key",
+    )
 
-    file_hashes = {
-        rel: hashlib.sha256(read_text(root, rel).encode("utf-8")).hexdigest()
-        for rel in REQUIRED_PATHS
+    observed_hashes = {
+        rel: hashlib.sha256(text.encode("utf-8")).hexdigest()
+        for rel, text in texts.items()
     }
+    invocation = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]]
     receipt: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "result": "PASS",
         "repository": "RMF112018/hb-personal-assistant",
         "pull_request": args.pr_number,
         "branch": args.branch_name,
         "base_sha": args.github_base_sha,
         "head_sha": head,
-        "source": args.identity_source,
+        "identity_source": args.identity_source,
+        "validation_command": invocation,
+        "exit_code": 0,
         "changed_files": changed,
         "checks": {
-            "yaml_and_frontmatter": "PASS",
+            "yaml_and_frontmatter_inventory": "PASS",
             "branch_transition_graph": "PASS",
             "external_tip_semantics": "PASS",
             "standard_07_11_consistency": "PASS",
-            "safe_suite_contract": "PASS",
-            "durable_failure_ownership": "PASS",
+            "safe_suite_static_contract": "PASS",
+            "safe_suite_adversarial_probes": "PASS",
+            "issue_form_schema": "PASS",
+            "issue_form_negative_fixtures": "PASS",
             "authority_statuses": "PASS",
             "permanent_identity_traceability": "PASS",
             "authorized_diff_scope": "PASS",
+            "workflow_exact_head_and_collection_contract": "PASS",
         },
         "environment": {
             "python": sys.version.split()[0],
+            "python_executable": sys.executable,
             "platform": platform.platform(),
             "github_actions": os.environ.get("GITHUB_ACTIONS") == "true",
         },
-        "file_sha256": file_hashes,
+        "hash_scope": "observed UTF-8 source bytes at the exact validated head; not an external expected-hash manifest",
+        "observed_file_sha256": observed_hashes,
     }
     canonical = json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode()
     receipt["evidence_sha256"] = hashlib.sha256(canonical).hexdigest()
@@ -343,7 +594,22 @@ def main() -> int:
     try:
         receipt = validate(args)
     except Exception as exc:
-        print(json.dumps({"result": "FAIL", "error": str(exc)}, indent=2), file=sys.stderr)
+        print(
+            json.dumps(
+                {
+                    "result": "FAIL",
+                    "validation_command": [
+                        sys.executable,
+                        str(Path(__file__).resolve()),
+                        *sys.argv[1:],
+                    ],
+                    "exit_code": 1,
+                    "error": str(exc),
+                },
+                indent=2,
+            ),
+            file=sys.stderr,
+        )
         return 1
     rendered = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
     if args.output:
