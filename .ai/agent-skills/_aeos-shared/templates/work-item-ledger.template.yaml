@@ -1,15 +1,26 @@
-schema_version: 1
+schema_version: 2
 goal_id: GOAL-REPLACE-ME
 work_items:
   - work_item_id: WP-001
     title: Replace me
     status: PROPOSED
+    authorization_id: null
+    repository:
+      branch: null
+      worktree_id: null
+      worktree_path: null
+      base_sha: null
+      expected_head_sha: null
+      pull_request: null
     prerequisites: []
     scope: []
     out_of_scope: []
     acceptance_criteria: []
     required_tests: []
     required_evidence: []
+    evidence_representation_requirements: []
     retry_limit: 3
     stop_conditions: []
+    expected_closeout_disposition: null
     disposition: null
+    closeout_receipt: null
