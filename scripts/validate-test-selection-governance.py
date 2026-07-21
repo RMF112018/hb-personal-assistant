@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate PR #319 governance contracts against an exact GitHub head identity."""
+"""Validate PR #319 governance contracts and exact-head evidence."""
 
 from __future__ import annotations
 
@@ -14,11 +14,22 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from typing import Any, Callable
 
 import yaml
 
-REQUIRED_PATHS = (
+REPOSITORY = "RMF112018/hb-personal-assistant"
+COLLECTION_COMMAND = [
+    "bash",
+    "scripts/test-safe.sh",
+    "--collect-only",
+    "--python-only",
+]
+
+# Sources that must be readable for semantic validation. Some are intentionally
+# unchanged reference inputs and therefore are not authorized changed paths.
+REQUIRED_READ_PATHS = (
     ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
     ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
     ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
@@ -39,9 +50,34 @@ REQUIRED_PATHS = (
     "docs/evidence/test-selection-policy/corrective-authorization.md",
     "scripts/test-safe.sh",
     "scripts/validate-test-selection-governance.py",
+    "pyproject.toml",
+    "subrepos/construction-financial-review/pyproject.toml",
+    "frontend/package.json",
 )
 
-ALLOWED_CHANGED_PATHS = set(REQUIRED_PATHS)
+# Exact base-to-head contract for PR #319. This is deliberately independent of
+# REQUIRED_READ_PATHS so unchanged governing sources cannot silently become edits.
+AUTHORIZED_CHANGED_PATHS = {
+    ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
+    ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
+    ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
+    ".github/ISSUE_TEMPLATE/test-failure.yml",
+    ".github/workflows/test-selection-governance.yml",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/decisions/ADR-019-github-first-engineering-control-plane.md",
+    "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md",
+    "docs/decisions/README.md",
+    "docs/evidence/test-selection-policy/branch-registration.yaml",
+    "docs/evidence/test-selection-policy/corrective-authorization.md",
+    "docs/governance/README.md",
+    "docs/governance/branch-worktree-lifecycle-policy.md",
+    "docs/governance/test-failure-triage.md",
+    "docs/implementation-plans/github-first-control-plane-migration.md",
+    "docs/testing/forecasting-and-schedule-test-bundles.md",
+    "scripts/test-safe.sh",
+    "scripts/validate-test-selection-governance.py",
+}
 
 EXPECTED_FRONTMATTER_PATHS = {
     ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
@@ -105,6 +141,11 @@ DISCOVERY_REQUIRED_ISSUE_IDS = {
     "authorization_state",
 }
 
+COLLECTION_SUMMARY = re.compile(
+    r"(?P<selected>\d+)/(?P<total>\d+) tests collected "
+    r"\((?P<deselected>\d+) deselected\)"
+)
+
 
 def fail(message: str) -> None:
     raise ValueError(message)
@@ -115,6 +156,25 @@ def read_text(root: Path, rel: str) -> str:
     if not path.is_file():
         fail(f"missing required path: {rel}")
     return path.read_text(encoding="utf-8-sig")
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    if not path.is_file():
+        fail(f"missing evidence file: {path}")
+    return sha256_bytes(path.read_bytes())
+
+
+def read_exit_code(path: Path, label: str) -> int:
+    if not path.is_file():
+        fail(f"missing {label} exit-code file: {path}")
+    raw = path.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"-?\d+", raw):
+        fail(f"invalid {label} exit-code value: {raw!r}")
+    return int(raw)
 
 
 def parse_frontmatter_text(text: str, rel: str) -> tuple[dict[str, Any], str]:
@@ -145,12 +205,31 @@ def require_contains(text: str, needle: str, rel: str) -> None:
         fail(f"{rel} missing required contract: {needle}")
 
 
-def expect_failure(action: Callable[[], None], label: str) -> None:
+def expect_failure(
+    action: Callable[[], None], label: str, diagnostic: str | None = None
+) -> None:
     try:
         action()
-    except ValueError:
+    except ValueError as exc:
+        if diagnostic is not None and diagnostic not in str(exc):
+            fail(
+                f"negative fixture {label} failed with wrong diagnostic: {exc}; "
+                f"expected substring {diagnostic!r}"
+            )
         return
     fail(f"negative validation fixture unexpectedly passed: {label}")
+
+
+def validate_changed_paths(changed: set[str]) -> None:
+    unexpected = sorted(changed - AUTHORIZED_CHANGED_PATHS)
+    missing = sorted(AUTHORIZED_CHANGED_PATHS - changed)
+    if unexpected or missing:
+        parts: list[str] = []
+        if unexpected:
+            parts.append(f"unexpected={unexpected}")
+        if missing:
+            parts.append(f"missing={missing}")
+        fail("authorized changed-path set mismatch: " + "; ".join(parts))
 
 
 def validate_issue_form(issue_form: Any) -> None:
@@ -221,6 +300,54 @@ def validate_issue_form(issue_form: Any) -> None:
         fail(f"discovery-time issue fields must be required: {not_required}")
 
 
+def run_issue_form_negative_fixtures(issue_form: dict[str, Any]) -> None:
+    missing_description = copy.deepcopy(issue_form)
+    missing_description.pop("description", None)
+    expect_failure(
+        lambda: validate_issue_form(missing_description),
+        "issue form missing description",
+        "missing top-level fields",
+    )
+
+    legacy_about = copy.deepcopy(issue_form)
+    legacy_about["about"] = legacy_about.pop("description")
+    expect_failure(
+        lambda: validate_issue_form(legacy_about),
+        "issue form legacy about key",
+        "description, not about",
+    )
+
+    duplicate = copy.deepcopy(issue_form)
+    editable = [entry for entry in duplicate["body"] if entry.get("id")]
+    editable[1]["id"] = editable[0]["id"]
+    expect_failure(
+        lambda: validate_issue_form(duplicate),
+        "issue form duplicate ID",
+        "duplicate id",
+    )
+
+    missing_discovery = copy.deepcopy(issue_form)
+    missing_discovery["body"] = [
+        entry for entry in missing_discovery["body"] if entry.get("id") != "candidate_sha"
+    ]
+    expect_failure(
+        lambda: validate_issue_form(missing_discovery),
+        "issue form missing discovery field",
+        "missing IDs",
+    )
+
+    malformed_dropdown = copy.deepcopy(issue_form)
+    classification = next(
+        entry for entry in malformed_dropdown["body"] if entry.get("id") == "classification"
+    )
+    classification["attributes"]["options"] = ["ONLY_ONE"]
+    expect_failure(
+        lambda: validate_issue_form(malformed_dropdown),
+        "issue form malformed dropdown",
+        "at least two string options",
+    )
+
+
 def run_probe(
     root: Path, *args: str, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
@@ -245,14 +372,15 @@ def require_probe_result(
         )
 
 
-def validate_safe_suite(root: Path, safe_script: str) -> None:
+def validate_safe_suite_static(safe_script: str) -> None:
     for forbidden in ("/Users/", "/home/", "C:\\Users\\"):
         if forbidden in safe_script:
             fail(f"safe suite contains operator-specific absolute path: {forbidden}")
+
     required_tokens = (
         'candidate="$ROOT/.venv/bin/python"',
         "Python 3.12 or newer",
-        "import pytest",
+        "import pytest, mcp, fastapi, numpy, scipy",
         "not integration and not manual and not live",
         'export PYTHONPATH="$ROOT/src:$ROOT/subrepos/construction-financial-review/src',
         "npm test",
@@ -261,14 +389,74 @@ def validate_safe_suite(root: Path, safe_script: str) -> None:
     )
     for token in required_tokens:
         require_contains(safe_script, token, "safe suite")
-    if re.search(r'PYTHON_BIN=["\']python["\']', safe_script):
-        fail("safe suite must not fall back to a generic python command")
 
+    generic_patterns = (
+        r"PYTHON_BIN\s*=\s*['\"]python3?['\"]",
+        r"candidate\s*=\s*['\"]python3?['\"]",
+        r"\$\{PYTHON:-\s*python3?\}",
+        r"command\s+-v(?:\s+--)?\s+['\"]?python3?['\"]?",
+    )
+    for pattern in generic_patterns:
+        if re.search(pattern, safe_script):
+            fail(f"safe suite contains generic interpreter fallback pattern: {pattern}")
+
+
+def run_safe_suite_static_negative_fixtures(safe_script: str) -> None:
+    direct_default = safe_script.replace(
+        'candidate="$ROOT/.venv/bin/python"', 'candidate="${PYTHON:-python}"', 1
+    )
+    expect_failure(
+        lambda: validate_safe_suite_static(direct_default),
+        "alternate generic default expansion",
+        "generic interpreter fallback",
+    )
+
+    command_lookup = safe_script.replace(
+        'candidate="$ROOT/.venv/bin/python"', 'candidate="$(command -v python)"', 1
+    )
+    expect_failure(
+        lambda: validate_safe_suite_static(command_lookup),
+        "alternate generic command lookup",
+        "generic interpreter fallback",
+    )
+
+
+def write_fake_interpreter(path: Path, mode: str) -> None:
+    script = f'''#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import sys
+args = sys.argv[1:]
+mode = {mode!r}
+if args[:1] == ['-c']:
+    code = args[1] if len(args) > 1 else ''
+    if 'sys.version_info' in code:
+        raise SystemExit(1 if mode == 'old' else 0)
+    if 'import pytest, mcp, fastapi, numpy, scipy' in code:
+        raise SystemExit(1 if mode in {{'no_pytest', 'missing_dependencies'}} else 0)
+    raise SystemExit(8)
+if args[:2] == ['-m', 'pytest']:
+    if mode != 'good':
+        raise SystemExit(7)
+    log = os.environ.get('SAFE_SUITE_PROBE_LOG')
+    if log:
+        Path(log).write_text(json.dumps(args), encoding='utf-8')
+    raise SystemExit(0)
+raise SystemExit(9)
+'''
+    path.write_text(script, encoding="utf-8")
+    path.chmod(0o755)
+
+
+def validate_safe_suite_probes(root: Path) -> None:
     base_env = os.environ.copy()
     invalid_arg = run_probe(root, "tests/test_example.py", env=base_env)
     require_probe_result(invalid_arg, 2, "unsupported argument", "arbitrary target")
+
     no_component = run_probe(root, "--python-only", "--frontend-only", env=base_env)
     require_probe_result(no_component, 2, "no suite component selected", "contradictory modes")
+
     bad_collect = run_probe(root, "--collect-only", "--frontend-only", env=base_env)
     require_probe_result(
         bad_collect, 2, "cannot be combined with --frontend-only", "frontend collect-only"
@@ -285,26 +473,9 @@ def validate_safe_suite(root: Path, safe_script: str) -> None:
     with tempfile.TemporaryDirectory(prefix="pr319-safe-suite-") as tmp:
         temp = Path(tmp)
         log_path = temp / "probe.json"
+
         good = temp / "python-good"
-        good.write_text(
-            """#!/usr/bin/env python3
-import json
-import os
-from pathlib import Path
-import sys
-args = sys.argv[1:]
-if args[:1] == ['-c']:
-    code = args[1] if len(args) > 1 else ''
-    if 'sys.version_info' in code or 'import pytest' in code:
-        raise SystemExit(0)
-if args[:2] == ['-m', 'pytest']:
-    Path(os.environ['SAFE_SUITE_PROBE_LOG']).write_text(json.dumps(args), encoding='utf-8')
-    raise SystemExit(0)
-raise SystemExit(9)
-""",
-            encoding="utf-8",
-        )
-        good.chmod(0o755)
+        write_fake_interpreter(good, "good")
         good_env = base_env | {
             "PYTHON": str(good),
             "SAFE_SUITE_PROBE_LOG": str(log_path),
@@ -325,23 +496,92 @@ raise SystemExit(9)
             fail(f"safe-suite pytest arguments differ: {observed}")
 
         old = temp / "python-old"
-        old.write_text(
-            """#!/usr/bin/env python3
-import sys
-args = sys.argv[1:]
-if args[:1] == ['-c'] and len(args) > 1 and 'sys.version_info' in args[1]:
-    raise SystemExit(1)
-raise SystemExit(0)
-""",
-            encoding="utf-8",
+        write_fake_interpreter(old, "old")
+        old_run = run_probe(
+            root,
+            "--collect-only",
+            "--python-only",
+            env=base_env | {"PYTHON": str(old)},
         )
-        old.chmod(0o755)
-        old_env = base_env | {"PYTHON": str(old)}
-        old_run = run_probe(root, "--collect-only", "--python-only", env=old_env)
         require_probe_result(old_run, 3, "Python 3.12 or newer", "old interpreter")
 
+        no_pytest = temp / "python-no-pytest"
+        write_fake_interpreter(no_pytest, "no_pytest")
+        no_pytest_run = run_probe(
+            root,
+            "--collect-only",
+            "--python-only",
+            env=base_env | {"PYTHON": str(no_pytest)},
+        )
+        require_probe_result(
+            no_pytest_run,
+            3,
+            "Python dependencies are unavailable",
+            "interpreter without pytest",
+        )
 
-def validate(args: argparse.Namespace) -> dict[str, Any]:
+        missing_deps = temp / "python-missing-dependencies"
+        write_fake_interpreter(missing_deps, "missing_dependencies")
+        missing_deps_run = run_probe(
+            root,
+            "--collect-only",
+            "--python-only",
+            env=base_env | {"PYTHON": str(missing_deps)},
+        )
+        require_probe_result(
+            missing_deps_run,
+            3,
+            "Python dependencies are unavailable",
+            "missing declared dependency set",
+        )
+
+
+def validate_dependency_declarations(root_toml: bytes, subrepo_toml: bytes) -> None:
+    root_data = tomllib.loads(root_toml.decode("utf-8"))
+    subrepo_data = tomllib.loads(subrepo_toml.decode("utf-8"))
+    extras = root_data.get("project", {}).get("optional-dependencies", {})
+    required_extras = {"dev": "pytest", "mcp": "mcp", "analytics-ui": "fastapi"}
+    for extra, package in required_extras.items():
+        values = extras.get(extra)
+        if not isinstance(values, list) or not any(
+            str(item).split("[")[0].startswith(package) for item in values
+        ):
+            fail(f"root optional dependency {extra} does not declare {package}")
+    subdeps = subrepo_data.get("project", {}).get("dependencies", [])
+    for package in ("numpy", "scipy"):
+        if not isinstance(subdeps, list) or not any(
+            str(item).startswith(package) for item in subdeps
+        ):
+            fail(f"construction subrepository does not declare {package}")
+
+
+def parse_collection_log(text: str) -> dict[str, int]:
+    matches = list(COLLECTION_SUMMARY.finditer(text))
+    if not matches:
+        fail("collection log lacks selected/total/deselected summary")
+    match = matches[-1]
+    selected = int(match.group("selected"))
+    total = int(match.group("total"))
+    deselected = int(match.group("deselected"))
+    if selected + deselected != total:
+        fail("collection summary counts are inconsistent")
+    return {
+        "selected_tests": selected,
+        "total_tests": total,
+        "deselected_tests": deselected,
+        "collection_errors": 0,
+        "application_tests_executed": 0,
+    }
+
+
+def compute_evidence_hash(receipt: dict[str, Any]) -> str:
+    clean = copy.deepcopy(receipt)
+    clean.pop("evidence_sha256", None)
+    canonical = json.dumps(clean, sort_keys=True, separators=(",", ":")).encode()
+    return sha256_bytes(canonical)
+
+
+def validate_repository(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.repo_root).resolve()
     if not (root / ".git").exists():
         fail(f"not a Git checkout: {root}")
@@ -350,18 +590,26 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     if head != args.github_head_sha:
         fail(f"checkout HEAD {head} does not match authenticated head {args.github_head_sha}")
 
-    changed = [
+    changed_list = [
         line
-        for line in git_output(
-            root, "diff", "--name-only", args.github_base_sha, head
-        ).splitlines()
+        for line in git_output(root, "diff", "--name-only", args.github_base_sha, head).splitlines()
         if line
     ]
-    unexpected = sorted(set(changed) - ALLOWED_CHANGED_PATHS)
-    if unexpected:
-        fail(f"unauthorized changed paths: {unexpected}")
+    changed_set = set(changed_list)
+    validate_changed_paths(changed_set)
+    expect_failure(
+        lambda: validate_changed_paths(changed_set | {"AI_OPERATING_MANUAL.md"}),
+        "extra changed path",
+        "unexpected",
+    )
+    known_changed = next(iter(sorted(AUTHORIZED_CHANGED_PATHS)))
+    expect_failure(
+        lambda: validate_changed_paths(changed_set - {known_changed}),
+        "missing changed path",
+        "missing",
+    )
 
-    texts = {rel: read_text(root, rel) for rel in REQUIRED_PATHS}
+    texts = {rel: read_text(root, rel) for rel in REQUIRED_READ_PATHS}
 
     parsed_frontmatter: dict[str, dict[str, Any]] = {}
     detected_frontmatter: set[str] = set()
@@ -374,9 +622,7 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         fail(f"expected governed front matter missing: {sorted(missing_frontmatter)}")
 
     parsed_yaml: dict[str, dict[str, Any]] = {}
-    yaml_paths = sorted(
-        rel for rel in REQUIRED_PATHS if rel.endswith((".yml", ".yaml"))
-    )
+    yaml_paths = sorted(rel for rel in REQUIRED_READ_PATHS if rel.endswith((".yml", ".yaml")))
     for rel in yaml_paths:
         data = yaml.safe_load(texts[rel])
         if not isinstance(data, dict):
@@ -408,20 +654,29 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     )
     require_contains(testing, "bash scripts/test-safe.sh", "testing guide")
 
-    validate_safe_suite(root, safe_script)
+    validate_safe_suite_static(safe_script)
+    run_safe_suite_static_negative_fixtures(safe_script)
+    validate_safe_suite_probes(root)
+    validate_dependency_declarations(
+        (root / "pyproject.toml").read_bytes(),
+        (root / "subrepos/construction-financial-review/pyproject.toml").read_bytes(),
+    )
 
     workflow_tokens = (
         "ref: ${{ github.event.pull_request.head.sha }}",
         "python-version: '3.12'",
         "python -m pip install -e '.[dev]'",
         "bash scripts/test-safe.sh --collect-only --python-only",
-        "--github-head-sha '${{ github.event.pull_request.head.sha }}'",
+        "validate --github-head-sha '${{ github.event.pull_request.head.sha }}'",
+        "finalize-receipt",
+        "verify-receipt",
+        "pr319-safe-collection.exitcode",
+        "pr319-governance-validator.exitcode",
     )
     for token in workflow_tokens:
         require_contains(workflow, token, "governance workflow")
 
-    branch_path = "docs/evidence/test-selection-policy/branch-registration.yaml"
-    branch = parsed_yaml[branch_path]
+    branch = parsed_yaml["docs/evidence/test-selection-policy/branch-registration.yaml"]
     if branch.get("schema_version") != 2:
         fail("branch registration must use schema_version 2")
     if "branch_tip_sha" in branch or "candidate_head_sha" in branch:
@@ -486,7 +741,6 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     decision = parsed_frontmatter[
         "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md"
     ]
-
     if adr.get("status") != "Accepted — Phase A":
         fail("ADR-019 status is not Accepted — Phase A")
     if policy.get("status") != "Accepted — Phase A":
@@ -523,49 +777,64 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
 
     issue_form = parsed_yaml[".github/ISSUE_TEMPLATE/test-failure.yml"]
     validate_issue_form(issue_form)
-    missing_description = copy.deepcopy(issue_form)
-    missing_description.pop("description", None)
-    expect_failure(
-        lambda: validate_issue_form(missing_description),
-        "issue form missing description",
-    )
-    legacy_about = copy.deepcopy(issue_form)
-    legacy_about["about"] = legacy_about.pop("description")
-    expect_failure(
-        lambda: validate_issue_form(legacy_about),
-        "issue form legacy about key",
-    )
+    run_issue_form_negative_fixtures(issue_form)
+
+    collection_log_path = (root / args.collection_log).resolve()
+    collection_exit_path = (root / args.collection_exitcode_file).resolve()
+    collection_exit = read_exit_code(collection_exit_path, "collection")
+    if collection_exit != 0:
+        fail(f"bounded collection exit code is {collection_exit}, expected 0")
+    collection_text = collection_log_path.read_text(encoding="utf-8", errors="replace")
+    collection_counts = parse_collection_log(collection_text)
 
     observed_hashes = {
-        rel: hashlib.sha256(text.encode("utf-8")).hexdigest()
-        for rel, text in texts.items()
+        rel: sha256_bytes(text.encode("utf-8")) for rel, text in texts.items()
     }
     invocation = [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]]
     receipt: dict[str, Any] = {
         "schema_version": 2,
         "result": "PASS",
-        "repository": "RMF112018/hb-personal-assistant",
+        "repository": REPOSITORY,
         "pull_request": args.pr_number,
         "branch": args.branch_name,
         "base_sha": args.github_base_sha,
         "head_sha": head,
         "identity_source": args.identity_source,
-        "validation_command": invocation,
-        "exit_code": 0,
-        "changed_files": changed,
+        "changed_files": sorted(changed_set),
+        "authorized_changed_paths": sorted(AUTHORIZED_CHANGED_PATHS),
+        "collection": {
+            "command": COLLECTION_COMMAND,
+            "exit_code": collection_exit,
+            **collection_counts,
+            "log_file": args.collection_log,
+            "log_sha256": sha256_file(collection_log_path),
+            "exitcode_file": args.collection_exitcode_file,
+            "exitcode_file_sha256": sha256_file(collection_exit_path),
+        },
+        "validator": {
+            "command": invocation,
+            "exit_code": 0,
+            "log_file": args.validator_log_name,
+            "log_sha256": None,
+            "exitcode_file": args.validator_exitcode_name,
+            "exitcode_file_sha256": None,
+        },
         "checks": {
             "yaml_and_frontmatter_inventory": "PASS",
             "branch_transition_graph": "PASS",
             "external_tip_semantics": "PASS",
             "standard_07_11_consistency": "PASS",
             "safe_suite_static_contract": "PASS",
+            "safe_suite_static_negative_fixtures": "PASS",
             "safe_suite_adversarial_probes": "PASS",
+            "safe_suite_dependency_declarations": "PASS",
             "issue_form_schema": "PASS",
             "issue_form_negative_fixtures": "PASS",
             "authority_statuses": "PASS",
             "permanent_identity_traceability": "PASS",
-            "authorized_diff_scope": "PASS",
-            "workflow_exact_head_and_collection_contract": "PASS",
+            "authorized_diff_scope_exact": "PASS",
+            "authorized_diff_scope_negative_fixtures": "PASS",
+            "workflow_exact_head_collection_and_receipt_contract": "PASS",
         },
         "environment": {
             "python": sys.version.split()[0],
@@ -573,32 +842,161 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
             "platform": platform.platform(),
             "github_actions": os.environ.get("GITHUB_ACTIONS") == "true",
         },
-        "hash_scope": "observed UTF-8 source bytes at the exact validated head; not an external expected-hash manifest",
+        "hash_scope": {
+            "repository_sources": "observed UTF-8 source bytes at the exact validated head; not an external expected-hash manifest",
+            "artifact_evidence": "stored raw bytes for collection and validator logs and exit-code files",
+        },
         "observed_file_sha256": observed_hashes,
     }
-    canonical = json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode()
-    receipt["evidence_sha256"] = hashlib.sha256(canonical).hexdigest()
+    receipt["evidence_sha256"] = compute_evidence_hash(receipt)
     return receipt
 
 
-def main() -> int:
+def finalize_receipt(args: argparse.Namespace) -> dict[str, Any]:
+    input_path = Path(args.input).resolve()
+    receipt = json.loads(input_path.read_text(encoding="utf-8"))
+    if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
+        fail("partial receipt is not a schema-2 PASS receipt")
+
+    validator_log = Path(args.validator_log).resolve()
+    validator_exit_path = Path(args.validator_exitcode_file).resolve()
+    validator_exit = read_exit_code(validator_exit_path, "validator")
+    if validator_exit != 0:
+        fail(f"validator exit code is {validator_exit}, expected 0")
+
+    validator = receipt.get("validator")
+    if not isinstance(validator, dict):
+        fail("partial receipt lacks validator section")
+    if validator.get("exit_code") != validator_exit:
+        fail("partial receipt validator exit code does not match captured file")
+    validator["log_file"] = args.validator_log
+    validator["log_sha256"] = sha256_file(validator_log)
+    validator["exitcode_file"] = args.validator_exitcode_file
+    validator["exitcode_file_sha256"] = sha256_file(validator_exit_path)
+
+    receipt["finalizer"] = {
+        "command": [sys.executable, str(Path(__file__).resolve()), *sys.argv[1:]],
+        "exit_code": 0,
+    }
+    receipt["evidence_sha256"] = compute_evidence_hash(receipt)
+    return receipt
+
+
+def verify_receipt(args: argparse.Namespace) -> None:
+    receipt_path = Path(args.receipt).resolve()
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
+        fail("final receipt is not schema-2 PASS")
+    if receipt.get("evidence_sha256") != compute_evidence_hash(receipt):
+        fail("receipt evidence SHA-256 mismatch")
+
+    collection = receipt.get("collection")
+    validator = receipt.get("validator")
+    if not isinstance(collection, dict) or not isinstance(validator, dict):
+        fail("receipt lacks collection or validator section")
+    if collection.get("command") != COLLECTION_COMMAND:
+        fail("receipt collection command mismatch")
+    if collection.get("application_tests_executed") != 0:
+        fail("receipt must record zero application tests executed")
+
+    collection_log = Path(args.collection_log).resolve()
+    collection_exit_path = Path(args.collection_exitcode_file).resolve()
+    validator_log = Path(args.validator_log).resolve()
+    validator_exit_path = Path(args.validator_exitcode_file).resolve()
+
+    collection_exit = read_exit_code(collection_exit_path, "collection")
+    validator_exit = read_exit_code(validator_exit_path, "validator")
+    if collection_exit != 0 or validator_exit != 0:
+        fail("captured collection and validator exit codes must both be zero")
+    if collection.get("exit_code") != collection_exit:
+        fail("receipt collection exit code mismatch")
+    if validator.get("exit_code") != validator_exit:
+        fail("receipt validator exit code mismatch")
+
+    evidence_checks = (
+        (collection, "log_sha256", collection_log),
+        (collection, "exitcode_file_sha256", collection_exit_path),
+        (validator, "log_sha256", validator_log),
+        (validator, "exitcode_file_sha256", validator_exit_path),
+    )
+    for section, key, path in evidence_checks:
+        if section.get(key) != sha256_file(path):
+            fail(f"receipt evidence hash mismatch for {path.name}")
+
+    counts = parse_collection_log(
+        collection_log.read_text(encoding="utf-8", errors="replace")
+    )
+    for key, value in counts.items():
+        if collection.get(key) != value:
+            fail(f"receipt collection field {key} does not match log")
+
+    if set(receipt.get("changed_files", [])) != AUTHORIZED_CHANGED_PATHS:
+        fail("receipt changed files do not equal exact authorized set")
+    if set(receipt.get("authorized_changed_paths", [])) != AUTHORIZED_CHANGED_PATHS:
+        fail("receipt authorized changed paths do not equal exact contract")
+
+
+def write_json(path: str | None, payload: dict[str, Any]) -> None:
+    rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    if path:
+        Path(path).write_text(rendered, encoding="utf-8")
+    print(rendered, end="")
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--repo-root", default=".")
-    parser.add_argument("--github-head-sha", required=True)
-    parser.add_argument("--github-base-sha", required=True)
-    parser.add_argument("--pr-number", required=True, type=int)
-    parser.add_argument("--branch-name", required=True)
-    parser.add_argument("--identity-source", default="authenticated-github")
-    parser.add_argument("--output")
-    args = parser.parse_args()
+    sub = parser.add_subparsers(dest="mode", required=True)
+
+    validate_parser = sub.add_parser("validate")
+    validate_parser.add_argument("--repo-root", default=".")
+    validate_parser.add_argument("--github-head-sha", required=True)
+    validate_parser.add_argument("--github-base-sha", required=True)
+    validate_parser.add_argument("--pr-number", required=True, type=int)
+    validate_parser.add_argument("--branch-name", required=True)
+    validate_parser.add_argument("--identity-source", default="authenticated-github")
+    validate_parser.add_argument("--collection-log", required=True)
+    validate_parser.add_argument("--collection-exitcode-file", required=True)
+    validate_parser.add_argument(
+        "--validator-log-name", default="pr319-governance-validator.log"
+    )
+    validate_parser.add_argument(
+        "--validator-exitcode-name", default="pr319-governance-validator.exitcode"
+    )
+    validate_parser.add_argument("--output", required=True)
+
+    finalize_parser = sub.add_parser("finalize-receipt")
+    finalize_parser.add_argument("--input", required=True)
+    finalize_parser.add_argument("--output", required=True)
+    finalize_parser.add_argument("--validator-log", required=True)
+    finalize_parser.add_argument("--validator-exitcode-file", required=True)
+
+    verify_parser = sub.add_parser("verify-receipt")
+    verify_parser.add_argument("--receipt", required=True)
+    verify_parser.add_argument("--collection-log", required=True)
+    verify_parser.add_argument("--collection-exitcode-file", required=True)
+    verify_parser.add_argument("--validator-log", required=True)
+    verify_parser.add_argument("--validator-exitcode-file", required=True)
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
     try:
-        receipt = validate(args)
+        if args.mode == "validate":
+            write_json(args.output, validate_repository(args))
+        elif args.mode == "finalize-receipt":
+            write_json(args.output, finalize_receipt(args))
+        elif args.mode == "verify-receipt":
+            verify_receipt(args)
+            print(json.dumps({"result": "PASS", "receipt": args.receipt}, indent=2))
+        else:  # pragma: no cover
+            fail(f"unsupported mode: {args.mode}")
     except Exception as exc:
         print(
             json.dumps(
                 {
                     "result": "FAIL",
-                    "validation_command": [
+                    "command": [
                         sys.executable,
                         str(Path(__file__).resolve()),
                         *sys.argv[1:],
@@ -611,10 +1009,6 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-    rendered = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
-    if args.output:
-        Path(args.output).write_text(rendered, encoding="utf-8")
-    print(rendered, end="")
     return 0
 
 
