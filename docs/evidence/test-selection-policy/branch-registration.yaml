@@ -1,11 +1,14 @@
-schema_version: 1
+schema_version: 2
 branch_id: BR-TEST-SELECTION-POLICY-001
 repository: RMF112018/hb-personal-assistant
 local_branch: null
 remote_name: origin
 remote_branch: chore/proportional-test-selection-policy-v2
 remote_tracking_ref: refs/remotes/origin/chore/proportional-test-selection-policy-v2
-branch_tip_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
+registration_tip_sha: 8b44cbd216d531a1894b4257355469edf922029f
+current_tip_authority: authenticated_github
+current_tip_recorded_in_repository: false
+review_candidate_binding: external_exact_sha_review
 base_branch: main
 base_sha: 8b44cbd216d531a1894b4257355469edf922029f
 owner_or_agent: OpenAI ChatGPT, operator-directed
@@ -19,12 +22,11 @@ expected_disposition: remove-after-merge
 lifecycle_state: REVIEW_PENDING
 retention_reason: null
 next_review_at: null
-candidate_head_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
 validation:
-  code_tests: not_applicable
-  reason: Documentation, governance, and lifecycle evidence only; no executable code, test target, script, dependency, schema, or runtime file changed.
+  application_tests: not_applicable
+  executable_governance_validation: required
+  reason: Corrective scope changes governance contracts and adds safe-suite and validator scripts; validate those exact surfaces, not unrelated application suites.
   compare_base: 8b44cbd216d531a1894b4257355469edf922029f
-  changed_files: 8
 transitions:
   - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REGISTER
     entity_type: branch
@@ -34,8 +36,9 @@ transitions:
     occurred_at: 2026-07-21T05:40:38-04:00
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: 8b44cbd216d531a1894b4257355469edf922029f
     evidence: docs/evidence/test-selection-policy/branch-registration.yaml
-    reason: Register branch created from merged Phase A commit before substantive policy edits.
+    reason: Register the branch before substantive policy work.
   - transition_id: TR-BR-TEST-SELECTION-POLICY-001-ACTIVE
     entity_type: branch
     entity_id: BR-TEST-SELECTION-POLICY-001
@@ -44,9 +47,10 @@ transitions:
     occurred_at: 2026-07-21T05:40:38-04:00
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: 8b44cbd216d531a1894b4257355469edf922029f
     evidence: docs/evidence/test-selection-policy/branch-registration.yaml
-    reason: Begin bounded repository governance changes for proportional test selection and unrelated-failure handling.
-  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW
+    reason: Begin bounded proportional-test governance implementation.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R1
     entity_type: branch
     entity_id: BR-TEST-SELECTION-POLICY-001
     from_state: ACTIVE
@@ -54,5 +58,39 @@ transitions:
     occurred_at: 2026-07-21T05:49:00-04:00
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
-    reason: Policy package completed, validated as documentation-only, and submitted for independent review.
+    reason: Submit initial package for exact-head independent review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T09:45:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-R1
+    evidence_parent_sha: 3f008f4ba7e64a0036ecee913a9eaab24cfa1e75
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Independent review returned REVISE with findings PR319-GOV-F-001 through F-008.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T10:00:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-20260721-001
+    evidence_parent_sha: 3f008f4ba7e64a0036ecee913a9eaab24cfa1e75
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded corrective implementation for the eight review findings.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T10:36:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-20260721-001
+    evidence_parent_sha: fe0b6563572b1c731a385250c5fb1cc45b36a38f
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Corrective package complete; current tip and review candidate are resolved externally from authenticated GitHub state.
