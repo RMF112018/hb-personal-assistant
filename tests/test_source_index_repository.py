@@ -495,6 +495,11 @@ _CAT_GETATTR = "unsupported_dynamic_getattr"
 _CAT_SCRIPT = "unsupported_sql_execution_form"
 _CAT_CYCLE = "cyclic_definition"
 _CAT_INCONSISTENT = "inconsistent_candidate_classification"
+# R3C: mutually-exclusive IfExp SQL alternatives reaching a registered table (no canonical
+# "all-applied" value) — genuinely-distinct non-empty branches, an exact-empty optional-suffix whose
+# completed candidates disagree on registered-table set / authority class, or a prefix-related branch
+# forming a DIFFERENT registered identifier.
+_CAT_AMBIGUOUS_ALT = "ambiguous_sql_alternatives"
 
 # Bounded enumeration (PLAN-R3B-F-008/F-022): at most N=5 admissible one-shot conditional append sites
 # per execute call (≤ 32 candidate strings). AST inspection at 74697519 shows observed max = 3
@@ -529,14 +534,23 @@ def _pos(node: ast.AST) -> tuple[int, int]:
 class _Recon:
     """Reconstruction result for one SQL expression at one execute call: the deterministic §(a3)
     representative (all admissible appends applied, source order), the full set of runtime candidate
-    strings (conditional appends forked), and the count of admissible conditional append sites."""
+    strings (conditional appends + IfExp alternatives forked), and the count of admissible conditional
+    append sites.
 
-    __slots__ = ("rep", "candidates", "cond")
+    R3C deferred-representative model (PLAN-R3C-F-008): ``rep`` is ``str | None``. It is a single
+    resolved string for an all-constant / single-name / all-applied conditional-append / admissible
+    exact-empty optional-suffix / identical-IfExp-branch reconstruction, and ``None`` (UNRESOLVED) when a
+    genuinely-distinct IfExp (two non-empty, non-identical branches) contributes — never a branch picked
+    arbitrarily to keep a rep alive. ``ifexp_optional`` records that an admissible exact-empty
+    optional-suffix IfExp folded into this reconstruction (drives the call-level (iii)/(iv) gate)."""
 
-    def __init__(self, rep: str, candidates, cond: int) -> None:
+    __slots__ = ("rep", "candidates", "cond", "ifexp_optional")
+
+    def __init__(self, rep: str | None, candidates, cond: int, ifexp_optional: bool = False) -> None:
         self.rep = rep
         self.candidates = frozenset(candidates)
         self.cond = cond
+        self.ifexp_optional = ifexp_optional
 
 
 def _scope_parents(func: ast.AST) -> tuple[dict, dict]:
@@ -636,16 +650,45 @@ def _name_assignments(func: ast.AST) -> dict:
 
 def _combine(left: _Recon, right: _Recon) -> _Recon:
     """Concatenate two reconstructions (BinOp ``+`` / JoinedStr fold): representative = rep+rep, the
-    candidate set is the (bounded) Cartesian product, conditional-site counts add."""
+    candidate set is the (bounded) Cartesian product, conditional-site counts add. The representative is
+    UNRESOLVED (``None``) whenever either side is unresolved — a genuinely-distinct IfExp never has a
+    branch chosen arbitrarily to keep the combined rep alive (PLAN-R3C-F-008)."""
     cands = {a + b for a in left.candidates for b in right.candidates}
     if len(cands) > _MAX_CANDIDATES:
         raise _guard(_CAT_LIMIT, "candidate product exceeds the 32-string bound")
-    return _Recon(left.rep + right.rep, cands, left.cond + right.cond)
+    rep = None if (left.rep is None or right.rep is None) else left.rep + right.rep
+    return _Recon(
+        rep, cands, left.cond + right.cond, left.ifexp_optional or right.ifexp_optional
+    )
+
+
+def _is_safe_placeholder_generator(node: ast.AST) -> bool:
+    """R3C Fix A / F-005 EXACT recognizer of the bounded safe parameter-marker generator
+    ``",".join("?" for _ in <Name>)``. ALL must hold (any variation → not recognized → fail closed):
+    receiver is the literal ``","``; method ``join``; exactly one positional ``GeneratorExp`` arg (no
+    keywords/star); its element is the literal ``"?"``; exactly one ``comprehension``; its iterator is a
+    simple ``Name``; NO comprehension filters; NOT async. Provably yields only non-identifier ``?``
+    markers, so it can never introduce a registered table or authority-bearing column."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+        return False
+    if node.func.attr != "join" or _const_str(node.func.value) != ",":
+        return False
+    if node.keywords or len(node.args) != 1:
+        return False
+    gen = node.args[0]
+    if not isinstance(gen, ast.GeneratorExp):
+        return False
+    if _const_str(gen.elt) != "?" or len(gen.generators) != 1:
+        return False
+    comp = gen.generators[0]
+    if comp.ifs or getattr(comp, "is_async", 0):
+        return False
+    return isinstance(comp.iter, ast.Name)
 
 
 def _reconstruct_expr(node: ast.AST, ctx: dict, seen: frozenset) -> _Recon:
     """Reduce an expression to its runtime SQL candidate set + §(a3) representative, following simple
-    Name reaching-definitions / ``+`` / ``%`` / f-string / conditional fragments. Fail closed
+    Name reaching-definitions / ``+`` / ``%`` / f-string / IfExp / safe-generator fragments. Fail closed
     (category-specific ``DualAuthorityGuardError``) on anything not reducible — NEVER a silent skip.
     The governed execute call position (``ctx['call']``) threads through every recursion (F-016)."""
     s = _const_str(node)
@@ -654,24 +697,75 @@ def _reconstruct_expr(node: ast.AST, ctx: dict, seen: frozenset) -> _Recon:
     if isinstance(node, ast.Constant):
         raise _guard(_CAT_UNRECON, f"non-string constant SQL argument ({node.value!r})")
     if isinstance(node, ast.JoinedStr):
-        joined = "".join(
-            _const_str(v) if _const_str(v) is not None else "{}" for v in node.values
-        )
-        return _Recon(joined, {joined}, 0)
+        # R3C Fix A: RECURSE every FormattedValue.value (threading the governed call position + F-016
+        # rules) and fold candidates into the f-string like ``+`` — NEVER a blanket ``{}`` sentinel (a
+        # registered table supplied solely through an interpolation must fail closed, not vanish). A
+        # conversion (!s/!r/!a) or a format_spec is not reconstructable → fail closed.
+        acc = _Recon("", {""}, 0)
+        for v in node.values:
+            if isinstance(v, ast.FormattedValue):
+                if v.conversion != -1:
+                    raise _guard(_CAT_UNRECON, "f-string conversion (!s/!r/!a) is not reconstructable")
+                if v.format_spec is not None:
+                    raise _guard(_CAT_UNRECON, "f-string format_spec is not reconstructable")
+                part = _reconstruct_expr(v.value, ctx, seen)
+            else:
+                part = _reconstruct_expr(v, ctx, seen)
+            acc = _combine(acc, part)
+        return acc
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
         return _combine(
             _reconstruct_expr(node.left, ctx, seen), _reconstruct_expr(node.right, ctx, seen)
         )
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
-        # "<literal with %-placeholders>" % (...) — the table/column names live in the literal left.
-        return _reconstruct_expr(node.left, ctx, seen)
-    if isinstance(node, ast.IfExp):
-        # conditional SQL fragment: keep BOTH branches so a forbidden token in either stays visible.
-        return _combine(
-            _reconstruct_expr(node.body, ctx, seen), _reconstruct_expr(node.orelse, ctx, seen)
+        # R3C Fix A / F-004: ``%`` construction is supported ONLY by the exact literal safe-placeholder
+        # form (governed generally — top-level SQL args AND nested in f-strings). A registered table can
+        # live IN the substitution or be boundary-formed across operands, so substitution-only safety is
+        # insufficient: EVERY other ``%`` (any other left literal, format, or right operand — including a
+        # reconstructable string / tuple / mapping / %d / width / precision / dynamic producer) fails
+        # closed. The one supported form maps to the fixed canonical ``{}`` representation.
+        if (
+            _const_str(node.left) == "WHERE event_type IN (%s) "
+            and _is_safe_placeholder_generator(node.right)
+        ):
+            return _Recon("WHERE event_type IN ({}) ", {"WHERE event_type IN ({}) "}, 0)
+        raise _guard(
+            _CAT_UNRECON,
+            "unsupported %-format SQL construction (only the exact "
+            "'WHERE event_type IN (%s) ' safe-placeholder form is supported)",
         )
+    if isinstance(node, ast.IfExp):
+        # R3C Fix B: an IfExp is the UNION of its two branches' candidate sets (each a distinct runtime
+        # alternative) — NEVER a concatenation. Representative selection happens at call-level discovery;
+        # here the rep is resolved only for identical branches or an admissible EXACT-empty optional-suffix
+        # (all-applied = the with-suffix branch), otherwise UNRESOLVED (None) so a genuinely-distinct
+        # alternative is never collapsed by an arbitrary branch pick (PLAN-R3C-F-008/F-016).
+        body = _reconstruct_expr(node.body, ctx, seen)
+        orelse = _reconstruct_expr(node.orelse, ctx, seen)
+        cands = set(body.candidates) | set(orelse.candidates)
+        if len(cands) > _MAX_CANDIDATES:
+            raise _guard(_CAT_LIMIT, "IfExp candidate union exceeds the 32-string bound")
+        cond = body.cond + orelse.cond
+        opt = body.ifexp_optional or orelse.ifexp_optional
+        if (
+            body.rep is not None
+            and orelse.rep is not None
+            and body.candidates == orelse.candidates
+            and body.rep == orelse.rep
+        ):
+            return _Recon(body.rep, cands, cond, opt)  # identical alternatives → single value
+        # ADMISSIBLE OPTIONAL-SUFFIX (branch-level): exactly one branch is the empty string "".
+        if body.candidates == frozenset({""}):
+            return _Recon(orelse.rep, cands, cond, True)
+        if orelse.candidates == frozenset({""}):
+            return _Recon(body.rep, cands, cond, True)
+        return _Recon(None, cands, cond, opt)  # genuinely-distinct → UNRESOLVED representative
     if isinstance(node, ast.Name):
         return _reconstruct_name(node.id, ctx, seen)
+    if _is_safe_placeholder_generator(node):
+        # R3C Fix A / F-005: the safe generator maps to the EXISTING canonical synthetic ``{}`` token
+        # (NOT ``?``) so the representative stays byte-equal to the parent registry (``IN ({})``).
+        return _Recon("{}", {"{}"}, 0)
     raise _guard(_CAT_UNRECON, f"unreconstructable SQL expression ({type(node).__name__})")
 
 
@@ -696,27 +790,34 @@ def _reconstruct_name(name: str, ctx: dict, seen: frozenset) -> _Recon:
     rep: str | None = None
     candidates: set[str] | None = None
     cond = 0
+    ifexp_optional = False
+    have_value = False
     for _p, a_node, op, rhs in events:
         kind = _classify_reach(a_node, op, ctx)
         sub = _reconstruct_expr(rhs, ctx, seen)
         if kind == "replace":
             rep, candidates, cond = sub.rep, set(sub.candidates), sub.cond
-        elif candidates is None or rep is None:
+            ifexp_optional = sub.ifexp_optional
+            have_value = True
+        elif not have_value:
             raise _guard(_CAT_UNRECON, f"append to '{name}' with no reconstructable preceding value")
         elif kind == "uappend":
-            rep = rep + sub.rep
+            # rep is UNRESOLVED (None) once a genuinely-distinct IfExp is in play — propagate, never pick.
+            rep = None if (rep is None or sub.rep is None) else rep + sub.rep
             candidates = {c + d for c in candidates for d in sub.candidates}
             cond += sub.cond
+            ifexp_optional = ifexp_optional or sub.ifexp_optional
         else:  # cappend — fork {unchanged} ∪ {appended}
-            rep = rep + sub.rep
+            rep = None if (rep is None or sub.rep is None) else rep + sub.rep
             candidates = candidates | {c + d for c in candidates for d in sub.candidates}
             cond += 1 + sub.cond
+            ifexp_optional = ifexp_optional or sub.ifexp_optional
         if cond > _MAX_COND_APPEND_SITES:
             raise _guard(_CAT_LIMIT, f"'{name}' exceeds N={_MAX_COND_APPEND_SITES} conditional append sites")
         if len(candidates) > _MAX_CANDIDATES:
             raise _guard(_CAT_LIMIT, f"'{name}' exceeds the 32-candidate bound")
-    assert rep is not None and candidates is not None
-    return _Recon(rep, candidates, cond)
+    assert candidates is not None
+    return _Recon(rep, candidates, cond, ifexp_optional)
 
 
 def _norm_sql(sql: str) -> str:
@@ -826,25 +927,51 @@ def _discover_occurrences(src: str) -> list[tuple[str, int, str, str]]:
             recon = _reconstruct_expr(n.args[0], ctx, frozenset())
             # §(a1) safety: EVERY runtime candidate is reconstructed + checked (not only base+suffix).
             cand_norms = {_norm_sql(csql) for csql in recon.candidates}
+            # ORDERED CONTRACT (PLAN-R3C-F-014, exact order — a directly-forbidden alternative is never
+            # downgraded to ambiguity):
+            # STEP 1 — any completed candidate independently contains forbidden SQL → fail closed.
             for csql in cand_norms:
                 reason = _forbidden_reason(func.name, csql)
                 if reason is not None:
                     raise _guard(_CAT_FORBIDDEN, reason)
+            registered_norms = {
+                csql for csql in cand_norms if any(t in csql for t in _REGISTERED_TABLES)
+            }
+            # STEP 4 (+ every non-registered call): no completed candidate reaches a registered table
+            # (e.g. the distinct-non-registered ``fts_table`` shape) → accept, no emitted occurrence.
+            if not registered_norms:
+                continue
+            # STEP 5 — a genuinely-distinct IfExp (UNRESOLVED representative) reaching a registered table
+            # is mutually-exclusive with no canonical all-applied value → fail closed.
+            if recon.rep is None:
+                raise _guard(
+                    _CAT_AMBIGUOUS_ALT,
+                    f"mutually-exclusive registered-table SQL alternatives in {func.name} "
+                    f"@L{n.lineno} (no canonical all-applied value)",
+                )
+            # STEPS 2/3 — resolved representative (identical alternatives / admissible exact-empty
+            # optional-suffix / conditional appends): every completed candidate must share the same
+            # registered-table set + authority class (differ only in non-authority clauses).
             rep_sql = _norm_sql(recon.rep)
-            if any(t in rep_sql for t in _REGISTERED_TABLES):
-                # §(a3): the representative is emitted ONLY if every candidate shares the same
-                # registered-table set + authority class (differ only in non-authority clauses).
-                tabsets = {
-                    frozenset(t for t in _REGISTERED_TABLES if t in csql) for csql in cand_norms
-                }
-                classes = {_classify(func.name, csql) for csql in cand_norms}
-                if len(tabsets) > 1 or len(classes) > 1:
+            tabsets = {
+                frozenset(t for t in _REGISTERED_TABLES if t in csql) for csql in cand_norms
+            }
+            classes = {_classify(func.name, csql) for csql in cand_norms}
+            if len(tabsets) > 1 or len(classes) > 1:
+                if recon.ifexp_optional:
+                    # exact-empty optional-suffix whose completed candidates FAIL the (iii)/(iv)
+                    # table-set / authority-class equality gate → STEP 5.
                     raise _guard(
-                        _CAT_INCONSISTENT,
-                        f"candidates disagree on registered-table set / class in {func.name} "
-                        f"@L{n.lineno} (fail closed, no occurrence)",
+                        _CAT_AMBIGUOUS_ALT,
+                        f"optional-suffix IfExp completed candidates disagree on registered-table set "
+                        f"/ authority class in {func.name} @L{n.lineno}",
                     )
-                occ.append((func.name, ordinal, _classify(func.name, rep_sql), rep_sql))
+                raise _guard(
+                    _CAT_INCONSISTENT,
+                    f"candidates disagree on registered-table set / class in {func.name} "
+                    f"@L{n.lineno} (fail closed, no occurrence)",
+                )
+            occ.append((func.name, ordinal, _classify(func.name, rep_sql), rep_sql))
     return occ
 
 
@@ -1575,3 +1702,334 @@ def test_f002_resolver_creates_no_entity(repo: SourceIndexRepository) -> None:
     for ref in ("b" * 32, _v1_ref("c" * 32), "hbsrc3_" + "a" * 32, "bad"):
         _resolve_dst(repo, ref)
     assert _entity_count(repo) == before
+
+
+# ============================================================================================
+# R3C — Fix A (f-string FormattedValue recursion + %-construction) and Fix B (IfExp union)
+# Closes CP-PI-WI-03A-IMPL-R3B-F-001 / F-002. Each fixture asserts its SPECIFIC stable category or
+# accepted result (not merely "raised"). The frozen 81-entry registry stays SET-EQUAL to live discovery
+# (proven by test_f001_occurrence_registry_set_equal_and_fail_closed above); no registry entry is edited.
+# ============================================================================================
+
+
+def _expected_sql(symbol: str, ordinal: int) -> str:
+    """The frozen normalized SQL for one registered occurrence (used to assert byte-equal representatives
+    WITHOUT the registry ever being a reconstruction/discovery input)."""
+    return next(
+        sql for (s, o, _c, sql) in _EXPECTED_OCCURRENCES if s == symbol and o == ordinal
+    )
+
+
+# ---- Fix A: f-string FormattedValue recursion (A1-A7) ----
+
+def test_r3c_a1_fstring_interpolated_registered_table_forbidden() -> None:
+    # THE FINDING (F-001): an interpolated Name resolving to a registered identity table is reconstructed
+    # (not turned into a blanket "{}") → the forbidden identity-table insert is caught.
+    _reject_cat(
+        "def _e(c):\n"
+        "    table = \"source_index_entities\"\n"
+        "    sql = f\"INSERT INTO {table} (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_r3c_a2_fstring_pre_call_forbidden_post_call_safe_reassign_forbidden() -> None:
+    # The post-call reassignment of the interpolated fragment is EXCLUDED; the forbidden pre-call value
+    # governs the call → forbidden (never hidden by a later safe definition).
+    _reject_cat(
+        "def _e(c):\n"
+        "    frag = \"source_index_entities\"\n"
+        "    sql = f\"INSERT INTO {frag} (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n"
+        "    frag = \"source_intelligence_summaries\"\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_r3c_a3_fstring_conditional_kill_fragment_ambiguous() -> None:
+    # A conditional `=` KILL of the interpolated fragment (distinct reaching value) → ambiguous_control_flow
+    # (decided by AST node type, not string similarity).
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    frag = \"source_index_entities\"\n"
+        "    if cond:\n"
+        "        frag = \"source_intelligence_summaries\"\n"
+        "    sql = f\"INSERT INTO {frag} (source_entity_id) VALUES (?)\"\n"
+        "    c.execute(sql, ('x',))\n",
+        _CAT_AMBIGUOUS,
+    )
+
+
+_A4_SRC = (
+    "def _e(c, cond):\n"
+    "    frag = \"SELECT source_entity_id FROM source_intelligence_sources\"\n"
+    "    if cond:\n"
+    "        frag += \" WHERE aux=?\"\n"
+    "    sql = f\"{frag} ORDER BY 1\"\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_a4_fstring_benign_conditional_append_discovered() -> None:
+    # A benign conditional-append fragment feeding an f-string is DISCOVERED (no raise) — one occurrence.
+    occ = _discover_occurrences(_A4_SRC)
+    assert occ == [
+        ("_e", 0, "CA",
+         "SELECT source_entity_id FROM source_intelligence_sources WHERE aux=? ORDER BY 1")
+    ]
+
+
+def test_r3c_a5_fstring_cyclic_fragment_cyclic() -> None:
+    _reject_cat(
+        "def _e(c):\n"
+        "    sql = f\"{sql} x\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_CYCLE,
+    )
+
+
+def test_r3c_a6_registered_table_solely_in_unreconstructable_interp_fail_closed() -> None:
+    # R3C-F-001 REQUIRED: a registered-table write present SOLELY through an UNRECONSTRUCTABLE
+    # interpolation must FAIL CLOSED (never silently dropped by a generic sentinel).
+    _reject_cat(
+        "def _e(c, build_sql_fragment):\n"
+        "    fragment = build_sql_fragment()\n"
+        "    sql = f\"SELECT 1 {fragment}\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_UNRECON,
+    )
+
+
+def test_r3c_a7_fstring_conversion_or_format_spec_unreconstructable() -> None:
+    _reject_cat("def _e(c, x):\n    c.execute(f\"SELECT 1 WHERE a={x!r}\", ())\n", _CAT_UNRECON)
+    _reject_cat("def _e(c, x):\n    c.execute(f\"SELECT 1 WHERE a={x:>10}\", ())\n", _CAT_UNRECON)
+
+
+# ---- Fix A: %-construction governed generally (A8-A12) ----
+
+_FORBIDDEN_FRAG = "UPDATE source_index_locators SET is_current_locator=1 WHERE source_entity_id=?"
+
+
+def test_r3c_a8_percent_direct_forbidden_substitution_unreconstructable() -> None:
+    # Right operand is not the approved safe generator → fail closed BEFORE the fragment is reconstructed.
+    _reject_cat(
+        "def _e(c):\n"
+        f"    fragment = \"{_FORBIDDEN_FRAG}\"\n"
+        "    sql = \"%s\" % fragment\n"
+        "    c.execute(sql, ())\n",
+        _CAT_UNRECON,
+    )
+
+
+def test_r3c_a9_percent_nested_in_fstring_unreconstructable() -> None:
+    _reject_cat(
+        "def _e(c, fragment):\n"
+        "    sql = f\"{'%s' % fragment}\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_UNRECON,
+    )
+
+
+def test_r3c_a10_percent_table_in_substitution_unreconstructable() -> None:
+    _reject_cat(
+        "def _e(c):\n"
+        "    sql = \"SELECT source_entity_id FROM %s\" % \"source_index_locators\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_UNRECON,
+    )
+
+
+def test_r3c_a11_percent_boundary_formed_identifier_unreconstructable() -> None:
+    _reject_cat(
+        "def _e(c):\n"
+        "    sql = \"SELECT source_entity_id FROM source_index_%s\" % \"locators\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_UNRECON,
+    )
+
+
+def test_r3c_a12_percent_unsupported_format_even_with_exact_left_unreconstructable() -> None:
+    # Even the exact supported LEFT literal fails closed when the RIGHT operand is not the safe generator
+    # (here a tuple) — the safety analysis governs the substitution, not only the left literal.
+    _reject_cat(
+        "def _e(c, a, b):\n"
+        "    c.execute(\"WHERE event_type IN (%s) \" % (a, b), ())\n",
+        _CAT_UNRECON,
+    )
+
+
+# ---- Fix A positive preservation (P-A1..P-A3) — real builders, set-equality preserved ----
+
+def test_r3c_pa1_safe_generator_maps_to_brace_token_byte_equal_parent() -> None:
+    # F-005: the exact safe placeholder generator inside a registered f-string reconstructs to the
+    # canonical `{}` token (NOT `?`) and is byte-equal to the parent registry entry.
+    recon = _analyze_call(_REPO_SRC, "list_generated_notes")
+    rep = _norm_sql(recon.rep)
+    assert "generation_status IN ({})" in rep
+    assert rep == _expected_sql("list_generated_notes", 0)
+
+
+_PA2_SRC = (
+    "def _e(c, source_kind, fts_rowid):\n"
+    "    fts_table = \"source_intelligence_fts\" if source_kind == \"external_file\" "
+    "else \"obsidian_note_fts\"\n"
+    "    c.execute(f\"DELETE FROM {fts_table} WHERE rowid=?\", (fts_rowid,))\n"
+)
+
+
+def test_r3c_pa2_fts_table_ifexp_no_registered_occurrence() -> None:
+    assert _discover_occurrences(_PA2_SRC) == []
+
+
+def test_r3c_pa3_percent_real_site_accepted_no_occurrence() -> None:
+    # list_recent_events' `"WHERE event_type IN (%s) " % ",".join("?" for _ in types)` is the supported
+    # safe-placeholder % form: the marker reconstructs to `{}`; source_intelligence_events is
+    # non-registered → accepted with no emitted occurrence, no raise.
+    recon = _analyze_call(_REPO_SRC, "list_recent_events")
+    assert any("event_type IN ({})" in _norm_sql(c) for c in recon.candidates)
+    occ = _discover_occurrences(_REPO_SRC)
+    assert not any(s == "list_recent_events" for (s, _o, _c, _sql) in occ)
+
+
+# ---- Fix B: IfExp union + ordered contract (B1-B9) ----
+
+def test_r3c_b1_forbidden_body_branch_forbidden() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        f"    sql = \"{_FORBIDDEN_FRAG}\" if cond else \"SELECT 1\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_r3c_b2_forbidden_orelse_branch_forbidden() -> None:
+    _reject_cat(
+        "def _e(c, cond):\n"
+        f"    sql = \"SELECT 1\" if cond else \"{_FORBIDDEN_FRAG}\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+_B3_SRC = (
+    "def _e(c, k, rid):\n"
+    "    tbl = \"source_intelligence_fts\" if k else \"obsidian_note_fts\"\n"
+    "    c.execute(f\"DELETE FROM {tbl} WHERE rowid=?\", (rid,))\n"
+)
+
+
+def test_r3c_b3_fts_table_shape_no_occurrence() -> None:
+    # distinct IfExp alternatives, BOTH non-registered → accepted with no emitted occurrence, no raise.
+    assert _discover_occurrences(_B3_SRC) == []
+
+
+_B4_SRC = (
+    "def _e(c, cond):\n"
+    "    frag = \"AND policy_validation_state IS NULL\" if cond "
+    "else \"AND policy_validation_state = 'validated'\"\n"
+    "    sql = f\"SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1 {frag}\"\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_b4_genuinely_distinct_registered_ambiguous() -> None:
+    # Two genuinely-distinct (non-empty, non-prefix) safe alternatives sharing the same registered table
+    # → ambiguous_sql_alternatives (stable category, NOT an incidentally-selected branch).
+    _reject_cat(_B4_SRC, _CAT_AMBIGUOUS_ALT)
+
+
+_B5_SRC = (
+    "def _e(c, cond):\n"
+    "    frag = \"AND s.deleted=0\" if cond else \"AND s.deleted=0\"\n"
+    "    sql = f\"SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1 {frag}\"\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_b5_identical_alternatives_one_occurrence() -> None:
+    # Identical branches → candidate deduplication yields ONE value; the occurrence is emitted once, with
+    # no branch-selection mechanism.
+    recon = _analyze_call(_B5_SRC, "_e")
+    assert len(recon.candidates) == 1
+    occ = _discover_occurrences(_B5_SRC)
+    assert occ == [
+        ("_e", 0, "CA",
+         "SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1 AND s.deleted=0")
+    ]
+
+
+def _mk_b6_forbidden(method: str) -> str:
+    return (
+        "def _e(c):\n"
+        "    table = \"source_index_entities\"\n"
+        "    sql = f\"INSERT INTO {table} (source_entity_id) VALUES (?)\"\n"
+        f"    c.{method}(sql, [('x',)])\n"
+    )
+
+
+def _mk_b6_ambiguous(method: str) -> str:
+    return (
+        "def _e(c, cond):\n"
+        "    frag = \"AND policy_validation_state IS NULL\" if cond "
+        "else \"AND policy_validation_state = 'validated'\"\n"
+        "    sql = f\"SELECT source_entity_id FROM source_intelligence_sources WHERE 1=1 {frag}\"\n"
+        f"    c.{method}(sql, [])\n"
+    )
+
+
+@pytest.mark.parametrize("method", ["execute", "executemany"])
+def test_r3c_b6_executemany_parity_forbidden(method: str) -> None:
+    # executemany receives the SAME fail-closed treatment as execute (the defect is at the SQL-expression
+    # reconstruction layer, governing both execution methods).
+    _reject_cat(_mk_b6_forbidden(method), _CAT_FORBIDDEN)
+
+
+@pytest.mark.parametrize("method", ["execute", "executemany"])
+def test_r3c_b6_executemany_parity_ambiguous(method: str) -> None:
+    _reject_cat(_mk_b6_ambiguous(method), _CAT_AMBIGUOUS_ALT)
+
+
+def test_r3c_b7_optional_suffix_positive_all_applied_byte_equal_frozen() -> None:
+    # ADMISSIBLE optional-suffix (the real _assert_lifecycle_oracle shape): an exactly-empty `body` branch
+    # + a scoping-predicate `orelse` folded into a registered statement → ONE occurrence emitted as the
+    # all-applied (with-suffix) form, byte-equal to the frozen entry, with NO registry-as-selector.
+    recon = _analyze_call(_REPO_SRC, "_assert_lifecycle_oracle")
+    expected0 = _expected_sql("_assert_lifecycle_oracle", 0)  # ordinal 0 = bad_live query (scope)
+    without = expected0.replace(" AND e.source_entity_id = :eid", "")
+    # Completed-candidate evidence (F-019): without-suffix AND with-suffix both reconstructed.
+    assert {_norm_sql(csql) for csql in recon.candidates} == {expected0, without}
+    # Branch-level evidence: the exact-empty-branch optional-suffix marker is set.
+    assert recon.ifexp_optional is True
+    # All-applied representative is byte-equal to the frozen entry.
+    assert _norm_sql(recon.rep) == expected0
+    # The without-suffix completed candidate is ALSO safety-analyzed (no forbidden).
+    assert _forbidden_reason("_assert_lifecycle_oracle", without) is None
+    # And it emits exactly the frozen occurrence at ordinal 0.
+    occ = _discover_occurrences(_REPO_SRC)
+    assert ("_assert_lifecycle_oracle", 0, "CA", expected0) in occ
+
+
+def test_r3c_b8_empty_branch_nonempty_is_complete_forbidden_forbidden() -> None:
+    # An exactly-empty branch whose OTHER branch IS a complete forbidden UPDATE: step 1 safety-checks the
+    # with-suffix candidate (begins with `UPDATE source_index_locators SET`) → forbidden. The empty-branch
+    # rule never suppresses a forbidden alternative, and the forbidden-SQL detector is NOT expanded.
+    _reject_cat(
+        "def _e(c, cond):\n"
+        f"    sql = \"\" if cond else \"{_FORBIDDEN_FRAG}\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_FORBIDDEN,
+    )
+
+
+def test_r3c_b9_prefix_related_different_registered_identifier_ambiguous() -> None:
+    # Prefix-related branches forming a DIFFERENT registered identifier: the completed candidates have
+    # different registered-table sets → binding condition (iii) fails → generic proper-prefix is NOT
+    # admitted → ambiguous_sql_alternatives.
+    _reject_cat(
+        "def _e(c, cond):\n"
+        "    table = \"source_index_\" if cond else \"source_index_locators\"\n"
+        "    sql = f\"SELECT source_entity_id FROM {table}\"\n"
+        "    c.execute(sql, ())\n",
+        _CAT_AMBIGUOUS_ALT,
+    )
