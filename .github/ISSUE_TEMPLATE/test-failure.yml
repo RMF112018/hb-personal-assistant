@@ -16,6 +16,13 @@ body:
     validations:
       required: true
   - type: input
+    id: discovered_at
+    attributes:
+      label: Discovery timestamp
+      description: ISO-8601 time when the failure was first observed.
+    validations:
+      required: true
+  - type: input
     id: failing_ids
     attributes:
       label: Exact failing test IDs
@@ -57,6 +64,21 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: current_disposition
+    attributes:
+      label: Current disposition
+      options:
+        - BLOCKING_CURRENT_CHECKPOINT
+        - PRIMARY_WORK_ITEM_CORRECTION
+        - AWAITING_CORRECTIVE_AUTHORIZATION
+        - CORRECTIVE_WORK_AUTHORIZED
+        - IN_CORRECTION
+        - AWAITING_INDEPENDENT_REVIEW
+        - AWAITING_INTEGRATION
+        - CLOSED_VERIFIED
+    validations:
+      required: true
+  - type: dropdown
     id: authorization_state
     attributes:
       label: Corrective authorization state
@@ -72,5 +94,12 @@ body:
     attributes:
       label: Corrective work identity
       description: Authorization, work item, branch/worktree, review, integration, and closure evidence when available.
+    validations:
+      required: false
+  - type: textarea
+    id: closure_evidence
+    attributes:
+      label: Review, integration, and closure evidence
+      description: Exact review result, combined-candidate validation, final disposition, and closure evidence when available.
     validations:
       required: false
