@@ -13,6 +13,13 @@ Runs the complete repository-safe test gate without integration, manual, or live
 pytest markers. No test paths, node IDs, marker overrides, or arbitrary pytest
 arguments are accepted because those would no longer represent the canonical
 merge-safe suite.
+
+Interpreter contract:
+- Set PYTHON to one executable name or path; or
+- create the active worktree interpreter at .venv/bin/python.
+
+The selected interpreter must be executable and Python 3.12 or newer. The script
+fails closed rather than falling back to a generic or operator-specific Python.
 USAGE
 }
 
@@ -54,20 +61,46 @@ if [[ "$collect_only" == true && "$run_python" == false ]]; then
   exit 2
 fi
 
-PYTHON_BIN="${PYTHON:-}"
-if [[ -z "$PYTHON_BIN" ]]; then
-  if [[ -x "$ROOT/.venv/bin/python" ]]; then
-    PYTHON_BIN="$ROOT/.venv/bin/python"
-  elif [[ -x "/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python" ]]; then
-    PYTHON_BIN="/Users/bobbyfetting/hb-personal-assistant/.venv/bin/python"
-  else
-    PYTHON_BIN="python"
-  fi
-fi
+resolve_python() {
+  local requested="${PYTHON:-}"
+  local candidate=""
 
+  if [[ -n "$requested" ]]; then
+    if [[ "$requested" =~ [[:space:]] ]]; then
+      echo "ERROR: PYTHON must name exactly one executable without arguments" >&2
+      exit 3
+    fi
+    if [[ "$requested" == */* ]]; then
+      candidate="$requested"
+    else
+      candidate="$(command -v -- "$requested" 2>/dev/null || true)"
+    fi
+  else
+    candidate="$ROOT/.venv/bin/python"
+  fi
+
+  if [[ -z "$candidate" || ! -x "$candidate" ]]; then
+    echo "ERROR: no compliant Python interpreter is executable; set PYTHON or create $ROOT/.venv/bin/python" >&2
+    exit 3
+  fi
+
+  if ! "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)'; then
+    echo "ERROR: canonical safe suite requires Python 3.12 or newer" >&2
+    exit 3
+  fi
+
+  printf '%s\n' "$candidate"
+}
+
+PYTHON_BIN="$(resolve_python)"
 export PYTHONPATH="$ROOT/src:$ROOT/subrepos/construction-financial-review/src${PYTHONPATH:+:$PYTHONPATH}"
 
 if [[ "$run_python" == true ]]; then
+  if ! "$PYTHON_BIN" -c 'import pytest' >/dev/null 2>&1; then
+    echo "ERROR: pytest is unavailable in the selected Python interpreter" >&2
+    exit 3
+  fi
+
   python_args=(
     -m pytest
     -m "not integration and not manual and not live"
@@ -86,6 +119,10 @@ if [[ "$run_frontend" == true ]]; then
   else
     if [[ ! -f "$ROOT/frontend/package.json" ]]; then
       echo "ERROR: frontend/package.json is missing" >&2
+      exit 3
+    fi
+    if ! command -v npm >/dev/null 2>&1; then
+      echo "ERROR: npm is unavailable" >&2
       exit 3
     fi
     if [[ ! -x "$ROOT/frontend/node_modules/.bin/vitest" ]]; then
