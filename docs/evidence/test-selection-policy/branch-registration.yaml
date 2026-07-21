@@ -126,4 +126,37 @@ transitions:
     authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
     evidence_parent_sha: 71cc12f8cc787a199723bfcd6194c484fcae6455
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
-    reason: R2 corrections complete; route the externally resolved current head to a fresh independent re-review after exact-head CI and artifact verification.
+    reason: R2 corrections complete; route the externally resolved current head to exact-head CI.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T11:40:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R24
+    evidence_parent_sha: 65e30e7435e10153c4862ed6b70b8e7bb5d2a048
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29845014007
+    reason: Exact-head bounded collection failed before validator execution; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T11:43:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 65e30e7435e10153c4862ed6b70b8e7bb5d2a048
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Diagnose preserved collection failure, add durable diagnostics, and correct the declared prerequisite environment.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R4
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T11:49:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 145ef391f35fd10d5030ad23e1bf1175bb9ef792
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29845587016
+    reason: Complete prerequisite correction after preserved diagnostic evidence; technical validation passed at 2572454ec1cd3c0f43a7d548c569075ce3e9e169 and the new externally resolved head requires final exact-head CI and fresh independent re-review.
