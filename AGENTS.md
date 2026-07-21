@@ -121,6 +121,38 @@ Agents must:
 - leave findings and disposition history traceable;
 - stop at the required checkpoint.
 
+## Test Selection and Evidence Economy
+
+Test selection is governed by:
+
+```text
+.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md
+```
+
+Agents must use proportional validation:
+
+- run the smallest test capable of falsifying the current claim during the
+  inner loop;
+- run the complete bounded work-item acceptance suite before a candidate is
+  presented for review;
+- run expensive domain bundles and cross-domain canaries only when an
+  acceptance criterion, changed dependency, shared infrastructure surface, or
+  named regression risk makes them relevant;
+- reserve the full safe suite for broad cross-domain, merge, release, or
+  readiness validation;
+- do not rerun an unchanged suite during bookkeeping-only turns when the tested
+  SHA, command, dependencies, environment, and evidence purpose are unchanged;
+- identify any reused immutable evidence and explain why reuse is valid;
+- map each mandatory suite to the criterion, dependency, or risk it covers.
+
+The schedule bundle is not a default canary for isolated source-index runtime
+changes. It is required for schedule-domain work and for shared
+migrator/schema/bootstrap changes with a demonstrated schedule dependency.
+
+An approved plan's test requirements remain binding unless a later
+operator-approved plan revision or decision supersedes them. Agents must not
+silently narrow required evidence.
+
 Agents must not, without explicit operator approval:
 
 - push;
