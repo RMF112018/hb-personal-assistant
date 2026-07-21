@@ -20,12 +20,14 @@ REQUIRED_PATHS = (
     ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
     ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
     ".github/ISSUE_TEMPLATE/test-failure.yml",
+    ".github/workflows/test-selection-governance.yml",
     "AGENTS.md",
     "AI_OPERATING_MANUAL.md",
     "CLAUDE.md",
     "docs/decisions/ADR-019-github-first-engineering-control-plane.md",
     "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md",
     "docs/decisions/README.md",
+    "docs/governance/README.md",
     "docs/governance/branch-worktree-lifecycle-policy.md",
     "docs/governance/test-failure-triage.md",
     "docs/implementation-plans/github-first-control-plane-migration.md",
@@ -33,6 +35,7 @@ REQUIRED_PATHS = (
     "docs/evidence/test-selection-policy/branch-registration.yaml",
     "docs/evidence/test-selection-policy/corrective-authorization.md",
     "scripts/test-safe.sh",
+    "scripts/validate-test-selection-governance.py",
 )
 
 ALLOWED_CHANGED_PATHS = {
@@ -137,6 +140,29 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     for rel in REQUIRED_PATHS:
         read_text(root, rel)
 
+    frontmatter_paths = (
+        ".ai/project-sources/00_AEOS_MASTER_INDEX.md",
+        ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md",
+        ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md",
+        "docs/decisions/ADR-019-github-first-engineering-control-plane.md",
+        "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md",
+        "docs/governance/branch-worktree-lifecycle-policy.md",
+        "docs/implementation-plans/github-first-control-plane-migration.md",
+    )
+    parsed_frontmatter = {rel: parse_frontmatter(root, rel)[0] for rel in frontmatter_paths}
+
+    yaml_paths = (
+        ".github/ISSUE_TEMPLATE/test-failure.yml",
+        ".github/workflows/test-selection-governance.yml",
+        "docs/evidence/test-selection-policy/branch-registration.yaml",
+    )
+    parsed_yaml: dict[str, Any] = {}
+    for rel in yaml_paths:
+        data = yaml.safe_load(read_text(root, rel))
+        if not isinstance(data, dict):
+            fail(f"YAML document is not a mapping: {rel}")
+        parsed_yaml[rel] = data
+
     standard07 = read_text(root, ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md")
     standard11 = read_text(root, ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md")
     agents = read_text(root, "AGENTS.md")
@@ -158,7 +184,7 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     require_contains(safe_script, "unsupported argument", "safe suite")
 
     branch_path = "docs/evidence/test-selection-policy/branch-registration.yaml"
-    branch = yaml.safe_load(read_text(root, branch_path))
+    branch = parsed_yaml[branch_path]
     if branch.get("schema_version") != 2:
         fail("branch registration must use schema_version 2")
     if "branch_tip_sha" in branch or "candidate_head_sha" in branch:
@@ -209,10 +235,10 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
     if observed_state != branch.get("lifecycle_state"):
         fail("final transition state does not match lifecycle_state")
 
-    adr, _ = parse_frontmatter(root, "docs/decisions/ADR-019-github-first-engineering-control-plane.md")
-    policy, _ = parse_frontmatter(root, "docs/governance/branch-worktree-lifecycle-policy.md")
-    plan, _ = parse_frontmatter(root, "docs/implementation-plans/github-first-control-plane-migration.md")
-    decision, _ = parse_frontmatter(root, "docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md")
+    adr = parsed_frontmatter["docs/decisions/ADR-019-github-first-engineering-control-plane.md"]
+    policy = parsed_frontmatter["docs/governance/branch-worktree-lifecycle-policy.md"]
+    plan = parsed_frontmatter["docs/implementation-plans/github-first-control-plane-migration.md"]
+    decision = parsed_frontmatter["docs/decisions/DECISION-PROPORTIONAL-TEST-SELECTION-001.md"]
 
     if adr.get("status") != "Accepted — Phase A":
         fail("ADR-019 status is not Accepted — Phase A")
@@ -239,7 +265,7 @@ def validate(args: argparse.Namespace) -> dict[str, Any]:
         if target.get(key) != value:
             fail(f"permanent-identity supersession mismatch for {key}")
 
-    issue_form = yaml.safe_load(read_text(root, ".github/ISSUE_TEMPLATE/test-failure.yml"))
+    issue_form = parsed_yaml[".github/ISSUE_TEMPLATE/test-failure.yml"]
     ids = {entry.get("id") for entry in issue_form.get("body", []) if isinstance(entry, dict)}
     required_issue_ids = {
         "source_work_item",
