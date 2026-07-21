@@ -1,16 +1,33 @@
-schema_version: 1
+schema_version: 2
 goal_id: GOAL-REPLACE-ME
 state: GOVERNANCE_INITIALIZATION
 status: NOT_STARTED
 iteration: 0
 repository:
-  baseline_sha: null
-  current_sha: null
+  remote: owner/repository
+  default_branch: main
+  base_sha: null
+  head_sha: null
   branch: null
+  worktree_id: null
+  worktree_path: null
+  pull_request: null
+lifecycle:
+  merge_status: NOT_MERGED
+  post_merge_validation: NOT_APPLICABLE
+  cleanup_disposition: NOT_APPLICABLE
+  closure_status: OPEN
+review:
+  review_id: null
+  reviewed_head_sha: null
+  disposition: null
+  stale_on_head_change: true
 authorization:
   required: true
   authorization_id: null
   authorized_state: null
+  authorized_action: null
+  authorized_identity: null
   artifact_hash: null
   expires_on_repository_drift: true
 current_work_item: null
