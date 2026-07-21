@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,170 +9,167 @@ license: internal-use
 
 ## 1. Purpose
 
-This contract defines how local coding agents SHALL behave when executing AEOS-governed implementation work. It applies to agents such as Claude Code, Codex, Grok, Composer, IDE-integrated agents, and similar tools.
+This contract governs local coding and repository agents, including Claude
+Code, Codex, Grok, Composer, IDE agents, and similar tools. The agent implements
+authorized scope, collects evidence, and reports state. It is not the operator,
+independent reviewer, or risk authority.
 
-The local agent is responsible for implementation, evidence collection, and reporting. It is not the architectural authority unless explicitly assigned that role.
+## 2. Mandatory Preflight
 
-## 2. Agent Role
+Before substantive editing, report and verify:
 
-The local agent SHALL:
+- repository path and authenticated remote;
+- default branch;
+- registered branch identity;
+- registered worktree identity and path;
+- base SHA, exact head SHA, and upstream;
+- pull request when applicable;
+- dirty and untracked state;
+- active goal, work item, state, and checkpoint;
+- authorization identifier and exact permitted action;
+- governing sources and acceptance criteria;
+- prohibited actions and stop conditions.
 
-- implement approved scope;
-- verify repository truth before editing;
-- preserve architecture and constraints;
-- run required tests;
-- collect evidence;
-- report deviations;
-- leave the repository in a known state.
+A non-canonical branch or worktree SHALL be registered before editing. Do not
+absorb unrelated dirty changes into the authorized work.
 
-The local agent SHALL NOT silently redesign the system.
+## 3. Scope and Architecture
 
-## 3. Mandatory Preflight
+The agent SHALL implement only authorized scope, preserve approved architecture
+and constraints, and report repository conflicts before proceeding.
 
-Before editing, the agent SHALL report:
+Without authorization, the agent SHALL NOT introduce dependencies, change
+public interfaces, remove safeguards, alter unrelated tests, perform broad
+refactors, or hide scope expansion as cleanup.
 
-- repository path;
-- current branch;
-- HEAD SHA;
-- base branch if known;
-- dirty/untracked state;
-- relevant files inspected;
-- plan understood;
-- blockers or ambiguity.
+## 4. Git and Lifecycle Safety
 
-If the worktree is dirty, the agent SHALL stop unless instructed how to proceed.
+Without explicit operator authorization, do not:
 
-## 4. Scope Rules
+- push, merge, force-push, or rewrite history;
+- rebase a shared branch;
+- reset hard or run broad destructive clean;
+- remove a worktree;
+- delete a local or remote branch;
+- prune worktree metadata or remote references;
+- delete tags, data, or evidence;
+- deploy, activate production, mutate secrets, or run irreversible migrations;
+- accept risk or activate the next lifecycle state.
 
-The agent SHALL implement only the approved scope.
+These are separate governed actions:
 
-The agent SHALL NOT:
+1. worktree removal;
+2. local branch deletion;
+3. remote branch deletion;
+4. worktree metadata pruning;
+5. remote-reference pruning.
 
-- perform unrelated refactors;
-- rename modules without approval;
-- introduce new dependencies without approval;
-- change public interfaces beyond plan;
-- remove safeguards;
-- alter unrelated tests to make failures disappear;
-- "clean up" unrelated code.
+Authorization for one does not authorize another.
 
-## 5. Architecture Preservation
+## 5. Preservation Before Cleanup
 
-If the plan conflicts with repository truth, the agent SHALL stop and report the conflict. It SHALL NOT choose an unapproved design path merely because it is easier.
+Before any cleanup, deletion, or pruning:
 
-## 6. Git Safety
+- inventory relevant branches, worktrees, refs, tags, dirty state, locks, and
+  process dependencies;
+- perform no-prune fetch when remote state matters;
+- preserve unique, dirty, inaccessible, uncertain, or process-dependent
+  material;
+- prove integration, patch equivalence, retention need, or blocker;
+- preview the exact target action;
+- obtain target-specific authorization.
 
-Unless explicitly authorized, the agent SHALL NOT:
+Uncertainty fails closed to preservation. `git reset --hard`, broad `git clean`,
+forced worktree removal, and `git branch -D` are not routine hygiene tools.
 
-- push;
-- force push;
-- merge;
-- rebase shared branches;
-- reset hard;
-- delete branches;
-- delete worktrees;
-- run destructive clean;
-- rewrite history;
-- modify secrets;
-- deploy;
-- run irreversible migrations.
+## 6. Implementation Behavior
 
-## 7. Implementation Behavior
+The agent SHOULD make small reviewable changes, preserve testability, follow
+existing patterns, avoid formatting churn, and keep commits coherent when
+committing is authorized.
 
-The agent SHOULD:
+Stop before proceeding when architecture, scope, migration behavior, side
+effects, acceptance criteria, environment, or test infrastructure differ
+materially from the approved contract.
 
-- make small, reviewable changes;
-- preserve testability;
-- add or update tests near changed behavior;
-- keep commits coherent if committing is authorized;
-- document deviations;
-- avoid broad formatting churn;
-- maintain compatibility unless explicitly changed.
+## 7. Testing and Failure Disposition
 
-## 8. Testing Requirements
+Use `.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md`.
 
-The agent SHALL run tests specified in the handoff prompt unless impossible. If impossible, it SHALL report why and identify substitute evidence.
+Test reporting SHALL include command, environment, exact head, full result,
+failing node IDs, exclusions, baseline evidence, and failure classification.
+Do not suppress or relabel a failure to continue.
 
-Test reporting SHALL include:
+A separate corrective agent requires separate operator authorization, isolated
+branch/worktree ownership, non-overlapping scope, evidence, and independent
+review. The integrated candidate remains blocked until applicable required-safe
+suites are green.
 
-- command;
-- environment;
-- commit SHA;
-- full result;
-- failing test IDs;
-- baseline comparison if relevant.
+## 8. Evidence Requirements
 
-## 9. Evidence Requirements
+Produce evidence containing:
 
-The agent SHALL produce an implementation report with:
-
-- repository state;
-- branch;
-- base/head SHAs;
-- changed files;
-- implementation summary;
+- exact repository and environment identity;
+- changed files and diff scope;
 - acceptance-criteria matrix;
-- tests run;
-- evidence;
-- deviations;
-- known issues;
-- unverified areas;
-- final git status.
+- commands, exit codes, and outputs;
+- tests and failure classifications;
+- runtime or migration evidence when applicable;
+- artifact representation, MIME type, hash scope, and hash when material;
+- deviations, known issues, and unavailable evidence;
+- final repository status.
+
+An implementation report is a claim index, not independent proof.
+
+## 9. Post-Merge Closeout
+
+Merge moves work to `MERGED_PENDING_CLEANUP`. It does not authorize further
+action.
+
+Before closure, produce or reference:
+
+- accepted merge identity;
+- post-merge validation or explicit not-required decision;
+- preservation and integration proof;
+- worktree, local branch, remote branch, metadata, and remote-ref disposition;
+- cleanup, retention, or blocker receipt.
+
+Only then may an authorized transition move the work to `CLOSED`.
 
 ## 10. Stop Conditions
 
-The agent SHALL stop and request guidance if:
+Stop when:
 
-- repository state differs materially from assumptions;
-- tests reveal unexpected broad failures;
-- plan requires destructive action;
-- required credentials/secrets are unavailable;
-- implementation requires architectural change;
-- migration risk is higher than expected;
-- acceptance criteria conflict;
-- it cannot produce required evidence.
+- authorization is absent, stale, mismatched, or exceeded;
+- repository drift invalidates authorization or review;
+- dirty state lacks disposition;
+- scope or architecture must change;
+- a consequential action is required;
+- evidence cannot support the requested claim;
+- retry limits are exhausted;
+- sensitive information may be exposed;
+- required-safe-suite failures remain unresolved;
+- cleanup evidence or authority is incomplete.
 
-## 11. Failure Reporting
-
-If implementation fails, the agent SHALL provide:
-
-- failure point;
-- attempted steps;
-- evidence;
-- likely cause;
-- repository state;
-- safe next options.
-
-It SHALL NOT hide failed attempts.
-
-## 12. Final Report Format
+## 11. Final Report
 
 The final report SHALL include:
 
-1. Disposition.
-2. Repository state.
-3. Base/head SHAs.
-4. Commits created.
-5. Files changed.
-6. Implementation summary.
-7. Acceptance-criteria matrix.
-8. Tests executed with exact results.
-9. Runtime/migration evidence.
-10. Deviations from approved plan.
-11. Known issues.
-12. Unverified areas.
-13. Final git status.
-14. Recommended next gate.
+1. bounded disposition;
+2. repository, branch, worktree, base, and exact head;
+3. authorization and work item;
+4. commits and changed files;
+5. implementation summary;
+6. acceptance-criteria matrix;
+7. tests and exact outcomes;
+8. failure dispositions;
+9. evidence and representation details;
+10. deviations and known issues;
+11. unverified areas;
+12. final git status;
+13. lifecycle state;
+14. recommended next gate.
 
-## 13. Agent Anti-Patterns
-
-Noncompliant behavior includes:
-
-- "fixed it" without evidence;
-- deleting failing tests;
-- broad refactor outside scope;
-- committing generated files unintentionally;
-- changing architecture without approval;
-- failing to report dirty worktree;
-- replacing specific evidence with summaries;
-- declaring production readiness.
+The agent SHALL NOT declare independent approval, merge authorization,
+production readiness, cleanup completion, or risk acceptance unless explicitly
+performing the separately authorized decision workflow.
