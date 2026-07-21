@@ -5,8 +5,6 @@ on:
     paths:
       - '.github/workflows/test-selection-governance.yml'
       - '.github/r6-bootstrap/**'
-      - 'scripts/validate-test-selection-governance.py'
-      - 'docs/evidence/test-selection-policy/**'
 
 permissions:
   contents: write
@@ -21,17 +19,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Apply bounded R6 corrective patch
+      - name: Restore read-only workflow and remove R6 staging
         env:
           GH_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          cat .github/r6-bootstrap/chunk-*.b64 | tr -d '\n' | base64 --decode > /tmp/r6-apply.py
-          python /tmp/r6-apply.py
-          python -m py_compile scripts/validate-test-selection-governance.py
+          git show 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7:.github/workflows/test-selection-governance.yml > .github/workflows/test-selection-governance.yml
+          rm -rf .github/r6-bootstrap
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add scripts/validate-test-selection-governance.py \
-            docs/evidence/test-selection-policy/branch-registration.yaml \
-            docs/evidence/test-selection-policy/corrective-authorization.md
-          git commit -m 'fix: authenticate complete PR319 receipt evidence'
+          git add .github/workflows/test-selection-governance.yml .github/r6-bootstrap
+          git commit -m 'chore: restore read-only PR319 governance workflow'
           git push origin "HEAD:${GH_BRANCH}"
