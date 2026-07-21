@@ -1,18 +1,33 @@
-schema_version: 1
+schema_version: 2
 authorization_id: AUTH-REPLACE-ME
 goal_id: GOAL-REPLACE-ME
 checkpoint_id: GATE-REPLACE-ME
-approved_artifact_hash: null
 authorized_transition:
   from: REPLACE_ME
   to: REPLACE_ME
+authorized_action: REPLACE_ME
 authorized_work_items: []
 required_changes: []
 constraints: []
 prohibited_actions: []
 repository:
+  remote: owner/repository
   expected_branch: null
+  expected_worktree_id: null
+  expected_worktree_path: null
+  expected_base_sha: null
   expected_head_sha: null
+  expected_pull_request: null
+authorized_identity:
+  artifact_paths: []
+  artifact_hashes: []
+cleanup_actions:
+  worktree_removal: false
+  local_branch_deletion: false
+  remote_branch_deletion: false
+  worktree_metadata_pruning: false
+  remote_reference_pruning: false
 expires_on_repository_drift: true
 issued_by: operator
 issued_at: null
+expires_at: null
