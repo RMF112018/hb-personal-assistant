@@ -137,6 +137,8 @@ DISCOVERY_REQUIRED_ISSUE_IDS = {
     "authorization_state",
 }
 
+DEPENDENCY_MODULES = ("pytest", "mcp", "fastapi", "numpy", "scipy")
+
 COLLECTION_SUMMARY = re.compile(
     r"(?P<selected>\d+)/(?P<total>\d+) tests collected "
     r"\((?P<deselected>\d+) deselected\)"
@@ -278,6 +280,8 @@ def validate_issue_form(issue_form: Any) -> None:
                 not isinstance(option, str) or not option.strip() for option in options
             ):
                 fail(f"issue-form dropdown {field_id} requires at least two string options")
+            if len(set(options)) != len(options):
+                fail(f"issue-form dropdown {field_id} options must be distinct")
         validations = entry.get("validations", {})
         if not isinstance(validations, dict):
             fail(f"issue-form field {field_id} validations must be a mapping")
@@ -341,6 +345,18 @@ def run_issue_form_negative_fixtures(issue_form: dict[str, Any]) -> None:
         lambda: validate_issue_form(malformed_dropdown),
         "issue form malformed dropdown",
         "at least two string options",
+    )
+
+    duplicate_dropdown = copy.deepcopy(issue_form)
+    classification = next(
+        entry for entry in duplicate_dropdown["body"] if entry.get("id") == "classification"
+    )
+    first = classification["attributes"]["options"][0]
+    classification["attributes"]["options"] = [first, first]
+    expect_failure(
+        lambda: validate_issue_form(duplicate_dropdown),
+        "issue form duplicate dropdown option",
+        "options must be distinct",
     )
 
 
@@ -422,6 +438,7 @@ def write_fake_interpreter(path: Path, mode: str) -> None:
 import json
 import os
 from pathlib import Path
+import re
 import sys
 args = sys.argv[1:]
 mode = {mode!r}
@@ -429,16 +446,23 @@ if args[:1] == ['-c']:
     code = args[1] if len(args) > 1 else ''
     if 'sys.version_info' in code:
         raise SystemExit(1 if mode == 'old' else 0)
-    if 'import pytest, mcp, fastapi, numpy, scipy' in code:
-        raise SystemExit(1 if mode in {{'no_pytest', 'missing_dependencies'}} else 0)
+    match = re.search(r'import\\s+([A-Za-z0-9_, ]+)', code)
+    if match:
+        modules = [item.strip() for item in match.group(1).split(',') if item.strip()]
+        missing = mode.removeprefix('missing_') if mode.startswith('missing_') else None
+        payload = {{'mode': mode, 'modules': modules, 'missing': missing, 'pytest_invoked': False}}
+        log = os.environ.get('SAFE_SUITE_PROBE_LOG')
+        if log:
+            Path(log).write_text(json.dumps(payload), encoding='utf-8')
+        if missing and missing in modules:
+            raise SystemExit(1)
+        raise SystemExit(0)
     raise SystemExit(8)
 if args[:2] == ['-m', 'pytest']:
-    if mode != 'good':
-        raise SystemExit(7)
     log = os.environ.get('SAFE_SUITE_PROBE_LOG')
     if log:
-        Path(log).write_text(json.dumps(args), encoding='utf-8')
-    raise SystemExit(0)
+        Path(log).write_text(json.dumps({{'mode': mode, 'pytest_args': args, 'pytest_invoked': True}}), encoding='utf-8')
+    raise SystemExit(0 if mode == 'good' else 7)
 raise SystemExit(9)
 '''
     path.write_text(script, encoding="utf-8")
@@ -479,7 +503,8 @@ def validate_safe_suite_probes(root: Path) -> None:
         good_run = run_probe(root, "--collect-only", "--python-only", env=good_env)
         if good_run.returncode != 0:
             fail(f"safe-suite compliant interpreter probe failed: {good_run.stderr}")
-        observed = json.loads(log_path.read_text(encoding="utf-8"))
+        observed_payload = json.loads(log_path.read_text(encoding="utf-8"))
+        observed = observed_payload.get("pytest_args")
         expected = [
             "-m",
             "pytest",
@@ -488,8 +513,8 @@ def validate_safe_suite_probes(root: Path) -> None:
             "tests",
             "--collect-only",
         ]
-        if observed != expected:
-            fail(f"safe-suite pytest arguments differ: {observed}")
+        if observed != expected or observed_payload.get("pytest_invoked") is not True:
+            fail(f"safe-suite pytest arguments differ: {observed_payload}")
 
         old = temp / "python-old"
         write_fake_interpreter(old, "old")
@@ -501,35 +526,37 @@ def validate_safe_suite_probes(root: Path) -> None:
         )
         require_probe_result(old_run, 3, "Python 3.12 or newer", "old interpreter")
 
-        no_pytest = temp / "python-no-pytest"
-        write_fake_interpreter(no_pytest, "no_pytest")
-        no_pytest_run = run_probe(
-            root,
-            "--collect-only",
-            "--python-only",
-            env=base_env | {"PYTHON": str(no_pytest)},
-        )
-        require_probe_result(
-            no_pytest_run,
-            3,
-            "Python dependencies are unavailable",
-            "interpreter without pytest",
-        )
+        for module in DEPENDENCY_MODULES:
+            module_log = temp / f"probe-missing-{module}.json"
+            fake = temp / f"python-missing-{module}"
+            write_fake_interpreter(fake, f"missing_{module}")
+            probe_env = base_env | {
+                "PYTHON": str(fake),
+                "SAFE_SUITE_PROBE_LOG": str(module_log),
+            }
+            proc = run_probe(root, "--collect-only", "--python-only", env=probe_env)
+            require_probe_result(
+                proc,
+                3,
+                "Python dependencies are unavailable",
+                f"missing dependency {module}",
+            )
+            payload = json.loads(module_log.read_text(encoding="utf-8"))
+            if payload.get("mode") != f"missing_{module}":
+                fail(f"dependency probe {module} recorded wrong mode: {payload}")
+            if module not in payload.get("modules", []):
+                fail(f"dependency probe {module} did not observe required import: {payload}")
+            if payload.get("missing") != module:
+                fail(f"dependency probe {module} did not isolate the named module: {payload}")
+            if payload.get("pytest_invoked") is not False:
+                fail(f"dependency probe {module} unexpectedly invoked pytest: {payload}")
 
-        missing_deps = temp / "python-missing-dependencies"
-        write_fake_interpreter(missing_deps, "missing_dependencies")
-        missing_deps_run = run_probe(
-            root,
-            "--collect-only",
-            "--python-only",
-            env=base_env | {"PYTHON": str(missing_deps)},
-        )
-        require_probe_result(
-            missing_deps_run,
-            3,
-            "Python dependencies are unavailable",
-            "missing declared dependency set",
-        )
+
+def normalize_requirement_name(requirement: Any) -> str | None:
+    match = re.match(r"\s*([A-Za-z0-9_.-]+)", str(requirement))
+    if not match:
+        return None
+    return re.sub(r"[-_.]+", "-", match.group(1)).lower()
 
 
 def validate_dependency_declarations(root_toml: bytes, subrepo_toml: bytes) -> None:
@@ -539,15 +566,13 @@ def validate_dependency_declarations(root_toml: bytes, subrepo_toml: bytes) -> N
     required_extras = {"dev": "pytest", "mcp": "mcp", "analytics-ui": "fastapi"}
     for extra, package in required_extras.items():
         values = extras.get(extra)
-        if not isinstance(values, list) or not any(
-            str(item).split("[")[0].startswith(package) for item in values
-        ):
+        names = {normalize_requirement_name(item) for item in values or []}
+        if not isinstance(values, list) or package not in names:
             fail(f"root optional dependency {extra} does not declare {package}")
     subdeps = subrepo_data.get("project", {}).get("dependencies", [])
+    subnames = {normalize_requirement_name(item) for item in subdeps or []}
     for package in ("numpy", "scipy"):
-        if not isinstance(subdeps, list) or not any(
-            str(item).startswith(package) for item in subdeps
-        ):
+        if not isinstance(subdeps, list) or package not in subnames:
             fail(f"construction subrepository does not declare {package}")
 
 
@@ -575,6 +600,60 @@ def compute_evidence_hash(receipt: dict[str, Any]) -> str:
     clean.pop("evidence_sha256", None)
     canonical = json.dumps(clean, sort_keys=True, separators=(",", ":")).encode()
     return sha256_bytes(canonical)
+
+
+def validate_branch_registration(branch: dict[str, Any], args: argparse.Namespace) -> None:
+    if branch.get("schema_version") != 2:
+        fail("branch registration must use schema_version 2")
+    if "branch_tip_sha" in branch or "candidate_head_sha" in branch:
+        fail("self-referential branch_tip_sha/candidate_head_sha fields are prohibited")
+    expected_branch_fields = {
+        "registration_tip_sha",
+        "current_tip_authority",
+        "current_tip_recorded_in_repository",
+        "review_candidate_binding",
+    }
+    missing = expected_branch_fields - set(branch)
+    if missing:
+        fail(f"branch registration missing fields: {sorted(missing)}")
+    if branch["current_tip_authority"] != "authenticated_github":
+        fail("current branch tip must resolve from authenticated GitHub")
+    if branch["current_tip_recorded_in_repository"] is not False:
+        fail("repository record must not claim to contain its current tip")
+    if branch["review_candidate_binding"] != "external_exact_sha_review":
+        fail("review candidate must be externally exact-SHA bound")
+    if branch.get("base_sha") != args.github_base_sha:
+        fail("branch registration base SHA mismatch")
+    if branch.get("remote_branch") != args.branch_name:
+        fail("branch registration branch name mismatch")
+    if int(branch.get("pull_request")) != args.pr_number:
+        fail("branch registration PR mismatch")
+
+    transitions = branch.get("transitions")
+    if not isinstance(transitions, list) or not transitions:
+        fail("branch registration has no transitions")
+    observed_state: str | None = None
+    transition_ids: set[str] = set()
+    for item in transitions:
+        if not isinstance(item, dict):
+            fail("transition is not a mapping")
+        transition_id = item.get("transition_id")
+        if not transition_id or transition_id in transition_ids:
+            fail("transition IDs must be present and unique")
+        transition_ids.add(transition_id)
+        edge = (item.get("from_state"), item.get("to_state"))
+        if edge not in NORMAL_TRANSITIONS:
+            fail(f"invalid transition edge: {edge}")
+        if item.get("from_state") != observed_state:
+            fail(f"transition chain mismatch at {transition_id}")
+        for field in ("occurred_at", "actor", "authorization_id", "evidence", "reason"):
+            if not item.get(field):
+                fail(f"transition {transition_id} missing {field}")
+        observed_state = item.get("to_state")
+    if observed_state != branch.get("lifecycle_state"):
+        fail("final transition state does not match lifecycle_state")
+    if observed_state != "REVIEW_PENDING":
+        fail("PR #319 branch must be REVIEW_PENDING for exact-head re-review")
 
 
 def validate_repository(args: argparse.Namespace) -> dict[str, Any]:
@@ -666,6 +745,12 @@ def validate_repository(args: argparse.Namespace) -> dict[str, Any]:
         "validate --github-head-sha '${{ github.event.pull_request.head.sha }}'",
         "finalize-receipt",
         "verify-receipt",
+        "--expected-repository 'RMF112018/hb-personal-assistant'",
+        "--expected-pr-number '${{ github.event.pull_request.number }}'",
+        "--expected-branch '${{ github.event.pull_request.head.ref }}'",
+        "--expected-base-sha '${{ github.event.pull_request.base.sha }}'",
+        "--expected-head-sha '${{ github.event.pull_request.head.sha }}'",
+        "--expected-identity-source 'github-actions-pull-request-event'",
         "pr319-safe-collection.exitcode",
         "pr319-governance-validator.exitcode",
     )
@@ -673,57 +758,7 @@ def validate_repository(args: argparse.Namespace) -> dict[str, Any]:
         require_contains(workflow, token, "governance workflow")
 
     branch = parsed_yaml["docs/evidence/test-selection-policy/branch-registration.yaml"]
-    if branch.get("schema_version") != 2:
-        fail("branch registration must use schema_version 2")
-    if "branch_tip_sha" in branch or "candidate_head_sha" in branch:
-        fail("self-referential branch_tip_sha/candidate_head_sha fields are prohibited")
-    expected_branch_fields = {
-        "registration_tip_sha",
-        "current_tip_authority",
-        "current_tip_recorded_in_repository",
-        "review_candidate_binding",
-    }
-    missing = expected_branch_fields - set(branch)
-    if missing:
-        fail(f"branch registration missing fields: {sorted(missing)}")
-    if branch["current_tip_authority"] != "authenticated_github":
-        fail("current branch tip must resolve from authenticated GitHub")
-    if branch["current_tip_recorded_in_repository"] is not False:
-        fail("repository record must not claim to contain its current tip")
-    if branch["review_candidate_binding"] != "external_exact_sha_review":
-        fail("review candidate must be externally exact-SHA bound")
-    if branch.get("base_sha") != args.github_base_sha:
-        fail("branch registration base SHA mismatch")
-    if branch.get("remote_branch") != args.branch_name:
-        fail("branch registration branch name mismatch")
-    if int(branch.get("pull_request")) != args.pr_number:
-        fail("branch registration PR mismatch")
-
-    transitions = branch.get("transitions")
-    if not isinstance(transitions, list) or not transitions:
-        fail("branch registration has no transitions")
-    observed_state: str | None = None
-    transition_ids: set[str] = set()
-    for item in transitions:
-        if not isinstance(item, dict):
-            fail("transition is not a mapping")
-        transition_id = item.get("transition_id")
-        if not transition_id or transition_id in transition_ids:
-            fail("transition IDs must be present and unique")
-        transition_ids.add(transition_id)
-        edge = (item.get("from_state"), item.get("to_state"))
-        if edge not in NORMAL_TRANSITIONS:
-            fail(f"invalid transition edge: {edge}")
-        if item.get("from_state") != observed_state:
-            fail(f"transition chain mismatch at {transition_id}")
-        for field in ("occurred_at", "actor", "authorization_id", "evidence", "reason"):
-            if not item.get(field):
-                fail(f"transition {transition_id} missing {field}")
-        observed_state = item.get("to_state")
-    if observed_state != branch.get("lifecycle_state"):
-        fail("final transition state does not match lifecycle_state")
-    if observed_state != "REVIEW_PENDING":
-        fail("PR #319 branch must be REVIEW_PENDING for exact-head re-review")
+    validate_branch_registration(branch, args)
 
     adr = parsed_frontmatter[
         "docs/decisions/ADR-019-github-first-engineering-control-plane.md"
@@ -823,6 +858,7 @@ def validate_repository(args: argparse.Namespace) -> dict[str, Any]:
             "safe_suite_static_contract": "PASS",
             "safe_suite_static_negative_fixtures": "PASS",
             "safe_suite_adversarial_probes": "PASS",
+            "safe_suite_individual_dependency_probes": "PASS",
             "safe_suite_dependency_declarations": "PASS",
             "issue_form_schema": "PASS",
             "issue_form_negative_fixtures": "PASS",
@@ -878,13 +914,51 @@ def finalize_receipt(args: argparse.Namespace) -> dict[str, Any]:
     return receipt
 
 
-def verify_receipt(args: argparse.Namespace) -> None:
-    receipt_path = Path(args.receipt).resolve()
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+def expected_validator_command(args: argparse.Namespace) -> list[str]:
+    return [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "validate",
+        "--github-head-sha",
+        args.expected_head_sha,
+        "--github-base-sha",
+        args.expected_base_sha,
+        "--pr-number",
+        str(args.expected_pr_number),
+        "--branch-name",
+        args.expected_branch,
+        "--identity-source",
+        args.expected_identity_source,
+        "--collection-log",
+        args.collection_log,
+        "--collection-exitcode-file",
+        args.collection_exitcode_file,
+        "--validator-log-name",
+        args.validator_log,
+        "--validator-exitcode-name",
+        args.validator_exitcode_file,
+        "--output",
+        args.partial_receipt,
+    ]
+
+
+def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) -> None:
     if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
         fail("final receipt is not schema-2 PASS")
     if receipt.get("evidence_sha256") != compute_evidence_hash(receipt):
         fail("receipt evidence SHA-256 mismatch")
+
+    expected_identity = {
+        "repository": args.expected_repository,
+        "pull_request": args.expected_pr_number,
+        "branch": args.expected_branch,
+        "base_sha": args.expected_base_sha,
+        "head_sha": args.expected_head_sha,
+        "identity_source": args.expected_identity_source,
+    }
+    for field, expected in expected_identity.items():
+        if receipt.get(field) != expected:
+            fail(f"receipt authenticated identity mismatch for {field}")
 
     collection = receipt.get("collection")
     validator = receipt.get("validator")
@@ -892,8 +966,20 @@ def verify_receipt(args: argparse.Namespace) -> None:
         fail("receipt lacks collection or validator section")
     if collection.get("command") != COLLECTION_COMMAND:
         fail("receipt collection command mismatch")
+    if validator.get("command") != expected_validator_command(args):
+        fail("receipt validator command mismatch")
     if collection.get("application_tests_executed") != 0:
         fail("receipt must record zero application tests executed")
+
+    expected_references = (
+        (collection, "log_file", args.collection_log),
+        (collection, "exitcode_file", args.collection_exitcode_file),
+        (validator, "log_file", args.validator_log),
+        (validator, "exitcode_file", args.validator_exitcode_file),
+    )
+    for section, field, expected in expected_references:
+        if section.get(field) != expected:
+            fail(f"receipt evidence-file reference mismatch for {field}")
 
     collection_log = Path(args.collection_log).resolve()
     collection_exit_path = Path(args.collection_exitcode_file).resolve()
@@ -932,6 +1018,65 @@ def verify_receipt(args: argparse.Namespace) -> None:
         fail("receipt authorized changed paths do not equal exact contract")
 
 
+def mutate_and_rehash(receipt: dict[str, Any], mutation: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
+    mutated = copy.deepcopy(receipt)
+    mutation(mutated)
+    mutated["evidence_sha256"] = compute_evidence_hash(mutated)
+    return mutated
+
+
+def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namespace) -> None:
+    identity_mutations: tuple[tuple[str, Any], ...] = (
+        ("repository", "example/other"),
+        ("pull_request", args.expected_pr_number + 1),
+        ("branch", "other-branch"),
+        ("base_sha", "0" * 40),
+        ("head_sha", "1" * 40),
+        ("identity_source", "untrusted-source"),
+    )
+    for field, value in identity_mutations:
+        mutated = mutate_and_rehash(receipt, lambda data, f=field, v=value: data.__setitem__(f, v))
+        expect_failure(
+            lambda data=mutated: verify_receipt_payload(data, args),
+            f"receipt identity mutation {field}",
+            f"identity mismatch for {field}",
+        )
+
+    mutated_command = mutate_and_rehash(
+        receipt,
+        lambda data: data["validator"].__setitem__("command", ["python", "other-validator.py"]),
+    )
+    expect_failure(
+        lambda: verify_receipt_payload(mutated_command, args),
+        "receipt validator command mutation",
+        "validator command mismatch",
+    )
+
+    reference_mutations = (
+        ("collection", "log_file"),
+        ("collection", "exitcode_file"),
+        ("validator", "log_file"),
+        ("validator", "exitcode_file"),
+    )
+    for section, field in reference_mutations:
+        mutated = mutate_and_rehash(
+            receipt,
+            lambda data, s=section, f=field: data[s].__setitem__(f, f"substituted-{f}"),
+        )
+        expect_failure(
+            lambda data=mutated: verify_receipt_payload(data, args),
+            f"receipt evidence reference mutation {section}.{field}",
+            f"reference mismatch for {field}",
+        )
+
+
+def verify_receipt(args: argparse.Namespace) -> None:
+    receipt_path = Path(args.receipt).resolve()
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    verify_receipt_payload(receipt, args)
+    run_receipt_negative_fixtures(receipt, args)
+
+
 def write_json(path: str | None, payload: dict[str, Any]) -> None:
     rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if path:
@@ -968,10 +1113,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify_parser = sub.add_parser("verify-receipt")
     verify_parser.add_argument("--receipt", required=True)
+    verify_parser.add_argument("--partial-receipt", required=True)
     verify_parser.add_argument("--collection-log", required=True)
     verify_parser.add_argument("--collection-exitcode-file", required=True)
     verify_parser.add_argument("--validator-log", required=True)
     verify_parser.add_argument("--validator-exitcode-file", required=True)
+    verify_parser.add_argument("--expected-repository", required=True)
+    verify_parser.add_argument("--expected-pr-number", required=True, type=int)
+    verify_parser.add_argument("--expected-branch", required=True)
+    verify_parser.add_argument("--expected-base-sha", required=True)
+    verify_parser.add_argument("--expected-head-sha", required=True)
+    verify_parser.add_argument("--expected-identity-source", required=True)
     return parser
 
 
