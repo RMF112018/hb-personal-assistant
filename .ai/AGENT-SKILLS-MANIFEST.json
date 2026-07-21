@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "skills_version": "1.0.0",
+  "schema_version": 2,
+  "skills_version": "1.1.0",
   "canonical_root": ".ai/agent-skills",
   "harnesses": {
     "claude": ".claude/skills",
@@ -20,6 +20,17 @@
   "rules": {
     "canonical_skill_content_only_under": ".ai/agent-skills",
     "harness_adapters_must_not_duplicate_skill_content": true,
-    "operator_controls_state_transitions": true
+    "operator_controls_state_transitions": true,
+    "exact_head_binding_required": true,
+    "later_commit_invalidates_current_head_approval": true,
+    "authorization_expires_on_repository_drift": true,
+    "merge_does_not_close_goal": true,
+    "post_merge_validation_required_or_explicitly_not_required": true,
+    "post_merge_closeout_receipt_required": true,
+    "cleanup_actions_require_separate_authorization": true,
+    "preservation_precedes_pruning": true,
+    "root_shared_goal_loop_resources_must_match": true,
+    "representation_scoped_hashes_required": true,
+    "operator_only_risk_acceptance": true
   }
 }
