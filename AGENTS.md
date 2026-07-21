@@ -35,6 +35,65 @@ and the exact current authorization and selected canonical skill.
 
 Lower-authority material must not override higher-authority evidence.
 
+## Engineering Control-Plane Authority
+
+For `RMF112018/hb-personal-assistant`, the repository and GitHub are the
+canonical engineering execution control plane:
+
+- repository and GitHub records define the active goal pointer, work item,
+  authorization pointer, branch, base SHA, head SHA, pull request, review state,
+  merge state, and checkpoint identity;
+- deployed runtime evidence is authoritative for operational and production
+  behavior claims;
+- the Google Drive Software Delivery Control Center is a publication,
+  collaboration, reference, and external-handoff surface;
+- Drive content must not independently override or authorize repository
+  execution state;
+- existing Drive artifacts remain historical evidence, but new Drive-native
+  mechanisms that independently track active engineering execution state are
+  frozen during the GitHub-first migration;
+- final lifecycle authorization, risk acceptance, merge, deployment, and
+  production activation remain operator decisions.
+
+Independent review must identify the exact repository or pull-request head SHA
+reviewed. A review of an earlier head is not current-head approval after the head
+changes unless a governing policy explicitly establishes a narrower result.
+
+The governing decision, lifecycle policy, and migration plan are:
+
+```text
+docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/governance/branch-worktree-lifecycle-policy.md
+docs/implementation-plans/github-first-control-plane-migration.md
+```
+
+## Branch and Worktree Lifecycle
+
+Every non-canonical branch and linked worktree must be associated with a
+governed work item before substantive editing. The registration must identify
+the worktree path, branch, base SHA, owner or agent, goal or work item, and
+expected disposition.
+
+A pull-request merge transitions the associated work to
+`MERGED_PENDING_CLEANUP`; it does not make the work item operationally complete.
+Closure requires verified disposition of the worktree, local branch, and remote
+branch, together with a durable cleanup receipt or a recorded retention/blocker
+decision.
+
+Before cleanup, agents must prove that:
+
+- the worktree is clean or all remaining material has been preserved and
+  assigned;
+- the branch tip is integrated, patch-equivalent, intentionally retained, or
+  blocked from deletion;
+- no running process or material evidence depends on the worktree path;
+- cleanup is within the active authorization.
+
+Agents must fail closed when evidence is incomplete. Routine hygiene must not
+use `git reset --hard`, broad `git clean`, forced worktree removal, or
+`git branch -D`. Local worktree removal, local branch deletion, and remote
+branch deletion are separate governed actions.
+
 ## Canonical Agent Skills
 
 The sole canonical AEOS skill corpus is:
@@ -80,6 +139,7 @@ Agents must:
 - report repository path, branch, HEAD SHA, upstream when material, and worktree
   state before editing;
 - identify the active goal, state, authorization, and work item;
+- register any new non-canonical branch and worktree before substantive editing;
 - preserve approved scope and architecture;
 - distinguish verified facts, unverified claims, assumptions, unknowns, and
   unavailable evidence;
@@ -88,6 +148,7 @@ Agents must:
 - report deviations before proceeding;
 - preserve failed and invalid evidence runs;
 - leave findings and disposition history traceable;
+- complete or explicitly block the branch/worktree cleanup checkpoint;
 - stop at the required checkpoint.
 
 Agents must not, without explicit operator approval:
@@ -96,7 +157,10 @@ Agents must not, without explicit operator approval:
 - force push;
 - merge;
 - rewrite history;
-- delete branches or worktrees;
+- delete branches or worktrees outside the accepted lifecycle policy and active
+  authorization;
+- delete remote branches unless separately authorized or covered by an accepted
+  automatic-delete policy;
 - reset hard;
 - modify secrets or credentials;
 - deploy or activate production services;
@@ -134,6 +198,7 @@ Implementation and corrective agents must provide:
 10. Deviations.
 11. Known issues, residual risks, and unverified areas.
 12. Final Git status.
-13. Recommended next gate.
+13. Branch/worktree lifecycle state and cleanup, retention, or blocker receipt.
+14. Recommended next gate.
 
 A recommendation is not an authorization.

@@ -32,6 +32,19 @@ Repository-specific guidance below remains authoritative for Claude Code executi
 5. Current user instruction
 6. Prior conversation context
 
+## GitHub-First Engineering Control Plane
+
+For repository-specific execution, the repository and GitHub define the active goal pointer, work item, authorization pointer, branch, SHA, pull request, review state, merge state, and checkpoint identity. Google Drive remains a publication, collaboration, reference, and external-handoff surface; Drive content does not independently authorize or override repository execution state.
+
+Read:
+
+```text
+docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/implementation-plans/github-first-control-plane-migration.md
+```
+
+Independent review must identify the exact repository or pull-request head SHA reviewed. Existing Drive records remain historical evidence, and new Drive-native active execution-state mechanisms are frozen during the migration.
+
 ## Canonical AEOS Skills and Goal Execution
 
 The canonical cross-harness AEOS skills are stored in:
@@ -88,7 +101,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`hb-personal-assistant` — a Bobby-only, **local-first** MVP that pulls delegated Microsoft 365 (Graph) and Procore data, classifies/enriches it, and writes source-linked notes into an Obsidian vault. Pure Python 3.12+, single package `hb_assistant`, Typer CLI, SQLite for local state. No web service, frontend, or JS workspaces.
+`hb-personal-assistant` — a Bobby-only, **local-first** application that pulls delegated Microsoft 365 (Graph) and Procore data, classifies/enriches it, and writes source-linked notes into an Obsidian vault. The repository includes a Python 3.12+ `hb_assistant` package with Typer CLI, FastAPI/API surfaces, SQLite local state, and a Vite/React/TypeScript frontend workspace under `frontend/`.
 
 Work is organized by **phases** (Construction Intelligence 01/02, Procore 04A live sync / 04B second-brain). The README "Repository Status" block is the authoritative phase ledger; each phase has an evidence bundle under `docs/evidence/`.
 
@@ -107,6 +120,10 @@ ruff check . && ruff format .                              # lint + format (line
 mypy src                                                   # type-check
 hb-assistant --help                                        # CLI entry point
 construction-agent validate --json                         # `construction-agent` is an hb-assistant subgroup
+cd frontend && npm run build                               # frontend production build
+cd frontend && npm run typecheck                           # frontend TypeScript validation
+cd frontend && npm run lint                                # frontend lint
+cd frontend && npm test                                    # frontend Vitest suite
 ```
 
 - **Lint/type scope is intentionally partial.** `pyproject.toml` (`[tool.ruff] extend-exclude`, `per-file-ignores`, `[[tool.mypy.overrides]]`) lists exactly which modules are held to strict ruff/mypy; new phases opt their modules in. Check whether a module is in-scope before trusting a clean `ruff check .` / `mypy src`.
@@ -116,18 +133,19 @@ construction-agent validate --json                         # `construction-agent
 
 ## Architecture
 
-All source under `src/hb_assistant/`. Layered pipeline: **auth → external read clients → SQLite store + projections → classification/retrieval → Obsidian output**, with `cli/` on top and `automation/` driving scheduled runs.
+Application source is primarily under `src/hb_assistant/`, with API and frontend surfaces layered around the same local-first data and policy boundaries. The Python pipeline is **auth → external read clients → SQLite store + projections → classification/retrieval → Obsidian output**, with `cli/` and API surfaces on top and `automation/` driving scheduled runs. The Vite/React frontend consumes approved API/read-model surfaces and has its own build, typecheck, lint, and Vitest validation.
 
 - **`cli/`** — Typer apps composed in `cli/main.py` (`hb-assistant`). Large nested groups: `construction-agent` (`cli/construction.py`), `procore` (`cli/procore.py`). `vault`/`sync`/`brief` are deliberate "not implemented" stubs. Most commands support `--json` + a dry-run posture.
 - **`auth/`** — MSAL delegated (Bobby-user) tokens are the runtime default; cert app-only is proof/admin only. Scopes are minimized in `scope_policy.py` (tenant consented `Mail.ReadWrite.All`, but runtime requests only `Mail.Read`). Token cache lives outside the repo.
 - **`graph/`** — read-only Graph clients (mail, calendar, drive) over `http_client.py` + `proof_runner.py`. Delta crawling is folder-scoped, not deep-index.
-- **`store/`** — SQLite via `connection.py` + `migrator.py` (**additive, versioned schema V1…V24 — never rewrite existing tables, add migrations**; Procore-specific migrations span V6–V9). `procore_*_projection.py` modules are per-domain read models; `construction/store/repositories.py` is the construction-side schema.
+- **`store/`** — SQLite via `connection.py` + `migrator.py` (**additive, versioned schema — never rewrite existing tables; add migrations and confirm the current `LATEST_SCHEMA_VERSION` in code**). `procore_*_projection.py` modules are per-domain read models; `construction/store/repositories.py` is the construction-side schema.
 - **`construction/`** — source registry (Pydantic + YAML loaders), Graph resolution/delta, classification, manifests, policy. Config seeds in `resources/config/*.seed.yaml`.
 - **`procore/`** — `auth.py` (OAuth), `normalizers/`, `sync.py`, `live_gate.py` (fail-closed live gate), daily-log selection. The Procore HTTP client is intentionally absent for non-live work (a test enforces this).
 - **`obsidian/`** — `writer.py` + `brief.py` project store data into vault notes. Hard invariant: every output carries source traceability and never leaks raw delta links, tokens, full bodies, or PEMs (redaction attestations + an output-fence enforce this).
 - **`retrieval/` `classification/` `actions/`** — embeddings/context, Ollama-backed classification (`--mock-output` offline mode), action extraction.
 - **`automation/`** — `orchestrator.py` (morning "run" pipeline) + `launchd_manager.py` (macOS launchd).
 - **`config/`** — `path_policy.py` resolves the macOS Application Support root; **all auth cache, SQLite, and logs live outside the repo** under `~/Library/Application Support/HB Personal Assistant/`.
+- **`frontend/`** — Vite/React/TypeScript workspace with independent package scripts for development, build, typecheck, lint, and Vitest tests. Frontend-affecting changes require the relevant frontend validation in addition to Python checks.
 
 **Non-negotiable runtime guardrails** (enforced in code/tests): no Microsoft 365 write-back; mailbox read-only at four layers (YAML policy, MSAL scope, Python adapter, SQLite `CHECK`); dry-run before any write; no secrets/tokens/full-bodies/PEMs logged or committed; state stored outside the repo.
 
