@@ -1,13 +1,23 @@
-schema_version: 1
+schema_version: 2
 review_id: REVIEW-REPLACE-ME
 goal_id: GOAL-REPLACE-ME
 checkpoint_id: GATE-REPLACE-ME
+review_type: IMPLEMENTATION_AUDIT
 reviewer_context: independent
+repository:
+  remote: owner/repository
+  branch: null
+  worktree_id: null
+  base_sha: null
+  reviewed_head_sha: null
+  pull_request: null
+reviewed_artifacts: []
+evidence_reviewed: []
 review_disposition: REVISE
 required_changes: []
 recommendations: []
 findings: []
-evidence_reviewed: []
 limitations: []
+stale_on_head_change: true
 operator_decision: PENDING
 created_at: null
