@@ -1,78 +1,76 @@
 ---
 name: aeos-repository-truth
-description: Perform an AEOS repository-truth investigation without designing or implementing, producing verified facts, evidence, assumptions, unknowns, and a gap matrix.
+description: Perform a read-only AEOS repository-truth investigation with exact branch, worktree, ref, test, runtime, and evidence identity, producing verified facts, unknowns, and a bounded gap matrix without pruning or implementation.
 ---
-
 
 ## Governing contract
 
-Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md` before using this skill. Repository governance remains authoritative.
-
-Do not use this skill when the active goal state or operator authorization does not permit its workflow.
+Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md`. Repository
+governance remains authoritative.
 
 # AEOS Repository Truth
 
 ## Use when
 
-Use only for discovery, evidence reconstruction, baseline establishment, or re-verification.
-
-This is a read-only workflow unless the operator explicitly authorizes writing the resulting governance artifacts. Do not modify product code, tests, migrations, CI, or runtime configuration.
+Use for discovery, baseline establishment, evidence reconstruction, hygiene
+inventory, or re-verification. This workflow is read-only unless publication of
+its artifacts is separately authorized.
 
 ## Required questions
 
-Establish:
-
-- What repository, branch, worktree, and commit are under review?
-- What governance applies?
-- What approved objective and acceptance criteria apply?
-- What implementation, tests, schemas, migrations, CI, runtime surfaces, and evidence exist?
-- Which prior claims are verified, unverified, contradicted, stale, or unavailable?
-- What gaps remain?
+- What repository, authenticated remote, branch, worktree, base, and exact head
+  are under review?
+- What issue, goal, work item, authorization, PR, checks, and review state apply?
+- What implementation, tests, schemas, migrations, CI, runtime, and evidence
+  exist?
+- Which prior claims are verified, stale, contradicted, unknown, or unavailable?
+- What branch/worktree/ref state is relevant to preservation or closeout?
 - What next gate is justified?
 
 ## Procedure
 
-### 1. Preflight
+### 1. Authenticate repository state
 
-Capture repository identity and dirty state. Identify local worktrees and relevant branch relationships when material.
+Capture repository path, remote, default branch, current branch, upstream, base
+and exact head, merge base, PR/checks, dirty/untracked state, and registered
+branch/worktree identities.
 
-### 2. Read governing sources
+### 2. Inventory without pruning
 
-Read the Master Index and only the AEOS sources applicable to the discovery workflow. Read repository-local specifications and ADRs relevant to the objective.
+When repository hygiene or closeout is material, inventory:
 
-### 3. Build an investigation map
+- local and remote branches;
+- worktrees and administrative metadata;
+- refs and tags;
+- dirty and untracked material;
+- locks, storage constraints, and process dependencies;
+- integration, patch-equivalence, and divergence relationships.
 
-List:
+Perform no-prune fetch when remote truth is required. Do not delete, remove,
+repair, or prune during repository truth. Absence from a partial inventory is
+not proof of absence.
 
-- implementation components;
-- tests and test bundles;
-- schemas and migrations;
-- configuration;
-- CLI/API/MCP surfaces;
-- CI workflows;
-- evidence bundles;
-- runtime or operational surfaces;
-- deployment artifacts, only if in scope.
+### 3. Read governing sources
 
-### 4. Inspect high-authority evidence
+Read only the applicable repository and AEOS sources, including ADR-019,
+`POL-GIT-HYGIENE-001`, and the repository test-selection standard when
+applicable.
 
-Use this order:
+### 4. Build an investigation map
 
-1. current implementation;
-2. current tests;
-3. schemas and migrations;
-4. configuration;
-5. CI definitions;
-6. runtime output;
-7. committed evidence;
-8. approved specifications;
-9. summaries and prior reports.
+Map implementation, tests and bundles, schemas and migrations, configuration,
+CLI/API/MCP surfaces, CI, evidence, runtime, deployment artifacts when in scope,
+and historical claims.
 
-Do not repeat a prior audit merely to create more prose. Reverify material claims and identify changed evidence.
+### 5. Inspect high-authority evidence
 
-### 5. Classify every material statement
+Prefer authenticated repository and runtime evidence over specifications,
+reports, summaries, and memory. Reverify material claims rather than repeating
+prior narrative.
 
-Use the shared claim taxonomy:
+### 6. Classify claims
+
+Use:
 
 - `VERIFIED`
 - `CLAIMED_NOT_VERIFIED`
@@ -81,25 +79,15 @@ Use the shared claim taxonomy:
 - `UNAVAILABLE`
 - `NOT_APPLICABLE`
 
-### 6. Trace gaps to requirements
+For every acceptance criterion record implementation status, test status,
+evidence strength, gap, risk, and next action.
 
-For each acceptance criterion record:
-
-- criterion identifier;
-- applicable evidence;
-- current implementation status;
-- test status;
-- evidence strength;
-- gap;
-- risk;
-- next required action.
-
-### 7. Produce checkpoint artifacts
-
-Create:
+### 7. Produce artifacts
 
 ```text
 repository-truth-report.md
+repository-identity.yaml
+branch-worktree-ref-inventory.yaml   # when applicable
 evidence-index.json
 verified-facts.yaml
 assumptions-and-unknowns.md
@@ -107,28 +95,24 @@ gap-matrix.yaml
 checkpoint-request.yaml
 ```
 
-Use `.ai/aeos/goals/<goal-id>/` unless the approved goal specifies another governed location.
+Use the approved goal location. Evidence entries must identify representation
+and hash scope when material.
 
 ### 8. Stop
 
-Disposition:
-
-```text
-READY_FOR_EXTERNAL_REVIEW
-```
-
-Recommend an architecture or planning gate only when repository truth supports it. Do not begin that work.
+Return `READY_FOR_EXTERNAL_REVIEW`, `BLOCKED`, or `INSUFFICIENT_EVIDENCE`.
+Recommend but do not begin architecture, implementation, cleanup, or the next
+state.
 
 ## Required report sections
 
-1. Scope and authority
-2. Repository state
-3. Evidence-access limitations
-4. System/component map
-5. Verified facts
-6. Claims not verified
-7. Assumptions and unknowns
-8. Acceptance-criteria gap matrix
-9. Risks and contradictions
-10. Recommended next gate
-11. Bounded disposition
+1. Scope, authority, and exact identity.
+2. Evidence-access limitations.
+3. Repository and runtime map.
+4. Branch/worktree/ref inventory when applicable.
+5. Verified facts and contradicted claims.
+6. Claims not verified, assumptions, unknowns, and unavailable evidence.
+7. Acceptance-criteria gap matrix.
+8. Preservation or cleanup blockers.
+9. Risks and recommended next gate.
+10. Bounded disposition.
