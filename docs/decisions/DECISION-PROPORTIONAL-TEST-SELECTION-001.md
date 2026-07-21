@@ -31,6 +31,12 @@ supersedes:
     drive_id: "1iPaw4yjgdXP_VvXb7XwNKn8gIiPyMWk_"
     sha256: "419ef24a3139214b761ab682190adb23ce1147ae3ec6dbe344a2eda45a648a64"
     scope: "Test-selection-only override of blanket schedule-canary language in the PI-WI-03 arc plan"
+    affected_clauses:
+      - section: "Governance (AEOS) — role-separated, applies to EACH unit"
+        item: 3
+        anchor: "focused tests + ruff + mypy + scripts/test-schedule.sh"
+      - section: "Verification (each unit)"
+        anchor: "scripts/test-schedule.sh + the dropped 2/9 failures re-confirmed pre-existing"
 superseded_by: []
 related_artifacts:
   - ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md"
@@ -124,10 +130,16 @@ Drive ID: 1iPaw4yjgdXP_VvXb7XwNKn8gIiPyMWk_
 SHA-256: 419ef24a3139214b761ab682190adb23ce1147ae3ec6dbe344a2eda45a648a64
 ```
 
-It supersedes only the arc plan clauses that require
-`scripts/test-schedule.sh` as a blanket canary for each PI-WI-03 unit. The
-original plan remains unchanged and preserved. Future plan revisions and work
-item authorizations must consume this decision explicitly once accepted.
+It supersedes only these rev-4 clauses:
+
+- `Governance (AEOS) — role-separated, applies to EACH unit`, item 3, the
+  committed-SHA evidence sequence containing `focused tests + ruff + mypy +
+  scripts/test-schedule.sh`; and
+- `Verification (each unit)`, the bullet beginning `scripts/test-schedule.sh +
+  the dropped 2/9 failures re-confirmed pre-existing`.
+
+The original plan remains unchanged and preserved. Future plan revisions and
+work-item authorizations must consume this decision explicitly once accepted.
 
 1. **PI-WI-02B schema/migrator work:** retain the schedule bundle because shared
    migrator/schema behavior is changed.
