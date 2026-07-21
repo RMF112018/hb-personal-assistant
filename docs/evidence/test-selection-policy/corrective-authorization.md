@@ -34,7 +34,7 @@ review of exact head `3f008f4ba7e64a0036ecee913a9eaab24cfa1e75`.
 **Branch:** `chore/proportional-test-selection-policy-v2`  
 **Parent SHA:** `43abb04a549d927334959fd2e40745296a6281c2`  
 **Pull request:** `#319`  
-**Status:** ACTIVE — bounded corrective implementation  
+**Status:** CONSUMED — bounded corrective implementation complete; fresh re-review required  
 **Authority:** Direct operator instruction, “resolve the remaining failing items,” issued 2026-07-21 at approximately 11:29 America/New_York
 
 ### Review basis
@@ -58,7 +58,24 @@ these blocking lineages:
 - this authorization record;
 - PR #319 description and exact-head evidence references.
 
-### Required validation
+### Implemented correction
+
+- removed generic and operator-specific Python fallback paths;
+- required an explicit interpreter or active-worktree `.venv`, executable status,
+  Python 3.12+, and available pytest;
+- replaced invalid issue-form `about` metadata with `description` and added exact
+  candidate, command, environment, base evidence, review, integration, and
+  closure fields;
+- replaced token-only assertions with issue-form semantic validation, negative
+  fixtures, safe-suite invalid-input probes, fake-interpreter probes, exact
+  lifecycle-state checks, complete governed YAML/front-matter parsing, and
+  explicit receipt command and exit code;
+- added exact-head CI installation and bounded `--collect-only --python-only`
+  execution before receipt generation;
+- required forecasting CI to be described as synthetic PR merge-result evidence,
+  not exact-head governance or full-suite evidence.
+
+### Required final validation
 
 - shell syntax validation;
 - Python syntax validation;
