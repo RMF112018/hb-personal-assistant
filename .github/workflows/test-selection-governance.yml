@@ -48,21 +48,44 @@ jobs:
       - name: Exercise bounded canonical collection
         env:
           PYTHON: ${{ env.pythonLocation }}/bin/python
-        run: bash scripts/test-safe.sh --collect-only --python-only
+        run: |
+          set +e
+          bash scripts/test-safe.sh --collect-only --python-only 2>&1 | tee pr319-safe-collection.log
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > pr319-safe-collection.exitcode
+          exit 0
 
       - name: Validate governance contracts at exact head
         run: |
+          set +e
           python scripts/validate-test-selection-governance.py \
             --github-head-sha '${{ github.event.pull_request.head.sha }}' \
             --github-base-sha '${{ github.event.pull_request.base.sha }}' \
             --pr-number '${{ github.event.pull_request.number }}' \
             --branch-name '${{ github.event.pull_request.head.ref }}' \
             --identity-source 'github-actions-pull-request-event' \
-            --output pr319-governance-validation.json
+            --output pr319-governance-validation.json \
+            2>&1 | tee pr319-governance-validator.log
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > pr319-governance-validator.exitcode
+          exit 0
 
-      - name: Upload validation receipt
+      - name: Upload validation and collection evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr319-governance-validation-${{ github.event.pull_request.head.sha }}
-          path: pr319-governance-validation.json
+          path: |
+            pr319-governance-validation.json
+            pr319-governance-validator.log
+            pr319-governance-validator.exitcode
+            pr319-safe-collection.log
+            pr319-safe-collection.exitcode
           if-no-files-found: error
+
+      - name: Enforce successful collection and governance validation
+        if: always()
+        run: |
+          test -f pr319-governance-validation.json
+          test "$(cat pr319-safe-collection.exitcode)" = "0"
+          test "$(cat pr319-governance-validator.exitcode)" = "0"
