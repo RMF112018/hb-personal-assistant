@@ -22,6 +22,37 @@ Repository truth overrides generic AEOS guidance. If current implementation,
 approved specifications, ADRs, or repository policy conflict with generic
 guidance, report the conflict and follow the higher-authority source.
 
+## GitHub-First Engineering Control Plane
+
+The repository and GitHub are canonical for engineering execution state.
+Google Drive remains an approved publication, collaboration, reference, and
+external-handoff surface.
+
+Authority is separated as follows:
+
+1. **Engineering execution authority** — repository content and GitHub issues,
+   branches, commits, pull requests, reviews, and required checks.
+2. **Runtime authority** — the deployed environment and runtime-generated
+   evidence for operational claims.
+3. **Publication/reference authority** — the Google Drive Software Delivery
+   Control Center and other approved publication surfaces.
+4. **Final decision authority** — the operator.
+
+For repository-specific work, a Drive document must not independently redefine
+or authorize the active work item, branch, SHA, pull request, review state,
+merge state, or checkpoint. Existing Drive records remain historical evidence.
+New Drive-native mechanisms that independently track active engineering
+execution state are frozen during the migration defined by:
+
+```text
+docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/implementation-plans/github-first-control-plane-migration.md
+```
+
+Independent review must record the exact head SHA reviewed. A head change makes
+the previous review stale for current-head approval unless the governing policy
+explicitly states otherwise.
+
 ## Control-Plane Layout
 
 ```text
@@ -103,10 +134,15 @@ Goal-control records live under:
 Goal-control records coordinate delivery; they do not replace authoritative
 implementation evidence under `docs/evidence/`.
 
+Google Drive publication copies must identify the canonical repository path,
+issue, pull request, and SHA when those identities exist. Publication success or
+failure does not mutate canonical engineering state.
+
 ## Evidence and Trust
 
 - Agent summaries are not proof.
 - Evidence must correspond to the reported repository SHA and environment.
+- Independent review must identify the exact reviewed SHA.
 - Preserve commands, exit codes, outputs, metrics, hashes, and limitations.
 - Failed and invalid attempts remain part of the engineering record.
 - Merge, deployment, production, and operational readiness are separate
