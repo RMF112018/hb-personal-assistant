@@ -19,7 +19,7 @@ pull_request: 319
 created_at: 2026-07-21T05:34:00-04:00
 registered_at: 2026-07-21T05:40:38-04:00
 expected_disposition: remove-after-merge
-lifecycle_state: ACTIVE
+lifecycle_state: REVIEW_PENDING
 retention_reason: null
 next_review_at: null
 validation:
@@ -182,3 +182,14 @@ transitions:
     evidence_parent_sha: a5b1cdb0220982db6d6c956e45d532b0c6187a5c
     evidence: docs/evidence/test-selection-policy/corrective-authorization.md
     reason: Begin bounded R3 correction of exact scope enforcement, receipt completeness, and adversarial fixtures.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T12:50:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: dc12f002892e875d12f0395ec5c40fc367c3033c
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R3 validator and workflow corrections complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
