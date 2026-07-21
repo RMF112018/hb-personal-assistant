@@ -19,13 +19,13 @@ pull_request: 319
 created_at: 2026-07-21T05:34:00-04:00
 registered_at: 2026-07-21T05:40:38-04:00
 expected_disposition: remove-after-merge
-lifecycle_state: REVIEW_PENDING
+lifecycle_state: ACTIVE
 retention_reason: null
 next_review_at: null
 validation:
   application_tests: not_applicable
   executable_governance_validation: required
-  reason: R2 corrects the safe-suite executable, GitHub issue form, validator semantics, workflow evidence, and exact-head receipt; validate only those surfaces plus bounded collection.
+  reason: R3 corrects exact changed-path enforcement, receipt completeness, negative fixtures, and evidence cross-checking; validate only those surfaces plus bounded collection.
   compare_base: 8b44cbd216d531a1894b4257355469edf922029f
 transitions:
   - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REGISTER
@@ -160,3 +160,25 @@ transitions:
     evidence_parent_sha: 145ef391f35fd10d5030ad23e1bf1175bb9ef792
     evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29845587016
     reason: Complete prerequisite correction after preserved diagnostic evidence; technical validation passed at 2572454ec1cd3c0f43a7d548c569075ce3e9e169 and the new externally resolved head requires final exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:43:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR2
+    evidence_parent_sha: a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    evidence: external-review:PR319-GOV-RR2@a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    reason: Fresh independent R2 re-review returned REVISE with PR319-RR2-F-001 through F-003.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R4
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T12:44:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R3 correction of exact scope enforcement, receipt completeness, and adversarial fixtures.
