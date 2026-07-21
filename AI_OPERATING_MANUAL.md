@@ -46,12 +46,38 @@ execution state are frozen during the migration defined by:
 
 ```text
 docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/governance/branch-worktree-lifecycle-policy.md
 docs/implementation-plans/github-first-control-plane-migration.md
 ```
 
 Independent review must record the exact head SHA reviewed. A head change makes
 the previous review stale for current-head approval unless the governing policy
 explicitly states otherwise.
+
+## Branch and Worktree Closeout
+
+Branches and worktrees are governed execution records, not disposable agent
+scratch space.
+
+Every non-canonical worktree must be registered to a goal or work item before
+substantive editing. Registration includes its path, branch, base SHA, owner or
+agent, issue or pull request when available, and expected disposition.
+
+A merge moves the associated work to `MERGED_PENDING_CLEANUP`. It does not move
+the work item directly to `CLOSED`. Closure requires:
+
+1. post-merge validation or an explicit not-required decision;
+2. preservation or disposition of all dirty and untracked material;
+3. proof that the branch is integrated, patch-equivalent, retained, or blocked;
+4. verified worktree disposition;
+5. verified local branch disposition;
+6. verified or explicitly deferred remote branch disposition;
+7. a durable cleanup, retention, or blocker receipt.
+
+Normal cleanup must fail closed and avoid destructive shortcuts. `git reset
+--hard`, broad `git clean`, forced worktree removal, and `git branch -D` are not
+routine hygiene mechanisms. Remote branch deletion is a separate governed
+action from local branch or worktree cleanup.
 
 ## Control-Plane Layout
 
@@ -106,6 +132,9 @@ Governance Initialization
 → Independent Implementation Audit
 → Authorized Corrective Implementation
 → Independent Corrective Audit
+→ Merge Authorization
+→ Post-Merge Validation
+→ Branch and Worktree Cleanup
 → Bounded Closure or Readiness Assessment
 ```
 
@@ -118,6 +147,7 @@ Repository engineering artifacts remain under the established locations:
 ```text
 docs/architecture/
 docs/decisions/
+docs/governance/
 docs/specs/
 docs/implementation-plans/
 docs/evidence/
@@ -147,6 +177,7 @@ failure does not mutate canonical engineering state.
 - Failed and invalid attempts remain part of the engineering record.
 - Merge, deployment, production, and operational readiness are separate
   decisions.
+- Branch/worktree cleanup is a separate closeout gate after merge.
 - No agent may accept risk on behalf of the operator.
 
 ## Workflow Summary
@@ -161,7 +192,10 @@ Discovery
 → Evidence
 → Independent Audit
 → Corrective Review
+→ Merge Authorization
+→ Post-Merge Validation
+→ Branch and Worktree Cleanup
 → Production Readiness
 → Go/No-Go
-→ Explicitly Authorized Merge or Deploy
+→ Explicitly Authorized Deploy
 ```
