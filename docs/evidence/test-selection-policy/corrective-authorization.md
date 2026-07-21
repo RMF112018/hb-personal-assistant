@@ -252,6 +252,58 @@ R4 does not authorize changes to `scripts/test-safe.sh`, the issue form,
 application source, application tests, dependency declarations, schemas,
 migrations, runtime, deployment, credentials, secrets, or production surfaces.
 
+## Corrective cycle R5
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R5-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `230fe55eddf44ed60d6c6434fe7c3121d369f238`  
+**Pull request:** `#319`  
+**Status:** CONSUMED — bounded R5 implementation complete; exact-head validation and fresh independent re-review required  
+**Authority:** Direct operator instruction, “resolve the blocking issues,” issued 2026-07-21 at approximately 15:34 America/New_York
+
+### R5 review basis
+
+The fresh independent R4 re-review of exact head
+`230fe55eddf44ed60d6c6434fe7c3121d369f238` returned `REVISE`. It verified
+all prior findings fixed and opened:
+
+- `PR319-RR4-F-001` — the required provisional receipt was not read, validated, or bound to the final receipt;
+- `PR319-RR4-F-002` — changed-path arrays permitted duplicate entries through set reduction.
+
+### Authorized R5 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml` only as needed for bounded execution and final restoration;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Implemented R5 correction
+
+- validates the provisional receipt as schema 2, `PASS`, and evidence-hash intact;
+- enforces an explicit provisional-to-final allowed-delta contract;
+- permits only validator stored-byte hash population, exact finalizer insertion, and evidence-hash recomputation;
+- adds missing, malformed, tampered, substituted, schema/result, and unauthorized-delta provisional-receipt fixtures;
+- requires both path arrays to be exact sorted lists of unique strings;
+- adds duplicate-entry fixtures for both path arrays;
+- preserves run 44 and the R4 review as historical evidence.
+
+### Required R5 completion evidence
+
+- restored read-only workflow permissions and no bootstrap implementation step at the final head;
+- Python and workflow syntax success;
+- provisional-to-final lineage and duplicate-path fixtures passing;
+- bounded canonical collection with zero application-test execution;
+- exact-head finalized artifact and enforcement success;
+- fresh independent re-review before operator acceptance or merge consideration.
+
+### R5 exclusions
+
+R5 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+
 ## Exclusions
 
 No corrective cycle authorizes merge, cleanup, Phase B activation, deployment,

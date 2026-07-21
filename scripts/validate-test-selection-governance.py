@@ -942,6 +942,69 @@ def expected_validator_command(args: argparse.Namespace) -> list[str]:
     ]
 
 
+def expected_finalizer_command(args: argparse.Namespace) -> list[str]:
+    return [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "finalize-receipt",
+        "--input",
+        args.partial_receipt,
+        "--output",
+        args.receipt,
+        "--validator-log",
+        args.validator_log,
+        "--validator-exitcode-file",
+        args.validator_exitcode_file,
+    ]
+
+
+def validate_exact_path_array(receipt: dict[str, Any], field: str) -> None:
+    value = receipt.get(field)
+    expected = sorted(AUTHORIZED_CHANGED_PATHS)
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        fail(f"receipt {field} must be a list of strings")
+    if len(value) != len(set(value)):
+        fail(f"receipt {field} contains duplicate entries")
+    if value != expected:
+        fail(f"receipt {field} does not equal exact sorted authorized paths")
+
+
+def validate_partial_receipt_payload(
+    partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
+) -> None:
+    if partial.get("evidence_sha256") != compute_evidence_hash(partial):
+        fail("partial receipt evidence SHA-256 mismatch")
+    if partial.get("schema_version") != 2 or partial.get("result") != "PASS":
+        fail("partial receipt is not schema-2 PASS")
+    if "finalizer" in partial:
+        fail("provisional receipt must not contain finalizer")
+
+    partial_validator = partial.get("validator")
+    final_validator = final.get("validator")
+    if not isinstance(partial_validator, dict) or not isinstance(final_validator, dict):
+        fail("provisional or final receipt lacks validator section")
+    if partial_validator.get("log_sha256") is not None:
+        fail("provisional receipt validator log hash must be null")
+    if partial_validator.get("exitcode_file_sha256") is not None:
+        fail("provisional receipt validator exit-code hash must be null")
+
+    expected = copy.deepcopy(partial)
+    expected_validator = expected["validator"]
+    expected_validator["log_file"] = args.validator_log
+    expected_validator["log_sha256"] = final_validator.get("log_sha256")
+    expected_validator["exitcode_file"] = args.validator_exitcode_file
+    expected_validator["exitcode_file_sha256"] = final_validator.get(
+        "exitcode_file_sha256"
+    )
+    expected["finalizer"] = {
+        "command": expected_finalizer_command(args),
+        "exit_code": 0,
+    }
+    expected["evidence_sha256"] = final.get("evidence_sha256")
+    if expected != final:
+        fail("provisional-to-final receipt delta mismatch")
+
+
 def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) -> None:
     if receipt.get("schema_version") != 2 or receipt.get("result") != "PASS":
         fail("final receipt is not schema-2 PASS")
@@ -1012,20 +1075,23 @@ def verify_receipt_payload(receipt: dict[str, Any], args: argparse.Namespace) ->
         if collection.get(key) != value:
             fail(f"receipt collection field {key} does not match log")
 
-    if set(receipt.get("changed_files", [])) != AUTHORIZED_CHANGED_PATHS:
-        fail("receipt changed files do not equal exact authorized set")
-    if set(receipt.get("authorized_changed_paths", [])) != AUTHORIZED_CHANGED_PATHS:
-        fail("receipt authorized changed paths do not equal exact contract")
+    validate_exact_path_array(receipt, "changed_files")
+    validate_exact_path_array(receipt, "authorized_changed_paths")
 
 
-def mutate_and_rehash(receipt: dict[str, Any], mutation: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
+
+def mutate_and_rehash(
+    receipt: dict[str, Any], mutation: Callable[[dict[str, Any]], None]
+) -> dict[str, Any]:
     mutated = copy.deepcopy(receipt)
     mutation(mutated)
     mutated["evidence_sha256"] = compute_evidence_hash(mutated)
     return mutated
 
 
-def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namespace) -> None:
+def run_receipt_negative_fixtures(
+    receipt: dict[str, Any], args: argparse.Namespace
+) -> None:
     identity_mutations: tuple[tuple[str, Any], ...] = (
         ("repository", "example/other"),
         ("pull_request", args.expected_pr_number + 1),
@@ -1035,7 +1101,9 @@ def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namesp
         ("identity_source", "untrusted-source"),
     )
     for field, value in identity_mutations:
-        mutated = mutate_and_rehash(receipt, lambda data, f=field, v=value: data.__setitem__(f, v))
+        mutated = mutate_and_rehash(
+            receipt, lambda data, f=field, v=value: data.__setitem__(f, v)
+        )
         expect_failure(
             lambda data=mutated: verify_receipt_payload(data, args),
             f"receipt identity mutation {field}",
@@ -1044,7 +1112,9 @@ def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namesp
 
     mutated_command = mutate_and_rehash(
         receipt,
-        lambda data: data["validator"].__setitem__("command", ["python", "other-validator.py"]),
+        lambda data: data["validator"].__setitem__(
+            "command", ["python", "other-validator.py"]
+        ),
     )
     expect_failure(
         lambda: verify_receipt_payload(mutated_command, args),
@@ -1061,7 +1131,9 @@ def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namesp
     for section, field in reference_mutations:
         mutated = mutate_and_rehash(
             receipt,
-            lambda data, s=section, f=field: data[s].__setitem__(f, f"substituted-{f}"),
+            lambda data, s=section, f=field: data[s].__setitem__(
+                f, f"substituted-{f}"
+            ),
         )
         expect_failure(
             lambda data=mutated: verify_receipt_payload(data, args),
@@ -1069,13 +1141,114 @@ def run_receipt_negative_fixtures(receipt: dict[str, Any], args: argparse.Namesp
             f"reference mismatch for {field}",
         )
 
+    for field in ("changed_files", "authorized_changed_paths"):
+        duplicated = mutate_and_rehash(
+            receipt,
+            lambda data, f=field: data[f].append(data[f][0]),
+        )
+        expect_failure(
+            lambda data=duplicated: verify_receipt_payload(data, args),
+            f"receipt duplicate path entry {field}",
+            f"{field} contains duplicate entries",
+        )
+
+
+def run_partial_receipt_negative_fixtures(
+    partial: dict[str, Any], final: dict[str, Any], args: argparse.Namespace
+) -> None:
+    tampered = copy.deepcopy(partial)
+    tampered["result"] = "FAIL"
+    expect_failure(
+        lambda: validate_partial_receipt_payload(tampered, final, args),
+        "tampered provisional receipt hash",
+        "partial receipt evidence SHA-256 mismatch",
+    )
+
+    wrong_schema = mutate_and_rehash(
+        partial, lambda data: data.__setitem__("schema_version", 3)
+    )
+    expect_failure(
+        lambda: validate_partial_receipt_payload(wrong_schema, final, args),
+        "provisional receipt schema mutation",
+        "partial receipt is not schema-2 PASS",
+    )
+
+    wrong_result = mutate_and_rehash(
+        partial, lambda data: data.__setitem__("result", "FAIL")
+    )
+    expect_failure(
+        lambda: validate_partial_receipt_payload(wrong_result, final, args),
+        "provisional receipt result mutation",
+        "partial receipt is not schema-2 PASS",
+    )
+
+    unauthorized = mutate_and_rehash(
+        partial,
+        lambda data: data["environment"].__setitem__(
+            "platform", "substituted-platform"
+        ),
+    )
+    expect_failure(
+        lambda: validate_partial_receipt_payload(unauthorized, final, args),
+        "unauthorized provisional-to-final delta",
+        "provisional-to-final receipt delta mismatch",
+    )
+
+
+def read_json_receipt(path: Path, label: str) -> dict[str, Any]:
+    if not path.is_file():
+        fail(f"missing {label} receipt file: {path}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        fail(f"invalid {label} receipt JSON: {exc}")
+    if not isinstance(payload, dict):
+        fail(f"{label} receipt must be a JSON object")
+    return payload
+
+
+def run_partial_receipt_file_negative_fixtures(
+    final: dict[str, Any], args: argparse.Namespace
+) -> None:
+    with tempfile.TemporaryDirectory(prefix="pr319-partial-receipt-") as tmp:
+        temp = Path(tmp)
+        missing = temp / "missing.json"
+        expect_failure(
+            lambda: read_json_receipt(missing, "provisional"),
+            "missing provisional receipt file",
+            "missing provisional receipt file",
+        )
+
+        malformed = temp / "malformed.json"
+        malformed.write_text("{not-json", encoding="utf-8")
+        expect_failure(
+            lambda: read_json_receipt(malformed, "provisional"),
+            "malformed provisional receipt file",
+            "invalid provisional receipt JSON",
+        )
+
+        substituted = temp / "substituted.json"
+        substituted.write_text(json.dumps(final), encoding="utf-8")
+        substituted_payload = read_json_receipt(substituted, "provisional")
+        expect_failure(
+            lambda: validate_partial_receipt_payload(
+                substituted_payload, final, args
+            ),
+            "substituted provisional receipt file",
+            "provisional receipt must not contain finalizer",
+        )
+
 
 def verify_receipt(args: argparse.Namespace) -> None:
     receipt_path = Path(args.receipt).resolve()
-    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    partial_path = Path(args.partial_receipt).resolve()
+    receipt = read_json_receipt(receipt_path, "final")
+    partial = read_json_receipt(partial_path, "provisional")
     verify_receipt_payload(receipt, args)
+    validate_partial_receipt_payload(partial, receipt, args)
     run_receipt_negative_fixtures(receipt, args)
-
+    run_partial_receipt_negative_fixtures(partial, receipt, args)
+    run_partial_receipt_file_negative_fixtures(receipt, args)
 
 def write_json(path: str | None, payload: dict[str, Any]) -> None:
     rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
