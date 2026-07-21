@@ -359,3 +359,36 @@ transitions:
     evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
     reason: R6 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R82
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T16:43:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R82
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29866873768
+    reason: R6 exact-head final enforcement rejected an outdated unqualified diagnostic expectation; preserve the failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R82
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T16:44:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Correct the diagnostic-specific fixture expectation within the existing bounded R6 authorization.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R11
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T16:45:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Diagnostic-specific fixture expectation corrected; route the externally resolved current head to replacement exact-head CI and fresh independent re-review.

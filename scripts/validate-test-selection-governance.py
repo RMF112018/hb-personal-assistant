@@ -1317,7 +1317,7 @@ def run_receipt_negative_fixtures(
         expect_failure(
             lambda data=mutated: verify_receipt_payload(data, args),
             f"receipt evidence reference mutation {section}.{field}",
-            f"reference mismatch for {field}",
+            f"reference mismatch for {section}.{field}",
         )
 
     for field in ("changed_files", "authorized_changed_paths"):

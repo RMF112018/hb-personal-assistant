@@ -367,3 +367,8 @@ migrations, runtime, deployment, credentials, secrets, or production surfaces.
 It does not authorize merge, cleanup, Phase B, deployment, migration,
 production activation, risk acceptance, or self-review.
 
+### Preserved R6 exact-head diagnostic
+
+- Run 82 (`29866873768`) at `543491f996036bf12018b2a7d439156de8082a60` passed syntax, bounded collection, validator execution, receipt finalization, and artifact upload. Final enforcement failed because the inherited final-receipt reference fixture expected the former unqualified `log_file` diagnostic while R6 emits the stronger qualified `collection.log_file` diagnostic.
+- The run and artifact remain preserved as failed implementation evidence. The correction changes only the fixture's expected diagnostic substring and does not weaken receipt reference authentication.
+
