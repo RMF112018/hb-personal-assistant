@@ -5,20 +5,26 @@ local_branch: null
 remote_name: origin
 remote_branch: chore/proportional-test-selection-policy-v2
 remote_tracking_ref: refs/remotes/origin/chore/proportional-test-selection-policy-v2
-branch_tip_sha: 8b44cbd216d531a1894b4257355469edf922029f
+branch_tip_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
 base_branch: main
 base_sha: 8b44cbd216d531a1894b4257355469edf922029f
 owner_or_agent: OpenAI ChatGPT, operator-directed
 goal_id: null
 work_item_id: POLICY-TEST-SELECTION-001
 issue: null
-pull_request: null
+pull_request: 319
 created_at: 2026-07-21T05:34:00-04:00
 registered_at: 2026-07-21T05:40:38-04:00
 expected_disposition: remove-after-merge
-lifecycle_state: ACTIVE
+lifecycle_state: REVIEW_PENDING
 retention_reason: null
 next_review_at: null
+candidate_head_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
+validation:
+  code_tests: not_applicable
+  reason: Documentation, governance, and lifecycle evidence only; no executable code, test target, script, dependency, schema, or runtime file changed.
+  compare_base: 8b44cbd216d531a1894b4257355469edf922029f
+  changed_files: 8
 transitions:
   - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REGISTER
     entity_type: branch
@@ -40,3 +46,13 @@ transitions:
     authorization_id: operator-instruction-2026-07-21-test-selection-policy
     evidence: docs/evidence/test-selection-policy/branch-registration.yaml
     reason: Begin bounded repository governance changes for proportional test selection and unrelated-failure handling.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T05:49:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Policy package completed, validated as documentation-only, and submitted for independent review.
