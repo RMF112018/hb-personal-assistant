@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -28,7 +28,7 @@ This index applies to:
 - merge, deployment, and operational Go/No-Go decisions;
 - AEOS conformance checks.
 
-This index does not define project-specific architecture. Repository-specific source files, approved specifications, acceptance criteria, ADRs, and runtime evidence remain authoritative for implementation details.
+This index does not define project-specific architecture. Repository-specific source files, approved specifications, acceptance criteria, ADRs, policies, and runtime evidence remain authoritative for implementation details.
 
 ## 3. Authority Order
 
@@ -36,7 +36,7 @@ When information conflicts, use the following authority order:
 
 1. Current repository state and runtime evidence.
 2. Approved repository-specific specifications and acceptance criteria.
-3. Repository-local operating documents, including `AGENTS.md`, `AI_OPERATING_MANUAL.md`, ADRs, and policies.
+3. Repository-local operating documents, including `AGENTS.md`, `AI_OPERATING_MANUAL.md`, ADRs, decisions, and policies.
 4. AEOS governance standards listed in this index.
 5. Current-session human instructions.
 6. Prior project conversations.
@@ -106,12 +106,14 @@ Use:
 - `02_AEOS_WORKFLOW_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
 - `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
 Required outputs:
 
 - executable implementation plan;
 - local-agent handoff prompt;
-- test plan;
+- proportional test plan with suite-to-risk mapping;
+- failure-disposition and integrated-green requirements;
 - evidence requirements;
 - stop conditions.
 
@@ -122,6 +124,7 @@ Use:
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
 - `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md` when reviewing test scope or failure disposition
 
 Permitted dispositions:
 
@@ -137,12 +140,14 @@ Use:
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
 Required outputs:
 
 - acceptance-criteria matrix;
 - finding ledger;
 - evidence assessment;
+- test-selection and failure-disposition assessment;
 - corrective actions;
 - audit disposition.
 
@@ -152,6 +157,7 @@ Use:
 
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md` when failures or parallel corrective work are involved
 
 Required outputs:
 
@@ -167,6 +173,7 @@ Use:
 - `06_AEOS_PRODUCTION_READINESS_STANDARD.md`
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
 Separate these decisions:
 
@@ -224,6 +231,10 @@ Defines evidence-derived positive patterns, negative patterns, generalization bo
 
 Provides concise, reusable prompts for each AEOS workflow mode.
 
+### 11 — Repository Test Selection and Failure Disposition Standard
+
+Defines proportional test selection, domain-bundle triggers, evidence reuse, failure classification, separately authorized parallel corrective work, stop conditions, and the no-known-failure integration rule for this repository.
+
 ## 7. Source Use Rules
 
 - Consult only the sources relevant to the current mode.
@@ -232,6 +243,8 @@ Provides concise, reusable prompts for each AEOS workflow mode.
 - Do not treat prior conversations as evidence.
 - Use stable identifiers for requirements, criteria, findings, risks, and decisions.
 - Preserve unresolved findings until formally dispositioned.
+- Preserve every failing or invalid test result and classify it before assigning corrective ownership.
+- Do not declare merge readiness while a required safe test remains unresolved.
 - If evidence is unavailable, use `INSUFFICIENT EVIDENCE` rather than inventing certainty.
 
 ## 8. Default Session Opening
