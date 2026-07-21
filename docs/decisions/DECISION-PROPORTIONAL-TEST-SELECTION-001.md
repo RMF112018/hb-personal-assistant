@@ -10,7 +10,7 @@ date_updated: "2026-07-21"
 decision_owner: "Bobby Fetting"
 author: "OpenAI ChatGPT, operator-directed"
 repository: "RMF112018/hb-personal-assistant"
-branch_pr_commit: "chore/proportional-test-selection-policy-v2 / base 8b44cbd216d531a1894b4257355469edf922029f / PR pending"
+branch_pr_commit: "chore/proportional-test-selection-policy-v2 / PR #319 / base 8b44cbd216d531a1894b4257355469edf922029f"
 decision_scope: "Repository-wide test selection, failure disposition, parallel corrective work, and active permanent-identity goal test requirements"
 supersedes:
   - "PI-WI-03 arc-plan blanket schedule-canary requirement, test-selection scope only"
