@@ -88,9 +88,9 @@ transitions:
     entity_id: BR-TEST-SELECTION-POLICY-001
     from_state: ACTIVE
     to_state: REVIEW_PENDING
-    occurred_at: 2026-07-21T10:42:00-04:00
+    occurred_at: 2026-07-21T10:53:00-04:00
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: AUTH-PR319-GOV-CORRECTIVE-20260721-001
-    evidence_parent_sha: e52c246c6337d1d3eb3c8cd393ec06442793ff8a
+    evidence_parent_sha: 71e578dc33b6dba6f0819d2b7e8298854854d6d3
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
     reason: Corrective package complete; current tip and review candidate are resolved externally from authenticated GitHub state.
