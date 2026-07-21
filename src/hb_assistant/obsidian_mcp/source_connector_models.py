@@ -17,6 +17,7 @@ The connector is read-only: nothing here scans, opens, walks, or mutates anythin
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 from typing import Any
 
@@ -122,13 +123,40 @@ def mime_for_ext(ext: str | None) -> str | None:
     return MIME_BY_EXT.get(str(ext).strip().lower().lstrip("."))
 
 
+# Canonical unpadded base64url alphabet (RFC 4648 §5, no ``=`` padding). Anything outside this set —
+# whitespace/newlines, punctuation such as ``!``, or ``=`` padding — is rejected before any decode.
+_B64U_ALPHABET = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+)
+_B64U_TO_STD = str.maketrans("-_", "+/")
+
+
 def _b64u_encode(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
 def _b64u_decode(token: str) -> bytes:
-    pad = "=" * (-len(token) % 4)
-    return base64.urlsafe_b64decode(token + pad)
+    """Strict, canonical, unpadded base64url decode (fail-closed) — F-003.
+
+    Raises ``ValueError`` for any input that is not the EXACT canonical unpadded base64url form:
+
+    * a character outside the base64url alphabet — embedded whitespace/newlines, punctuation
+      (e.g. ``!``), or ``=`` padding — is rejected before decoding;
+    * decoding runs with ``validate=True`` (rejects a truncated/ill-formed body);
+    * the input must round-trip: ``_b64u_encode(decoded) == token``. This rejects a NON-CANONICAL
+      encoding of an otherwise-valid payload (non-zero trailing bits, or any alternate string that
+      decodes to the same bytes), so two distinct tokens can never resolve to one payload.
+    """
+    tok = str(token)
+    if not tok or any(ch not in _B64U_ALPHABET for ch in tok):
+        raise ValueError("non_canonical_base64url")
+    try:
+        raw = base64.b64decode(tok.translate(_B64U_TO_STD) + "=" * (-len(tok) % 4), validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("non_canonical_base64url") from exc
+    if _b64u_encode(raw) != tok:
+        raise ValueError("non_canonical_base64url")
+    return raw
 
 
 def _is_32hex(value: str) -> bool:

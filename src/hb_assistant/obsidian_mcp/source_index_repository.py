@@ -25,7 +25,7 @@ from typing import Any
 from hb_assistant.store.connection import borrow_connection, transaction
 from hb_assistant.store.source_intelligence_tables import fts5_available
 
-from .source_connector_models import classify_source_ref, sanitize_fts_query
+from .source_connector_models import classify_source_ref, encode_source_ref, sanitize_fts_query
 from .source_skip_codes import normalize_skip_code
 
 
@@ -293,11 +293,23 @@ class SourceIndexRepository:
     ) -> None:
         """Pre-commit lifecycle oracle (run as the LAST statement inside a lifecycle transaction; a
         violation raises → the enclosing ``transaction()`` ROLLS BACK). Invariants: every LIVE entity has
-        exactly one current locator; every TOMBSTONED entity zero; current-locator uniqueness (per entity
-        and per live path) — the latter two DB-enforced by the V128 partial-unique indexes, re-checked
-        here for defence-in-depth. ``entity_id`` scopes the check to a single entity (hot-path cost O(1));
-        None runs the full-scan invariant (bounded-batch / test use)."""
+        exactly one current locator; every TOMBSTONED entity zero; current-locator uniqueness per entity
+        AND per live path. The V128 partial-unique indexes (``idx_locators_current_per_entity`` /
+        ``idx_locators_active_path``) DB-enforce the last two; F-004 realizes them here as EXPLICIT rechecks
+        (``duplicate_current_locator_per_entity`` / ``duplicate_current_locator_per_live_path``) for
+        defence-in-depth — so a duplicate-current that slips past the schema (a dropped/altered index, a raw
+        bypassing write) still fails closed in-transaction → ROLLBACK. ``entity_id`` scopes the check to a
+        single entity (hot-path cost O(1)); None runs the full-scan invariant (bounded-batch / test use)."""
         scope = "" if entity_id is None else " AND e.source_entity_id = :eid"
+        scope_l = "" if entity_id is None else " AND l.source_entity_id = :eid"
+        # Per-live-path scope: when checking one entity, restrict the path-uniqueness recheck to the
+        # (root, rel_path) addresses that entity currently occupies, so a collision with ANY other current
+        # locator (same OR a different entity) at one of those paths is still caught on the hot path.
+        path_scope = "" if entity_id is None else (
+            " AND (l.source_root_key, l.rel_path) IN (SELECT source_root_key, rel_path "
+            "FROM source_index_locators WHERE is_current_locator=1 AND rel_path IS NOT NULL "
+            "AND source_entity_id = :eid)"
+        )
         params = {} if entity_id is None else {"eid": entity_id}
         bad_live = c.execute(
             "SELECT COUNT(*) FROM source_index_entities e WHERE e.status='LIVE' AND "
@@ -315,6 +327,26 @@ class SourceIndexRepository:
         ).fetchone()[0]
         if bad_tomb:
             raise LifecycleOracleError("tombstoned_entity_has_current_locator")
+        # F-004 — EXPLICIT per-entity current-locator uniqueness (>1 current locator for one entity).
+        dup_entity = c.execute(
+            "SELECT COUNT(*) FROM (SELECT l.source_entity_id FROM source_index_locators l "
+            "WHERE l.is_current_locator=1" + scope_l
+            + " GROUP BY l.source_entity_id HAVING COUNT(*) > 1)",
+            params,
+        ).fetchone()[0]
+        if dup_entity:
+            raise LifecycleOracleError("duplicate_current_locator_per_entity")
+        # F-004 — EXPLICIT per-live-path current-locator uniqueness (one live address ⇒ one current
+        # locator). Mirrors idx_locators_active_path (is_current_locator=1 AND tombstoned_at IS NULL).
+        dup_path = c.execute(
+            "SELECT COUNT(*) FROM (SELECT l.source_root_key, l.rel_path FROM source_index_locators l "
+            "WHERE l.is_current_locator=1 AND l.tombstoned_at IS NULL AND l.rel_path IS NOT NULL"
+            + path_scope
+            + " GROUP BY l.source_root_key, l.rel_path HAVING COUNT(*) > 1)",
+            params,
+        ).fetchone()[0]
+        if dup_path:
+            raise LifecycleOracleError("duplicate_current_locator_per_live_path")
 
     def record_drain(self, *, conn: sqlite3.Connection | None = None) -> None:
         """Stamp the last successful queue-drain time (operator queue-health signal)."""
@@ -569,6 +601,23 @@ class SourceIndexRepository:
             return row[0]
         return self._resolve_entity_by_source_id(c, value)
 
+    def _dst_ref_for_write(
+        self, c: sqlite3.Connection, dst_kind: str, dst_ref: Any
+    ) -> str | None:
+        """F-002 go-forward persistence: for a ``dst_kind=='source'`` relationship, resolve/validate the
+        target as an ENTITY (via the fail-closed :meth:`_resolve_dst_ref_entity`) and return a **v2**
+        entity ref (``encode_source_ref(entity_id)`` → ``hbsrc2_``). A non-'source' kind (e.g. ``project``)
+        is returned unchanged. A 'source' target that cannot be validated as an entity returns ``None`` so
+        the caller SKIPS the row — a source relationship is NEVER persisted with an unvalidated/bare/legacy
+        ``dst_ref`` (invariant: every newly-written source relationship carries an ``hbsrc2_`` ``dst_ref``).
+        Legacy + existing-bare-row compatibility stays in the READ resolver only (``list_relationships``)."""
+        if dst_kind != "source":
+            return dst_ref
+        entity_id = self._resolve_dst_ref_entity(c, str(dst_ref or ""))
+        if entity_id is None:
+            return None
+        return encode_source_ref(entity_id)
+
     def list_relationships(
         self, source_entity_id: str, *, conn: sqlite3.Connection | None = None
     ) -> list[dict[str, Any]]:
@@ -622,6 +671,11 @@ class SourceIndexRepository:
         now = _now()
         with borrow_connection(conn, self.db_path) as c, transaction(c):
             for rel in relationships:
+                # F-002: a 'source' target is persisted as a v2 entity ref (hbsrc2_); an unresolvable
+                # source target is skipped (never a bare/legacy dst_ref). Non-'source' kinds unchanged.
+                dst_ref = self._dst_ref_for_write(c, rel["dst_kind"], rel["dst_ref"])
+                if dst_ref is None:
+                    continue
                 c.execute(
                     "INSERT INTO source_intelligence_relationships "
                     "(relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence, "
@@ -632,7 +686,7 @@ class SourceIndexRepository:
                         uuid.uuid4().hex,
                         source_entity_id,
                         rel["dst_kind"],
-                        rel["dst_ref"],
+                        dst_ref,
                         rel["relation"],
                         rel.get("confidence"),
                         json.dumps(rel.get("evidence")) if rel.get("evidence") else None,
@@ -818,6 +872,11 @@ class SourceIndexRepository:
                 (entity_id,),
             )
             for rel in record.get("relationships") or []:
+                # F-002: 'source' targets persist as a v2 entity ref (hbsrc2_); an unresolvable source
+                # target is skipped. belongs_to_project rows (dst_kind='project') pass through unchanged.
+                dst_ref = self._dst_ref_for_write(c, rel["dst_kind"], rel["dst_ref"])
+                if dst_ref is None:
+                    continue
                 c.execute(
                     "INSERT INTO source_intelligence_relationships "
                     "(relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence, evidence_json, created_at) "
@@ -828,7 +887,7 @@ class SourceIndexRepository:
                         uuid.uuid4().hex,
                         entity_id,
                         rel["dst_kind"],
-                        rel["dst_ref"],
+                        dst_ref,
                         rel["relation"],
                         rel.get("confidence"),
                         json.dumps(rel.get("evidence")) if rel.get("evidence") else None,

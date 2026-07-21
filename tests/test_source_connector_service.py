@@ -368,3 +368,90 @@ def test_status_and_roots_no_abs_paths(env) -> None:
     keys = {r["source_root_key"] for r in roots["roots"]}
     assert keys == {"work", "secure"}
     _no_abs(roots, env["tmp"])
+
+
+# ============================================================================================
+# F-003 — strict canonical base64url v2 codec (fail-closed on non-canonical / malformed input)
+# ============================================================================================
+import uuid  # noqa: E402
+
+from hb_assistant.obsidian_mcp.source_connector_models import (  # noqa: E402
+    _B64U_ALPHABET,
+    _b64u_decode,
+    _b64u_encode,
+    classify_source_ref,
+    decode_source_ref,
+)
+
+_V2_PREFIX = "hbsrc2_"
+
+
+def _v2_body() -> str:
+    """The canonical unpadded base64url body of a fresh v2 entity ref."""
+    return encode_source_ref(uuid.uuid4().hex)[len(_V2_PREFIX):]
+
+
+def _noncanonical_alt(body: str) -> str:
+    """An ALTERNATE non-canonical base64url string that lax-decodes to the SAME bytes as ``body``
+    (the final char carries unused low bits) — a distinct token for one payload."""
+    import base64
+    raw = _b64u_decode(body)
+
+    def _lax(tok: str) -> bytes:
+        return base64.urlsafe_b64decode(tok + "=" * (-len(tok) % 4))
+
+    for ch in _B64U_ALPHABET:
+        cand = body[:-1] + ch
+        if ch != body[-1] and _lax(cand) == raw:
+            return cand
+    raise AssertionError("no non-canonical alternate exists for this payload")
+
+
+def test_f003_b64u_decode_rejects_adversarial_forms() -> None:
+    body = _v2_body()
+    assert _b64u_decode(body)  # canonical body still decodes
+    adversarial = {
+        "inserted_punctuation": body[:4] + "!" + body[5:],
+        "embedded_space": body[:4] + " " + body[4:],
+        "embedded_newline": body[:4] + "\n" + body[4:],
+        "equals_padding": body + "=",
+        "trailing_padding_block": body + "==",
+        "truncated_body": body[:-1],  # length % 4 == 1 → structurally impossible base64
+        "noncanonical_alternate": _noncanonical_alt(body),
+    }
+    for name, tok in adversarial.items():
+        with pytest.raises(ValueError):
+            _b64u_decode(tok)  # noqa: PT011 — strict decoder is the unit under test
+        # ... and the alternate is genuinely a DIFFERENT string that would lax-decode identically
+        if name == "noncanonical_alternate":
+            assert tok != body and _b64u_encode(_b64u_decode(body)) == body
+
+
+def test_f003_classify_and_decode_reject_noncanonical_v2_ref() -> None:
+    body = _v2_body()
+    for tok in (
+        body[:4] + "!" + body[5:],           # inserted punctuation
+        body[:4] + "\n" + body[4:],          # embedded newline
+        body + "=",                          # padding
+        body[:-1],                           # truncated (length % 4 == 1)
+        _noncanonical_alt(body),             # alternate non-canonical encoding of the same payload
+    ):
+        ref = _V2_PREFIX + tok
+        with pytest.raises(SourceConnectorValidationError):
+            classify_source_ref(source_ref=ref)
+        with pytest.raises(SourceConnectorValidationError):
+            decode_source_ref(ref)
+
+
+def test_f003_canonical_v2_ref_still_valid() -> None:
+    # regression guard: the strict codec must not reject a legitimately-minted v2 ref or v1/bare handles
+    eid = uuid.uuid4().hex
+    assert classify_source_ref(source_ref=encode_source_ref(eid)) == ("entity", eid)
+    assert classify_source_ref(source_id=eid) == ("legacy", eid)
+    # v1 hbsrc1_ ref remains a valid LEGACY handle (unchanged by the strict decoder)
+    from hb_assistant.obsidian_mcp.source_connector_models import (
+        _SOURCE_REF_PREFIX,
+        _source_id_checksum,
+    )
+    v1 = _SOURCE_REF_PREFIX + _b64u_encode(f"{eid}{_source_id_checksum(eid)}".encode())
+    assert classify_source_ref(source_ref=v1) == ("legacy", eid)
