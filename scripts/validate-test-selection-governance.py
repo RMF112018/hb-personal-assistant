@@ -231,12 +231,12 @@ def validate_changed_paths(changed: set[str]) -> None:
 def validate_issue_form(issue_form: Any) -> None:
     if not isinstance(issue_form, dict):
         fail("test-failure issue form is not a mapping")
+    if "about" in issue_form:
+        fail("GitHub issue forms use top-level description, not about")
     required_top = {"name", "description", "body"}
     missing_top = required_top - set(issue_form)
     if missing_top:
         fail(f"test-failure issue form missing top-level fields: {sorted(missing_top)}")
-    if "about" in issue_form:
-        fail("GitHub issue forms use top-level description, not about")
     for field in ("name", "description"):
         value = issue_form.get(field)
         if not isinstance(value, str) or not value.strip():
