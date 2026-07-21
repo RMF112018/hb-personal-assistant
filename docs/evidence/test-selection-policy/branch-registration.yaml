@@ -193,3 +193,69 @@ transitions:
     evidence_parent_sha: dc12f002892e875d12f0395ec5c40fc367c3033c
     evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
     reason: R3 validator and workflow corrections complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:54:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R34
+    evidence_parent_sha: 65df3ccab6984cfe943ab8beb73fe277c01f4660
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29850530934
+    reason: R3 generic-fallback negative fixture failed through the wrong semantic diagnostic; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T12:55:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: 65df3ccab6984cfe943ab8beb73fe277c01f4660
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Reorder static validation so generic-fallback mutations prove the intended invariant and diagnostic.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T12:56:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Generic-fallback fixture-order correction complete; route exact head to CI.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:59:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R35
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29850884197
+    reason: R3 legacy-about issue-form fixture failed through the wrong semantic diagnostic; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T13:00:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Reorder issue-form validation so legacy-about mutations prove the intended invariant and diagnostic.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R7
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T13:03:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: 93fece6e46bead0b6bf07f21d51b072a35bacde7
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R3 correction and authorization closeout complete; route the externally resolved current head to final exact-head CI and fresh independent re-review.
