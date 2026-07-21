@@ -37,13 +37,18 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install validator dependency
-        run: python -m pip install 'pyyaml>=6.0.1,<7'
+      - name: Install validation and collection dependencies
+        run: python -m pip install -e '.[dev]'
 
       - name: Validate executable syntax
         run: |
           bash -n scripts/test-safe.sh
           python -m py_compile scripts/validate-test-selection-governance.py
+
+      - name: Exercise bounded canonical collection
+        env:
+          PYTHON: ${{ env.pythonLocation }}/bin/python
+        run: bash scripts/test-safe.sh --collect-only --python-only
 
       - name: Validate governance contracts at exact head
         run: |
