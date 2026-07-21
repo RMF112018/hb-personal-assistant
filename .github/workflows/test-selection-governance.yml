@@ -27,6 +27,6 @@ jobs:
           rm -rf .github/r6-bootstrap
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/test-selection-governance.yml .github/r6-bootstrap
+          git add -A .github
           git commit -m 'chore: restore read-only PR319 governance workflow'
           git push origin "HEAD:${GH_BRANCH}"
