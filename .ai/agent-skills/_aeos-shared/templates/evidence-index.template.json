@@ -1,13 +1,34 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "goal_id": "GOAL-REPLACE-ME",
+  "work_item_id": null,
   "checkpoint_id": "GATE-REPLACE-ME",
   "repository": {
+    "remote": "owner/repository",
     "branch": null,
-    "baseline_sha": null,
-    "current_sha": null
+    "worktree_id": null,
+    "base_sha": null,
+    "head_sha": null,
+    "pull_request": null
   },
-  "evidence": [],
+  "environment": null,
+  "evidence": [
+    {
+      "evidence_id": "EVID-001",
+      "path": "relative/path-or-stable-object-id",
+      "kind": "test_result",
+      "representation": "raw_file",
+      "mime_type": "text/plain",
+      "hash_scope": "stored_raw_bytes",
+      "sha256": null,
+      "source_relation": "direct",
+      "claim_ids": [],
+      "generated_by": null,
+      "repository_head": null,
+      "verification": null,
+      "status": "pending"
+    }
+  ],
   "limitations": [],
   "generated_at": null
 }
