@@ -5,8 +5,6 @@ on:
     paths:
       - '.github/workflows/test-selection-governance.yml'
       - '.github/r5-bootstrap/**'
-      - 'scripts/validate-test-selection-governance.py'
-      - 'docs/evidence/test-selection-policy/**'
 
 permissions:
   contents: write
@@ -21,20 +19,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Apply and push verified bounded R5 patch
+      - name: Remove temporary R5 staging files
         env:
           GH_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          cat .github/r5-bootstrap/0* | tr -d '\n' | base64 -d > /tmp/r5_patch.py
-          python -m py_compile /tmp/r5_patch.py
-          python /tmp/r5_patch.py
-          python -m py_compile scripts/validate-test-selection-governance.py
-          git checkout -- .github/workflows/test-selection-governance.yml
           git config user.name 'OpenAI ChatGPT'
           git config user.email 'chatgpt@users.noreply.github.com'
-          git add scripts/validate-test-selection-governance.py \
-            docs/evidence/test-selection-policy/branch-registration.yaml \
-            docs/evidence/test-selection-policy/corrective-authorization.md
-          git commit -m 'fix: bind provisional receipt evidence lineage'
+          git rm -r .github/r5-bootstrap
+          git commit -m 'chore: remove R5 bootstrap staging files'
           git push origin HEAD:"$GH_BRANCH"
-          echo 'Verified R5 governance patch pushed; workflow and temporary chunks remain for explicit cleanup.'
