@@ -2,147 +2,191 @@
 title: "Proportional Test Selection and No-Known-Failure Integration"
 artifact_id: "DECISION-PROPORTIONAL-TEST-SELECTION-001"
 classification: "Decisions"
-artifact_type: "Operator Decision"
-version: "1.1"
-status: "Accepted"
+artifact_type: "Operator Decision Candidate"
+version: "1.2"
+status: "Review Pending — Corrective Revision"
 date_created: "2026-07-21"
 date_updated: "2026-07-21"
 decision_owner: "Bobby Fetting"
 author: "OpenAI ChatGPT, operator-directed"
 repository: "RMF112018/hb-personal-assistant"
-branch_pr_commit: "chore/proportional-test-selection-policy-v2 / PR #319 / base 8b44cbd216d531a1894b4257355469edf922029f"
-decision_scope: "Repository-wide test selection, failure disposition, parallel corrective work, and active permanent-identity goal test requirements"
+branch_pr_commit: "chore/proportional-test-selection-policy-v2 / PR #319 / corrective head resolved externally"
+decision_scope: "Repository-wide test selection, failure disposition, parallel corrective work, and permanent-identity goal test requirements"
+prior_review:
+  reviewed_head_sha: "3f008f4ba7e64a0036ecee913a9eaab24cfa1e75"
+  disposition: "REVISE"
+  findings:
+    - PR319-GOV-F-001
+    - PR319-GOV-F-002
+    - PR319-GOV-F-003
+    - PR319-GOV-F-004
+    - PR319-GOV-F-005
+    - PR319-GOV-F-006
+    - PR319-GOV-F-007
+    - PR319-GOV-F-008
+acceptance_state: "NOT ACCEPTED — exact-head re-review and separate operator acceptance required"
 supersedes:
-  - "PI-WI-03 arc-plan blanket schedule-canary requirement, test-selection scope only"
+  - title: "PI-WI-03-ARC-PLAN.md"
+    revision: 4
+    drive_id: "1iPaw4yjgdXP_VvXb7XwNKn8gIiPyMWk_"
+    sha256: "419ef24a3139214b761ab682190adb23ce1147ae3ec6dbe344a2eda45a648a64"
+    scope: "Test-selection-only override of blanket schedule-canary language in the PI-WI-03 arc plan"
 superseded_by: []
 related_artifacts:
   - ".ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md"
-  - "AGENTS.md"
-  - "CLAUDE.md"
+  - ".ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md"
+  - "scripts/test-safe.sh"
+  - "docs/governance/test-failure-triage.md"
   - "docs/testing/forecasting-and-schedule-test-bundles.md"
   - "GOAL-SOURCE-INDEX-PERMANENT-IDENTITY-CORRECTIVE-001"
-tags:
-  - testing
-  - evidence
-  - aeos
-  - source-index
-  - corrective-work
-  - governance
+tags: [testing, evidence, aeos, source-index, corrective-work, governance]
 ---
 
 # Proportional Test Selection and No-Known-Failure Integration
 
 **Classification:** Decisions  
-**Artifact Type:** Operator Decision  
-**Version:** 1.1  
-**Status:** Accepted
+**Artifact Type:** Operator Decision Candidate  
+**Version:** 1.2  
+**Status:** Review Pending — Corrective Revision
 
-## Decision
+## Lifecycle and authority
+
+This document is a corrective decision candidate. The prior exact-head review of
+`3f008f4ba7e64a0036ecee913a9eaab24cfa1e75` returned `REVISE`. This revision is
+not accepted or effective merely because it is committed, mergeable, or
+operator-directed.
+
+It becomes accepted only when:
+
+1. a fresh independent review approves the exact corrective head;
+2. the operator separately accepts that exact reviewed head through a durable
+   GitHub record; and
+3. any merge is separately authorized.
+
+The exact review and acceptance identities are external GitHub records so they
+can bind the commit without creating a self-referential metadata change.
+
+## Decision candidate
 
 The repository shall use proportional test selection and failure disposition
-governed by `.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md`.
+governed by `.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md` after
+this candidate is accepted.
 
-Expensive suites and cross-domain canaries are required only when they map to an
-acceptance criterion, changed dependency, shared infrastructure surface, named
-regression risk, or merge/release gate. They are not required after every edit
-or every agent turn.
+Expensive suites and cross-domain canaries are required only when mapped to an
+acceptance criterion, changed dependency, shared infrastructure, named risk, or
+exact gate. They are not required after every edit or agent turn.
 
-No integrated candidate may be declared merge-ready while a required safe test
-is known to fail. A proven pre-existing failure outside the active work item
-must receive separate corrective ownership; it may not be ignored or silently
-absorbed into the current scope.
+The canonical merge-safe repository gate is:
 
-## Active Permanent-Identity Goal
+```bash
+bash scripts/test-safe.sh
+```
 
-For `GOAL-SOURCE-INDEX-PERMANENT-IDENTITY-CORRECTIVE-001`, this decision
-supersedes the PI-WI-03 arc plan's blanket instruction to run
-`scripts/test-schedule.sh` for every unit, but only for test selection. It does
-not alter architecture, feature scope, acceptance criteria, authorization
-boundaries, review requirements, or prior evidence.
+No integrated candidate may be declared merge-ready while an applicable
+required safe test is known to fail. A proven pre-existing failure outside the
+active work item receives durable triage identity and separate corrective
+ownership; it is not ignored or silently absorbed into the primary scope.
 
-1. **PI-WI-02B schema/migrator work:** retain the schedule bundle as a
-   committed-SHA cross-domain canary because the work changes the shared
-   migrator/schema path.
-2. **PI-WI-03a runtime re-key work:** the schedule bundle is not required when
-   the diff remains confined to the authorized source-index repository,
-   connector models/service, and directly related tests. It becomes required if
-   the work changes shared migrator/schema/bootstrap code, schedule-domain code,
-   or repository evidence demonstrates a schedule dependency.
-3. **PI-WI-03b move-continuity work:** apply the same conditional rule. The
-   source-index acceptance suite, move/drain tests, static guards, and direct
-   integration seams remain mandatory; the schedule bundle is conditional.
-4. **Final merge or release gate:** broader safe validation remains governed by
-   the applicable readiness plan and must finish with zero unresolved required-
-   suite failures.
+## Handoff and standard precedence
 
-## Failure Disposition
+Standard 07 and Standard 11 apply jointly. A mapped test in an approved handoff
+remains binding. An unmapped or conflicting broad-suite mandate triggers a stop
+and deviation report; the agent may not silently omit it or execute it as a
+ritual baseline. Only an exact later operator decision or higher-authority
+repository source resolves the conflict.
 
-A failing test must be classified as one of: candidate regression, reproducible
-pre-existing product defect, invalid or stale test, flaky or nondeterministic
-test, environment/configuration failure, or relationship unknown.
+## Durable failure ownership
 
-A failure is considered pre-existing only when it reproduces on the immutable
-base SHA under a materially equivalent command and environment, or equivalent
-direct evidence establishes causality. Domain labels or filenames alone are not
-sufficient.
+Every observed failure receives a stable GitHub issue or equivalent governed
+finding-ledger identity, triage owner, classification state, base/candidate
+evidence, affected gate, disposition, authorization state, corrective identity,
+review result, integrated-candidate result, and closure evidence. The preferred
+procedure and issue form are:
 
-Candidate regressions remain the responsibility of the active work item.
-Unknown relationships block the affected checkpoint until resolved.
+```text
+docs/governance/test-failure-triage.md
+.github/ISSUE_TEMPLATE/test-failure.yml
+```
 
-## Parallel Corrective Work
+Creating the triage record is not corrective authority. The primary agent may
+request or create the record but may not authorize or activate a corrective
+agent.
 
-A separate corrective agent may work in parallel only under separate explicit
-authorization and on a separately registered branch/worktree. Parallel work is
-permitted only when:
+## Active permanent-identity goal
 
-- the failure is proven pre-existing;
-- current acceptance evidence remains valid;
-- edit ownership does not overlap;
-- no shared schema, migrator/bootstrap, global fixture, test-discovery,
-  dependency, security, or other common surface is involved;
-- the corrective stream produces its own evidence and independent review;
-- final integration is separately authorized and the combined candidate is
-  rerun through applicable gates.
+This candidate applies to:
 
-The primary agent may continue its bounded objective under those conditions,
-but may not create or activate the corrective stream on its own authority.
+```text
+Goal: GOAL-SOURCE-INDEX-PERMANENT-IDENTITY-CORRECTIVE-001
+Historical plan title: PI-WI-03-ARC-PLAN.md
+Revision: 4
+Drive ID: 1iPaw4yjgdXP_VvXb7XwNKn8gIiPyMWk_
+SHA-256: 419ef24a3139214b761ab682190adb23ce1147ae3ec6dbe344a2eda45a648a64
+```
 
-## Execution Frequency
+It supersedes only the arc plan clauses that require
+`scripts/test-schedule.sh` as a blanket canary for each PI-WI-03 unit. The
+original plan remains unchanged and preserved. Future plan revisions and work
+item authorizations must consume this decision explicitly once accepted.
+
+1. **PI-WI-02B schema/migrator work:** retain the schedule bundle because shared
+   migrator/schema behavior is changed.
+2. **PI-WI-03a runtime re-key:** the schedule bundle is not required while the
+   diff remains within source-index repository, connector model/service, and
+   direct tests. It becomes required when shared migrator/schema/bootstrap,
+   schedule code, or demonstrated schedule dependencies are affected.
+3. **PI-WI-03b move continuity:** apply the same conditional rule. Direct
+   source-index acceptance, move/drain tests, static guards, and integration seams
+   remain mandatory.
+4. **Merge/release:** the canonical safe suite and every applicable gate must
+   finish with zero unresolved failures.
+
+This override changes test selection only. It does not alter architecture,
+feature scope, acceptance criteria, authorization boundaries, review
+requirements, prior evidence, implementation authority, deployment authority,
+or production authority.
+
+## Failure classification
+
+A failing test is classified as candidate regression, reproducible pre-existing
+product defect, invalid/stale test, flaky/nondeterministic test,
+environment/configuration failure, or relationship unknown.
+
+Pre-existing status requires materially equivalent base-SHA reproduction or
+equivalent direct causal evidence. Filename and domain labels are insufficient.
+Candidate regressions remain in the active work item. Unknown relationships
+block the affected checkpoint.
+
+## Parallel corrective work
+
+Parallel correction requires proven base reproduction, separate explicit
+authorization, separate branch/worktree registration, non-overlapping edit and
+evidence ownership, no shared schema/migrator/bootstrap/global fixture/test
+discovery/dependency/security/common surface, independent evidence and review,
+separate integration authority, and combined-candidate reruns through all
+applicable gates.
+
+The primary agent may continue only when those conditions are satisfied and may
+not self-authorize the corrective stream.
+
+## Execution frequency and evidence reuse
 
 - Inner-loop validation uses the smallest relevant tests.
-- Work-item candidate validation uses the complete bounded acceptance suite.
-- Expensive canaries normally run once for each materially different committed
-  candidate SHA when their trigger condition is satisfied.
-- Bookkeeping-only turns do not rerun code tests when the tested SHA, command,
-  dependencies, environment, and evidence purpose are unchanged.
-- Parent-baseline evidence may be reused when its immutable SHA and material
-  environment remain unchanged and reuse is declared.
+- Candidate validation uses the complete bounded acceptance suite.
+- Triggered expensive canaries normally run once per materially different
+  committed candidate SHA.
+- Bookkeeping-only turns do not rerun evidence when SHA, command, dependencies,
+  environment, inputs, and purpose are unchanged.
+- Parent-baseline evidence may be reused only when immutable identity and
+  material environment remain unchanged and reuse is declared.
 
-## Historical Plan Preservation
+## Non-effects
 
-Approved and reviewed historical plans remain unchanged for lineage. This
-operator decision is the forward-applicable control for test selection and
-failure disposition. Future plans and authorizations shall encode separate
-inner-loop, candidate, checkpoint, conditional-canary, merge/release, failure-
-classification, and final integrated-green requirements.
+This candidate does not waive failures, authorize blanket unrelated correction,
+weaken safeguards, approve implementation, authorize merge, activate Phase B,
+authorize cleanup, deployment, migration, production activation, or accept risk.
 
-## Non-Effects
+## Required next gate
 
-This decision does not:
-
-- waive a failing test;
-- authorize blanket correction of unrelated code;
-- weaken an acceptance criterion or safeguard;
-- authorize implementation outside a bounded work item;
-- approve any implementation or corrective result;
-- authorize merge, deployment, migration, production activation, cleanup, or
-  risk acceptance;
-- invalidate previously captured schedule-canary evidence.
-
-## Required Follow-Through
-
-Repository agent guidance, the AEOS master index, decision index, and testing
-documentation shall reference the standard. New implementation plans shall map
-every mandatory suite to an acceptance criterion, dependency, shared-
-infrastructure risk, or release gate and shall define disposition for discovered
-failures.
+Fresh independent governance re-review of the exact corrective PR #319 head,
+followed—only if approved—by a separate operator acceptance decision.
