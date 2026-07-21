@@ -49,6 +49,11 @@ if [[ "$run_python" == false && "$run_frontend" == false ]]; then
   exit 2
 fi
 
+if [[ "$collect_only" == true && "$run_python" == false ]]; then
+  echo "ERROR: --collect-only is a Python collection mode and cannot be combined with --frontend-only" >&2
+  exit 2
+fi
+
 PYTHON_BIN="${PYTHON:-}"
 if [[ -z "$PYTHON_BIN" ]]; then
   if [[ -x "$ROOT/.venv/bin/python" ]]; then
