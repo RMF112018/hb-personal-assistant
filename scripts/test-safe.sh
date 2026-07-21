@@ -20,6 +20,10 @@ Interpreter contract:
 
 The selected interpreter must be executable and Python 3.12 or newer. The script
 fails closed rather than falling back to a generic or operator-specific Python.
+
+Python gate prerequisites:
+  python -m pip install -e '.[dev,mcp,analytics-ui]' \
+    -e 'subrepos/construction-financial-review[dev]'
 USAGE
 }
 
@@ -96,8 +100,9 @@ PYTHON_BIN="$(resolve_python)"
 export PYTHONPATH="$ROOT/src:$ROOT/subrepos/construction-financial-review/src${PYTHONPATH:+:$PYTHONPATH}"
 
 if [[ "$run_python" == true ]]; then
-  if ! "$PYTHON_BIN" -c 'import pytest' >/dev/null 2>&1; then
-    echo "ERROR: pytest is unavailable in the selected Python interpreter" >&2
+  if ! "$PYTHON_BIN" -c 'import pytest, mcp, fastapi, numpy, scipy' >/dev/null 2>&1; then
+    echo "ERROR: canonical safe-suite Python dependencies are unavailable" >&2
+    echo "Install with: python -m pip install -e '.[dev,mcp,analytics-ui]' -e 'subrepos/construction-financial-review[dev]'" >&2
     exit 3
   fi
 
