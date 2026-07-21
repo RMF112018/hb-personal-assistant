@@ -1,0 +1,63 @@
+name: Test Selection Governance
+
+on:
+  pull_request:
+    paths:
+      - '.ai/project-sources/00_AEOS_MASTER_INDEX.md'
+      - '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md'
+      - '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md'
+      - '.github/ISSUE_TEMPLATE/test-failure.yml'
+      - '.github/workflows/test-selection-governance.yml'
+      - 'AGENTS.md'
+      - 'AI_OPERATING_MANUAL.md'
+      - 'CLAUDE.md'
+      - 'docs/decisions/**'
+      - 'docs/governance/**'
+      - 'docs/implementation-plans/github-first-control-plane-migration.md'
+      - 'docs/testing/forecasting-and-schedule-test-bundles.md'
+      - 'docs/evidence/test-selection-policy/**'
+      - 'scripts/test-safe.sh'
+      - 'scripts/validate-test-selection-governance.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validator dependency
+        run: python -m pip install 'pyyaml>=6.0.1,<7'
+
+      - name: Validate executable syntax
+        run: |
+          bash -n scripts/test-safe.sh
+          python -m py_compile scripts/validate-test-selection-governance.py
+
+      - name: Validate governance contracts at exact head
+        run: |
+          python scripts/validate-test-selection-governance.py \
+            --github-head-sha '${{ github.event.pull_request.head.sha }}' \
+            --github-base-sha '${{ github.event.pull_request.base.sha }}' \
+            --pr-number '${{ github.event.pull_request.number }}' \
+            --branch-name '${{ github.event.pull_request.head.ref }}' \
+            --identity-source 'github-actions-pull-request-event' \
+            --output pr319-governance-validation.json
+
+      - name: Upload validation receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr319-governance-validation-${{ github.event.pull_request.head.sha }}
+          path: pr319-governance-validation.json
+          if-no-files-found: error
