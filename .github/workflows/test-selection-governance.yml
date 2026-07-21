@@ -61,17 +61,29 @@ jobs:
       - name: Validate governance contracts at exact head
         run: |
           set +e
-          python scripts/validate-test-selection-governance.py \
-            --github-head-sha '${{ github.event.pull_request.head.sha }}' \
+          python scripts/validate-test-selection-governance.py validate --github-head-sha '${{ github.event.pull_request.head.sha }}' \
             --github-base-sha '${{ github.event.pull_request.base.sha }}' \
             --pr-number '${{ github.event.pull_request.number }}' \
             --branch-name '${{ github.event.pull_request.head.ref }}' \
             --identity-source 'github-actions-pull-request-event' \
-            --output pr319-governance-validation.json \
+            --collection-log pr319-safe-collection.log \
+            --collection-exitcode-file pr319-safe-collection.exitcode \
+            --validator-log-name pr319-governance-validator.log \
+            --validator-exitcode-name pr319-governance-validator.exitcode \
+            --output pr319-governance-validation.partial.json \
             2>&1 | tee pr319-governance-validator.log
           rc=${PIPESTATUS[0]}
           echo "$rc" > pr319-governance-validator.exitcode
           exit 0
+
+      - name: Finalize schema-2 receipt evidence
+        if: always()
+        run: |
+          python scripts/validate-test-selection-governance.py finalize-receipt \
+            --input pr319-governance-validation.partial.json \
+            --output pr319-governance-validation.json \
+            --validator-log pr319-governance-validator.log \
+            --validator-exitcode-file pr319-governance-validator.exitcode
 
       - name: Upload validation and collection evidence
         if: always()
@@ -80,15 +92,19 @@ jobs:
           name: pr319-governance-validation-${{ github.event.pull_request.head.sha }}
           path: |
             pr319-governance-validation.json
+            pr319-governance-validation.partial.json
             pr319-governance-validator.log
             pr319-governance-validator.exitcode
             pr319-safe-collection.log
             pr319-safe-collection.exitcode
           if-no-files-found: error
 
-      - name: Enforce successful collection and governance validation
+      - name: Enforce receipt and captured evidence consistency
         if: always()
         run: |
-          test -f pr319-governance-validation.json
-          test "$(cat pr319-safe-collection.exitcode)" = "0"
-          test "$(cat pr319-governance-validator.exitcode)" = "0"
+          python scripts/validate-test-selection-governance.py verify-receipt \
+            --receipt pr319-governance-validation.json \
+            --collection-log pr319-safe-collection.log \
+            --collection-exitcode-file pr319-safe-collection.exitcode \
+            --validator-log pr319-governance-validator.log \
+            --validator-exitcode-file pr319-governance-validator.exitcode
