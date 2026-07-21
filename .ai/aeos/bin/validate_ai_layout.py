@@ -48,8 +48,8 @@ REQUIRED_POINTERS = {
     ],
     ROOT / "project-sources" / "00_AEOS_MASTER_INDEX.md": [
         "11_REPOSITORY_TEST_SELECTION_STANDARD.md",
-        "POST_MERGE_VALIDATION",
-        "BRANCH_WORKTREE_CLOSEOUT",
+        "Post-Merge Validation",
+        "Branch/Worktree Closeout",
         "MERGED_PENDING_CLEANUP",
     ],
     ROOT / "agent-skills" / "_aeos-shared" / "AEOS_SKILL_OPERATING_CONTRACT.md": [
