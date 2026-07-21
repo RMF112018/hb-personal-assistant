@@ -193,6 +193,49 @@ R3 does not authorize changes to `scripts/test-safe.sh`, the issue form,
 application source, application tests, dependency declarations, schemas,
 migrations, runtime, deployment, credentials, secrets, or production surfaces.
 
+## Corrective cycle R4
+
+**Authorization ID:** `AUTH-PR319-GOV-CORRECTIVE-R4-20260721-001`  
+**Repository:** `RMF112018/hb-personal-assistant`  
+**Branch:** `chore/proportional-test-selection-policy-v2`  
+**Parent SHA:** `e7e4e999b11e29864b5d7876bb52a51583b38885`  
+**Pull request:** `#319`  
+**Status:** ACTIVE — bounded R4 corrective implementation  
+**Authority:** Direct operator instruction, “resolve the blocking defects,” issued 2026-07-21 at approximately 14:44 America/New_York
+
+### R4 review basis
+
+The fresh independent R3 re-review of exact head
+`e7e4e999b11e29864b5d7876bb52a51583b38885` returned `REVISE` and opened:
+
+- `PR319-RR3-F-001` — final receipt verification was not bound to authenticated repository, PR, branch, base, head, and identity-source values;
+- `PR319-RR3-F-002` — validator command and receipt evidence-file references were not enforced;
+- `PR319-RR3-F-003` — MCP, FastAPI, NumPy, and SciPy absence were not independently simulated and proven.
+
+### Authorized R4 scope
+
+- `scripts/validate-test-selection-governance.py`;
+- `.github/workflows/test-selection-governance.yml`;
+- `docs/evidence/test-selection-policy/branch-registration.yaml`;
+- this authorization record;
+- PR #319 description and replacement exact-head evidence references.
+
+### Required R4 correction
+
+- pass externally authenticated repository, PR, branch, base SHA, head SHA, and identity-source values into `verify-receipt` and compare each exactly;
+- enforce the exact semantic validator command and all receipt evidence-file references;
+- add mutation fixtures for every identity field, validator command, and collection/validator evidence filename;
+- implement separate missing-module simulations and probes for `pytest`, `mcp`, `fastapi`, `numpy`, and `scipy` without keying solely on one literal combined-import string;
+- prove each module-specific probe exits before pytest execution and produces the expected fail-closed diagnostic;
+- preserve runs 34, 35, and 38 unchanged as historical evidence;
+- generate a new exact-head artifact and route it to a fresh independent review.
+
+### R4 exclusions
+
+R4 does not authorize changes to `scripts/test-safe.sh`, the issue form,
+application source, application tests, dependency declarations, schemas,
+migrations, runtime, deployment, credentials, secrets, or production surfaces.
+
 ## Exclusions
 
 No corrective cycle authorizes merge, cleanup, Phase B activation, deployment,
