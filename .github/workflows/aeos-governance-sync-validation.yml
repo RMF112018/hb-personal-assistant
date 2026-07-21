@@ -1,0 +1,32 @@
+name: AEOS Governance Sync Validation
+
+on:
+  push:
+    branches:
+      - chore/aeos-github-first-governance-sync-pr319
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Generate canonical checksums
+        run: python3 .ai/aeos/bin/generate_checksums.py
+
+      - name: Validate AEOS skill package
+        run: python3 .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py
+
+      - name: Validate AI layout
+        run: python3 .ai/aeos/bin/validate_ai_layout.py
+
+      - name: Upload generated checksum manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeos-checksums
+          path: .ai/CHECKSUMS.txt
+          if-no-files-found: error
