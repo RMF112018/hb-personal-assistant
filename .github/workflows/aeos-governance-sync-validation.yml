@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chore/aeos-github-first-governance-sync-pr319
+  pull_request:
+    branches:
+      - chore/proportional-test-selection-policy-v2
 
 permissions:
   contents: read
