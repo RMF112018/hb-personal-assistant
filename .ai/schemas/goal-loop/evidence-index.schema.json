@@ -2,41 +2,65 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AEOS Evidence Index",
   "type": "object",
-  "required": [
-    "schema_version",
-    "goal_id",
-    "repository",
-    "evidence"
-  ],
+  "required": ["schema_version", "goal_id", "repository", "evidence"],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "goal_id": {
-      "type": "string",
-      "minLength": 1
-    },
+    "schema_version": {"enum": [1, 2]},
+    "goal_id": {"type": "string", "minLength": 1},
+    "work_item_id": {"type": ["string", "null"]},
+    "checkpoint_id": {"type": ["string", "null"]},
     "repository": {
       "type": "object",
-      "required": [
-        "branch",
-        "baseline_sha",
-        "current_sha"
-      ]
+      "properties": {
+        "remote": {"type": ["string", "null"]},
+        "branch": {"type": ["string", "null"]},
+        "worktree_id": {"type": ["string", "null"]},
+        "baseline_sha": {"type": ["string", "null"]},
+        "current_sha": {"type": ["string", "null"]},
+        "base_sha": {"type": ["string", "null"]},
+        "head_sha": {"type": ["string", "null"]},
+        "pull_request": {"type": ["integer", "null"]}
+      },
+      "additionalProperties": false
     },
+    "environment": {"type": ["string", "object", "null"]},
     "evidence": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "evidence_id",
-          "path",
-          "kind",
-          "sha256",
-          "claim_ids"
-        ]
+        "required": ["evidence_id", "path", "kind", "claim_ids"],
+        "properties": {
+          "evidence_id": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "representation": {"type": "string", "enum": ["raw_file", "repository_blob", "native_google_doc", "exported_representation", "runtime_observation", "external_object", "narrative", "unavailable"]},
+          "mime_type": {"type": ["string", "null"]},
+          "hash_scope": {"type": "string", "enum": ["stored_raw_bytes", "source_bytes", "exported_bytes", "not_applicable"]},
+          "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+          "source_relation": {"type": ["string", "null"]},
+          "claim_ids": {"type": "array", "items": {"type": "string"}},
+          "generated_by": {"type": ["string", "null"]},
+          "repository_head": {"type": ["string", "null"]},
+          "environment": {"type": ["string", "object", "null"]},
+          "verification": {"type": ["string", "null"]},
+          "status": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "limitations": {"type": "array"},
+    "generated_at": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": 2}}},
+      "then": {
+        "required": ["checkpoint_id", "environment"],
+        "properties": {
+          "repository": {"required": ["remote", "branch", "worktree_id", "base_sha", "head_sha", "pull_request"]},
+          "evidence": {"items": {"required": ["representation", "mime_type", "hash_scope", "source_relation", "repository_head", "verification", "status"]}}
+        }
       }
     }
-  },
+  ],
   "additionalProperties": true
 }
