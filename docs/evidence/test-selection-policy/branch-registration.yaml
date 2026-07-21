@@ -19,7 +19,7 @@ pull_request: 319
 created_at: 2026-07-21T05:34:00-04:00
 registered_at: 2026-07-21T05:40:38-04:00
 expected_disposition: remove-after-merge
-lifecycle_state: ACTIVE
+lifecycle_state: REVIEW_PENDING
 retention_reason: null
 next_review_at: null
 validation:
@@ -281,3 +281,14 @@ transitions:
     evidence_parent_sha: e7e4e999b11e29864b5d7876bb52a51583b38885
     evidence: docs/evidence/test-selection-policy/corrective-authorization.md
     reason: Begin bounded R4 correction of authenticated receipt binding, command and evidence-reference enforcement, and individual dependency probes.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R8
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T14:48:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R4-20260721-001
+    evidence_parent_sha: 3ea79313e0aaf2a3c1d4e90b6090c8e4bc39c275
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R4 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
