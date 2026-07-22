@@ -89,6 +89,8 @@ transitions:
 architecture_candidate:
   adr_path: docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
   adr_sha256: 3d4930c5642b2a7df1ffdf1bf29028c184c5a8f741ed51246691a91938b6c372
+  adr_blob_sha: 7d37fd50f250919127c351aa2fa1a71281656e43
   evidence_path: docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
-  evidence_sha256: 94b983078881a0314249e21ad79c3895aa77a4eb45eea5a3ba7f1fa63bd655e8
+  evidence_blob_sha: ec1a052298a09d906d52d08aa9dcf6205711693c
+  evidence_hash_scope: git_blob_sha1
   final_candidate_head_authority: authenticated_github_after_commit
