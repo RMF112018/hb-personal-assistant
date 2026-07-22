@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Governance Manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "goal_id",
+    "repository",
+    "governing_sources",
+    "truth_precedence",
+    "action_authority",
+    "prohibited_without_explicit_authorization"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "remote",
+        "default_branch",
+        "base_sha",
+        "head_sha",
+        "branch",
+        "worktree_mode",
+        "worktree_id",
+        "worktree_path",
+        "pull_request"
+      ],
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_mode": {
+          "enum": [
+            "local",
+            "remote_only",
+            "not_applicable"
+          ]
+        },
+        "worktree_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktree_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pull_request": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "const": "local"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "worktree_path": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "enum": [
+                  "remote_only",
+                  "not_applicable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "null"
+              },
+              "worktree_path": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "governing_sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "truth_precedence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "action_authority": {
+      "type": "object",
+      "required": [
+        "operator_controls_scope",
+        "access_is_not_authority",
+        "publication_is_not_authority",
+        "risk_acceptance_is_operator_only"
+      ],
+      "properties": {
+        "operator_controls_scope": {
+          "const": true
+        },
+        "access_is_not_authority": {
+          "const": true
+        },
+        "publication_is_not_authority": {
+          "const": true
+        },
+        "risk_acceptance_is_operator_only": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "prohibited_without_explicit_authorization": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  }
+}

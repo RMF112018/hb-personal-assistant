@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Evidence Index \u2014 LEGACY V1 READ ONLY",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "goal_id",
+    "repository",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "branch",
+        "baseline_sha",
+        "current_sha"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "path",
+          "kind",
+          "sha256",
+          "claim_ids"
+        ]
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$id": "https://aeos.local/schemas/goal-loop/legacy-v1/evidence-index.schema.json"
+}

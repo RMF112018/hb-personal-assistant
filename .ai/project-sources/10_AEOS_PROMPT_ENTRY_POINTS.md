@@ -1,127 +1,207 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
 
 # 10 — AEOS Prompt Entry Points
 
-## 1. Purpose
+These prompts initiate a governed mode. They do not replace repository policy,
+the Master Index, or explicit authorization.
 
-This document provides concise prompt templates for initiating AEOS workflow modes. These prompts are entry points, not replacements for the governing standards.
-
-## 2. Discovery Prompt
+## Discovery / Repository Truth
 
 ```text
 Mode: Discovery / Repository Truth
-
-Target repository:
-Target branch/PR/commit:
+Repository / authenticated remote:
+Issue or goal:
+Branch / worktree:
+Base SHA / expected head:
 Objective:
 
-Use AEOS. First establish repository truth. Identify current branch, HEAD SHA, relevant files, tests, runtime surfaces, known constraints, verified facts, assumptions, unknowns, and evidence gaps. Do not design or implement yet. Produce a repository-truth report and recommend the next gate.
+Authenticate repository and GitHub state. Record branch, worktree, base and
+exact head, PR/checks when present, dirty state, relevant files, tests,
+schemas, migrations, runtime surfaces, verified facts, assumptions, unknowns,
+and evidence gaps. When branch/worktree hygiene is material, inventory refs,
+tags, locks, and process dependencies without pruning or deleting. Do not
+design or implement. Produce a repository-truth report and bounded next gate.
 ```
 
-## 3. Architecture Prompt
+## Architecture
 
 ```text
 Mode: Architecture
-
-Target repository:
 Approved objective:
 Repository-truth report:
+Exact repository identity:
 Constraints:
 
-Use AEOS. Develop the architecture for this objective. Preserve repository truth and constraints. Include affected components, interfaces, data model, trust boundaries, failure behavior, observability, alternatives considered, rejected alternatives, invariants, risks, and acceptance criteria. Do not generate an implementation prompt until the architecture is complete.
+Develop the target architecture. Include components, interfaces, data and trust
+boundaries, authorization, failure behavior, observability, alternatives,
+invariants, risks, acceptance criteria, and repository-specific lifecycle
+implications. Do not begin implementation planning until the architecture is
+complete and independently reviewed when required.
 ```
 
-## 4. Implementation Planning Prompt
+## Implementation Planning
 
 ```text
 Mode: Implementation Planning
-
-Target repository:
 Approved architecture:
 Acceptance criteria:
-Constraints:
+Repository / branch / worktree / base head:
+Authorization:
 
-Use AEOS. Produce an executable implementation plan for a local coding agent. Include repo preflight, scope, out-of-scope, phases, expected files, tests, evidence requirements, rollback strategy, forbidden actions, stop conditions, and required final report format.
+Produce an executable plan with bounded work packages, branch/worktree
+ownership, expected closeout disposition, files/symbols, proportional tests,
+failure classification, integrated-green requirements, evidence representation
+and hash scope, rollback, prohibited actions, stop conditions, independent
+review gates, post-merge validation, and cleanup/retention/blocker requirements.
+Do not implement.
 ```
 
-## 5. Local Agent Handoff Prompt
+## Local Agent Handoff
 
 ```text
-You are the local coding agent for an AEOS-governed implementation.
+You are the local agent for one authorized AEOS work package.
 
-Before editing, report repository path, branch, HEAD SHA, dirty state, and relevant files inspected.
+Before editing, authenticate repository/remote, registered branch and worktree,
+base SHA, exact head, PR, dirty state, active work item, authorization, scope,
+and prohibited actions.
 
-Implement only the approved scope below. Do not redesign architecture, expand scope, push, merge, force-push, reset hard, delete files outside scope, deploy, modify secrets, or run irreversible migrations without explicit approval.
+Implement only the approved package. Use proportional testing and preserve every
+failure for classification. Do not redesign, expand scope, weaken tests, push,
+merge, reset hard, clean broadly, remove worktrees, delete branches, prune refs,
+deploy, modify secrets, run irreversible migrations, accept risk, or activate
+the next state without exact operator authorization.
 
 Objective:
-Approved architecture:
 Scope:
 Out of scope:
 Acceptance criteria:
-Implementation phases:
 Required tests:
 Required evidence:
+Retry limit:
 Stop conditions:
-Final report format:
+Final report:
 ```
 
-## 6. Plan Review Prompt
+## Plan or Architecture Review
 
 ```text
-Mode: Plan Review
+Mode: Independent Plan Review
+Reviewed artifact/version:
+Repository base and exact head:
+Reviewer context:
 
-Review the local agent's implementation plan under AEOS. Compare it against the approved objective, architecture, constraints, and acceptance criteria. Identify design drift, missing work, unsafe sequencing, migration risk, test gaps, evidence gaps, and scope expansion.
-
-Return one disposition: APPROVE, APPROVE WITH REQUIRED CHANGES, REVISE BEFORE IMPLEMENTATION, or REJECT.
+Evaluate objective alignment, architecture, scope, branch/worktree ownership,
+sequencing, security, migration, rollback, proportional tests, evidence,
+post-merge validation, and closeout. Bind the review to the exact artifact and
+head. Return APPROVE, APPROVE WITH REQUIRED CHANGES, REVISE, REJECT, or
+INSUFFICIENT EVIDENCE. State that a later commit invalidates current-head
+approval.
 ```
 
-## 7. Implementation Audit Prompt
+## Implementation Audit
 
 ```text
-Mode: Implementation Audit
+Mode: Independent Implementation Audit
+Repository / PR / base / exact head:
+Approved plan and acceptance criteria:
+Evidence package:
 
-Conduct an AEOS implementation audit. Do not rely on the implementation summary as proof. Inspect the actual diff, changed files, tests, evidence, acceptance criteria, regression risk, security/trust boundaries, migrations, runtime validation, and documentation. Produce an acceptance-criteria matrix, findings ledger, evidence assessment, and audit disposition.
+Inspect actual diff and evidence. Verify test selection, failures, security,
+migrations, runtime claims, documentation, representation/hash scope, and
+repository identity. Produce an acceptance matrix, stable findings, evidence
+assessment, and PASS, PASS WITH NON-BLOCKING FINDINGS, FAIL — BLOCKERS REMAIN,
+or INSUFFICIENT EVIDENCE. Do not repair implementation.
 ```
 
-## 8. Corrective Review Prompt
+## Corrective Review
 
 ```text
-Mode: Corrective Review
+Mode: Independent Corrective Review
+Original findings:
+Corrected exact head:
+Corrective evidence:
 
-Review the corrective work against the existing finding ledger. Preserve original finding IDs. For each finding, determine whether the fix is verified, claimed but not verified, still open, deferred with accepted risk, rejected, or not reproducible. Require evidence for closure.
+Preserve every finding ID and history. Verify each claimed fix against its
+closure test at the corrected exact head. Retain deferred, rejected, and
+not-authorized findings. Only independent review may set VERIFIED FIXED. A later
+commit invalidates the review.
 ```
 
-## 9. Production Readiness Prompt
+## Merge Readiness
 
 ```text
-Mode: Production Readiness
+Mode: Merge Readiness
+Pull request / exact candidate head:
+Required checks and safe suites:
+Current-head review:
 
-Evaluate merge readiness, deployment readiness, production readiness, and operational readiness separately. Use AEOS evidence and trust standards. Identify blockers, accepted risks, rollback readiness, observability, migration safety, and post-deployment validation. Do not issue GO unless evidence supports it.
+Verify current-head review, required checks, zero unresolved failures in
+applicable required-safe suites, no blocking findings, no unauthorized changes,
+and a post-merge validation/closeout plan. Return READY TO MERGE, READY WITH
+REQUIRED CONDITIONS, NOT READY, or INSUFFICIENT EVIDENCE. Do not merge and do
+not imply operator authorization.
 ```
 
-## 10. Go / No-Go Prompt
+## Post-Merge Validation
 
 ```text
-Mode: Go / No-Go
+Mode: Post-Merge Validation
+Reviewed candidate:
+Accepted target-branch commit:
+Merge receipt:
 
-Issue a bounded AEOS Go/No-Go decision for:
-- Merge readiness:
-- Deployment readiness:
-- Production readiness:
-- Operational readiness:
-
-Use only verified evidence. Return GO, CONDITIONAL GO, NO-GO, or INSUFFICIENT EVIDENCE. Include evidence reviewed, unresolved findings, accepted risks, required conditions, and follow-up actions.
+Verify the accepted identity and relationship to the reviewed candidate. Run or
+inspect required post-merge checks, reconcile documentation/indexes, identify
+runtime validation needs, and record explicit not-required decisions. Do not
+perform cleanup without separate authorization.
 ```
 
-## 11. Corpus Promotion Prompt
+## Branch and Worktree Closeout
+
+```text
+Mode: Branch and Worktree Closeout
+Merged work item:
+Accepted merge identity:
+Registered branch/worktree records:
+Authorized closeout actions:
+
+Inventory branches, worktrees, refs, tags, dirty state, locks, and process use.
+Perform no-prune fetch when remote state matters. Preserve unique or uncertain
+material and prove integration, patch equivalence, retention need, or blocker.
+Preview each target action. Treat worktree removal, local branch deletion,
+remote branch deletion, metadata pruning, and remote-ref pruning as separate
+authorizations. Produce a cleanup, retention, or blocker receipt. Do not move to
+CLOSED without the required evidence.
+```
+
+## Deployment / Production Readiness
+
+```text
+Mode: Readiness Review
+Exact artifact and environment:
+Requested category:
+
+Evaluate deployment, production, and operational readiness separately from
+merge and cleanup. Verify artifact identity, configuration, migrations,
+rollback, runtime behavior, observability, security, data integrity, support,
+and residual risk. Return GO, CONDITIONAL GO, NO-GO, or INSUFFICIENT EVIDENCE
+for only the authorized category. Only the operator may accept risk or authorize
+deployment.
+```
+
+## Pattern / Corpus Review
 
 ```text
 Mode: Pattern / Corpus Review
+Observation and evidence:
 
-Evaluate whether this observed engineering practice should be promoted into the AEOS corpus. Identify evidence, pattern category, applicability, non-applicability, consequences, and generalization classification: AEOS Core, Optional Profile, Reference Implementation Only, Do Not Generalize, or Needs More Evidence.
+Determine whether the practice is a positive pattern, negative pattern, or
+candidate. Identify exact evidence, context, applicability, non-applicability,
+consequences, and classification: AEOS Core, Optional Profile, Reference
+Implementation Only, Do Not Generalize, or Needs More Evidence.
 ```

@@ -1,22 +1,35 @@
-schema_version: 1
+schema_version: 2
 checkpoint_id: GATE-REPLACE-ME
 goal_id: GOAL-REPLACE-ME
-current_state: REPLACE_ME
+current_state: GOVERNANCE_INITIALIZATION
+state_status: READY_FOR_REVIEW
 disposition: READY_FOR_EXTERNAL_REVIEW
 repository:
-  path: null
-  branch: null
-  baseline_sha: null
-  current_sha: null
-  dirty: null
+  remote: https://github.com/owner/repository.git
+  default_branch: main
+  base_sha: '0000000000000000000000000000000000000000'
+  head_sha: '1111111111111111111111111111111111111111'
+  branch: chore/replace-me
+  worktree_mode: remote_only
+  worktree_id: null
+  worktree_path: null
+  pull_request: 123
+lifecycle:
+  merge_status: NOT_MERGED
+  post_merge_validation: NOT_APPLICABLE
+  cleanup_disposition: NOT_APPLICABLE
+  closure_status: OPEN
 artifacts: []
 claims:
   verified: []
   claimed_not_verified: []
   assumptions: []
   unknowns: []
+  unavailable: []
+test_failures: []
 deviations: []
 unresolved_findings: []
+closeout_receipts: []
 requested_next_state: null
 operator_action_required: true
-created_at: null
+created_at: '2026-01-01T00:00:00Z'

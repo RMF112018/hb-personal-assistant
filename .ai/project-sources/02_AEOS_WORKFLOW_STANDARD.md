@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,391 +9,281 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines the AEOS engineering lifecycle. It establishes phases, entry criteria, exit criteria, required outputs, evidence expectations, and transition rules for AI-assisted software delivery.
+This standard defines the AEOS lifecycle, phase gates, required inputs and
+outputs, evidence expectations, transition rules, and closeout controls.
 
-The workflow exists to prevent the common failure mode of moving directly from idea to generated code without repository truth, explicit acceptance criteria, independent review, or production evidence.
-
-## 2. Lifecycle Overview
-
-The normative AEOS lifecycle is:
+## 2. Normative Lifecycle
 
 ```text
 Intake
 → Discovery
 → Repository Truth
-→ Architecture
+→ Architecture, when required
 → Implementation Planning
-→ Plan Review
-→ Implementation
-→ Evidence Collection
-→ Implementation Audit
-→ Corrective Review
-→ Production Readiness
-→ Go / No-Go
+→ Independent Plan Review
+→ Authorized Implementation
+→ Evidence Packaging
+→ Independent Implementation Audit
+→ Authorized Corrective Implementation, when required
+→ Independent Corrective Audit
+→ Merge Readiness
+→ Explicit Merge Authorization
 → Merge
+→ Post-Merge Validation
+→ Branch and Worktree Cleanup, Retention, or Blocker Receipt
+→ Bounded Closure
+→ Separately Authorized Deployment Readiness
 → Deployment
 → Post-Deployment Validation
+→ Production / Operational Readiness
 → Learning / Corpus Promotion
 ```
 
-Not every change requires every phase. The required rigor SHALL be proportional to risk, but phase skipping SHALL be explicit.
+Rigor SHALL be proportional to risk, but phase condensation or omission SHALL
+be explicit and evidenced.
 
-## 3. Phase Classification
+## 3. Universal Transition Rules
 
-### 3.1 Mandatory for Consequential Work
+Every transition SHALL identify:
 
-For features, migrations, security changes, trust-boundary changes, production behavior changes, or architectural changes, the following are mandatory:
+- goal and work item;
+- source and destination state;
+- operator authorization;
+- repository and authenticated remote;
+- branch and worktree identities;
+- base and exact head SHA;
+- pull request and checks when applicable;
+- required artifacts and evidence;
+- actor and timestamp;
+- stop conditions.
 
-- Discovery / Repository Truth;
-- Architecture or design intent;
-- Implementation Plan;
-- Evidence Collection;
-- Implementation Audit;
-- Go / No-Go.
+A model may request but SHALL NOT activate the next state. Repository drift
+invalidates identity-bound authorization and current-head review.
 
-### 3.2 Optional for Low-Risk Work
+## 4. Intake and Discovery
 
-For trivial documentation or cosmetic changes, phases MAY be condensed if:
+Intake establishes objective, repository, operating mode, initial scope,
+constraints, and immediate next gate.
 
-- the scope is narrow;
-- no runtime behavior changes;
-- no production risk;
-- no security or data integrity impact;
-- no architecture change.
+Discovery identifies relevant:
 
-The decision to condense SHALL be stated.
-
-## 4. Intake
-
-### Purpose
-
-Clarify the user objective and determine whether AEOS governance applies.
-
-### Inputs
-
-- user request;
-- repository or project name;
-- desired outcome;
-- urgency and constraints.
-
-### Required Output
-
-- workflow mode;
-- target repository;
-- initial scope;
-- immediate next phase.
-
-### Exit Criteria
-
-The request is routed to Discovery, Architecture, Implementation Planning, Review, Audit, or Go/No-Go.
-
-## 5. Discovery
-
-### Purpose
-
-Understand the problem, existing system behavior, constraints, and open questions.
-
-### Activities
-
-- identify relevant repository surfaces;
-- inspect documentation and code paths;
-- identify related tests and fixtures;
-- find prior decisions or ADRs;
-- identify runtime dependencies;
-- classify risks and unknowns.
-
-### Output
-
-Repository-truth discovery report.
-
-### Exit Criteria
-
-The current state is sufficiently understood to plan architecture or identify needed evidence.
-
-## 6. Repository Truth
-
-### Purpose
-
-Establish the evidence baseline.
-
-### Required Checks
-
-Where possible, capture:
-
-- repository name and remote;
-- current branch;
-- HEAD SHA;
-- base branch and merge base;
-- dirty/untracked state;
-- relevant commits;
-- relevant files;
-- current tests;
-- runtime entry points;
+- implementation and tests;
 - schemas and migrations;
-- configuration and feature flags;
-- known failures.
+- configuration and CI;
+- repository governance and ADRs;
+- runtime and deployment surfaces;
+- prior evidence and known failures;
+- risks and unknowns.
 
-### Output
+Output: bounded discovery or repository-truth request.
 
-Repository-truth report with verified facts, assumptions, and evidence gaps.
+## 5. Repository Truth
 
-### Exit Criteria
+Capture, where available:
 
-The session can distinguish actual implementation from assumptions.
+- repository and authenticated remote;
+- default and current branches;
+- registered branch and worktree identities;
+- base SHA, exact head SHA, and merge base;
+- dirty and untracked state;
+- pull request, required checks, and review state;
+- relevant commits, files, tests, schemas, migrations, and configuration;
+- local worktrees, remote refs, tags, locks, and process dependencies when
+  hygiene or cleanup is material;
+- runtime surfaces and available runtime evidence;
+- verified facts, assumptions, unknowns, and unavailable evidence.
 
-## 7. Architecture
+Repository truth is read-only unless artifact publication is separately
+authorized.
 
-### Purpose
+## 6. Architecture
 
-Define the desired design before implementation.
+Architecture defines:
 
-### Required Content
+- objective and target behavior;
+- affected components and interfaces;
+- data and trust boundaries;
+- failure behavior and authorization;
+- observability and rollback;
+- alternatives and rejected alternatives;
+- invariants, risks, and acceptance criteria.
 
-- objective;
-- target behavior;
-- affected surfaces;
-- interfaces;
-- data model;
-- failure behavior;
-- security and authorization model;
-- observability;
-- alternatives considered;
-- rejected alternatives;
-- constraints and invariants;
-- acceptance criteria.
+Architecture output SHALL be independently reviewed when consequential.
 
-### Output
+## 7. Implementation Planning
 
-Architecture artifact or ADR.
+An executable plan SHALL include:
 
-### Exit Criteria
-
-The implementation direction is approved or ready for implementation planning.
-
-## 8. Implementation Planning
-
-### Purpose
-
-Translate architecture into executable steps for a local coding agent.
-
-### Required Content
-
-- repository preflight instructions;
+- authoritative baseline and exact identity;
+- branch/worktree ownership and expected disposition;
 - scope and out-of-scope;
-- phases;
-- expected file areas;
-- tests;
-- evidence requirements;
-- stop conditions;
-- implementation report format.
+- ordered work packages;
+- expected files and symbols;
+- acceptance traceability;
+- proportional test plan under
+  `11_REPOSITORY_TEST_SELECTION_STANDARD.md`;
+- failure-classification and integrated-green requirements;
+- evidence and representation contract;
+- rollback and recovery;
+- prohibitions, retry limits, and stop conditions;
+- final report and review checkpoints;
+- expected post-merge validation and closeout requirements.
 
-### Output
+## 8. Plan Review
 
-Implementation plan and local-agent prompt.
+Plan review evaluates objective alignment, architecture, scope, sequencing,
+security, migration behavior, compatibility, observability, rollback, tests,
+evidence, repository hygiene, and stop conditions.
 
-### Exit Criteria
+Permitted dispositions:
 
-The coding agent can execute the work without inventing architecture.
+- `APPROVE`
+- `APPROVE WITH REQUIRED CHANGES`
+- `REVISE`
+- `REJECT`
+- `INSUFFICIENT EVIDENCE`
 
-## 9. Plan Review
+The review SHALL identify the reviewed artifact version and repository identity.
 
-### Purpose
+## 9. Authorized Implementation
 
-Prevent defective implementation before code is written.
+Before editing, verify:
 
-### Review Criteria
+- branch and worktree registration;
+- exact branch and head;
+- work-item authorization;
+- plan and artifact hashes;
+- prerequisites;
+- dirty-state disposition;
+- scope and prohibited actions.
 
-- objective alignment;
-- scope control;
-- missing phases;
-- unsafe sequencing;
-- migration risk;
-- security and trust boundaries;
-- observability;
-- rollback;
-- tests and evidence.
+Implement only the authorized work package. Preserve unrelated state. Stop on
+architecture drift, scope expansion, unexpected migration or side effects,
+test-infrastructure defects, conflicting criteria, or exhausted retry limits.
 
-### Output
+## 10. Proportional Testing and Failure Disposition
 
-One disposition:
+Use the repository test-selection standard. Validation SHALL proceed from
+narrow direct tests to affected-domain bundles and applicable cross-cutting
+canaries, with broader suites when risk or policy requires them.
 
-- APPROVE;
-- APPROVE WITH REQUIRED CHANGES;
-- REVISE BEFORE IMPLEMENTATION;
-- REJECT.
+Every failing test SHALL be preserved and classified. Separate corrective work
+requires separate authorization and isolated branch/worktree ownership. The
+combined candidate remains blocked until applicable required-safe suites have
+zero unresolved failures.
 
-### Exit Criteria
+## 11. Evidence Packaging
 
-The plan is approved or returned for revision.
+Package immutable evidence with:
 
-## 10. Implementation
+- run identity;
+- exact repository and environment identity;
+- commands, timestamps, exit codes, stdout, and stderr;
+- test and CI results;
+- diff and artifact manifests;
+- representation and hash scope;
+- failed and invalid attempts;
+- limitations and redactions.
 
-### Purpose
+Evidence collection does not decide sufficiency.
 
-Perform code changes according to the approved plan.
+## 12. Independent Implementation Audit
 
-### Agent Duties
+The auditor SHALL inspect actual diff and evidence at the exact head. It SHALL
+not repair the implementation.
 
-- confirm branch and worktree;
-- inspect relevant repository truth;
-- implement only approved scope;
-- run required tests;
-- capture evidence;
-- stop at approval gates;
-- produce implementation report.
+Required output:
 
-### Exit Criteria
+- acceptance-criteria matrix;
+- test-selection and failure assessment;
+- finding ledger;
+- evidence sufficiency assessment;
+- exact reviewed head;
+- audit disposition.
 
-Implementation report and evidence package are ready for independent audit.
+A later commit makes the audit stale for current-head approval.
 
-## 11. Evidence Collection
+## 13. Corrective Implementation and Audit
 
-### Purpose
+Corrective work SHALL preserve finding IDs and history. The implementation
+context may propose `CLAIMED_NOT_VERIFIED` but may not set `VERIFIED FIXED`.
 
-Create reproducible proof for claims.
+Independent corrective audit SHALL bind each closure decision to the corrected
+exact head and closure evidence.
 
-### Required Evidence
+## 14. Merge Readiness
 
-As applicable:
+Merge readiness requires:
 
-- git status;
-- changed files;
-- commit SHAs;
-- exact test commands and full results;
-- CI links/results;
-- migration output;
-- runtime validation;
-- API responses;
-- logs;
-- screenshots;
-- known limitations.
+- approved scope and exact candidate identity;
+- current-head independent review or audit;
+- passing required checks;
+- zero unresolved failures in applicable required-safe suites;
+- no unresolved blocking findings;
+- no unauthorized unrelated changes;
+- clean or explicitly governed repository state;
+- documented post-merge validation and closeout plan.
 
-### Exit Criteria
+Mergeability is not readiness and readiness is not authorization.
 
-Evidence is complete enough to support or reject implementation claims.
+## 15. Merge Authorization and Merge
 
-## 12. Implementation Audit
+Only explicit operator authorization may permit merge. Authorization SHALL bind
+to the exact PR/head and method or constraints when material.
 
-### Purpose
+Merge moves the lifecycle to `MERGED_PENDING_CLEANUP`. It does not authorize
+cleanup, deployment, production activation, or closure.
 
-Independently determine whether the approved work was implemented correctly.
+## 16. Post-Merge Validation
 
-### Activities
+Post-merge validation SHALL identify:
 
-- inspect actual diff;
-- compare to acceptance criteria;
-- review tests;
-- identify regressions;
-- assess evidence;
-- classify findings;
-- assign disposition.
+- accepted main or target-branch commit;
+- relationship to the reviewed candidate;
+- required checks or tests at the accepted identity;
+- documentation or index reconciliation;
+- runtime validation when applicable;
+- unresolved follow-up or explicit not-required decisions.
 
-### Output
+## 17. Branch and Worktree Closeout
 
-Audit report.
+Before deletion or pruning:
 
-### Exit Criteria
+1. inventory all relevant branches, worktrees, refs, tags, dirty state, locks,
+   and process dependencies;
+2. perform no-prune fetch when remote state is material;
+3. preserve unique or uncertain material;
+4. prove integration, patch equivalence, retention need, or blocker;
+5. preview and separately authorize each destructive or pruning action.
 
-The implementation is passed, blocked, or sent to corrective review.
+Worktree removal, local branch deletion, remote branch deletion, worktree
+metadata pruning, and remote-reference pruning are distinct actions.
 
-## 13. Corrective Review
+Closeout output SHALL be a cleanup, retention, or blocker receipt. Only then may
+the work item move to `CLOSED`.
 
-### Purpose
+## 18. Deployment and Production Lifecycle
 
-Verify remediation of previously identified findings.
+Deployment requires a separately authorized deployment identity, target
+environment, configuration validation, migration and rollback plan, health
+checks, and deployment receipt.
 
-### Activities
+Post-deployment validation evaluates runtime health, logs, migrations,
+monitoring, error rates, user-facing behavior, and rollback readiness.
 
-- preserve original finding IDs;
-- verify each claimed fix;
-- compare new evidence to prior evidence;
-- identify remaining blockers;
-- prevent new scope drift.
+Production and operational readiness remain separate from merge and deployment.
 
-### Output
+## 19. Workflow Anti-Patterns
 
-Corrective-review report.
-
-### Exit Criteria
-
-Each finding is dispositioned.
-
-## 14. Production Readiness
-
-### Purpose
-
-Assess release safety beyond code correctness.
-
-### Gates
-
-- merge readiness;
-- deployment readiness;
-- production readiness;
-- operational readiness.
-
-### Output
-
-Readiness report.
-
-### Exit Criteria
-
-A bounded Go/No-Go decision can be issued.
-
-## 15. Go / No-Go
-
-### Purpose
-
-Provide a final release decision based on evidence.
-
-### Dispositions
-
-- GO;
-- CONDITIONAL GO;
-- NO-GO;
-- INSUFFICIENT EVIDENCE.
-
-### Required Content
-
-- decision scope;
-- evidence reviewed;
-- unresolved findings;
-- accepted risks;
-- required follow-ups.
-
-## 16. Merge
-
-Merge SHALL occur only after the applicable readiness decision permits it and repository rules allow it.
-
-Merge decisions SHALL NOT imply deployment readiness unless explicitly stated.
-
-## 17. Deployment
-
-Deployment SHALL require deployment-specific evidence, rollback plan, and operator approval where consequential.
-
-## 18. Post-Deployment Validation
-
-After deployment, verify:
-
-- service health;
-- logs;
-- migrations;
-- user-facing behavior;
-- monitoring;
-- rollback readiness;
-- known risk watchpoints.
-
-## 19. Learning / Corpus Promotion
-
-After a feature closes, patterns or lessons MAY be proposed for the AEOS corpus. Promotion requires evidence, review, and classification under the Pattern Language Standard.
-
-## 20. Workflow Anti-Patterns
-
-The following are noncompliant:
+Noncompliant behavior includes:
 
 - implementation before repository truth;
-- plan approval without acceptance criteria;
-- audit based only on agent summary;
-- GO based only on unit tests;
-- untracked corrective findings;
-- scope expansion hidden inside implementation;
-- treating mergeability as deployability.
+- plan approval without criteria or identity;
+- audit based on agent summary;
+- review not bound to exact head;
+- merge treated as closure or deployment authority;
+- pruning before inventory and preservation;
+- hidden test failures or disappearing findings;
+- Drive or chat state used as competing engineering authority;
+- cross-representation hash claims;
+- GO based only on compilation or unit tests.

@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,322 +9,243 @@ license: internal-use
 
 ## 1. Purpose
 
-The AEOS Operating Manual defines the governing behavior of the planning, review, and assurance layer used in AI-assisted software delivery. It establishes how human operators, frontier-model assistants, local coding agents, repository evidence, and runtime evidence interact.
+This manual governs the planning, review, implementation-control, evidence, and
+assurance layer used in AI-assisted software delivery. It makes work repeatable,
+auditable, and safe without replacing engineering judgment.
 
-The manual exists to make AI-assisted engineering repeatable, auditable, and safe. It does not replace engineering judgment. It constrains and structures the use of model output so that conclusions can be traced to evidence and consequential actions remain under human authority.
+## 2. Core Principles
 
-## 2. Scope
+1. **Repository truth before design.** Verify material repository and GitHub
+   claims before relying on them.
+2. **Runtime truth for deployed behavior.** Plans and code inspection do not
+   establish actual runtime behavior.
+3. **Evidence before trust.** Confidence, narrative quality, and agent reports
+   are not proof.
+4. **Human authority over consequential action.** Models may recommend but may
+   not self-authorize.
+5. **Independent verification.** Consequential implementation and review use
+   separate contexts.
+6. **Fail closed.** Missing, stale, ambiguous, or conflicting evidence reduces
+   the allowable confidence.
+7. **Scope preservation.** Changes to objective, architecture, constraints, or
+   acceptance criteria require explicit disposition.
+8. **Artifact-centric continuity.** Durable state belongs in governed
+   repository, evidence, decision, and publication artifacts.
 
-This manual governs:
+## 3. Truth Precedence
 
-- discovery and repository-truth extraction;
-- architecture planning;
-- implementation planning;
-- prompt generation for local coding agents;
-- implementation-plan review;
-- independent implementation audit;
-- corrective review;
-- production-readiness review;
-- merge and deployment decision support;
-- AEOS conformance behavior.
+When factual sources conflict:
 
-This manual does not prescribe a programming language, framework, hosting environment, or repository topology except where required to support the AEOS workflow.
+1. authenticated runtime evidence for deployed behavior;
+2. authenticated repository and GitHub state for engineering identity and
+   lifecycle;
+3. repository-local governance, accepted ADRs, approved specifications, and
+   acceptance criteria;
+4. AEOS standards;
+5. approved publication/reference governance for publication matters;
+6. prior conversations and agent reports as claim indexes;
+7. model memory or general knowledge.
 
-## 3. Normative Language
+A lower-authority source SHALL NOT override a higher-authority source.
 
-The terms MUST, MUST NOT, SHALL, SHALL NOT, SHOULD, SHOULD NOT, and MAY are used as normative terms. Where this manual says a participant MUST do something, compliance requires that behavior unless an explicitly approved exception is recorded.
+## 4. Action Authority
 
-## 4. Core Principles
+The current operator instruction defines task intent and permitted scope. It
+does not change factual evidence or approve an unstated action.
 
-### 4.1 Repository Truth Before Design
+The operator retains final decision, authorization, and risk authority.
+Repository access, Workspace access, publication status, prior approval, or
+tool capability does not grant action authority.
 
-Engineering conclusions SHALL be derived from current repository and runtime evidence whenever that evidence is available. Prior conversations, memory, summaries, and implementation-agent reports are claims, not proof.
+Without explicit operator authorization, a model SHALL NOT:
 
-A planning assistant MAY use prior conversation to identify likely relevant areas, but it SHALL independently verify material claims before relying on them.
+- merge or force-push;
+- rewrite history;
+- delete branches, worktrees, refs, data, or evidence;
+- prune worktree metadata or remote references;
+- deploy or activate production;
+- mutate secrets or credentials;
+- run irreversible migrations;
+- accept risk;
+- approve its own implementation as independent review;
+- activate the next governed state.
 
-### 4.2 Evidence Before Trust
+## 5. GitHub-First Engineering State
 
-A statement that a feature is complete, safe, tested, or production-ready SHALL be supported by evidence. The stronger the consequence of the decision, the stronger the evidence required.
+Repository content and authenticated GitHub issues, branches, worktrees,
+commits, pull requests, reviews, checks, and merge state are canonical for
+engineering execution.
 
-Agent confidence, explanation quality, and plausible reasoning SHALL NOT be treated as substitutes for evidence.
+Drive and other publication surfaces may publish or reference engineering
+identities but SHALL NOT independently define or activate the active goal, work
+item, authorization, branch, SHA, PR, review, merge state, or checkpoint.
 
-### 4.3 Human Authority Over Consequential Actions
+Repository-specific governance MAY impose stronger controls. For
+`RMF112018/hb-personal-assistant`, ADR-019 and `POL-GIT-HYGIENE-001` govern.
+Merge transitions work to `MERGED_PENDING_CLEANUP`, not directly to `CLOSED`.
 
-Humans retain authority over consequential actions, including:
+## 6. Required Session Preflight
 
-- force pushes;
-- branch deletion;
-- destructive reset or clean operations;
-- production deployment;
-- irreversible migrations;
-- credential or secret mutation;
-- data deletion;
-- broad architectural change;
-- merge approval.
+Before substantive work, identify:
 
-AI systems MAY recommend these actions but SHALL NOT perform or direct them as authorized unless the operator has explicitly approved the action.
-
-### 4.4 Independent Verification
-
-Implementation claims SHOULD be verified by a different role or session from the implementation role. The independent verifier SHALL assume defects may exist until evidence demonstrates otherwise.
-
-### 4.5 Fail-Closed Trust
-
-Missing, stale, ambiguous, or conflicting evidence SHALL reduce confidence. A system, review, or recommendation SHOULD fail closed when trust evidence is incomplete.
-
-### 4.6 Scope Preservation
-
-Approved objectives, acceptance criteria, constraints, and non-goals SHALL be preserved throughout planning, implementation, and audit. Scope expansion SHALL be called out and approved before implementation.
-
-### 4.7 Artifact-Centric Continuity
-
-Conversations are transient. Durable engineering state SHOULD be captured in repository artifacts, decision records, evidence packages, audit reports, and Go/No-Go records.
-
-## 5. Authority Hierarchy
-
-When sources conflict, the following precedence applies:
-
-1. Current runtime behavior and directly inspected repository state.
-2. Approved repository-specific specifications and acceptance criteria.
-3. Repository-local governance: `AGENTS.md`, `AI_OPERATING_MANUAL.md`, ADRs, policies, and release requirements.
-4. AEOS standards.
-5. Current-session human instructions.
-6. Prior project conversations.
-7. Model memory or general knowledge.
-
-A lower-authority source MUST NOT override a higher-authority source. If a human instruction conflicts with repository evidence, the assistant SHALL identify the conflict and ask for clarification or state the risk.
-
-## 6. Operating Modes
-
-A substantive session SHALL operate in one primary mode unless the user explicitly requests an end-to-end workflow.
-
-### 6.1 Discovery
-
-Purpose: establish current repository truth, relevant architecture, constraints, and unknowns.
-
-Output: repository-truth report and evidence gaps.
-
-### 6.2 Architecture
-
-Purpose: define the target design, alternatives, boundaries, invariants, and acceptance criteria.
-
-Output: architecture artifact and decision points.
-
-### 6.3 Implementation Planning
-
-Purpose: translate approved architecture into executable steps.
-
-Output: implementation plan and local-agent handoff prompt.
-
-### 6.4 Plan Review
-
-Purpose: evaluate an implementation plan before code changes begin.
-
-Output: approval, required changes, revision request, or rejection.
-
-### 6.5 Implementation Audit
-
-Purpose: independently verify completed code and evidence.
-
-Output: acceptance-criteria matrix, findings, corrective actions, and audit disposition.
-
-### 6.6 Corrective Review
-
-Purpose: verify that previously identified blockers were actually remediated.
-
-Output: finding-by-finding closure analysis.
-
-### 6.7 Production Readiness
-
-Purpose: determine whether the implementation is safe for merge, deployment, production operation, or continued operation.
-
-Output: readiness matrix and residual-risk statement.
-
-### 6.8 Go / No-Go
-
-Purpose: issue a bounded decision using verified evidence.
-
-Output: GO, CONDITIONAL GO, NO-GO, or INSUFFICIENT EVIDENCE.
-
-## 7. Session Discipline
-
-At the start of consequential work, the assistant SHALL identify:
-
-- target repository;
-- target branch, PR, worktree, or commit;
-- objective;
-- workflow mode;
-- governing AEOS sources;
-- available evidence;
+- operating mode;
+- repository and authenticated remote;
+- issue or goal;
+- work item and authorization;
+- branch and worktree identities;
+- base SHA and exact head SHA;
+- pull request and checks;
+- review identity and reviewed head, when applicable;
+- lifecycle state and checkpoint;
+- objective and expected artifact;
+- governing sources;
+- evidence and access limitations;
 - acceptance criteria;
-- assumptions;
-- access limitations;
-- expected final disposition.
+- constraints and stop conditions.
 
-If the target repository or branch is unknown, the assistant SHOULD ask only the minimum clarifying questions needed or proceed with stated assumptions when safe.
+Do not proceed on a material identity assumption when the state can be
+authenticated.
 
-## 8. Planning Duties
+## 7. Operating Modes
 
-The planning assistant SHALL:
+Use one primary mode unless an end-to-end workflow is explicitly authorized:
 
-- distinguish verified facts from assumptions;
-- inspect repository evidence when available;
-- preserve approved constraints;
-- identify risks and unknowns;
-- define acceptance criteria;
-- separate implementation phases;
-- define required tests and evidence;
-- identify rollback and stop conditions;
-- produce prompts that local agents can execute without inventing architecture.
+- Discovery / Repository Truth
+- Architecture
+- Goal Engineering
+- Implementation Planning
+- Plan Review
+- Implementation Execution
+- Evidence Packaging
+- Implementation Audit
+- Corrective Review
+- Finding Reconciliation
+- Merge Readiness
+- Post-Merge Validation
+- Branch and Worktree Closeout
+- Deployment Readiness
+- Production Readiness
+- Go / No-Go
+- Pattern / Corpus Review
 
-The planning assistant SHALL NOT:
+Planning, implementation, independent review, merge authorization, cleanup,
+deployment, and production decisions SHALL remain distinct.
 
-- silently alter the objective;
-- convert exploratory ideas into approved scope;
-- treat prior success patterns as proof of current correctness;
-- omit known risks to make a plan appear cleaner.
+## 8. Goal and State Discipline
 
-## 9. Review Duties
+A governed invocation has exactly one active state. The model may execute only
+the authorized state and may request but not activate the next state.
 
-A plan review SHALL evaluate:
+Authorization SHALL identify the goal, work item, transition or action,
+repository identity, expected branch/worktree, and expected head where
+applicable. Repository drift invalidates authorization unless the authorization
+explicitly permits the changed identity.
 
-- objective alignment;
-- architectural conformance;
-- scope drift;
-- missing work;
-- unnecessary work;
-- migration safety;
-- backward compatibility;
-- security and authorization boundaries;
-- concurrency and idempotency;
-- observability;
-- rollback;
-- test adequacy.
+A later commit invalidates current-head review approval.
 
-Permitted dispositions:
+## 9. Branch and Worktree Discipline
 
-- APPROVE;
-- APPROVE WITH REQUIRED CHANGES;
-- REVISE BEFORE IMPLEMENTATION;
-- REJECT.
+Register every non-canonical branch and worktree before substantive editing.
 
-## 10. Audit Duties
+Inventory, no-prune fetch, preservation, and integration proof SHALL precede
+pruning or deletion. Worktree removal, local branch deletion, remote branch
+deletion, worktree metadata pruning, and remote-reference pruning are separate
+actions.
 
-An implementation audit SHALL independently inspect implementation and evidence. It SHALL NOT rely solely on implementation summaries.
+Closure after merge requires:
 
-An audit SHOULD inspect:
+- accepted merge identity;
+- post-merge validation or explicit not-required decision;
+- preservation/disposition of dirty and untracked material;
+- integration or retention proof;
+- worktree, local branch, and remote branch disposition;
+- cleanup, retention, or blocker receipt.
 
-- branch and commit identity;
-- changed files;
-- diff scope;
-- tests and fixtures;
-- runtime output;
-- migrations;
-- API behavior;
-- logs;
-- documentation;
-- configuration;
-- security-sensitive surfaces;
-- user-facing behavior;
-- residual risks.
+## 10. Evidence and Trust
 
-Every acceptance criterion SHALL receive one of:
+Evidence SHALL be specific, relevant, reproducible, current, and bound to the
+claim it supports.
 
-- PASS;
-- PARTIAL;
-- FAIL;
-- NOT VERIFIED;
-- NOT APPLICABLE.
+Record as applicable:
 
-## 11. Evidence Philosophy
+- repository, branch, worktree, base SHA, and exact head SHA;
+- environment and runtime identity;
+- commands, exit codes, outputs, and timestamps;
+- tests and failure classifications;
+- artifact representation, MIME type, hash scope, and SHA-256;
+- limitations, redactions, and unavailable evidence.
 
-Evidence is admissible when it is specific, reproducible, and relevant to the claim it supports.
+Valid hash scopes are:
 
-Strong evidence includes:
+- `stored_raw_bytes`
+- `source_bytes`
+- `exported_bytes`
+- `not_applicable`
 
-- commit SHAs;
-- diffs;
-- exact commands;
-- full test output;
-- CI results;
-- runtime logs;
-- API responses;
-- database queries;
-- migration output;
-- screenshots for visual behavior;
-- source references.
+Hashes from different representation classes are not interchangeable. A native
+Google Doc has stable object identity and revision history but no portable
+raw-byte SHA-256.
 
-Weak or insufficient evidence includes:
+## 11. Durable Artifacts and Publication
 
-- agent statements;
-- paraphrased summaries;
-- partial terminal snippets;
-- claims that tests passed without exact test identification;
-- compilation alone;
-- mock-only verification for integration-critical behavior.
+Repository engineering artifacts remain canonical in the repository and
+GitHub. Publication artifacts may provide collaboration and external handoff.
 
-## 12. Local Coding Agent Model
+A durable publication SHOULD record:
 
-Coding agents are implementation tools, not architectural authorities unless explicitly assigned that role.
+- title;
+- classification and artifact type;
+- status and version;
+- stable publication identity and logical path;
+- purpose;
+- representation and hash scope;
+- canonical repository or GitHub pointer.
 
-Coding agents SHALL:
+Publication does not imply approval, implementation, audit passage, merge
+readiness, deployment readiness, production readiness, or authorization.
 
-- perform repository preflight;
-- follow approved plans;
-- preserve scope;
-- report deviations before proceeding;
-- execute required tests;
-- produce evidence packages;
-- report unverified areas;
-- leave the worktree in a known state.
+## 12. Reviews and Decisions
 
-Coding agents SHALL NOT perform destructive Git, deployment, data, or secret operations without explicit authorization.
+A plan or architecture review may conclude:
 
-## 13. Human Approval Boundaries
+- `APPROVE`
+- `APPROVE WITH REQUIRED CHANGES`
+- `REVISE`
+- `REJECT`
+- `INSUFFICIENT EVIDENCE`
 
-Explicit human approval is required for:
+An implementation audit may conclude:
 
-- production deployment;
-- irreversible migrations;
-- deletion of data;
-- changes to secrets or credentials;
-- force push;
-- history rewrite;
-- merge to protected branches;
-- broad architecture changes after approval;
-- turning advisory evidence into canonical memory.
+- `PASS`
+- `PASS WITH NON-BLOCKING FINDINGS`
+- `FAIL — BLOCKERS REMAIN`
+- `INSUFFICIENT EVIDENCE`
 
-When approval is required, the assistant SHALL state the action, risk, required evidence, and requested approval.
+Readiness decisions are separately scoped and may conclude:
 
-## 14. Conformance
+- `GO`
+- `CONDITIONAL GO`
+- `NO-GO`
+- `INSUFFICIENT EVIDENCE`
 
-A session conforms to this manual when:
+Every disposition SHALL identify exact scope, identity, evidence basis,
+blockers, conditions, and residual risk.
 
-- the workflow mode is clear;
-- authority hierarchy is respected;
-- assumptions are separated from verified facts;
-- evidence supports conclusions;
-- acceptance criteria are individually evaluated;
-- limitations are disclosed;
-- consequential actions remain approval-gated;
-- required artifacts are produced or explicitly deferred.
+## 13. Conformance
 
-## 15. Nonconformance
+A conforming session:
 
-Nonconformance includes:
+- authenticates material identity;
+- distinguishes truth from authorization;
+- separates verified facts from claims and assumptions;
+- binds evidence and review to exact identities;
+- preserves scope and unresolved findings;
+- uses proportional tests and classifies failures;
+- stops at authorization boundaries;
+- preserves state when evidence or authority is insufficient;
+- produces or explicitly defers required durable artifacts.
 
-- presenting assumptions as facts;
-- relying on implementation summaries as proof;
-- issuing GO without evidence;
-- ignoring acceptance criteria;
-- silently changing scope;
-- recommending destructive operations without approval;
-- omitting known blockers;
-- declaring production readiness based only on unit tests.
-
-## 16. Related Standards
-
-This manual governs and is implemented by:
+## 14. Related Standards
 
 - `02_AEOS_WORKFLOW_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
@@ -335,3 +256,4 @@ This manual governs and is implemented by:
 - `08_AEOS_VOCABULARY_AND_TAXONOMY.md`
 - `09_AEOS_PATTERN_LANGUAGE.md`
 - `10_AEOS_PROMPT_ENTRY_POINTS.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`

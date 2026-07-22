@@ -1,123 +1,100 @@
 ---
 name: aeos-checkpoint-manager
-description: Validate and close an AEOS workflow checkpoint, hash artifacts, record repository state and unresolved claims, request external review, and prevent automatic next-state activation.
+description: Validate and close one AEOS workflow checkpoint, bind artifacts and evidence to exact repository identity, prevent unauthorized state advancement, and require post-merge validation and closeout receipts before closure.
 ---
-
 
 ## Governing contract
 
-Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md` before using this skill. Repository governance remains authoritative.
-
-Do not use this skill when the active goal state or operator authorization does not permit its workflow.
+Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md`. Repository
+governance remains authoritative.
 
 # AEOS Checkpoint Manager
 
 ## Use when
 
-Use at the end of every governed workflow stage and before handing work to an external reviewer or operator.
-
-This skill closes a state. It never approves or activates the next state.
+Use at the end of every governed state and before external review, operator
+decision, merge, or closeout. This skill records a bounded checkpoint; it does
+not approve or activate the next state.
 
 ## Inputs
 
-- active goal and state;
-- expected-artifact list;
-- completed artifacts;
+- active goal, state, work item, and authorization;
+- expected and completed artifacts;
 - acceptance criteria;
-- repository state;
-- deviations and unresolved findings;
-- requested next state.
+- exact repository and environment identity;
+- evidence index;
+- deviations, failures, and unresolved findings;
+- requested next state;
+- merge or closeout receipts when applicable.
 
 ## Procedure
 
-### 1. Verify stage identity
+### 1. Verify identity
 
-Confirm the active goal, state, authorization, work item, and expected checkpoint agree across the goal artifacts.
+Confirm goal, state, work item, authorization, branch, worktree, base, exact
+head, PR, and checkpoint agree. Treat a later commit as repository drift.
 
-### 2. Validate artifact completeness
+### 2. Validate artifacts
 
-For every expected artifact:
+For every expected artifact verify existence, nonempty content, identifiers,
+references, schema, representation, hash scope, and absence of sensitive data.
+Do not overwrite closed evidence or failed runs.
 
-- verify it exists;
-- verify it is nonempty;
-- verify identifiers agree;
-- verify references resolve;
-- verify required sections or schema fields exist;
-- verify no prior closed evidence was overwritten;
-- verify sensitive data is absent.
+### 3. Validate claims and tests
 
-### 3. Validate evidence claims
-
-For every claimed result:
-
-- identify supporting evidence;
-- classify evidence strength;
-- mark unsupported claims as `CLAIMED_NOT_VERIFIED`;
-- list unavailable evidence;
-- reject circular evidence where an agent summary cites only another summary.
+Map every claim and acceptance criterion to evidence. Preserve all failures and
+their classifications. Mark unsupported claims `CLAIMED_NOT_VERIFIED` and list
+unavailable evidence. Reject circular summary-only evidence.
 
 ### 4. Capture repository state
 
-Record:
+Record branch, worktree identity, base and exact head, upstream, PR/checks,
+dirty/untracked state, and diff summary.
 
-```bash
-git branch --show-current
-git rev-parse HEAD
-git status --short
-git diff --stat
-```
+### 5. Build the artifact manifest
 
-Capture base and current SHA. Record dirty state accurately.
+For raw files or repository blobs, record path, type, representation, size,
+hash scope, and SHA-256. For native objects, record stable identity and use
+`hash_scope: not_applicable` unless a separately identified export/source is
+hashed.
 
-### 5. Hash artifacts
+### 6. Enforce lifecycle rules
 
-Calculate SHA-256 for each checkpoint artifact. Include path, type, size, and hash in `artifact-manifest.json`.
-
-### 6. Write the checkpoint request
-
-Use the shared template and schema. Include:
-
-- current state;
-- bounded disposition;
-- repository identity;
-- artifact manifest;
-- verified and unverified claims;
-- deviations;
-- unresolved findings;
-- requested next state;
-- operator action required.
-
-### 7. Update state without advancing it
-
-Permitted state change:
+Ordinary stage completion may move:
 
 ```text
 IN_PROGRESS → READY_FOR_REVIEW
 ```
 
-Not permitted:
+The checkpoint SHALL NOT activate the requested next state.
+
+Merge SHALL record:
 
 ```text
-READY_FOR_REVIEW → next active state
+MERGE_AUTHORIZATION → MERGED_PENDING_CLEANUP
 ```
 
-Only a later validated operator authorization may activate the next state.
+`MERGED_PENDING_CLEANUP` SHALL NOT move directly to `CLOSED`.
 
-### 8. Produce external-review handoff
+Before closure verify:
 
-Include:
+- accepted merge identity;
+- post-merge validation or explicit not-required decision;
+- preservation and integration proof;
+- worktree, local branch, remote branch, metadata, and ref disposition;
+- cleanup, retention, or blocker receipt;
+- operator-authorized closure transition.
 
-- exact review objective;
-- governing artifacts;
-- files and diff to inspect;
-- acceptance criteria;
-- evidence index;
-- known limitations;
-- required review disposition vocabulary.
+### 7. Write the checkpoint request
 
-### 9. Stop
+Include current lifecycle/state status, exact repository identity, artifact
+manifest, verified and unverified claims, test failures, deviations, findings,
+requested next state, operator action required, and closeout status.
 
-Output exactly one bounded terminal disposition and explicitly state:
+### 8. Produce the handoff and stop
+
+Provide exact review objective, artifacts, diff, criteria, evidence, limitations,
+and disposition vocabulary. State:
 
 ```text
 No further workflow state is authorized.
@@ -125,9 +102,6 @@ No further workflow state is authorized.
 
 ## Failure behavior
 
-If artifacts are incomplete or contradictory:
-
-- do not fabricate missing evidence;
-- produce a checkpoint defect list;
-- return `BLOCKED` or `INSUFFICIENT_EVIDENCE`;
-- leave the current state active or blocked according to the approved state model.
+When artifacts, identity, evidence, tests, authorization, or closeout receipts
+are incomplete or contradictory, preserve state and return `BLOCKED`,
+`INSUFFICIENT_EVIDENCE`, or `OPERATOR_AUTHORIZATION_REQUIRED`.

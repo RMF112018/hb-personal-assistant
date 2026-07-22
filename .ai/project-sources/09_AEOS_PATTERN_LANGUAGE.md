@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,41 +9,23 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines how AEOS records, evaluates, and promotes engineering patterns. Patterns are not invented preferences. They are evidence-derived solutions or anti-patterns observed in real engineering work.
+AEOS patterns are evidence-derived engineering practices or failure modes. They
+are not preferences promoted without review.
 
-## 2. Pattern Categories
-
-### Positive Pattern
-
-A repeatable engineering approach that improved reliability, auditability, safety, maintainability, or delivery quality.
-
-### Negative Pattern
-
-A recurring failure mode, unsafe shortcut, or misleading practice that should be avoided or guarded against.
-
-### Candidate Pattern
-
-An observed practice that may become a pattern but requires more evidence.
-
-## 3. Pattern Promotion Pipeline
-
-A pattern SHOULD follow this pipeline:
+## 2. Promotion Pipeline
 
 ```text
 Observation
 → Evidence
 → Candidate Pattern
-→ Review
+→ Independent Review
 → Classification
 → Pattern Entry
 → Adoption or Rejection
 ```
 
-No pattern SHALL become AEOS Core without supporting evidence and review.
-
-## 4. Generalization Boundary
-
-Each pattern SHALL be classified as one of:
+Every pattern SHALL identify applicability, non-applicability, evidence basis,
+consequences, and generalization classification:
 
 - AEOS Core
 - AEOS Optional Profile
@@ -51,147 +33,131 @@ Each pattern SHALL be classified as one of:
 - Do Not Generalize
 - Needs More Evidence
 
-This prevents a mechanism from one repository becoming a universal rule without justification.
+## 3. Positive Pattern Format
 
-## 5. Positive Pattern Entry Format
+A positive pattern includes ID, name, problem, context, forces, solution,
+implementation guidance, evidence, consequences, applicability,
+non-applicability, classification, and related patterns.
 
-A positive pattern SHALL include:
+## 4. Negative Pattern Format
 
-- pattern ID;
-- name;
-- category;
-- problem;
-- context;
-- forces;
-- solution;
-- implementation guidance;
-- evidence basis;
-- consequences;
-- applicability;
-- non-applicability;
-- generalization classification;
-- related patterns;
-- related anti-patterns.
+A negative pattern includes ID, name, symptom, context, failure mode, harm,
+evidence, detection, remediation, prevention, and related positive pattern.
 
-## 6. Negative Pattern Entry Format
-
-A negative pattern SHALL include:
-
-- anti-pattern ID;
-- name;
-- symptom;
-- context;
-- failure mode;
-- why it is harmful;
-- evidence basis;
-- detection method;
-- remediation;
-- prevention;
-- related positive pattern.
-
-## 7. Initial Positive Patterns
+## 5. Core Positive Patterns
 
 ### PAT-001 Repository Truth Before Design
-
-Problem: AI planning often proceeds from stale assumptions.
-
-Solution: Require repository inspection before consequential planning.
-
-Consequences: More accurate plans, slower initial response, fewer implementation reversals.
-
-Classification: AEOS Core.
+Require repository inspection before consequential planning.
 
 ### PAT-002 Evidence Package as Claim Boundary
+Treat implementation reports as claim indexes and evidence packages as proof
+sources.
 
-Problem: Implementation reports often mix claims and proof.
-
-Solution: Treat implementation reports as claim indexes and evidence packages as proof sources.
-
-Classification: AEOS Core.
-
-### PAT-003 Independent Audit Session
-
-Problem: A planning or implementation session may inherit assumptions.
-
-Solution: Use a fresh audit session or independent reviewer for consequential work.
-
-Classification: AEOS Optional Profile for low-risk work; AEOS Core for high-risk work.
+### PAT-003 Independent Audit Context
+Use a separate review context for consequential work.
 
 ### PAT-004 Approval-Gated Promotion
-
-Problem: Draft outputs and model-generated summaries can become treated as canonical without review.
-
-Solution: Require stage → review → approval → apply for canonicalization.
-
-Classification: AEOS Core.
+Require stage → review → approval → apply before canonicalization or state
+transition.
 
 ### PAT-005 Fail-Closed Trust Boundary
+Missing or stale evidence reduces trust and blocks high-consequence action.
 
-Problem: Systems may appear safe when trust evidence is incomplete.
-
-Solution: Missing or stale evidence should degrade trust state and block high-consequence actions.
+### PAT-006 Exact-Identity Review Binding
+Bind review, audit, evidence, and authorization to exact artifact and repository
+identity. A later commit invalidates current-head approval.
 
 Classification: AEOS Core.
 
-## 8. Initial Negative Patterns
+### PAT-007 Preservation Before Pruning
+
+Problem: cleanup can destroy unique or uncertain repository state before its
+relationship to accepted work is known.
+
+Solution: inventory branches, worktrees, refs, tags, dirty state, locks, and
+process dependencies; perform no-prune fetch when remote state matters;
+preserve unique or uncertain material; prove integration or retention; preview
+the exact action; then obtain target-specific authorization.
+
+Classification: AEOS Core for repository cleanup.
+
+### PAT-008 Merge-to-Closeout Lifecycle
+
+Problem: treating merge as closure hides post-merge validation and branch or
+worktree disposition.
+
+Solution: transition merge to `MERGED_PENDING_CLEANUP`, perform post-merge
+validation, then produce cleanup, retention, or blocker receipts before
+closure.
+
+Classification: AEOS Core for governed branch/worktree delivery.
+
+### PAT-009 Representation-Scoped Integrity
+Bind hashes and integrity claims to an identified representation and hash scope.
+Do not infer byte identity across native documents, sources, and exports.
+
+Classification: AEOS Core.
+
+## 6. Core Negative Patterns
 
 ### ANTI-001 Summary-as-Proof
-
-Symptom: "The agent said it passed."
-
-Failure Mode: Natural-language claims replace inspection.
-
-Remediation: Require evidence package and independent verification.
+Agent narrative replaces direct evidence.
 
 ### ANTI-002 Mergeable-is-Ready
-
-Symptom: PR mergeability is treated as production readiness.
-
-Failure Mode: CI or branch status masks runtime, migration, or operational risk.
-
-Remediation: Separate merge, deployment, production, and operational readiness.
+PR mergeability is treated as correctness, deployment, or production evidence.
 
 ### ANTI-003 Silent Scope Expansion
-
-Symptom: Implementation includes unrelated refactors or design changes.
-
-Failure Mode: Review becomes harder and original objective is obscured.
-
-Remediation: Define out-of-scope items and audit actual diff.
+Unapproved redesign or unrelated refactoring is hidden inside implementation.
 
 ### ANTI-004 Test-Label Inflation
-
-Symptom: A narrow test is cited as proof of broad behavior.
-
-Failure Mode: Confidence exceeds coverage.
-
-Remediation: Map tests to claims and mark unverified criteria explicitly.
+A narrow test is cited as proof of broad behavior.
 
 ### ANTI-005 Disappearing Findings
+A finding vanishes without explicit disposition.
 
-Symptom: A blocker from one review is absent from the next without disposition.
+### ANTI-006 Review-Head Drift
+Approval for an earlier head is reused after a later commit.
 
-Failure Mode: Risk is lost.
+Remediation: reauthenticate and review the current head.
 
-Remediation: Stable finding IDs and lifecycle status.
+### ANTI-007 Prune-Before-Proof
+Refs, branches, worktrees, or metadata are pruned before complete inventory,
+preservation, and integration proof.
 
-## 9. Pattern Review Requirements
+Remediation: use PAT-007 and fail closed to preservation.
 
-Before adopting a pattern, reviewers SHALL ask:
+### ANTI-008 Merge-is-Closure
+Merge is used to imply post-merge validation, cleanup, deployment, or closure.
 
-- What evidence supports this pattern?
-- Is the pattern specific to one repository?
-- What risks does the pattern introduce?
-- What is the detection method?
-- What would make the pattern invalid?
-- Should it be core, optional, reference-only, or rejected?
+Remediation: use PAT-008.
 
-## 10. Pattern Anti-Patterns
+### ANTI-009 Cross-Representation Hash Equivalence
+A hash from an export or source is presented as the hash of a native object, or
+vice versa.
 
-Noncompliant behavior includes:
+Remediation: record representation and hash scope explicitly.
 
-- promoting preferences as standards;
-- generalizing from one anecdote without evidence;
-- failing to capture negative consequences;
-- omitting non-applicability;
-- turning implementation details into universal rules.
+### ANTI-010 Publication-as-Authority
+An external publication or chat summary is treated as active repository state or
+action authorization.
+
+Remediation: authenticate repository/GitHub state and operator authorization.
+
+## 7. Pattern Review Questions
+
+Before adoption, ask:
+
+- What evidence supports the pattern?
+- Which exact repositories, identities, and environments were observed?
+- Is the mechanism repository-specific?
+- What risks or costs does it introduce?
+- How is nonconformance detected?
+- What would invalidate the pattern?
+- Should it be core, optional, reference-only, rejected, or held for more
+  evidence?
+
+## 8. Nonconformance
+
+Do not promote preferences without evidence, generalize from one anecdote,
+omit negative consequences, ignore non-applicability, or turn one repository's
+implementation detail into a universal rule without review.
