@@ -77,14 +77,48 @@ jobs:
       - name: Enforce validation outcome
         if: steps.validate.outputs.failed != '0'
         run: exit 1
-      - name: Commit coherent corrective candidate
+      - name: Commit and push coherent corrective candidate
+        id: publish
         if: steps.validate.outputs.failed == '0'
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          set +e
+          mkdir -p /tmp/aeos-r2-publish
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet && { echo 'No corrective changes staged'; exit 1; }
-          git commit -m "fix: remediate AEOS governance review blockers" \
-            -m "Forward-port compatible PR #320 controls onto accepted post-PR #319 main; enforce strict canonical v2 schemas, bounded legacy v1, semantic validation, mutation fixtures, corrected receipt identity, and current checksums."
-          git push origin HEAD:chore/aeos-governance-sync-corrective-r2
+          git diff --cached --stat > /tmp/aeos-r2-publish/staged-stat.log 2>&1
+          git diff --cached --name-status > /tmp/aeos-r2-publish/staged-name-status.log 2>&1
+          if git diff --cached --quiet; then
+            echo "No corrective changes staged" > /tmp/aeos-r2-publish/commit.log
+            commit_code=1
+            push_code=99
+          else
+            git commit -m "fix: remediate AEOS governance review blockers" \
+              -m "Forward-port compatible PR #320 controls onto accepted post-PR #319 main; enforce strict canonical v2 schemas, bounded legacy v1, semantic validation, mutation fixtures, corrected receipt identity, and current checksums." \
+              > /tmp/aeos-r2-publish/commit.log 2>&1
+            commit_code=$?
+            if [ "$commit_code" -eq 0 ]; then
+              git rev-parse HEAD > /tmp/aeos-r2-publish/candidate-head.txt
+              git push origin HEAD:chore/aeos-governance-sync-corrective-r2 > /tmp/aeos-r2-publish/push.log 2>&1
+              push_code=$?
+            else
+              push_code=98
+              echo "Push skipped because commit failed" > /tmp/aeos-r2-publish/push.log
+            fi
+          fi
+          printf '{"commit":%s,"push":%s}\n' "$commit_code" "$push_code" | tee /tmp/aeos-r2-publish/status.json
+          failed=0
+          if [ "$commit_code" -ne 0 ] || [ "$push_code" -ne 0 ]; then failed=1; fi
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload corrective publish diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeos-governance-r2-publish-diagnostics
+          path: /tmp/aeos-r2-publish
+          if-no-files-found: error
+      - name: Enforce publish outcome
+        if: steps.publish.outputs.failed != '0'
+        run: exit 1
