@@ -111,6 +111,10 @@ layout = layout.replace('"representation_scoped_hashes_required",', '"representa
 needle = '    actual, checksum_errors = parse_checksums(ROOT / "CHECKSUMS.txt")\n'
 insert = '''    semantic = subprocess.run([sys.executable, str(ROOT / "aeos" / "bin" / "validate_goal_loop_contracts.py"), "--quiet"], capture_output=True, text=True)\n    if semantic.returncode != 0:\n        errors.append("goal-loop semantic validation failed")\n        for line in (semantic.stdout + semantic.stderr).splitlines():\n            if line.strip():\n                errors.append(f"goal-loop: {line}")\n\n'''
 layout = layout.replace(needle, insert + needle)
+layout = layout.replace(
+    'if not path.is_file() or path == output or is_macos_metadata(path):',
+    'if not path.is_file() or path == output or is_macos_metadata(path) or "__pycache__" in path.parts or path.suffix == ".pyc":',
+)
 (OUT / '.ai/aeos/bin/validate_ai_layout.py').write_text(layout, encoding='utf-8')
 (OUT / '.ai/aeos/bin/validate_ai_layout.py').chmod(0o755)
 
