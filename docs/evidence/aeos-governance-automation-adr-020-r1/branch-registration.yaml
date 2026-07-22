@@ -20,41 +20,35 @@ created_at: 2026-07-22T11:54:23-04:00
 registered_at: 2026-07-22T11:54:23-04:00
 expected_disposition: review-then-operator-decide
 lifecycle_state: REVIEW_PENDING
-authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
+authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-R2-20260722-01
 authorization_binding:
   planning_artifact_id: PLAN-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-001-R6
   planning_artifact_sha256: 0cc105b375f09bb5df712a13488dcaa07375520315f2b1dc708409eaf6421dd6
-  qualifying_review_id: REVIEW-PLAN-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-R6-20260722-01
-  qualifying_review_sha256: 2a6f92adeeb3a7aa947ba1ed6582b998b1e2ae61dafee03770953d5a9d49223b
-  repository_truth_report_id: AUDIT-AEOS-GOVERNANCE-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
-  repository_truth_report_sha256: ace76048c940151fca5640bb561d2f6a497824c133a097b57b5e0fb322c6ca5c
-  repository_truth_checkpoint_id: CP-AEOS-GOVERNANCE-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
-  repository_truth_checkpoint_sha256: 08f3cf20b8142ef2d86d137a626591191615df72b6a9ecd6cb8064f486375b02
-authorized_action: author_adr_020_candidate_on_registered_remote_branch
+  controlling_architecture_review_id: REVIEW-ADR-020-AEOS-STANDING-POLICY-R1-20260722-01
+  controlling_architecture_review_sha256: a2dce8a18a19dcb69fcb05d95b3fbefade2c37259e783172ab31525a62ff8d35
+  controlling_review_disposition: REVISE
+  reviewed_head_sha: a6f7b21521283824709cbcfb8ee828bdd9703dcc
+  original_adr_sha256: 3d4930c5642b2a7df1ffdf1bf29028c184c5a8f741ed51246691a91938b6c372
+  original_adr_blob_sha: 7d37fd50f250919127c351aa2fa1a71281656e43
+authorized_action: revise_adr_020_corrective_candidate_on_registered_remote_branch
 authorized_state: ARCHITECTURE
 completion_state: ARCHITECTURE
 requested_next_state: ARCHITECTURE_EXTERNAL_REVIEW
 next_state_activation: NOT_AUTHORIZED
 scope:
-  - create and register this exact remote-only architecture branch from the bound base
-  - author docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
-  - author architecture-only evidence and an independent architecture review request
-  - run focused non-mutating validation
-  - commit and push only the bounded architecture candidate
+  - close ARCH-AEOS-GOV-AUTO-ADR020-R1-F-001 through F-005 through architecture design only
+  - revise ADR-020 to version 0.2
+  - update architecture evidence and this registration
+  - run focused non-mutating architecture validation
+  - produce a true-file exact-head independent architecture review request
 prohibited_actions:
   - implementation
   - pull_request_creation
-  - review_submission
-  - ruleset_mutation
-  - branch_protection_mutation
-  - required_check_mutation
-  - app_or_token_mutation
-  - credential_or_secret_mutation
-  - receipt_branch_creation
-  - receipt_or_catalog_creation
-  - policy_activation
-  - policy_mapping_or_manifest_activation
-  - pilot_execution
+  - issue_comment_review_or_check_mutation
+  - ruleset_branch_protection_or_required_check_mutation
+  - app_token_credential_or_secret_mutation
+  - receipt_branch_receipt_or_catalog_creation
+  - policy_mapping_manifest_or_pilot_activation
   - configuration_mutation
   - drive_mutation
   - merge
@@ -72,7 +66,7 @@ transitions:
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
     evidence: operator authorization in project conversation; exact branch created from bound base
-    reason: Register the authorized remote-only architecture branch before substantive ADR authoring.
+    reason: Register the authorized remote-only architecture branch before R1 authoring.
   - transition_id: TR-BR-AEOS-GOV-AUTOMATION-ADR-020-R1-REVIEW
     entity_type: branch
     entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
@@ -85,12 +79,41 @@ transitions:
     evidence:
       - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
       - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
-    reason: Architecture candidate and bounded evidence are complete; preserve the exact final branch tip for fresh independent architecture review.
+    reason: R1 candidate complete and held for independent review.
+  - transition_id: TR-BR-AEOS-GOV-AUTOMATION-ADR-020-R2-CORRECT
+    entity_type: branch
+    entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
+    from_state: REVIEW_PENDING
+    to_state: ACTIVE
+    occurred_at: 2026-07-22T12:40:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-R2-20260722-01
+    evidence:
+      controlling_review_id: REVIEW-ADR-020-AEOS-STANDING-POLICY-R1-20260722-01
+      controlling_review_sha256: a2dce8a18a19dcb69fcb05d95b3fbefade2c37259e783172ab31525a62ff8d35
+      reviewed_head_sha: a6f7b21521283824709cbcfb8ee828bdd9703dcc
+    reason: Exact operator authorization activated bounded corrective architecture work for F-001 through F-005.
+  - transition_id: TR-BR-AEOS-GOV-AUTOMATION-ADR-020-R2-REVIEW
+    entity_type: branch
+    entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-22T13:10:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-R2-20260722-01
+    evidence_parent_sha: 7be74519500b3555a3ca8fd9457a9180abc62399
+    evidence:
+      - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
+      - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
+    reason: R2 corrective ADR and evidence complete; preserve final tip for fresh exact-head architecture review.
 architecture_candidate:
+  version: "0.2"
   adr_path: docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
-  adr_sha256: 3d4930c5642b2a7df1ffdf1bf29028c184c5a8f741ed51246691a91938b6c372
-  adr_blob_sha: 7d37fd50f250919127c351aa2fa1a71281656e43
+  adr_sha256: 49a0b334cd4f09eb6212a7e5119eeaf9f0f480ba35a6312ee732a802647640d9
+  adr_blob_sha: 4c3c1e3bbc273293efbd9e197bc12b76e46af7ab
+  adr_bytes: 21970
+  adr_lines: 230
   evidence_path: docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
-  evidence_blob_sha: ec1a052298a09d906d52d08aa9dcf6205711693c
-  evidence_hash_scope: git_blob_sha1
-  final_candidate_head_authority: authenticated_github_after_commit
+  evidence_sha256: 71bbca2c06f86202526ab14b72083bc39244f67cd7a9d2607deb47c016204a23
+  evidence_blob_sha: 7c813b9184a5ea9f5fc367e31cd5c991dfa47f30
+  final_candidate_head_authority: authenticated_github_after_registration_commit
