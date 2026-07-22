@@ -1,0 +1,37 @@
+name: AEOS Governance R2 Snapshot
+
+on:
+  push:
+    branches:
+      - chore/aeos-governance-sync-corrective-r2
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out corrective branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Archive current corrective baseline
+        run: |
+          tar --exclude=.git -czf /tmp/current-main-derived.tar.gz .
+
+      - name: Materialize reviewed PR 320 head
+        run: |
+          mkdir -p /tmp/pr320
+          git archive 3d740dbcfc1d58c86dcce0d2495155e4d83a28e2 | tar -x -C /tmp/pr320
+          tar -C /tmp/pr320 -czf /tmp/pr320-reviewed-head.tar.gz .
+
+      - name: Upload reconciliation snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeos-governance-r2-snapshots
+          path: |
+            /tmp/current-main-derived.tar.gz
+            /tmp/pr320-reviewed-head.tar.gz
+          if-no-files-found: error
