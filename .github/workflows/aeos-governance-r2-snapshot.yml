@@ -49,15 +49,36 @@ jobs:
       - name: Install corrective validation dependencies
         run: python -m pip install --disable-pip-version-check -e ".[dev]"
       - name: Validate corrective candidate
+        id: validate
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          python -m compileall -q .ai/aeos/bin .ai/agent-skills/_aeos-shared/scripts
-          python .ai/aeos/bin/validate_goal_loop_contracts.py
-          python .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py
-          python .ai/aeos/bin/validate_ai_layout.py
-          python .ai/aeos/bin/generate_checksums.py --check
-          git diff --check
+          set +e
+          mkdir -p /tmp/aeos-r2-validation
+          python -m compileall -q .ai/aeos/bin .ai/agent-skills/_aeos-shared/scripts > /tmp/aeos-r2-validation/compile.log 2>&1; s1=$?
+          python .ai/aeos/bin/validate_goal_loop_contracts.py > /tmp/aeos-r2-validation/contracts.log 2>&1; s2=$?
+          python .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py > /tmp/aeos-r2-validation/skills.log 2>&1; s3=$?
+          python .ai/aeos/bin/validate_ai_layout.py > /tmp/aeos-r2-validation/layout.log 2>&1; s4=$?
+          python .ai/aeos/bin/generate_checksums.py --check > /tmp/aeos-r2-validation/checksums.log 2>&1; s5=$?
+          git diff --check > /tmp/aeos-r2-validation/diff-check.log 2>&1; s6=$?
+          printf '{"compile":%s,"contracts":%s,"skills":%s,"layout":%s,"checksums":%s,"diff_check":%s}\n' "$s1" "$s2" "$s3" "$s4" "$s5" "$s6" | tee /tmp/aeos-r2-validation/status.json
+          failed=0
+          for code in "$s1" "$s2" "$s3" "$s4" "$s5" "$s6"; do
+            if [ "$code" -ne 0 ]; then failed=1; fi
+          done
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload corrective validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aeos-governance-r2-validation-diagnostics
+          path: /tmp/aeos-r2-validation
+          if-no-files-found: error
+      - name: Enforce validation outcome
+        if: steps.validate.outputs.failed != '0'
+        run: exit 1
       - name: Commit coherent corrective candidate
+        if: steps.validate.outputs.failed == '0'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
