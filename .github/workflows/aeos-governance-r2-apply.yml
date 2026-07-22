@@ -1,0 +1,70 @@
+name: AEOS Governance R2 Apply
+
+on:
+  push:
+    branches:
+      - chore/aeos-governance-sync-corrective-r2
+    paths:
+      - ".github/workflows/aeos-governance-r2-apply.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aeos-governance-r2-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out corrective branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/aeos-governance-sync-corrective-r2
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reconstruct source trees and builder
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/aeos-r2-work
+          mkdir -p /tmp/aeos-r2-work/current /tmp/aeos-r2-work/pr320
+          git archive HEAD | tar -x -C /tmp/aeos-r2-work/current
+          git fetch --no-tags origin 3d740dbcfc1d58c86dcce0d2495155e4d83a28e2
+          git archive FETCH_HEAD | tar -x -C /tmp/aeos-r2-work/pr320
+          cat tools/aeos-r2-builder/part-*.py > /tmp/build_corrective.py
+          sed -i "s|Path('/mnt/data/aeos-r2-work')|Path('/tmp/aeos-r2-work')|" /tmp/build_corrective.py
+          python -m pip install --disable-pip-version-check PyYAML
+          python /tmp/build_corrective.py
+      - name: Replace branch tree and remove staging machinery
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/aeos-r2-work/out/tools/aeos-r2-builder
+          rm -rf /tmp/aeos-r2-work/out/tools/aeos-r2-payload
+          rm -f /tmp/aeos-r2-work/out/.github/workflows/aeos-governance-r2-apply.yml
+          rm -f /tmp/aeos-r2-work/out/.github/workflows/aeos-governance-r2-snapshot.yml
+          rsync -a --delete --exclude='.git/' /tmp/aeos-r2-work/out/ ./
+      - name: Install corrective validation dependencies
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Validate corrective candidate
+        run: |
+          set -euo pipefail
+          python -m compileall -q .ai/aeos/bin .ai/agent-skills/_aeos-shared/scripts
+          python .ai/aeos/bin/validate_goal_loop_contracts.py
+          python .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py
+          python .ai/aeos/bin/validate_ai_layout.py
+          python .ai/aeos/bin/generate_checksums.py --check
+          git diff --check
+      - name: Commit coherent corrective candidate
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo 'No corrective changes staged'; exit 1; }
+          git commit -m "fix: remediate AEOS governance review blockers" \
+            -m "Forward-port compatible PR #320 controls onto accepted post-PR #319 main; enforce strict canonical v2 schemas, bounded legacy v1, semantic validation, mutation fixtures, corrected receipt identity, and current checksums."
+          git push origin HEAD:chore/aeos-governance-sync-corrective-r2
