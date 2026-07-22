@@ -86,6 +86,7 @@ jobs:
           mkdir -p /tmp/aeos-r2-publish
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout HEAD -- .github/workflows
           git add -A
           git diff --cached --stat > /tmp/aeos-r2-publish/staged-stat.log 2>&1
           git diff --cached --name-status > /tmp/aeos-r2-publish/staged-name-status.log 2>&1
