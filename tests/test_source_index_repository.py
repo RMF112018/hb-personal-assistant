@@ -686,6 +686,14 @@ def _is_safe_placeholder_generator(node: ast.AST) -> bool:
     return isinstance(comp.iter, ast.Name)
 
 
+def _is_single_nonempty_suffix(r: "_Recon") -> bool:
+    """The 'other' branch of an admissible optional-suffix IfExp must be a resolved SINGLE non-empty
+    candidate (PLAN-R3C3-REV-F-001 / R3C2-REV-F-002). A multi-candidate branch — whether a nested
+    optional whose set includes "" or an all-non-empty conditional append — is NOT the approved
+    single-suffix form; a resolved-rep + excludes-"" check ALONE would wrongly admit the latter."""
+    return r.rep is not None and len(r.candidates) == 1 and "" not in r.candidates
+
+
 def _reconstruct_expr(node: ast.AST, ctx: dict, seen: frozenset) -> _Recon:
     """Reduce an expression to its runtime SQL candidate set + §(a3) representative, following simple
     Name reaching-definitions / ``+`` / ``%`` / f-string / IfExp / safe-generator fragments. Fail closed
@@ -754,10 +762,13 @@ def _reconstruct_expr(node: ast.AST, ctx: dict, seen: frozenset) -> _Recon:
             and body.rep == orelse.rep
         ):
             return _Recon(body.rep, cands, cond, opt)  # identical alternatives → single value
-        # ADMISSIBLE OPTIONAL-SUFFIX (branch-level): exactly one branch is the empty string "".
-        if body.candidates == frozenset({""}):
+        # ADMISSIBLE OPTIONAL-SUFFIX (branch-level): exactly one branch is the empty string "" AND the
+        # OTHER branch is a resolved SINGLE non-empty candidate (PLAN-R3C3-REV-F-001 / R3C2-REV-F-002 — a
+        # multi-candidate other branch, whether it contains "" (nested optional) or is an all-non-empty
+        # conditional append, is NOT the approved single-suffix form → fall through to UNRESOLVED).
+        if body.candidates == frozenset({""}) and _is_single_nonempty_suffix(orelse):
             return _Recon(orelse.rep, cands, cond, True)
-        if orelse.candidates == frozenset({""}):
+        if orelse.candidates == frozenset({""}) and _is_single_nonempty_suffix(body):
             return _Recon(body.rep, cands, cond, True)
         return _Recon(None, cands, cond, opt)  # genuinely-distinct → UNRESOLVED representative
     if isinstance(node, ast.Name):
@@ -941,8 +952,17 @@ def _discover_occurrences(src: str) -> list[tuple[str, int, str, str]]:
             # (e.g. the distinct-non-registered ``fts_table`` shape) → accept, no emitted occurrence.
             if not registered_norms:
                 continue
-            # STEP 5 — a genuinely-distinct IfExp (UNRESOLVED representative) reaching a registered table
-            # is mutually-exclusive with no canonical all-applied value → fail closed.
+            # STEP 2 (call-level normalized-identity, PLAN-R3C3-REREVIEW2-F-001 / R3C2-REV-F-001): if every
+            # completed candidate normalizes to ONE value, emit it — even when the raw representative is
+            # UNRESOLVED (a distinct-but-normalize-identical IfExp is NOT ambiguous). Runs BEFORE the
+            # rep-None → STEP 5 ambiguity check. cand_norms holds _norm_sql of COMPLETED candidates (never
+            # a fragment), so the token boundary at the composition seam is preserved (no "...locatorsWHERE").
+            if len(cand_norms) == 1:
+                only = next(iter(cand_norms))
+                occ.append((func.name, ordinal, _classify(func.name, only), only))
+                continue
+            # STEP 5 — a genuinely-distinct IfExp (UNRESOLVED representative, >1 normalized value) reaching
+            # a registered table is mutually-exclusive with no canonical all-applied value → fail closed.
             if recon.rep is None:
                 raise _guard(
                     _CAT_AMBIGUOUS_ALT,
@@ -2033,3 +2053,73 @@ def test_r3c_b9_prefix_related_different_registered_identifier_ambiguous() -> No
         "    c.execute(sql, ())\n",
         _CAT_AMBIGUOUS_ALT,
     )
+
+
+# ---- R3C-3: the two IfExp refinements (B10 normalized-equivalent + boundary; B11/B12 optional-suffix
+#      other-branch must be a SINGLE non-empty candidate) ----
+
+_B10_BASE = "SELECT source_entity_id FROM source_index_locators"
+_B10_SRC = (
+    "def _e(c, cond):\n"
+    f"    sql = \"{_B10_BASE}\" + (\" WHERE is_current_locator=1\" if cond else \"  WHERE  is_current_locator=1\")\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_b10_normalized_equivalent_branches_boundary_preserved_one_occurrence() -> None:
+    # Normalized-equivalent branches (differing LEADING and INTERNAL whitespace) nested in a larger
+    # registered statement, with a token boundary at the composition seam. The RAW representative is
+    # UNRESOLVED (the branches are not byte-identical), but every COMPLETED candidate normalizes to ONE
+    # value → emit it once (NOT ambiguous). The seam boundary "...source_index_locators WHERE..." is
+    # preserved; no malformed "...source_index_locatorsWHERE..." is produced (proving no branch fragment
+    # was normalized before composition).
+    recon = _analyze_call(_B10_SRC, "_e")
+    assert recon.rep is None  # UNRESOLVED: whitespace-differing branches are not byte-identical
+    expected = "SELECT source_entity_id FROM source_index_locators WHERE is_current_locator=1"
+    assert {_norm_sql(csql) for csql in recon.candidates} == {expected}  # both complete → ONE normalized
+    occ = _discover_occurrences(_B10_SRC)
+    assert occ == [("_e", 0, _classify("_e", expected), expected)]  # exactly ONE occurrence
+    only_sql = occ[0][3]
+    assert "source_index_locators WHERE" in only_sql          # boundary preserved
+    assert "source_index_locatorsWHERE" not in only_sql       # no seam corruption
+
+
+_B11_SRC = (
+    "def _e(c, c1, c2):\n"
+    f"    sql = \"{_B10_BASE}\" + (\"\" if c1 else (\"\" if c2 else \" AND x\"))\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_b11_optional_suffix_other_branch_multicandidate_including_empty_ambiguous() -> None:
+    # The empty branch is exactly {""}, but the OTHER branch is itself optional/multi-candidate and its
+    # candidate set INCLUDES "" → condition (ii) fails (len != 1 AND includes "") → NOT admitted as an
+    # optional suffix → ambiguous_sql_alternatives.
+    recon = _analyze_call(_B11_SRC, "_e")
+    assert recon.rep is None  # not admitted → UNRESOLVED
+    assert {_norm_sql(csql) for csql in recon.candidates} == {_B10_BASE, _B10_BASE + " AND x"}
+    _reject_cat(_B11_SRC, _CAT_AMBIGUOUS_ALT)
+
+
+_B12_SRC = (
+    "def _e(c, c1, c2):\n"
+    "    suffix = \" AND x\"\n"
+    "    if c2:\n"
+    "        suffix += \" AND y\"\n"
+    f"    sql = \"{_B10_BASE}\" + (\"\" if c1 else suffix)\n"
+    "    c.execute(sql, ())\n"
+)
+
+
+def test_r3c_b12_optional_suffix_other_branch_multicandidate_all_nonempty_ambiguous() -> None:
+    # The empty branch is exactly {""}, but the OTHER branch is a conditional-append (cappend) with
+    # MULTIPLE candidates, NONE empty, and a resolved all-applied rep — a resolved-rep + excludes-""
+    # check ALONE would wrongly admit it. The single-candidate requirement (len == 1) rejects it →
+    # ambiguous_sql_alternatives. (The companion POSITIVE — the real _assert_lifecycle_oracle shape whose
+    # other branch is a SINGLE non-empty constant — remains admitted, proven by B7 + registry set-equality.)
+    recon = _analyze_call(_B12_SRC, "_e")
+    assert recon.rep is None  # not admitted → UNRESOLVED
+    assert {_norm_sql(csql) for csql in recon.candidates} == {
+        _B10_BASE, _B10_BASE + " AND x", _B10_BASE + " AND x AND y"
+    }
+    _reject_cat(_B12_SRC, _CAT_AMBIGUOUS_ALT)
