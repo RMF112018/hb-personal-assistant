@@ -19,7 +19,7 @@ pull_request: null
 created_at: 2026-07-22T11:54:23-04:00
 registered_at: 2026-07-22T11:54:23-04:00
 expected_disposition: review-then-operator-decide
-lifecycle_state: ACTIVE
+lifecycle_state: REVIEW_PENDING
 authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
 authorization_binding:
   planning_artifact_id: PLAN-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-001-R6
@@ -28,7 +28,7 @@ authorization_binding:
   qualifying_review_sha256: 2a6f92adeeb3a7aa947ba1ed6582b998b1e2ae61dafee03770953d5a9d49223b
   repository_truth_report_id: AUDIT-AEOS-GOVERNANCE-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
   repository_truth_report_sha256: ace76048c940151fca5640bb561d2f6a497824c133a097b57b5e0fb322c6ca5c
-  repository_truth_checkpoint_id: CP-AEOS-GOV-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
+  repository_truth_checkpoint_id: CP-AEOS-GOVERNANCE-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
   repository_truth_checkpoint_sha256: 08f3cf20b8142ef2d86d137a626591191615df72b6a9ecd6cb8064f486375b02
 authorized_action: author_adr_020_candidate_on_registered_remote_branch
 authorized_state: ARCHITECTURE
@@ -73,3 +73,22 @@ transitions:
     authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
     evidence: operator authorization in project conversation; exact branch created from bound base
     reason: Register the authorized remote-only architecture branch before substantive ADR authoring.
+  - transition_id: TR-BR-AEOS-GOV-AUTOMATION-ADR-020-R1-REVIEW
+    entity_type: branch
+    entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-22T12:04:48-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
+    evidence_parent_sha: 27b3dc9775d242ce6aacb8c36c86d4edcff649dd
+    evidence:
+      - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
+      - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
+    reason: Architecture candidate and bounded evidence are complete; preserve the exact final branch tip for fresh independent architecture review.
+architecture_candidate:
+  adr_path: docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
+  adr_sha256: 3d4930c5642b2a7df1ffdf1bf29028c184c5a8f741ed51246691a91938b6c372
+  evidence_path: docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
+  evidence_sha256: 94b983078881a0314249e21ad79c3895aa77a4eb45eea5a3ba7f1fa63bd655e8
+  final_candidate_head_authority: authenticated_github_after_commit
