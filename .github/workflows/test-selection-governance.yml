@@ -120,8 +120,8 @@ jobs:
               for rel in required:
                   if not (root / rel).is_file():
                       raise ValueError(f"missing required path: {rel}")
-              s07 = (root / '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md').read_text()
-              s11 = (root / '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md').read_text()
+              s07 = ' '.join((root / '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md').read_text().split())
+              s11 = ' '.join((root / '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md').read_text().split())
               for token in ('unmapped broad suite', 'conflicts with Standard 11', 'bash scripts/test-safe.sh'):
                   if token not in s07: raise ValueError(f"Standard 07 missing: {token}")
               for token in ('bash scripts/test-safe.sh', 'TF-<issue-number>'):
