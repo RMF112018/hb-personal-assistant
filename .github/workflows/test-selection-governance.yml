@@ -3,19 +3,18 @@ name: Test Selection Governance
 on:
   pull_request:
     paths:
-      - '.ai/project-sources/00_AEOS_MASTER_INDEX.md'
-      - '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md'
-      - '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md'
+      - '.ai/**'
       - '.github/ISSUE_TEMPLATE/test-failure.yml'
       - '.github/workflows/test-selection-governance.yml'
       - 'AGENTS.md'
       - 'AI_OPERATING_MANUAL.md'
       - 'CLAUDE.md'
       - 'docs/decisions/**'
+      - 'docs/evidence/**'
       - 'docs/governance/**'
-      - 'docs/implementation-plans/github-first-control-plane-migration.md'
-      - 'docs/testing/forecasting-and-schedule-test-bundles.md'
-      - 'docs/evidence/test-selection-policy/**'
+      - 'docs/implementation-plans/**'
+      - 'docs/testing/**'
+      - 'pyproject.toml'
       - 'scripts/test-safe.sh'
       - 'scripts/validate-test-selection-governance.py'
 
@@ -46,72 +45,214 @@ jobs:
       - name: Validate executable syntax
         run: |
           bash -n scripts/test-safe.sh
-          python -m py_compile scripts/validate-test-selection-governance.py
+          python -m compileall -q .ai/aeos/bin .ai/agent-skills/_aeos-shared/scripts
 
       - name: Exercise bounded canonical collection
         env:
           PYTHON: ${{ env.pythonLocation }}/bin/python
         run: |
           set +e
-          bash scripts/test-safe.sh --collect-only --python-only 2>&1 | tee pr319-safe-collection.log
+          bash scripts/test-safe.sh --collect-only --python-only 2>&1 | tee test-selection-safe-collection.log
           rc=${PIPESTATUS[0]}
-          echo "$rc" > pr319-safe-collection.exitcode
+          echo "$rc" > test-selection-safe-collection.exitcode
           exit 0
 
-      - name: Validate governance contracts at exact head
+      - name: Validate reusable governance invariants at exact head
+        id: governance
+        continue-on-error: true
+        env:
+          EXPECTED_REPOSITORY: RMF112018/hb-personal-assistant
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EXPECTED_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set +e
-          python scripts/validate-test-selection-governance.py validate --github-head-sha '${{ github.event.pull_request.head.sha }}' \
-            --github-base-sha '${{ github.event.pull_request.base.sha }}' \
-            --pr-number '${{ github.event.pull_request.number }}' \
-            --branch-name '${{ github.event.pull_request.head.ref }}' \
-            --identity-source 'github-actions-pull-request-event' \
-            --collection-log pr319-safe-collection.log \
-            --collection-exitcode-file pr319-safe-collection.exitcode \
-            --validator-log-name pr319-governance-validator.log \
-            --validator-exitcode-name pr319-governance-validator.exitcode \
-            --output pr319-governance-validation.partial.json \
-            2>&1 | tee pr319-governance-validator.log
-          rc=${PIPESTATUS[0]}
-          echo "$rc" > pr319-governance-validator.exitcode
-          exit 0
+          python - <<'PY' 2>&1 | tee test-selection-governance-validator.log
+          from __future__ import annotations
+          import hashlib, json, os, platform, re, subprocess, sys, tomllib
+          from pathlib import Path
+          import yaml
 
-      - name: Finalize schema-2 receipt evidence
-        if: always()
-        run: |
-          python scripts/validate-test-selection-governance.py finalize-receipt \
-            --input pr319-governance-validation.partial.json \
-            --output pr319-governance-validation.json \
-            --validator-log pr319-governance-validator.log \
-            --validator-exitcode-file pr319-governance-validator.exitcode
+          root = Path.cwd()
+          output = root / 'test-selection-governance-validation.json'
+          expected = {
+              'repository': os.environ['EXPECTED_REPOSITORY'],
+              'head_sha': os.environ['EXPECTED_HEAD_SHA'],
+              'base_sha': os.environ['EXPECTED_BASE_SHA'],
+              'pull_request': int(os.environ['EXPECTED_PR_NUMBER']),
+              'branch': os.environ['EXPECTED_BRANCH'],
+          }
+          prefixes = ('.ai/', '.github/ISSUE_TEMPLATE/', '.github/workflows/',
+                      'docs/decisions/', 'docs/evidence/', 'docs/governance/',
+                      'docs/implementation-plans/', 'docs/testing/')
+          exact = {'AGENTS.md', 'AI_OPERATING_MANUAL.md', 'CLAUDE.md', 'pyproject.toml',
+                   'scripts/test-safe.sh', 'scripts/validate-test-selection-governance.py'}
+          required = [
+              '.ai/project-sources/00_AEOS_MASTER_INDEX.md',
+              '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md',
+              '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md',
+              '.github/ISSUE_TEMPLATE/test-failure.yml',
+              'AGENTS.md', 'CLAUDE.md',
+              'docs/decisions/ADR-019-github-first-engineering-control-plane.md',
+              'docs/implementation-plans/github-first-control-plane-migration.md',
+              'docs/testing/forecasting-and-schedule-test-bundles.md',
+              'scripts/test-safe.sh', 'pyproject.toml',
+              'subrepos/construction-financial-review/pyproject.toml',
+          ]
+          def sha(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          def run_git(*args: str) -> str:
+              proc = subprocess.run(['git', *args], text=True, capture_output=True)
+              if proc.returncode:
+                  raise ValueError(proc.stderr.strip())
+              return proc.stdout.strip()
+          try:
+              head = run_git('rev-parse', 'HEAD')
+              if head != expected['head_sha']:
+                  raise ValueError(f"checkout head mismatch: {head}")
+              changed = sorted(x for x in run_git('diff', '--name-only', expected['base_sha'], head).splitlines() if x)
+              unexpected = [p for p in changed if p not in exact and not p.startswith(prefixes)]
+              if unexpected:
+                  raise ValueError(f"non-governance changed paths: {unexpected}")
+              if not changed:
+                  raise ValueError('pull request has no changed paths')
+              for rel in required:
+                  if not (root / rel).is_file():
+                      raise ValueError(f"missing required path: {rel}")
+              s07 = (root / '.ai/project-sources/07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md').read_text()
+              s11 = (root / '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md').read_text()
+              for token in ('unmapped broad suite', 'conflicts with Standard 11', 'bash scripts/test-safe.sh'):
+                  if token not in s07: raise ValueError(f"Standard 07 missing: {token}")
+              for token in ('bash scripts/test-safe.sh', 'TF-<issue-number>'):
+                  if token not in s11: raise ValueError(f"Standard 11 missing: {token}")
+              for rel in ('AGENTS.md', 'CLAUDE.md'):
+                  if '.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md' not in (root / rel).read_text():
+                      raise ValueError(f"{rel} lacks Standard 11 pointer")
+              adr_text = (root / 'docs/decisions/ADR-019-github-first-engineering-control-plane.md').read_text()
+              adr = yaml.safe_load(adr_text.split('\n---\n', 1)[0].removeprefix('---\n'))
+              if adr.get('status') != 'Accepted — Phase A':
+                  raise ValueError('ADR-019 is not Accepted — Phase A')
+              plan_text = (root / 'docs/implementation-plans/github-first-control-plane-migration.md').read_text()
+              plan = yaml.safe_load(plan_text.split('\n---\n', 1)[0].removeprefix('---\n'))
+              if plan.get('phase_b_authorized') is not False:
+                  raise ValueError('Phase B must remain unauthorized')
+              issue = yaml.safe_load((root / '.github/ISSUE_TEMPLATE/test-failure.yml').read_text())
+              ids = {e.get('id') for e in issue.get('body', []) if isinstance(e, dict) and e.get('id')}
+              needed = {'source_work_item','discovered_at','candidate_sha','command','environment',
+                        'failing_ids','classification','triage_owner','base_evidence','affected_gate',
+                        'current_disposition','authorization_state','corrective_identity','review_result',
+                        'integrated_candidate_result','closure_evidence'}
+              if needed - ids: raise ValueError(f"issue form missing IDs: {sorted(needed - ids)}")
+              registrations = []
+              for path in (root / 'docs/evidence').rglob('branch-registration.yaml'):
+                  data = yaml.safe_load(path.read_text())
+                  if isinstance(data, dict) and data.get('remote_branch') == expected['branch'] and data.get('pull_request') == expected['pull_request']:
+                      registrations.append((path, data))
+              if len(registrations) != 1:
+                  raise ValueError(f"expected one current branch registration, found {len(registrations)}")
+              reg_path, reg = registrations[0]
+              if reg.get('schema_version') != 2 or reg.get('target_base_sha') != expected['base_sha']:
+                  raise ValueError('branch registration schema/base mismatch')
+              if 'branch_tip_sha' in reg or 'candidate_head_sha' in reg:
+                  raise ValueError('self-referential branch-tip field present')
+              identity = reg.get('identity_model', {})
+              if identity.get('current_pr_head_resolved_externally') is not True:
+                  raise ValueError('branch receipt does not externalize current head')
+              if reg.get('lifecycle_state') not in {'ACTIVE', 'REVIEW_PENDING'}:
+                  raise ValueError('branch lifecycle is not active/review-pending')
+              root_toml = tomllib.loads((root / 'pyproject.toml').read_text())
+              extras = root_toml.get('project', {}).get('optional-dependencies', {})
+              if not any(str(x).lower().startswith('pytest') for x in extras.get('dev', [])):
+                  raise ValueError('dev dependencies lack pytest')
+              collection_exit = int((root / 'test-selection-safe-collection.exitcode').read_text().strip())
+              if collection_exit != 0: raise ValueError(f"collection exit code: {collection_exit}")
+              collection_text = (root / 'test-selection-safe-collection.log').read_text(errors='replace')
+              matches = list(re.finditer(r'(\d+)/(\d+) tests collected \((\d+) deselected\)', collection_text))
+              if not matches: raise ValueError('collection summary missing')
+              selected, total, deselected = map(int, matches[-1].groups())
+              if selected + deselected != total: raise ValueError('collection counts inconsistent')
+              receipt = {
+                  'schema_version': 2, 'result': 'PASS', **expected,
+                  'identity_source': 'github-actions-pull-request-event',
+                  'changed_files': changed,
+                  'authorized_scope': {'prefixes': list(prefixes), 'exact_paths': sorted(exact)},
+                  'branch_registration': {'path': reg_path.relative_to(root).as_posix(), 'sha256': sha(reg_path),
+                                          'lifecycle_state': reg.get('lifecycle_state')},
+                  'collection': {'command': ['bash','scripts/test-safe.sh','--collect-only','--python-only'],
+                                 'exit_code': collection_exit, 'selected_tests': selected,
+                                 'total_tests': total, 'deselected_tests': deselected,
+                                 'log_sha256': sha(root / 'test-selection-safe-collection.log'),
+                                 'exitcode_sha256': sha(root / 'test-selection-safe-collection.exitcode')},
+                  'checks': {'governance_only_diff_scope':'PASS','exact_head_identity':'PASS',
+                             'branch_receipt_identity':'PASS','standard_07_11_consistency':'PASS',
+                             'bounded_collection':'PASS','issue_form_contract':'PASS',
+                             'authority_statuses':'PASS'},
+                  'environment': {'python': sys.version.split()[0], 'platform': platform.platform(),
+                                  'github_actions': os.environ.get('GITHUB_ACTIONS') == 'true'},
+                  'observed_file_sha256': {rel: sha(root / rel) for rel in required},
+              }
+              canonical = json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
+              receipt['evidence_sha256'] = hashlib.sha256(canonical).hexdigest()
+              output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n')
+              print(json.dumps(receipt, indent=2, sort_keys=True))
+          except Exception as exc:
+              failure = {'schema_version': 2, 'result': 'FAIL', **expected, 'error': str(exc)}
+              output.write_text(json.dumps(failure, indent=2, sort_keys=True) + '\n')
+              print(json.dumps(failure, indent=2, sort_keys=True))
+              raise SystemExit(1)
+          PY
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > test-selection-governance-validator.exitcode
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Upload validation and collection evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr319-governance-validation-${{ github.event.pull_request.head.sha }}
+          name: test-selection-governance-${{ github.event.pull_request.head.sha }}
           path: |
-            pr319-governance-validation.json
-            pr319-governance-validation.partial.json
-            pr319-governance-validator.log
-            pr319-governance-validator.exitcode
-            pr319-safe-collection.log
-            pr319-safe-collection.exitcode
+            test-selection-governance-validation.json
+            test-selection-governance-validator.log
+            test-selection-governance-validator.exitcode
+            test-selection-safe-collection.log
+            test-selection-safe-collection.exitcode
           if-no-files-found: error
 
       - name: Enforce authenticated receipt and captured evidence consistency
         if: always()
+        env:
+          EXPECTED_REPOSITORY: RMF112018/hb-personal-assistant
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EXPECTED_PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          python scripts/validate-test-selection-governance.py verify-receipt \
-            --receipt pr319-governance-validation.json \
-            --partial-receipt pr319-governance-validation.partial.json \
-            --collection-log pr319-safe-collection.log \
-            --collection-exitcode-file pr319-safe-collection.exitcode \
-            --validator-log pr319-governance-validator.log \
-            --validator-exitcode-file pr319-governance-validator.exitcode \
-            --expected-repository 'RMF112018/hb-personal-assistant' \
-            --expected-pr-number '${{ github.event.pull_request.number }}' \
-            --expected-branch '${{ github.event.pull_request.head.ref }}' \
-            --expected-base-sha '${{ github.event.pull_request.base.sha }}' \
-            --expected-head-sha '${{ github.event.pull_request.head.sha }}' \
-            --expected-identity-source 'github-actions-pull-request-event'
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          receipt = json.loads(Path('test-selection-governance-validation.json').read_text())
+          expected = {'repository': os.environ['EXPECTED_REPOSITORY'],
+                      'head_sha': os.environ['EXPECTED_HEAD_SHA'],
+                      'base_sha': os.environ['EXPECTED_BASE_SHA'],
+                      'pull_request': int(os.environ['EXPECTED_PR_NUMBER']),
+                      'branch': os.environ['EXPECTED_BRANCH']}
+          if receipt.get('result') != 'PASS': raise SystemExit(f"validator failed: {receipt.get('error')}")
+          for key, value in expected.items():
+              if receipt.get(key) != value: raise SystemExit(f"identity mismatch: {key}")
+          if int(Path('test-selection-governance-validator.exitcode').read_text()) != 0:
+              raise SystemExit('validator exit code is nonzero')
+          if int(Path('test-selection-safe-collection.exitcode').read_text()) != 0:
+              raise SystemExit('collection exit code is nonzero')
+          clean = dict(receipt); observed = clean.pop('evidence_sha256', None)
+          computed = hashlib.sha256(json.dumps(clean, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+          if observed != computed: raise SystemExit('receipt evidence hash mismatch')
+          def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+          collection = receipt['collection']
+          if collection['log_sha256'] != sha('test-selection-safe-collection.log'):
+              raise SystemExit('collection log hash mismatch')
+          if collection['exitcode_sha256'] != sha('test-selection-safe-collection.exitcode'):
+              raise SystemExit('collection exit-code hash mismatch')
+          print('Test-selection governance receipt: PASS')
+          PY
