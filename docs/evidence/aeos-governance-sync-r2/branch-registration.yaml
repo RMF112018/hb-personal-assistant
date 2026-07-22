@@ -19,8 +19,8 @@ source_review:
     - AEOS-SYNC-REVIEW-FIND-004
     - AEOS-SYNC-REVIEW-FIND-005
 identity_model:
-  receipt_parent_sha: 37862788622efc5d3adbf3d18deb5c183142f820
-  validated_head_sha: null
+  receipt_parent_sha: 5179a5279001156a6bf330aad72e6556abb1fbd3
+  validated_head_sha: 5179a5279001156a6bf330aad72e6556abb1fbd3
   current_pr_head_resolved_externally: true
   eventual_merge_commit: null
 owner_or_agent: OpenAI ChatGPT, operator-directed
@@ -29,7 +29,7 @@ issue: 317
 pull_request: 323
 created_at: 2026-07-22T01:00:00-04:00
 expected_disposition: review-then-remove-after-merge-and-closeout
-lifecycle_state: ACTIVE
+lifecycle_state: REVIEW_PENDING
 authorization_id: operator-instruction-2026-07-22-complete-review-findings
 scope:
   - forward-port compatible PR 320 governance onto current main
@@ -39,6 +39,7 @@ scope:
   - make v2 goal-loop schemas fail-closed
   - add semantic schema, YAML, fixture, and mutation validation
   - regenerate checksums and evidence
+  - make test-selection governance validation reusable for later governance PRs
 prohibited_actions:
   - merge
   - branch_deletion
@@ -47,6 +48,19 @@ prohibited_actions:
   - production_activation
   - phase_b_activation
   - risk_acceptance
+validation:
+  validated_candidate_head: 5179a5279001156a6bf330aad72e6556abb1fbd3
+  aeos_governance_validation:
+    status: PASS
+    workflow_run_id: 29899208350
+  forecasting_semantic_gates:
+    status: PASS
+    workflow_run_id: 29899208311
+  test_selection_governance:
+    status: PASS
+    workflow_run_id: 29899208353
+    artifact_id: 8521211926
+  exact_head_note: The final review head is the receipt-only successor of validated_candidate_head and must be resolved from authenticated GitHub.
 transitions:
   - transition_id: TR-BR-AEOS-GOVERNANCE-SYNC-R2-001-REGISTER
     entity_type: branch
@@ -58,3 +72,13 @@ transitions:
     authorization_id: operator-instruction-2026-07-22-complete-review-findings
     evidence: docs/evidence/aeos-governance-sync-r2/branch-registration.yaml
     reason: Register a fresh corrective branch from current accepted main before substantive edits.
+  - transition_id: TR-BR-AEOS-GOVERNANCE-SYNC-R2-001-REVIEW
+    entity_type: branch
+    entity_id: BR-AEOS-GOVERNANCE-SYNC-R2-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-22T03:12:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: operator-instruction-2026-07-22-complete-review-findings
+    evidence: PR 323; workflow runs 29899208350, 29899208311, and 29899208353; artifact 8521211926
+    reason: All corrective implementation and applicable exact-head validation completed; hold for fresh independent review.
