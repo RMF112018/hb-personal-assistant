@@ -98,14 +98,15 @@ transitions:
     entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
     from_state: ACTIVE
     to_state: REVIEW_PENDING
-    occurred_at: 2026-07-22T13:10:00-04:00
+    occurred_at: 2026-07-22T13:02:24-04:00
     actor: OpenAI ChatGPT, operator-directed
     authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-R2-20260722-01
-    evidence_parent_sha: 7be74519500b3555a3ca8fd9457a9180abc62399
+    evidence_parent_sha: 3bc348bc502d9a2f574d01388929fa155aa580ef
     evidence:
       - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
       - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
-    reason: R2 corrective ADR and evidence complete; preserve final tip for fresh exact-head architecture review.
+    correction_note: Supersedes the prior registration commit whose rounded transition timestamp was later than the authenticated commit sequence.
+    reason: R2 corrective ADR and evidence complete; correct the transition evidence and preserve the resulting tip for fresh exact-head architecture review.
 architecture_candidate:
   version: "0.2"
   adr_path: docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
