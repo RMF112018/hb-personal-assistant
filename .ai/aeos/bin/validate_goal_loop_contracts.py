@@ -216,9 +216,26 @@ def main() -> int:
         for err in validate_instance(data, SCHEMA_ROOT / schema_name) + semantic_errors(kind, data):
             errors.append(f"fixture {name}: {err}")
 
+    cp = fixtures["checkpoint.valid.yaml"]
+    checkpoint_positive_scopes = {
+        "stored_raw_bytes": "a" * 64,
+        "source_bytes": "b" * 64,
+        "exported_bytes": "c" * 64,
+        "not_applicable": None,
+    }
+    for scope, sha256 in checkpoint_positive_scopes.items():
+        x = copy.deepcopy(cp)
+        x["artifacts"] = [{
+            "path": f"artifacts/{scope}.txt",
+            "representation": "repository_blob" if scope != "not_applicable" else "narrative",
+            "hash_scope": scope,
+            "sha256": sha256,
+        }]
+        for err in validate_instance(x, SCHEMA_ROOT / "checkpoint-request.schema.json") + semantic_errors("checkpoint", x):
+            errors.append(f"checkpoint positive {scope}: {err}")
+
     # Mutation-negative matrix.
     state = fixtures["state.valid.yaml"]
-    cp = fixtures["checkpoint.valid.yaml"]
     ev = fixtures["evidence.valid.json"]
     cases: list[tuple[str, Any, Path, str, bool]] = []
     x=copy.deepcopy(state); x["schema_version"]=1; cases.append(("new canonical v1 state",x,SCHEMA_ROOT/"state.schema.json","state",False))
@@ -231,6 +248,12 @@ def main() -> int:
     x=copy.deepcopy(ev); x["evidence"][0]["hash_scope"]="not_applicable"; cases.append(("not applicable with hash",x,SCHEMA_ROOT/"evidence-index.schema.json","evidence",False))
     x=copy.deepcopy(ev); x["evidence"][0]["repository_head"]='f'*40; cases.append(("evidence head mismatch",x,SCHEMA_ROOT/"evidence-index.schema.json","evidence",True))
     x=copy.deepcopy(cp); x["unexpected"]=True; cases.append(("unknown checkpoint field",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.bin","representation":"repository_blob","hash_scope":"stored_raw_bytes","sha256":None}]; cases.append(("checkpoint stored raw bytes with null hash",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.bin","representation":"raw_file","hash_scope":"source_bytes","sha256":None}]; cases.append(("checkpoint source bytes with null hash",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.bin","representation":"exported_representation","hash_scope":"exported_bytes","sha256":None}]; cases.append(("checkpoint exported bytes with null hash",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.md","representation":"narrative","hash_scope":"not_applicable","sha256":"a"*64}]; cases.append(("checkpoint not applicable with hash",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.bin","representation":"repository_blob","hash_scope":"stored_raw_bytes","sha256":"A"*64}]; cases.append(("checkpoint byte hash uppercase",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    x=copy.deepcopy(cp); x["artifacts"]=[{"path":"artifact.bin","representation":"repository_blob","hash_scope":"stored_raw_bytes","sha256":"a"*63}]; cases.append(("checkpoint byte hash malformed length",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
     for label, instance, schema_path, kind, semantic_only in cases:
         failure = assert_rejected(label, instance, schema_path, kind, semantic_only=semantic_only)
         if failure: errors.append(failure)
@@ -246,6 +269,7 @@ def main() -> int:
         print("AEOS goal-loop contract validation: PASS")
         print(f"- canonical schemas: {len(MAPPINGS)}")
         print(f"- canonical templates: {len(MAPPINGS)}")
+        print(f"- checkpoint positive scope cases: {len(checkpoint_positive_scopes)}")
         print(f"- mutation-negative cases: {len(cases)}")
         print("- legacy v1 boundary: enforced")
         print("- root/shared parity: enforced")

@@ -279,6 +279,45 @@
             ]
           }
         },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "hash_scope": {
+                  "enum": [
+                    "stored_raw_bytes",
+                    "source_bytes",
+                    "exported_bytes"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "hash_scope": {
+                  "const": "not_applicable"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sha256": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ],
         "additionalProperties": false
       }
     },
