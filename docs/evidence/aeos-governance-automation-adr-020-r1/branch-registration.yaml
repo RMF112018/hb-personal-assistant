@@ -6,34 +6,39 @@ remote_name: origin
 remote_branch: arch/adr-020-aeos-governance-automation-r1
 base_branch: main
 historical_base_sha: b2b7bb63443bf5a098c2851eb101e4d5c148c589
-authenticated_main_at_publication: 9a3a53b980d7fa43b14baaf5b52bb21d32b4bc38
+authenticated_main_at_correction_preflight: 9a3a53b980d7fa43b14baaf5b52bb21d32b4bc38
+pre_correction_head_sha: 292a197f316413d406c06a5c2c65a62116a22fae
 lifecycle_state: REVIEW_PENDING
 completion_state: ARCHITECTURE
 requested_next_state: ARCHITECTURE_EXTERNAL_REVIEW
 next_state_activation: NOT_AUTHORIZED
-pull_request: null
 
-authorization:
-  action: publish_existing_exact_r3_git_blobs_to_registered_architecture_branch
+correction_authorization:
+  authorization_id: AUTH-ADR020-R3-REVIEW-IDENTITY-CORRECTION-R4-20260722-01
+  authorized_action: correct_closed_pr325_registration_identity_and_publish_exact_drive_review_package
   authorized_state: ARCHITECTURE
-  controlling_review_id: REVIEW-ADR-020-AEOS-STANDING-POLICY-R2-20260722-01
-  controlling_review_sha256: 844d8d572d3fe3da669d5d02a0c1cc997c372c1b6cc9119872c0017f648c5457
-  controlling_review_disposition: REVISE
-  reviewed_head_sha: 03aba9050621eeb47109da1d6ac951160e89f48b
-  authorized_precommit_head_sha: 75c4d0936f62948bf31bcc764cec51c4f41272be
-  main_drift_classification: OUT_OF_BAND_NONCANONICAL_R3_UPLOADS
-  main_cleanup_authorized: false
+  work_item_id: WP-GOV-02
+  update_mode: NON_FORCE_FAST_FORWARD_ONLY
+  required_parent_sha: 292a197f316413d406c06a5c2c65a62116a22fae
+  permitted_repository_paths:
+    - docs/evidence/aeos-governance-automation-adr-020-r1/branch-registration.yaml
+  architecture_review_in_this_session: prohibited
 
 publication:
-  update_mode: NON_FORCE_FAST_FORWARD_ONLY
-  content_commit_sha: 6759fd80e741f34d1a2f96d4a094e1b655e3dc82
-  content_commit_parent_sha: 75c4d0936f62948bf31bcc764cec51c4f41272be
+  original_r3_content_commit_sha: 6759fd80e741f34d1a2f96d4a094e1b655e3dc82
+  original_r3_content_commit_parent_sha: 75c4d0936f62948bf31bcc764cec51c4f41272be
+  stale_registration_commit_sha: 292a197f316413d406c06a5c2c65a62116a22fae
+  correction_commit_parent_sha: 292a197f316413d406c06a5c2c65a62116a22fae
+  correction_commit_sha_authority: authenticated_github_branch_tip_after_this_commit
+  final_candidate_head_authority: authenticated_github_branch_tip_after_this_commit
+  self_referential_identity_rule: >-
+    The correction commit and resulting branch-head SHA cannot be embedded as a
+    literal in the file whose bytes create that SHA. Their exact values are bound
+    by the authenticated post-commit repository evidence and final review request.
   canonical_paths:
     - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
     - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
     - docs/evidence/aeos-governance-automation-adr-020-r1/branch-registration.yaml
-  final_candidate_head_authority: authenticated_github_after_registration_commit
-  final_candidate_head_recorded_in_repository: false
 
 architecture_candidate:
   version: "0.3"
@@ -45,6 +50,7 @@ architecture_candidate:
     git_blob_sha: 029aa9922655f27161381438e2fb0aea6796bf93
     bytes: 89465
     lines: 1477
+    encoding: UTF-8
     terminal_newline: true
     hash_scope: source_bytes
   evidence:
@@ -55,8 +61,72 @@ architecture_candidate:
     git_blob_sha: d88d5188b2690e36bb9c6bfab3761d60e7409c9d
     bytes: 4461
     lines: 87
+    encoding: UTF-8
     terminal_newline: true
     hash_scope: source_bytes
+
+pull_request:
+  repository: RMF112018/hb-personal-assistant
+  number: 325
+  url: https://github.com/RMF112018/hb-personal-assistant/pull/325
+  lifecycle_role: historical_repository_lifecycle_event
+  active_fresh_review_authority: false
+  state: CLOSED
+  merged: false
+  draft: false
+  created_at: 2026-07-22T20:43:34Z
+  closed_at: 2026-07-22T20:49:45Z
+  base_branch: main
+  base_sha: 9a3a53b980d7fa43b14baaf5b52bb21d32b4bc38
+  head_branch: arch/adr-020-aeos-governance-automation-r1
+  pr_head_sha_at_failed_review: 292a197f316413d406c06a5c2c65a62116a22fae
+  pr_head_sha_at_close: 292a197f316413d406c06a5c2c65a62116a22fae
+  current_pr_api_head_sha_after_correction_authority: authenticated_post_commit_pr_snapshot
+  corrected_branch_head_sha_authority: authenticated_post_commit_repository_snapshot
+  post_correction_equality_must_not_be_assumed: true
+  changed_files_at_failed_review_identity:
+    - docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
+    - docs/evidence/aeos-governance-automation-adr-020-r1/architecture-evidence.md
+    - docs/evidence/aeos-governance-automation-adr-020-r1/branch-registration.yaml
+  creation_authorization: NOT_AUTHENTICATED
+  close_authorization: NOT_AUTHENTICATED
+  authority_effects:
+    approval: false
+    operator_acceptance: false
+    implementation: false
+    merge: false
+    deployment: false
+    production_activation: false
+    risk_acceptance: false
+  historical_observations:
+    - observation: failed_review
+      state: OPEN
+      observed_head_sha: 292a197f316413d406c06a5c2c65a62116a22fae
+      evidence_drive_id: 1V2K635SsCEqar4RWcxv0dALSzNmX3Bg9
+      disposition: INSUFFICIENT_EVIDENCE
+      substantive_architecture_review_performed: false
+    - observation: close_snapshot
+      state: CLOSED
+      merged: false
+      observed_head_sha: 292a197f316413d406c06a5c2c65a62116a22fae
+      evidence_drive_id: 1UWLB7rYb8Zppcd33tRG9geU5yGp1qBHr
+
+review_identity_evidence:
+  evidence_package:
+    title: PKG-ADR-020-R3-REVIEW-IDENTITY-CORRECTION-EVIDENCE-20260722
+    drive_id: 1kVjghaFtE2JzIaXV76R4HG7iL6DyFFBE
+  failed_review:
+    drive_id: 1V2K635SsCEqar4RWcxv0dALSzNmX3Bg9
+    disposition: INSUFFICIENT_EVIDENCE
+    substantive_review_performed: false
+  carrier_mismatch:
+    drive_id: 1epbd47763ar798EIh2HIwcvChsLPhLJ6
+  stale_registration:
+    drive_id: 119o8-Qk4mXaHEuh6IHTENRj-tLBXMLwd
+    sha256: aa3688057f4acddf4c53ad3d3da572491e03fa3c6b0422292cc2a16f0093a7a4
+  failed_request:
+    drive_id: 1GsseUp-j8n9EW-7jIJejh9BQyln5xyGQ
+    sha256: 05e7fa11aa844f7db7416ad9e01d9e24497b554e49a00de01965cddba8149ca2
 
 history:
   r1_reviewed_head_sha: a6f7b21521283824709cbcfb8ee828bdd9703dcc
@@ -68,6 +138,12 @@ history:
     via: ACTIVE
     to: REVIEW_PENDING
     evidence_parent_sha: 6759fd80e741f34d1a2f96d4a094e1b655e3dc82
+  r4_correction:
+    from: REVIEW_PENDING
+    to: REVIEW_PENDING
+    reason: correct_stale_pr325_review_identity_without_changing_architecture
+    failed_review_preserved: true
+    carrier_mismatch_preserved: true
 
 finding_claims:
   ARCH-AEOS-GOV-AUTO-ADR020-R1-F-001: HISTORICALLY_VERIFIED_FIXED_RETAINED_PENDING_R3_REVIEW
@@ -78,21 +154,37 @@ finding_claims:
   ARCH-AEOS-GOV-AUTO-ADR020-R2-F-001: ADDRESSED_IN_ADR020_R3
 
 review_request:
-  filename: REVIEW-REQUEST-ADR-020-AEOS-STANDING-POLICY-R3.md
-  sidecar_filename: REVIEW-REQUEST-ADR-020-AEOS-STANDING-POLICY-R3.sha256
-  generation_authority: after_authenticated_registration_commit
+  filename: REVIEW-REQUEST-ADR-020-AEOS-STANDING-POLICY-R3-REVIEW-IDENTITY-R4.md
+  sidecar_filename: REVIEW-REQUEST-ADR-020-AEOS-STANDING-POLICY-R3-REVIEW-IDENTITY-R4.sha256
+  generation_authority: after_authenticated_correction_commit
   must_bind_final_head: true
+  must_bind_post_correction_pr_snapshot: true
 
 prohibited_actions:
-  - implementation
+  - adr_architecture_content_modification
+  - architecture_evidence_modification
+  - main_modification
   - pull_request_creation
+  - pull_request_reopening
+  - pull_request_closing
+  - pull_request_editing
+  - pull_request_commenting
+  - pull_request_labeling
+  - pull_request_reviewer_request
   - review_submission
+  - issue_mutation
+  - implementation_planning
+  - implementation
   - merge
-  - cleanup
-  - drive_mutation
+  - branch_or_worktree_cleanup
+  - destructive_git_operations
+  - force_push
+  - drive_deletion_or_silent_overwrite
+  - credential_token_or_secret_activity
+  - ruleset_branch_protection_required_check_policy_pilot_or_configuration_mutation
+  - receipt_branch_or_receipt_creation
   - deployment
+  - migration
   - production_activation
-  - credential_or_secret_activity
-  - ruleset_or_configuration_mutation
   - risk_acceptance
   - next_state_activation
