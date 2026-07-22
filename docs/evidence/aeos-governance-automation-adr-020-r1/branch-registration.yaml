@@ -1,0 +1,75 @@
+schema_version: 2
+record_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
+entity_type: branch
+repository: RMF112018/hb-personal-assistant
+remote_name: origin
+remote_branch: arch/adr-020-aeos-governance-automation-r1
+remote_tracking_ref: refs/remotes/origin/arch/adr-020-aeos-governance-automation-r1
+base_branch: main
+base_sha: b2b7bb63443bf5a098c2851eb101e4d5c148c589
+registration_tip_sha: b2b7bb63443bf5a098c2851eb101e4d5c148c589
+current_tip_authority: authenticated_github
+current_tip_recorded_in_repository: false
+review_candidate_binding: external_exact_sha_review
+owner_or_agent: OpenAI ChatGPT, operator-directed
+goal_id: GOAL-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-001
+work_item_id: WP-GOV-02
+issue: null
+pull_request: null
+created_at: 2026-07-22T11:54:23-04:00
+registered_at: 2026-07-22T11:54:23-04:00
+expected_disposition: review-then-operator-decide
+lifecycle_state: ACTIVE
+authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
+authorization_binding:
+  planning_artifact_id: PLAN-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-001-R6
+  planning_artifact_sha256: 0cc105b375f09bb5df712a13488dcaa07375520315f2b1dc708409eaf6421dd6
+  qualifying_review_id: REVIEW-PLAN-AEOS-GOVERNANCE-AUTOMATION-AMENDMENT-R6-20260722-01
+  qualifying_review_sha256: 2a6f92adeeb3a7aa947ba1ed6582b998b1e2ae61dafee03770953d5a9d49223b
+  repository_truth_report_id: AUDIT-AEOS-GOVERNANCE-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
+  repository_truth_report_sha256: ace76048c940151fca5640bb561d2f6a497824c133a097b57b5e0fb322c6ca5c
+  repository_truth_checkpoint_id: CP-AEOS-GOV-AUTOMATION-WP-GOV-01-REPOSITORY-TRUTH-R1
+  repository_truth_checkpoint_sha256: 08f3cf20b8142ef2d86d137a626591191615df72b6a9ecd6cb8064f486375b02
+authorized_action: author_adr_020_candidate_on_registered_remote_branch
+authorized_state: ARCHITECTURE
+completion_state: ARCHITECTURE
+requested_next_state: ARCHITECTURE_EXTERNAL_REVIEW
+next_state_activation: NOT_AUTHORIZED
+scope:
+  - create and register this exact remote-only architecture branch from the bound base
+  - author docs/decisions/ADR-020-aeos-standing-policy-and-receipt-control-plane.md
+  - author architecture-only evidence and an independent architecture review request
+  - run focused non-mutating validation
+  - commit and push only the bounded architecture candidate
+prohibited_actions:
+  - implementation
+  - pull_request_creation
+  - review_submission
+  - ruleset_mutation
+  - branch_protection_mutation
+  - required_check_mutation
+  - app_or_token_mutation
+  - credential_or_secret_mutation
+  - receipt_branch_creation
+  - receipt_or_catalog_creation
+  - policy_activation
+  - policy_mapping_or_manifest_activation
+  - pilot_execution
+  - configuration_mutation
+  - drive_mutation
+  - merge
+  - cleanup
+  - deployment
+  - production_activation
+  - risk_acceptance
+transitions:
+  - transition_id: TR-BR-AEOS-GOV-AUTOMATION-ADR-020-R1-ACTIVATE
+    entity_type: branch
+    entity_id: BR-AEOS-GOV-AUTOMATION-ADR-020-R1
+    from_state: null
+    to_state: ACTIVE
+    occurred_at: 2026-07-22T11:54:23-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-AEOS-GOV-AUTOMATION-WP-GOV-02-ADR-020-20260722-01
+    evidence: operator authorization in project conversation; exact branch created from bound base
+    reason: Register the authorized remote-only architecture branch before substantive ADR authoring.
