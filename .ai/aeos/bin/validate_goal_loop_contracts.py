@@ -1,35 +1,4 @@
-f yaml_dump(data, indent=0):
-    # PyYAML is a project dependency; import here only for generation.
-    import yaml
-    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
-
-templates = {
-    'state.template.yaml':yaml_dump(state),
-    'checkpoint-request.template.yaml':yaml_dump(checkpoint),
-    'evidence-index.template.json':json.dumps(evidence, indent=2)+'\n',
-    'authorization.template.yaml':yaml_dump(authorization),
-    'external-review.template.yaml':yaml_dump(external_review),
-    'finding-ledger.template.yaml':yaml_dump(finding),
-    'governance-manifest.template.yaml':yaml_dump(gov),
-    'work-item-ledger.template.yaml':yaml_dump(work),
-}
-for name, content in templates.items():
-    for base in [OUT / '.ai/templates/goal-loop', OUT / '.ai/agent-skills/_aeos-shared/templates']:
-        base.mkdir(parents=True, exist_ok=True)
-        (base / name).write_text(content, encoding='utf-8')
-
-# Positive fixtures are exact copies of canonical templates.
-fixture_dir = OUT / '.ai/tests/goal-loop/fixtures'
-fixture_dir.mkdir(parents=True, exist_ok=True)
-for src_name, fixture_name in [
-    ('state.template.yaml','state.valid.yaml'),('checkpoint-request.template.yaml','checkpoint.valid.yaml'),
-    ('evidence-index.template.json','evidence.valid.json'),('authorization.template.yaml','authorization.valid.yaml'),
-    ('external-review.template.yaml','external-review.valid.yaml'),('finding-ledger.template.yaml','finding-ledger.valid.yaml'),
-    ('governance-manifest.template.yaml','governance-manifest.valid.yaml'),('work-item-ledger.template.yaml','work-item-ledger.valid.yaml')]:
-    shutil.copy2(OUT / '.ai/templates/goal-loop' / src_name, fixture_dir / fixture_name)
-
-# Semantic validator.
-validator = r'''#!/usr/bin/env python3
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -251,4 +220,36 @@ def main() -> int:
     state = fixtures["state.valid.yaml"]
     cp = fixtures["checkpoint.valid.yaml"]
     ev = fixtures["evidence.valid.json"]
-    cas
+    cases: list[tuple[str, Any, Path, str, bool]] = []
+    x=copy.deepcopy(state); x["schema_version"]=1; cases.append(("new canonical v1 state",x,SCHEMA_ROOT/"state.schema.json","state",False))
+    x=copy.deepcopy(state); x["repository"]["head_sha"]=None; cases.append(("null state head",x,SCHEMA_ROOT/"state.schema.json","state",False))
+    x=copy.deepcopy(state); x["unexpected"]=True; cases.append(("unknown state field",x,SCHEMA_ROOT/"state.schema.json","state",False))
+    x=copy.deepcopy(state); x["lifecycle"]["merge_status"]="INVALID"; cases.append(("invalid lifecycle",x,SCHEMA_ROOT/"state.schema.json","state",False))
+    x=copy.deepcopy(state); x["review"]["reviewed_head_sha"]='f'*40; cases.append(("stale reviewed head",x,SCHEMA_ROOT/"state.schema.json","state",True))
+    x=copy.deepcopy(state); x["status"]="IN_PROGRESS"; x["authorization"]["authorization_id"]="AUTH"; x["authorization"]["authorized_action"]="work"; x["authorization"]["authorized_state"]="GOVERNANCE_INITIALIZATION"; x["authorization"]["authorized_identity"]={'branch':x['repository']['branch'],'base_sha':x['repository']['base_sha'],'head_sha':'f'*40,'worktree_mode':'remote_only','worktree_id':None,'worktree_path':None,'pull_request':123}; cases.append(("authorization head mismatch",x,SCHEMA_ROOT/"state.schema.json","state",True))
+    x=copy.deepcopy(ev); x["evidence"][0]["sha256"]=None; cases.append(("missing byte hash",x,SCHEMA_ROOT/"evidence-index.schema.json","evidence",False))
+    x=copy.deepcopy(ev); x["evidence"][0]["hash_scope"]="not_applicable"; cases.append(("not applicable with hash",x,SCHEMA_ROOT/"evidence-index.schema.json","evidence",False))
+    x=copy.deepcopy(ev); x["evidence"][0]["repository_head"]='f'*40; cases.append(("evidence head mismatch",x,SCHEMA_ROOT/"evidence-index.schema.json","evidence",True))
+    x=copy.deepcopy(cp); x["unexpected"]=True; cases.append(("unknown checkpoint field",x,SCHEMA_ROOT/"checkpoint-request.schema.json","checkpoint",False))
+    for label, instance, schema_path, kind, semantic_only in cases:
+        failure = assert_rejected(label, instance, schema_path, kind, semantic_only=semantic_only)
+        if failure: errors.append(failure)
+
+    errors.extend(validate_legacy_boundary())
+
+    if errors:
+        print("AEOS goal-loop contract validation: FAIL")
+        for error in errors:
+            print(f"- {error}")
+        return 1
+    if not args.quiet:
+        print("AEOS goal-loop contract validation: PASS")
+        print(f"- canonical schemas: {len(MAPPINGS)}")
+        print(f"- canonical templates: {len(MAPPINGS)}")
+        print(f"- mutation-negative cases: {len(cases)}")
+        print("- legacy v1 boundary: enforced")
+        print("- root/shared parity: enforced")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())

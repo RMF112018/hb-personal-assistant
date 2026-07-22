@@ -1,84 +1,63 @@
 ---
 name: aeos-independent-auditor
-description: Independently audit an AEOS implementation or corrective change by inspecting repository truth, diff, tests, evidence, acceptance criteria, regressions, and trust boundaries without editing implementation code.
+description: Independently audit an exact AEOS candidate head by inspecting repository truth, diff, proportional tests, evidence, acceptance criteria, failures, representation integrity, and trust boundaries without editing implementation code.
 ---
-
 
 ## Governing contract
 
-Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md` before using this skill. Repository governance remains authoritative.
-
-Do not use this skill when the active goal state or operator authorization does not permit its workflow.
+Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md`. Repository
+governance remains authoritative.
 
 # AEOS Independent Auditor
 
-## Independence requirement
+## Independence
 
-Use in a fresh audit-scoped session or otherwise isolated context.
+Use a fresh audit-scoped or otherwise isolated context. Do not treat the
+implementation agent's report as proof and do not edit product code, tests,
+thresholds, or implementation evidence during audit. Disclose independence
+limitations.
 
-Do not use the implementation agent's conclusions as proof. Do not edit product code, tests, thresholds, or implementation evidence during the audit.
+## Required inputs
 
-Disclose any independence limitation.
-
-## Inputs
-
-- approved objective;
-- approved architecture, when applicable;
-- approved implementation plan;
-- acceptance criteria;
-- base and head SHA;
-- implementation diff;
-- evidence package;
-- prior findings ledger for corrective audits.
+- approved objective, architecture, plan, and acceptance criteria;
+- repository and authenticated remote;
+- target branch, registered worktree, PR, base, and exact candidate head;
+- implementation diff and evidence package;
+- required checks and proportional test plan;
+- prior findings for corrective audit.
 
 ## Procedure
 
-### 1. Establish audit repository truth
+### 1. Authenticate the reviewed identity
 
-Verify branch, HEAD, diff range, dirty state, and artifact hashes.
+Verify branch, worktree, PR, base, exact head, diff range, dirty state,
+artifact versions, hashes, representations, and required checks. Record the
+exact reviewed head prominently.
 
 ### 2. Reconstruct intended scope
 
-Read the approved artifacts. Identify:
-
-- required work;
-- prohibited work;
-- acceptance criteria;
-- expected tests and evidence;
-- allowed deviations.
+Identify required work, prohibited work, criteria, expected tests/evidence,
+allowed deviations, and repository-hygiene/closeout obligations.
 
 ### 3. Inspect actual implementation
 
-Inspect changed files and adjacent affected behavior. Evaluate:
+Evaluate correctness, architecture, scope drift, failure behavior, security,
+migrations, compatibility, configuration, observability, rollback,
+documentation, and adjacent regression risk.
 
-- correctness;
-- architecture conformance;
-- scope drift;
-- error and failure behavior;
-- security and trust boundaries;
-- migrations and compatibility;
-- observability;
-- rollback;
-- documentation;
-- regression risk.
+### 4. Verify proportional testing
 
-### 4. Verify tests rather than counting them
+Determine whether tests map to criteria and changed risk, prove-red evidence is
+credible, assertions or thresholds were weakened, fixtures are representative,
+required bundles/checks ran, exclusions are justified, every failure is
+classified, and results correspond to the exact audited head.
 
-Determine:
+The integrated candidate is not merge-ready while an applicable required-safe
+suite has an unresolved failure.
 
-- whether tests exercise the acceptance criteria;
-- whether prove-red evidence is credible;
-- whether assertions were weakened;
-- whether fixtures are representative;
-- whether required bundles and CI gates ran;
-- whether exclusions are material;
-- whether test results correspond to the audited SHA.
+### 5. Evaluate evidence and representation
 
-Run read-only or non-mutating verification commands when authorized. Do not repair failures.
-
-### 5. Evaluate evidence quality
-
-For every acceptance criterion classify:
+For each criterion classify:
 
 - `VERIFIED_PASS`
 - `VERIFIED_FAIL`
@@ -86,36 +65,39 @@ For every acceptance criterion classify:
 - `INSUFFICIENT_EVIDENCE`
 - `NOT_APPLICABLE`
 
+Verify provenance, environment, representation, MIME type, hash scope, and
+source relation. Do not accept cross-representation hash equivalence.
+
 ### 6. Create stable findings
 
-Each finding requires:
-
-- stable ID;
-- severity;
-- statement;
-- affected criterion;
-- repository evidence;
-- impact;
-- required correction or evidence;
-- closure test.
-
-Do not renumber prior findings during corrective audit.
+Each finding records stable ID, severity, statement, criterion, exact repository
+identity, evidence, impact, required correction/evidence, closure test, and
+status. Preserve prior IDs during corrective audit.
 
 ### 7. Issue a bounded disposition
 
-For implementation audit:
+Implementation audit:
 
 - `PASS`
-- `PASS_WITH_FINDINGS`
-- `CORRECTIVE_IMPLEMENTATION_REQUIRED`
-- `INSUFFICIENT_EVIDENCE`
+- `PASS WITH NON-BLOCKING FINDINGS`
+- `FAIL — BLOCKERS REMAIN`
+- `INSUFFICIENT EVIDENCE`
 
-For readiness audit, separately evaluate only the expressly authorized categories. Do not infer production readiness from merge readiness.
+Merge-readiness review, only when expressly authorized:
+
+- `READY TO MERGE`
+- `READY WITH REQUIRED CONDITIONS`
+- `NOT READY`
+- `INSUFFICIENT EVIDENCE`
+
+A readiness disposition is not operator merge authorization. Do not infer
+cleanup, deployment, or production readiness.
 
 ### 8. Produce artifacts
 
 ```text
 independent-audit-report.md
+reviewed-identity.yaml
 acceptance-criteria-matrix.yaml
 finding-ledger.yaml
 evidence-assessment.md
@@ -123,6 +105,10 @@ audit-disposition.yaml
 checkpoint-request.yaml
 ```
 
+Every disposition SHALL state that a later commit invalidates current-head
+approval.
+
 ### 9. Stop
 
-The auditor may recommend corrective work but may not authorize it.
+The auditor may recommend corrective work or the next gate but may not authorize
+it, merge, perform cleanup, accept risk, or activate the next state.

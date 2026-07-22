@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Authorization v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "goal_id",
+    "checkpoint_id",
+    "authorized_transition",
+    "authorized_action",
+    "authorized_work_items",
+    "required_changes",
+    "constraints",
+    "prohibited_actions",
+    "repository",
+    "authorized_identity",
+    "cleanup_actions",
+    "expires_on_repository_drift",
+    "issued_by",
+    "issued_at",
+    "expires_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "authorization_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checkpoint_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorized_transition": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "enum": [
+            "GOVERNANCE_INITIALIZATION",
+            "REPOSITORY_TRUTH",
+            "ARCHITECTURE",
+            "IMPLEMENTATION_PLANNING",
+            "PLAN_EXTERNAL_REVIEW",
+            "IMPLEMENTATION",
+            "IMPLEMENTATION_EXTERNAL_AUDIT",
+            "CORRECTIVE_IMPLEMENTATION",
+            "CORRECTIVE_EXTERNAL_AUDIT",
+            "MERGE_READINESS",
+            "MERGE_AUTHORIZATION",
+            "MERGED_PENDING_CLEANUP",
+            "POST_MERGE_VALIDATION",
+            "BRANCH_WORKTREE_CLOSEOUT",
+            "BOUNDED_CLOSURE_ASSESSMENT",
+            "CLOSED"
+          ]
+        },
+        "to": {
+          "enum": [
+            "GOVERNANCE_INITIALIZATION",
+            "REPOSITORY_TRUTH",
+            "ARCHITECTURE",
+            "IMPLEMENTATION_PLANNING",
+            "PLAN_EXTERNAL_REVIEW",
+            "IMPLEMENTATION",
+            "IMPLEMENTATION_EXTERNAL_AUDIT",
+            "CORRECTIVE_IMPLEMENTATION",
+            "CORRECTIVE_EXTERNAL_AUDIT",
+            "MERGE_READINESS",
+            "MERGE_AUTHORIZATION",
+            "MERGED_PENDING_CLEANUP",
+            "POST_MERGE_VALIDATION",
+            "BRANCH_WORKTREE_CLOSEOUT",
+            "BOUNDED_CLOSURE_ASSESSMENT",
+            "CLOSED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "authorized_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorized_work_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "required_changes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prohibited_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "remote",
+        "default_branch",
+        "base_sha",
+        "head_sha",
+        "branch",
+        "worktree_mode",
+        "worktree_id",
+        "worktree_path",
+        "pull_request"
+      ],
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_mode": {
+          "enum": [
+            "local",
+            "remote_only",
+            "not_applicable"
+          ]
+        },
+        "worktree_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktree_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pull_request": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "const": "local"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "worktree_path": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "enum": [
+                  "remote_only",
+                  "not_applicable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "null"
+              },
+              "worktree_path": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "authorized_identity": {
+      "type": "object",
+      "required": [
+        "artifact_paths",
+        "artifact_hashes"
+      ],
+      "properties": {
+        "artifact_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "artifact_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanup_actions": {
+      "type": "object",
+      "required": [
+        "worktree_removal",
+        "local_branch_deletion",
+        "remote_branch_deletion",
+        "worktree_metadata_pruning",
+        "remote_reference_pruning"
+      ],
+      "properties": {
+        "worktree_removal": {
+          "type": "boolean"
+        },
+        "local_branch_deletion": {
+          "type": "boolean"
+        },
+        "remote_branch_deletion": {
+          "type": "boolean"
+        },
+        "worktree_metadata_pruning": {
+          "type": "boolean"
+        },
+        "remote_reference_pruning": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "expires_on_repository_drift": {
+      "const": true
+    },
+    "issued_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  }
+}

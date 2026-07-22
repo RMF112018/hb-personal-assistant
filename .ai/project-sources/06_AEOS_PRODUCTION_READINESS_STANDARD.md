@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,199 +9,140 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines how AEOS evaluates readiness for merge, deployment, production operation, and ongoing support. Production readiness is broader than implementation correctness and SHALL be assessed separately.
+This standard separates readiness for merge, post-merge closure, deployment,
+production use, and ongoing operation. A positive decision in one category does
+not imply a positive decision in another.
 
 ## 2. Readiness Categories
 
-AEOS distinguishes four categories:
-
 1. Merge readiness.
-2. Deployment readiness.
-3. Production readiness.
-4. Operational readiness.
-
-A GO in one category SHALL NOT imply GO in another.
+2. Post-merge validation and cleanup/closure readiness.
+3. Deployment readiness.
+4. Production readiness.
+5. Operational readiness.
 
 ## 3. Merge Readiness
 
-### Purpose
+Required evidence:
 
-Determine whether the code may be merged into the target branch.
-
-### Required Evidence
-
-- approved implementation scope;
-- passing required tests;
-- implementation audit disposition;
-- resolved blockers;
-- branch state;
-- CI status if applicable;
+- approved scope and exact candidate head;
+- current-head independent review or audit;
+- required checks and proportional test evidence;
+- zero unresolved failures in applicable required-safe suites;
+- resolved blocking findings;
 - no unauthorized unrelated changes;
-- documentation updated where required.
+- clean or explicitly governed repository state;
+- documentation and closeout plan.
 
-### Blocking Conditions
+Blocking conditions include stale review, unresolved required-safe-suite
+failures, blocking findings, ambiguous identity, unsafe migration, scope drift,
+or missing core evidence.
 
-- unresolved Critical or High findings;
-- failing required tests not accepted as baseline;
-- missing evidence for core acceptance criteria;
-- unsafe migrations;
-- scope drift;
-- dirty or ambiguous repository state.
+Merge readiness does not authorize merge.
 
-## 4. Deployment Readiness
+## 4. Merge Authorization
 
-### Purpose
+Only the operator may authorize merge. Authorization SHALL identify the exact
+pull request and head and any required method or conditions.
 
-Determine whether the merged or candidate build may be deployed.
+A merge transitions work to `MERGED_PENDING_CLEANUP`. It does not authorize
+cleanup, deployment, production activation, or closure.
 
-### Required Evidence
+## 5. Post-Merge Validation and Closure Readiness
+
+Required evidence:
+
+- accepted target-branch commit;
+- relationship to the reviewed candidate;
+- applicable post-merge checks or tests;
+- documentation/index reconciliation;
+- explicit not-required decisions where validation is omitted;
+- inventory and preservation evidence;
+- branch/worktree integration or retention proof;
+- cleanup, retention, or blocker receipt.
+
+Closure is blocked by unknown dirty state, unique unpreserved work, unverified
+integration, ambiguous worktree/branch/ref disposition, or unauthorized
+cleanup.
+
+## 6. Deployment Readiness
+
+Required evidence:
 
 - deployable artifact or image identity;
-- environment target;
-- configuration validation;
-- migration plan;
-- rollback plan;
-- secrets/configuration posture;
-- deployment procedure;
-- health checks;
-- deployment approval.
+- target environment;
+- configuration and secret posture;
+- migration and rollback plan;
+- deployment procedure and authorization;
+- health checks and observability;
+- dependency and compatibility validation.
 
-### Blocking Conditions
+A merged or closed change is not automatically deployable.
 
-- no rollback path;
-- unvalidated migration;
-- unknown environment configuration;
-- missing deployment identity;
-- inability to observe service health.
+## 7. Production Readiness
 
-## 5. Production Readiness
+Required evidence:
 
-### Purpose
+- runtime validation of production-critical behavior;
+- relevant integration and failure-mode tests;
+- data-integrity and security checks;
+- performance and capacity considerations;
+- observability and user-impact assessment;
+- rollback or forward-fix strategy;
+- residual-risk disposition by the operator.
 
-Determine whether the feature or change is safe for production use.
+Blocking conditions include untested critical paths, missing authorization
+checks, data-integrity uncertainty, unresolved High/Critical findings,
+unobservable failure modes, or unaccepted material risk.
 
-### Required Evidence
+## 8. Operational Readiness
 
-- runtime validation;
-- relevant integration tests;
-- data integrity checks;
-- security and authorization review;
-- performance considerations;
-- failure-mode handling;
-- observability;
-- user-impact assessment;
-- residual-risk acceptance.
+Required evidence:
 
-### Blocking Conditions
+- monitoring, logging, and alerting;
+- runbooks and ownership;
+- rollback or recovery procedures;
+- known-issue tracking;
+- watchpoints and post-deployment validation;
+- support expectations and escalation path.
 
-- untested production-critical path;
-- missing authorization checks;
-- data integrity uncertainty;
-- no monitoring for failure modes;
-- unresolved High/Critical findings;
-- unaccepted material risk.
+## 9. Decisions
 
-## 6. Operational Readiness
+For deployment, production, or operational readiness:
 
-### Purpose
+- `GO`
+- `CONDITIONAL GO`
+- `NO-GO`
+- `INSUFFICIENT EVIDENCE`
 
-Determine whether the system can be supported after deployment.
+For merge readiness:
 
-### Required Evidence
+- `READY TO MERGE`
+- `READY WITH REQUIRED CONDITIONS`
+- `NOT READY`
+- `INSUFFICIENT EVIDENCE`
 
-- monitoring;
-- logging;
-- alerting or watchpoints;
-- runbook updates;
-- rollback procedure;
-- owner/operator expectations;
-- known issue tracking;
-- post-deployment validation plan.
+Every decision SHALL identify scope, exact identity, evidence, blockers,
+conditions, approver, residual risk, and follow-up.
 
-## 7. Go / No-Go Decisions
+## 10. Risk Acceptance
 
-Permitted decisions:
+Only an authorized human may accept risk. The record SHALL identify the risk,
+impact, mitigation or deferral, scope, duration when applicable, approver, and
+timestamp.
 
-### GO
+AI systems SHALL NOT infer risk acceptance from merge, publication, review, or
+tool access.
 
-All applicable gates are satisfied and no blocking issues remain.
+## 11. Readiness Anti-Patterns
 
-### CONDITIONAL GO
+Noncompliant behavior includes:
 
-Release may proceed only if explicit conditions are satisfied. Conditions SHALL be concrete and verifiable.
-
-### NO-GO
-
-One or more release-blocking issues remain.
-
-### INSUFFICIENT EVIDENCE
-
-The implementation may be correct, but evidence is inadequate to support the requested decision.
-
-## 8. Required Go/No-Go Record
-
-A Go/No-Go record SHALL include:
-
-- decision ID;
-- date;
-- repository;
-- target branch/PR/commit;
-- readiness category;
-- scope;
-- evidence reviewed;
-- acceptance-criteria status;
-- findings status;
-- risk assessment;
-- decision;
-- conditions if any;
-- approver;
-- follow-up actions.
-
-## 9. Risk Acceptance
-
-A risk may be accepted only when:
-
-- the risk is identified;
-- impact is understood;
-- mitigation exists or is intentionally deferred;
-- an authorized human accepts it;
-- the acceptance is recorded.
-
-AI systems SHALL NOT silently accept risk on behalf of the operator.
-
-## 10. Rollback Requirements
-
-Changes with runtime impact SHOULD include:
-
-- rollback trigger;
-- rollback procedure;
-- data rollback or forward-fix strategy;
-- expected downtime or user impact;
-- verification after rollback.
-
-If rollback is impossible or impractical, the record SHALL state the recovery strategy.
-
-## 11. Post-Deployment Validation
-
-A production deployment SHOULD be followed by validation of:
-
-- service health;
-- logs;
-- core workflows;
-- migration success;
-- monitoring signals;
-- error rates;
-- user-facing behavior;
-- known watchpoints.
-
-## 12. Common Production Readiness Anti-Patterns
-
-Noncompliant patterns include:
-
-- treating merge readiness as deployment readiness;
-- deploying because tests passed;
-- skipping rollback analysis;
-- omitting runtime validation;
-- failing to disclose residual risk;
-- accepting unverified migration safety;
-- issuing GO with unresolved blockers.
+- treating mergeability as merge readiness;
+- treating merge readiness as merge authorization;
+- treating merge as cleanup, deployment, or closure;
+- treating cleanup as deployment readiness;
+- issuing GO from unit tests alone;
+- omitting rollback or runtime validation;
+- accepting unresolved failures without evidence and authority;
+- combining readiness categories into one ambiguous disposition.

@@ -1,15 +1,29 @@
-schema_version: 1
+schema_version: 2
 goal_id: GOAL-REPLACE-ME
 work_items:
-  - work_item_id: WP-001
-    title: Replace me
-    status: PROPOSED
-    prerequisites: []
-    scope: []
-    out_of_scope: []
-    acceptance_criteria: []
-    required_tests: []
-    required_evidence: []
-    retry_limit: 3
-    stop_conditions: []
-    disposition: null
+- work_item_id: WP-001
+  title: Replace me
+  status: PROPOSED
+  authorization_id: null
+  repository:
+    remote: https://github.com/owner/repository.git
+    default_branch: main
+    base_sha: '0000000000000000000000000000000000000000'
+    head_sha: '1111111111111111111111111111111111111111'
+    branch: chore/replace-me
+    worktree_mode: remote_only
+    worktree_id: null
+    worktree_path: null
+    pull_request: 123
+  prerequisites: []
+  scope: []
+  out_of_scope: []
+  acceptance_criteria: []
+  required_tests: []
+  required_evidence: []
+  evidence_representation_requirements: []
+  retry_limit: 3
+  stop_conditions: []
+  expected_closeout_disposition: null
+  disposition: null
+  closeout_receipt: null

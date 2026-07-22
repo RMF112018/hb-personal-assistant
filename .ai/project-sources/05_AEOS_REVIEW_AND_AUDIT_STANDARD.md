@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,212 +9,177 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines how AEOS reviews implementation plans, audits completed work, verifies corrective action, and classifies findings. The goal is not to produce reassuring commentary. The goal is to identify whether the work is correct, complete, safe, and adequately evidenced.
+This standard governs independent plan and architecture review, implementation
+audit, corrective review, finding reconciliation, and merge-readiness review.
+Its purpose is verification, not reassurance.
 
-## 2. Review Types
+## 2. Independence and Identity
 
-AEOS defines four primary review types:
+Consequential implementation and independent review SHALL use separate
+contexts. The reviewer SHALL disclose any independence limitation.
 
-1. Implementation-plan review.
-2. Implementation audit.
-3. Corrective review.
-4. Production-readiness review.
+Every review or audit SHALL identify:
 
-This standard governs the first three. Production-readiness review is further governed by `06_AEOS_PRODUCTION_READINESS_STANDARD.md`.
+- repository and authenticated remote;
+- target branch, worktree, pull request, and artifact versions;
+- base SHA and exact reviewed head SHA;
+- governing objective, architecture, plan, and acceptance criteria;
+- evidence reviewed and unavailable evidence;
+- required checks and applicable test suites;
+- review scope and exclusions.
 
-## 3. Plan Review
+A later commit changes the reviewed identity and invalidates current-head
+approval until the new head is reviewed.
 
-### 3.1 Purpose
+## 3. Plan and Architecture Review
 
-Plan review occurs before coding begins. Its purpose is to prevent defective implementation by evaluating the plan against the objective, architecture, constraints, acceptance criteria, and risk model.
+A compliant review evaluates:
 
-### 3.2 Required Inputs
+- objective and architecture alignment;
+- scope completeness and out-of-scope preservation;
+- repository-truth sufficiency;
+- branch/worktree ownership and expected closeout;
+- sequencing, dependencies, and stop conditions;
+- security, authorization, concurrency, and idempotency;
+- migration, compatibility, observability, rollback, and recovery;
+- proportional test selection and failure disposition;
+- evidence and representation requirements;
+- post-merge validation and closeout planning.
 
-- objective;
-- repository truth or discovery report;
-- approved architecture or design intent;
-- implementation plan;
-- acceptance criteria;
-- constraints;
-- known risks.
+Permitted dispositions:
 
-### 3.3 Review Criteria
+- `APPROVE`
+- `APPROVE WITH REQUIRED CHANGES`
+- `REVISE`
+- `REJECT`
+- `INSUFFICIENT EVIDENCE`
 
-A compliant plan review SHALL evaluate:
-
-- objective alignment;
-- scope completeness;
-- out-of-scope preservation;
-- architectural conformance;
-- unsafe assumptions;
-- sequencing;
-- migration behavior;
-- compatibility;
-- security and authorization;
-- concurrency and idempotency;
-- failure handling;
-- observability;
-- rollback;
-- test adequacy;
-- evidence requirements;
-- stop conditions.
-
-### 3.4 Plan Review Dispositions
-
-- `APPROVE`: implementation may proceed.
-- `APPROVE WITH REQUIRED CHANGES`: implementation may proceed only if listed changes are incorporated.
-- `REVISE BEFORE IMPLEMENTATION`: plan is not yet safe to execute.
-- `REJECT`: plan is materially inconsistent with objective or architecture.
+Approval SHALL identify the reviewed artifact and exact repository identity.
 
 ## 4. Implementation Audit
 
-### 4.1 Purpose
+An implementation audit SHALL inspect actual repository state and SHALL NOT
+rely solely on an implementation report.
 
-Implementation audit occurs after code changes. It verifies actual work against approved criteria and evidence.
+Required checks include:
 
-### 4.2 Required Inputs
+- exact diff range and changed files;
+- unauthorized or unrelated changes;
+- architecture and acceptance-criteria conformance;
+- tests, fixtures, assertions, exclusions, and failure classifications;
+- applicable required-safe suites and CI checks;
+- error handling, security, migrations, configuration, and compatibility;
+- runtime behavior when runtime claims are made;
+- evidence provenance, representation, and hash scope;
+- documentation and residual risk.
 
-- implementation report;
-- changed files/diff;
-- branch and SHA details;
-- acceptance criteria;
-- evidence package;
-- test output;
-- runtime evidence if applicable;
-- known deviations.
+Each acceptance criterion receives one of:
 
-### 4.3 Required Checks
+- `PASS`
+- `PARTIAL`
+- `FAIL`
+- `NOT VERIFIED`
+- `NOT APPLICABLE`
 
-An implementation audit SHALL assess:
-
-- repository state;
-- diff scope;
-- unrelated changes;
-- architecture conformance;
-- acceptance-criteria coverage;
-- test coverage and relevance;
-- error handling;
-- security and trust boundaries;
-- migration safety;
-- configuration;
-- runtime behavior;
-- documentation accuracy;
-- operational risk;
-- remaining TODOs;
-- known failures.
-
-## 5. Acceptance Criteria Matrix
-
-Each acceptance criterion SHALL receive:
-
-- identifier;
-- expected behavior;
-- implementation evidence;
-- test evidence;
-- status;
-- notes.
-
-Permitted statuses:
-
-- PASS;
-- PARTIAL;
-- FAIL;
-- NOT VERIFIED;
-- NOT APPLICABLE.
-
-`PASS` requires relevant evidence. `NOT VERIFIED` is not a failure by itself, but it may block release depending on risk.
-
-## 6. Finding Severity
-
-### 6.1 Critical
-
-Likely data loss, security compromise, destructive behavior, unrecoverable deployment failure, or severe production outage.
-
-### 6.2 High
-
-Material correctness failure, unsafe migration, broken trust boundary, major regression, or release blocker.
-
-### 6.3 Medium
-
-Important reliability, maintainability, observability, compatibility, or incomplete behavior issue that may not independently block release.
-
-### 6.4 Low
-
-Minor defect, documentation gap, cleanup item, or limited quality issue.
-
-### 6.5 Informational
-
-Observation, improvement, or non-defect note.
-
-## 7. Finding Record Requirements
+## 5. Findings
 
 Each finding SHALL include:
 
 - stable ID;
 - severity;
-- title;
-- evidence;
-- impact;
-- likely cause;
+- title and affected criterion;
+- exact repository identity;
+- evidence and impact;
+- root cause or likely cause;
 - required remediation;
-- verification method;
-- status;
-- owner if known;
-- disposition history.
-
-## 8. Finding Status Lifecycle
+- closure test;
+- status, owner, and disposition history.
 
 Permitted statuses:
 
-- OPEN;
-- FIX CLAIMED;
-- VERIFIED FIXED;
-- DEFERRED WITH ACCEPTED RISK;
-- REJECTED WITH RATIONALE;
-- NOT REPRODUCIBLE.
+- `OPEN`
+- `FIX CLAIMED`
+- `VERIFIED FIXED`
+- `DEFERRED WITH ACCEPTED RISK`
+- `REJECTED WITH RATIONALE`
+- `NOT REPRODUCIBLE`
 
-Findings SHALL NOT disappear from later reports. They must be explicitly dispositioned.
+Findings SHALL NOT disappear. Only an independent review may mark a claimed fix
+`VERIFIED FIXED`, and only the operator may accept risk.
 
-## 9. Corrective Review
+## 6. Corrective Review
 
 Corrective review SHALL:
 
-- preserve original finding IDs;
-- inspect claimed changes;
-- verify each fix against the required remediation;
-- confirm test evidence;
-- check for new regressions;
-- update finding status;
-- identify remaining blockers.
+- preserve original finding IDs and statements;
+- inspect the corrected exact head;
+- verify each claimed fix against its closure test;
+- confirm proportional regression evidence;
+- identify new regressions or scope drift;
+- update every finding status explicitly;
+- retain deferred, rejected, and not-authorized findings.
 
-A corrective report SHALL NOT mark a finding `VERIFIED FIXED` without evidence.
+A corrected head different from the reviewed head requires a fresh review.
 
-## 10. Audit Dispositions
+## 7. Audit Dispositions
 
-Implementation audits MAY conclude:
+Implementation audit may conclude:
 
-- PASS;
-- PASS WITH NON-BLOCKING FINDINGS;
-- FAIL — BLOCKERS REMAIN;
-- INSUFFICIENT EVIDENCE.
+- `PASS`
+- `PASS WITH NON-BLOCKING FINDINGS`
+- `FAIL — BLOCKERS REMAIN`
+- `INSUFFICIENT EVIDENCE`
 
-These are audit dispositions, not production Go/No-Go decisions.
+These are not merge authorization, deployment authorization, production
+readiness, or risk acceptance.
 
-## 11. Independence Requirements
+## 8. Merge-Readiness Review
 
-For consequential work, the auditor SHOULD be independent from the implementation agent. A fresh session or separate model may be used.
+Merge-readiness review SHALL verify:
 
-The auditor MAY use the implementation report as a claim index but SHALL verify material claims independently.
+- exact candidate head and pull request;
+- current-head independent review or audit;
+- required checks;
+- zero unresolved failures in applicable required-safe suites;
+- no unresolved blocking findings;
+- no unauthorized unrelated changes;
+- clean or explicitly governed repository state;
+- documented post-merge validation and closeout plan.
 
-## 12. Common Audit Anti-Patterns
+Permitted dispositions:
 
-Noncompliant audit behavior includes:
+- `READY TO MERGE`
+- `READY WITH REQUIRED CONDITIONS`
+- `NOT READY`
+- `INSUFFICIENT EVIDENCE`
 
-- summarizing rather than verifying;
-- ignoring acceptance criteria;
-- reviewing only intended files, not actual diff;
-- accepting "tests passed" without outputs;
-- failing to classify severity;
-- allowing blockers to disappear;
-- issuing GO when evidence is incomplete;
-- treating the implementation agent's confidence as proof.
+A readiness disposition is not operator merge authorization.
+
+## 9. Post-Merge and Closeout Review
+
+A post-merge review SHALL identify the accepted target-branch commit and its
+relationship to the reviewed candidate.
+
+Closure review SHALL require:
+
+- post-merge validation or explicit not-required decision;
+- inventory and preservation evidence;
+- integration, patch-equivalence, retention, or blocker proof;
+- worktree, local branch, remote branch, metadata, and remote-ref dispositions;
+- separate action authorizations;
+- cleanup, retention, or blocker receipt.
+
+A merge SHALL NOT be treated as closure.
+
+## 10. Review Anti-Patterns
+
+Noncompliant behavior includes:
+
+- reviewing an unspecified or stale head;
+- self-review presented as independent;
+- summarizing without inspecting evidence;
+- accepting tests without exact commands and identity;
+- allowing blockers or failures to disappear;
+- treating mergeability as readiness or readiness as authorization;
+- verifying cleanup from an incomplete inventory;
+- treating publication as approval.

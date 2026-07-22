@@ -1,20 +1,38 @@
-schema_version: 1
+schema_version: 2
 goal_id: GOAL-REPLACE-ME
 state: GOVERNANCE_INITIALIZATION
 status: NOT_STARTED
 iteration: 0
 repository:
-  baseline_sha: null
-  current_sha: null
-  branch: null
+  remote: https://github.com/owner/repository.git
+  default_branch: main
+  base_sha: '0000000000000000000000000000000000000000'
+  head_sha: '1111111111111111111111111111111111111111'
+  branch: chore/replace-me
+  worktree_mode: remote_only
+  worktree_id: null
+  worktree_path: null
+  pull_request: 123
+lifecycle:
+  merge_status: NOT_MERGED
+  post_merge_validation: NOT_APPLICABLE
+  cleanup_disposition: NOT_APPLICABLE
+  closure_status: OPEN
+review:
+  review_id: null
+  reviewed_head_sha: null
+  disposition: null
+  stale_on_head_change: true
 authorization:
   required: true
   authorization_id: null
   authorized_state: null
+  authorized_action: null
+  authorized_identity: null
   artifact_hash: null
   expires_on_repository_drift: true
 current_work_item: null
 expected_artifacts: []
 last_checkpoint: null
 requested_next_state: null
-updated_at: null
+updated_at: '2026-01-01T00:00:00Z'

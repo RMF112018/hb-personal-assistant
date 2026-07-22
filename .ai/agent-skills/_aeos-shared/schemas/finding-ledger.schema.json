@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AEOS Finding Ledger",
+  "title": "AEOS Finding Ledger v2",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "schema_version",
     "goal_id",
@@ -10,22 +11,38 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audit_id": {
+      "type": "string",
+      "minLength": 1
     },
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": [
           "finding_id",
           "title",
           "severity",
           "status",
           "original_statement",
+          "evidence",
+          "affected_acceptance_criteria",
+          "authorized_for_correction",
           "disposition_history"
         ],
         "properties": {
           "finding_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
             "type": "string",
             "minLength": 1
           },
@@ -35,22 +52,45 @@
               "HIGH",
               "MEDIUM",
               "LOW",
-              "INFO"
+              "INFORMATIONAL"
             ]
           },
           "status": {
             "enum": [
               "OPEN",
+              "FIX_CLAIMED",
               "VERIFIED_FIXED",
-              "CLAIMED_NOT_VERIFIED",
-              "DEFERRED_ACCEPTED_RISK",
-              "REJECTED",
+              "DEFERRED_WITH_ACCEPTED_RISK",
+              "REJECTED_WITH_RATIONALE",
               "NOT_REPRODUCIBLE"
             ]
+          },
+          "original_statement": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "affected_acceptance_criteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authorized_for_correction": {
+            "type": "boolean"
+          },
+          "disposition_history": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
     }
-  },
-  "additionalProperties": true
+  }
 }

@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,185 +9,232 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines controlled AEOS terminology. Consistent vocabulary reduces ambiguity across planning, implementation, audit, and release decisions.
+This standard defines controlled AEOS terminology for repository truth,
+authorization, review identity, lifecycle, evidence representation, readiness,
+and closeout.
 
-## 2. Core Terms
+## 2. Authority Terms
 
 ### Repository Truth
-
-Current facts derived from direct inspection of repository files, history, branch state, tests, configuration, and documentation.
+Current facts derived from authenticated repository and GitHub inspection.
 
 ### Runtime Truth
+Current facts derived from the deployed environment and runtime-generated
+evidence.
 
-Current facts derived from a running system, logs, API responses, database queries, monitoring, deployment receipts, or production behavior.
+### Publication Truth
+Facts about an external publication object, including stable identity, path,
+revision, representation, and publication history. Publication truth does not
+establish repository execution state.
+
+### Truth Precedence
+The ordering used to resolve conflicting factual claims.
+
+### Action Authority
+Explicit permission to perform a scoped action against an identified target.
+Action authority is distinct from factual truth.
+
+### Operator
+The human retaining final decision, authorization, and risk authority.
+
+## 3. Identity Terms
+
+### Base SHA
+The immutable commit used as the comparison or authorization baseline.
+
+### Exact Head SHA
+The immutable candidate commit to which implementation, evidence, review, or
+authorization is bound.
+
+### Reviewed Head
+The exact head inspected by an independent reviewer. A later commit makes the
+review stale for current-head approval.
+
+### Branch Identity
+A stable registration for a local or remote branch, including lifecycle and
+expected disposition.
+
+### Worktree Identity
+A stable registration for a non-canonical worktree, including path, branch,
+base, owner, and disposition.
+
+### Repository Drift
+A material change in branch, head, worktree, artifact, environment, or other
+identity that may invalidate authorization or evidence.
+
+## 4. Workflow Terms
+
+- **Discovery** — identify current state, risks, unknowns, and evidence needs.
+- **Architecture** — define design, boundaries, alternatives, invariants, and
+  acceptance criteria.
+- **Implementation Planning** — create executable bounded work packages.
+- **Plan Review** — independently evaluate a plan before execution.
+- **Implementation Audit** — independently evaluate completed work and evidence.
+- **Corrective Review** — verify remediation of stable findings.
+- **Merge Readiness** — determine whether the exact candidate satisfies merge
+  gates; not merge authorization.
+- **Merge Authorization** — explicit operator permission to merge an exact
+  candidate.
+- **Post-Merge Validation** — verify the accepted target-branch identity and
+  required post-merge conditions.
+- **Branch and Worktree Closeout** — preserve, integrate, retain, remove, or
+  block associated repository identities under governed receipts.
+- **Deployment Readiness** — determine whether an identified artifact may be
+  deployed.
+- **Production Readiness** — determine whether a change is safe for production
+  use.
+- **Operational Readiness** — determine whether the deployed system can be
+  supported.
+
+## 5. Lifecycle States
+
+Recommended goal/work lifecycle values:
+
+- `GOVERNANCE_INITIALIZATION`
+- `REPOSITORY_TRUTH`
+- `ARCHITECTURE`
+- `IMPLEMENTATION_PLANNING`
+- `PLAN_EXTERNAL_REVIEW`
+- `IMPLEMENTATION`
+- `IMPLEMENTATION_EXTERNAL_AUDIT`
+- `CORRECTIVE_IMPLEMENTATION`
+- `CORRECTIVE_EXTERNAL_AUDIT`
+- `MERGE_READINESS`
+- `MERGE_AUTHORIZATION`
+- `MERGED_PENDING_CLEANUP`
+- `POST_MERGE_VALIDATION`
+- `BRANCH_WORKTREE_CLOSEOUT`
+- `BOUNDED_CLOSURE_ASSESSMENT`
+- `CLOSED`
+
+Recommended state statuses:
+
+- `NOT_STARTED`
+- `IN_PROGRESS`
+- `READY_FOR_REVIEW`
+- `REVIEW_BLOCKED`
+- `BLOCKED`
+- `COMPLETE`
+- `CLEANUP_AUTHORIZED`
+- `RETAINED`
+- `CLEANUP_BLOCKED`
+- `CLOSED`
+
+## 6. Evidence Terms
 
 ### Evidence
-
 Specific, relevant, reproducible proof supporting a claim.
 
 ### Claim
-
-A statement that something is true, implemented, tested, safe, complete, or ready.
-
-### Acceptance Criterion
-
-A stable, testable requirement used to judge whether work satisfies the objective.
-
-### Finding
-
-A reviewed defect, gap, risk, or unsupported claim requiring disposition.
-
-### Trust Surface
-
-A system boundary where trust is granted, withheld, degraded, or verified.
-
-### Capability Surface
-
-The set of actions a tool, service, model, or agent can perform.
-
-### Approval Gate
-
-A point where human authorization is required before proceeding.
+A statement not yet independently established by sufficient evidence.
 
 ### Evidence Package
-
-A collected set of proof used for audit or Go/No-Go.
-
-### Go/No-Go
-
-A bounded decision about merge, deployment, production, or operational readiness.
-
-### Canonical Memory
-
-Durable, authoritative knowledge accepted into a repository, corpus, vault, or other governed knowledge base.
-
-### Promotion
-
-The act of moving information from draft, observation, or evidence into a more authoritative state.
+An immutable indexed collection of proof for an exact identity and scope.
 
 ### Receipt
+A durable record that an action occurred, including target, authority,
+commands, outputs, timestamps, and disposition.
 
-A durable record that an action occurred, including identity, time, inputs, outputs, and status.
+### Representation
+The form of an artifact or evidence item, such as raw file, repository blob,
+native Google Doc, export, or runtime observation.
 
-## 3. Workflow Terms
+### Hash Scope
+The bytes to which a hash applies:
 
-### Discovery
+- `stored_raw_bytes`
+- `source_bytes`
+- `exported_bytes`
+- `not_applicable`
 
-The phase that determines current state, unknowns, risks, and evidence needs.
+### Source Relation
+The documented relationship between a publication, source artifact, export, or
+derivative.
 
-### Architecture
+## 7. Review and Finding Terms
 
-The phase that defines target design, boundaries, invariants, alternatives, and acceptance criteria.
+### Independent Context
+A reviewer context separated from the implementation context.
 
-### Implementation Planning
+### Finding
+A stable reviewed defect, gap, risk, or unsupported claim requiring explicit
+disposition.
 
-The phase that converts architecture into executable agent instructions.
+Finding statuses:
 
-### Plan Review
+- `OPEN`
+- `FIX CLAIMED`
+- `VERIFIED FIXED`
+- `DEFERRED WITH ACCEPTED RISK`
+- `REJECTED WITH RATIONALE`
+- `NOT REPRODUCIBLE`
 
-The phase that evaluates an implementation plan before execution.
+Plan/architecture review dispositions:
 
-### Implementation Audit
+- `APPROVE`
+- `APPROVE WITH REQUIRED CHANGES`
+- `REVISE`
+- `REJECT`
+- `INSUFFICIENT EVIDENCE`
 
-The phase that evaluates completed implementation against criteria and evidence.
+Audit dispositions:
 
-### Corrective Review
+- `PASS`
+- `PASS WITH NON-BLOCKING FINDINGS`
+- `FAIL — BLOCKERS REMAIN`
+- `INSUFFICIENT EVIDENCE`
 
-The phase that verifies remediation of findings.
+## 8. Closeout Terms
 
-### Production Readiness
+### Preservation Proof
+Evidence that unique, dirty, untracked, inaccessible, or uncertain material was
+retained before cleanup.
 
-The phase that determines release and operational safety.
+### Integration Proof
+Evidence that branch/worktree content is merged, patch-equivalent, otherwise
+integrated, or deliberately retained.
 
-## 4. Status Values
+### Cleanup Receipt
+Evidence that authorized cleanup actions completed against exact targets.
 
-### Acceptance Criterion Status
+### Retention Receipt
+Evidence that a branch/worktree/ref is intentionally retained with reason,
+owner, and review date when applicable.
 
-- PASS
-- PARTIAL
-- FAIL
-- NOT VERIFIED
-- NOT APPLICABLE
+### Blocker Receipt
+Evidence that cleanup or closure stopped safely, including blocker and required
+next action.
 
-### Finding Status
+### No-Prune Fetch
+Remote-state refresh that preserves stale refs until inventory and comparison
+are complete.
 
-- OPEN
-- FIX CLAIMED
-- VERIFIED FIXED
-- DEFERRED WITH ACCEPTED RISK
-- REJECTED WITH RATIONALE
-- NOT REPRODUCIBLE
+## 9. Readiness Decisions
 
-### Go/No-Go Decision
+Merge readiness:
 
-- GO
-- CONDITIONAL GO
-- NO-GO
-- INSUFFICIENT EVIDENCE
+- `READY TO MERGE`
+- `READY WITH REQUIRED CONDITIONS`
+- `NOT READY`
+- `INSUFFICIENT EVIDENCE`
 
-## 5. Severity Taxonomy
+Deployment/production/operational readiness:
 
-### Critical
+- `GO`
+- `CONDITIONAL GO`
+- `NO-GO`
+- `INSUFFICIENT EVIDENCE`
 
-Likely severe production outage, destructive behavior, data loss, or security compromise.
+A decision in one category does not imply another.
 
-### High
+## 10. Normative Usage
 
-Material correctness, safety, migration, or trust-boundary failure.
-
-### Medium
-
-Important reliability, maintainability, or completeness issue.
-
-### Low
-
-Minor defect or documentation/cleanup issue.
-
-### Informational
-
-Observation without immediate defect classification.
-
-## 6. Generalization Taxonomy
-
-When deriving AEOS patterns from repositories, classify as:
-
-- AEOS Core
-- AEOS Optional Profile
-- Reference Implementation Only
-- Do Not Generalize
-- Needs More Evidence
-
-## 7. Source Authority Taxonomy
-
-- Runtime evidence
-- Repository evidence
-- Approved specification
-- Repository-local governance
-- AEOS standard
-- Session instruction
-- Prior conversation
-- Memory/general knowledge
-
-## 8. Artifact Taxonomy
-
-- Repository-truth report
-- Architecture artifact
-- ADR
-- Implementation plan
-- Local-agent handoff
-- Implementation report
-- Evidence package
-- Audit report
-- Corrective review
-- Production-readiness report
-- Go/No-Go record
-- Pattern candidate
-
-## 9. Normative Usage Rules
-
-- Use "repository truth" only when based on inspected repository evidence.
-- Use "runtime truth" only when based on running-system evidence.
-- Use "claim" for agent statements not yet verified.
-- Use "finding" only for reviewed issues with stable identifiers.
-- Use "GO" only for bounded decisions and never as general praise.
-- Use "production-ready" only after production-readiness gates are satisfied.
+- Use repository truth only for inspected repository/GitHub evidence.
+- Use runtime truth only for observed runtime evidence.
+- Use action authority only for explicit scoped authorization.
+- Use reviewed-head approval only for the exact reviewed head.
+- Use `MERGED_PENDING_CLEANUP` after merge until closeout is evidenced.
+- Use `CLOSED` only after post-merge validation and a cleanup, retention, or
+  blocker disposition.
+- Use `GO` only for a bounded readiness decision.
+- Never equate native-document identity with source-byte identity.

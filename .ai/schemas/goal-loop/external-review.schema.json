@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS External Review v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_id",
+    "goal_id",
+    "checkpoint_id",
+    "review_type",
+    "reviewer_context",
+    "repository",
+    "reviewed_artifacts",
+    "evidence_reviewed",
+    "review_disposition",
+    "required_changes",
+    "recommendations",
+    "findings",
+    "limitations",
+    "stale_on_head_change",
+    "operator_decision",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "review_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checkpoint_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_type": {
+      "enum": [
+        "PLAN_REVIEW",
+        "IMPLEMENTATION_AUDIT",
+        "CORRECTIVE_REVIEW",
+        "MERGE_READINESS",
+        "POST_MERGE_CLOSEOUT"
+      ]
+    },
+    "reviewer_context": {
+      "const": "independent"
+    },
+    "repository": {
+      "type": "object",
+      "required": [
+        "remote",
+        "branch",
+        "worktree_mode",
+        "worktree_id",
+        "base_sha",
+        "reviewed_head_sha",
+        "pull_request"
+      ],
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_mode": {
+          "enum": [
+            "local",
+            "remote_only",
+            "not_applicable"
+          ]
+        },
+        "worktree_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "reviewed_head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "pull_request": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "reviewed_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "evidence_reviewed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "review_disposition": {
+      "enum": [
+        "APPROVE",
+        "APPROVE_WITH_REQUIRED_CHANGES",
+        "REVISE",
+        "REJECT",
+        "INSUFFICIENT_EVIDENCE",
+        "PASS",
+        "PASS_WITH_NON_BLOCKING_FINDINGS",
+        "FAIL_BLOCKERS_REMAIN",
+        "READY_TO_MERGE",
+        "READY_WITH_REQUIRED_CONDITIONS",
+        "NOT_READY"
+      ]
+    },
+    "required_changes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "stale_on_head_change": {
+      "const": true
+    },
+    "operator_decision": {
+      "enum": [
+        "PENDING",
+        "ACCEPTED",
+        "REJECTED",
+        "REVISE"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

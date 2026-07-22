@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Goal State \u2014 LEGACY V1 READ ONLY",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "goal_id",
+    "state",
+    "status",
+    "repository",
+    "authorization"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "NOT_STARTED",
+        "IN_PROGRESS",
+        "READY_FOR_REVIEW",
+        "BLOCKED",
+        "COMPLETE"
+      ]
+    },
+    "repository": {
+      "type": "object"
+    },
+    "authorization": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "$id": "https://aeos.local/schemas/goal-loop/legacy-v1/state.schema.json"
+}

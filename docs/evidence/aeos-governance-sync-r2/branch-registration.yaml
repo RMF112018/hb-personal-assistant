@@ -26,7 +26,7 @@ identity_model:
 owner_or_agent: OpenAI ChatGPT, operator-directed
 work_item_id: AEOS-GOVERNANCE-SYNC-CORRECTIVE-R2
 issue: 317
-pull_request: null
+pull_request: 323
 created_at: 2026-07-22T01:00:00-04:00
 expected_disposition: review-then-remove-after-merge-and-closeout
 lifecycle_state: ACTIVE
