@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chore/aeos-governance-sync-corrective-r2
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -23,8 +26,9 @@ jobs:
 
       - name: Materialize reviewed PR 320 head
         run: |
+          git fetch --no-tags origin 3d740dbcfc1d58c86dcce0d2495155e4d83a28e2
           mkdir -p /tmp/pr320
-          git archive 3d740dbcfc1d58c86dcce0d2495155e4d83a28e2 | tar -x -C /tmp/pr320
+          git archive FETCH_HEAD | tar -x -C /tmp/pr320
           tar -C /tmp/pr320 -czf /tmp/pr320-reviewed-head.tar.gz .
 
       - name: Upload reconciliation snapshots
