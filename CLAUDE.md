@@ -73,13 +73,72 @@ For an AEOS-governed goal:
 4. Use the matching canonical subordinate skill.
 5. Generate the required artifacts and evidence.
 6. Close the state through `aeos-checkpoint-manager`.
-7. Stop for external review.
+7. Stop for independent review by a fresh eligible reviewer subagent or another
+   approved external review context.
 8. Do not activate the next state without a new validated operator
    authorization.
 
 A broad goal prompt does not authorize all lifecycle stages. Claude must not
 approve its own plan, audit its own implementation, accept risk, or waive
 acceptance criteria.
+
+## Mandatory Claude Subagent Review and Approval
+
+For substantive planning, implementation, corrective work, audit preparation,
+and readiness assessment, Claude Code must use its subagent capability to obtain
+an independent review before the parent context claims the artifact or candidate
+is ready for the next gate.
+
+The parent or implementation context must:
+
+1. Complete and freeze the candidate before starting review.
+2. Capture the exact base SHA, head SHA or immutable artifact identity, changed
+   scope, acceptance criteria, selected tests, evidence paths, deviations, and
+   requested review disposition.
+3. Spawn a fresh reviewer subagent that did not participate in planning,
+   implementation, or corrective edits.
+4. Give the reviewer a bounded, read-only review brief. Do not provide hidden
+   implementer reasoning, a preferred outcome, or instructions to patch.
+5. Require the reviewer to inspect repository truth, the exact diff or artifact,
+   tests, and evidence independently rather than accepting the parent summary as
+   proof.
+6. Preserve the reviewer's findings and disposition without suppressing,
+   rewriting, or negotiating them away.
+7. Send required corrections back to an implementation context, then spawn a
+   new reviewer subagent against the corrected exact identity.
+8. Treat any material commit, artifact mutation, or evidence change as
+   invalidating the prior approval.
+9. Add specialist reviewer subagents proportional to risk, including test,
+   architecture, security/privacy, migration/data, or evidence/readiness review
+   when those surfaces are material.
+
+The reviewer or approver subagent must remain read-only and must not have
+created, edited, or materially directed the work under review. It may issue only
+one bounded artifact-level disposition:
+
+- `APPROVE`
+- `APPROVE_WITH_NONBLOCKING_FINDINGS`
+- `REQUEST_CHANGES`
+- `BLOCKED`
+- `INSUFFICIENT_EVIDENCE`
+
+The reviewer must identify the exact SHA or immutable artifact identity reviewed
+and report acceptance-criteria results, findings, evidence gaps, residual risks,
+and unverified areas. It must not waive acceptance criteria, conceal findings,
+patch the reviewed work, or treat the parent context's narrative as evidence.
+
+A fresh reviewer subagent may approve the reviewed artifact within its bounded
+decision scope. That approval is review evidence only. It does not authorize the
+next lifecycle state, push, merge, cleanup, deployment, production activation,
+destructive action, credential change, or risk acceptance; those remain operator
+decisions.
+
+For a formal AEOS independent decision, the reviewer subagent qualifies only
+when it is a distinct fresh execution context, did not participate in producing
+the work, remains read-only, reviews the exact candidate identity, and the
+governing workflow permits that reviewer class. If Claude Code cannot establish
+an eligible reviewer context, stop at the applicable ready-for-review
+disposition and obtain another approved external review context.
 
 Goal records live under:
 
