@@ -678,10 +678,18 @@ class NasMcpBroker:
 
     @staticmethod
     def _missing_required_arguments(tool_name: str, arguments: dict[str, Any]) -> list[str]:
-        from hb_assistant.obsidian_mcp.prompt_preflight import required_args_for_tool  # noqa: PLC0415
+        from hb_assistant.obsidian_mcp.prompt_preflight import (
+            required_args_for_tool,
+        )  # noqa: PLC0415
 
+        required = required_args_for_tool(tool_name)
+        # Permanent source identity accepts either the preferred v2 ``source_ref`` or the retained
+        # legacy ``source_id`` handle. Exempt only the legacy alternative so future required
+        # arguments learned from the live schema remain fail-closed.
+        if tool_name == "assistant_source_file_read" and arguments.get("source_ref"):
+            required = [arg for arg in required if arg != "source_id"]
         return [
-            arg for arg in required_args_for_tool(tool_name)
+            arg for arg in required
             if arguments.get(arg) in (None, "", [], {})
         ]
 
@@ -693,7 +701,11 @@ class NasMcpBroker:
         *,
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        from .failure_envelope import map_deny_reason, missing_fields_from_reason, plugin_failure  # noqa: PLC0415
+        from .failure_envelope import (  # noqa: PLC0415
+            map_deny_reason,
+            missing_fields_from_reason,
+            plugin_failure,
+        )
 
         duration_ms = int((time.perf_counter() - started) * 1000)
         event = {

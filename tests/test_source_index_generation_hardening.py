@@ -574,8 +574,6 @@ def test_v119_to_v120_first_generation_repairs_legacy_rows(tmp_path):
     file with extracted text) — exactly what the V122 ADD COLUMN yields for pre-existing V119 rows — are
     repaired on the first V122 generation: the metadata-only file becomes path-searchable and the content
     file keeps its extracted content."""
-    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-
     root_dir = tmp_path / "root"
     (root_dir / "a").mkdir(parents=True)
     pdf = root_dir / "a" / "Legacy.pdf"
@@ -590,16 +588,20 @@ def test_v119_to_v120_first_generation_repairs_legacy_rows(tmp_path):
 
     # Degrade both rows to legacy V119 shape: NULL disposition everywhere, and DROP the pdf's path-FTS row
     # (PR-1 metadata-only rows had none). The txt keeps its content + FTS row.
-    pdf_sid = source_id_for("external_file", source_root_key="work", rel_path="a/Legacy.pdf")
+    pdf_sid = repo.lookup_by_path(
+        "external_file", "a/Legacy.pdf", source_root_key="work"
+    )["source_id"]
     conn = sqlite3.connect(db)
     conn.execute("UPDATE source_intelligence_metadata SET extraction_disposition=NULL")
     conn.execute(
         "DELETE FROM source_intelligence_fts WHERE rowid=("
-        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?)",
+        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_entity_id=?)",
         (pdf_sid,),
     )
     conn.execute(
-        "UPDATE source_intelligence_metadata SET fts_rowid=NULL WHERE source_id=?", (pdf_sid,)
+        "UPDATE source_intelligence_metadata SET fts_rowid=NULL "
+        "WHERE source_entity_id=?",
+        (pdf_sid,),
     )
     conn.commit()
     conn.close()
@@ -613,7 +615,8 @@ def test_v119_to_v120_first_generation_repairs_legacy_rows(tmp_path):
     )  # content preserved
     conn = sqlite3.connect(db)
     disp = conn.execute(
-        "SELECT extraction_disposition FROM source_intelligence_metadata WHERE source_id=?",
+        "SELECT extraction_disposition FROM source_intelligence_metadata "
+        "WHERE source_entity_id=?",
         (pdf_sid,),
     ).fetchone()[0]
     conn.close()
@@ -968,15 +971,18 @@ def test_scan_reports_conflict_when_walk_complete_loses_lease(tmp_path):
 # signature, and exclusion changes against a completed root.
 
 
-def test_v122_fresh_and_incremental_migration(tmp_path):
-    """Fresh migrate reaches head 123 with the generations table + new fingerprint column; an incremental
-    apply onto a DB that already has 120/121 lands ONLY v122 (idempotent, parity-guarded)."""
+def test_v122_contract_survives_current_head_reapply(tmp_path):
+    """Fresh migration retains the V122 generation contract after V129 re-homes observations.
+
+    Observation fields live on the current locator, while metadata/bootstrap additions and historical
+    V120/V121 manifest data survive an idempotent current-head reapply.
+    """
     from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 
     db = str(tmp_path / "fresh.db")
     assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)")}
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(source_index_locators)")}
     assert {"last_seen_generation", "last_seen_at", "last_indexed_fingerprint"} <= cols
     assert conn.execute(
         "SELECT 1 FROM sqlite_master WHERE name='source_index_scan_generations'"
@@ -1002,45 +1008,32 @@ def test_v122_fresh_and_incremental_migration(tmp_path):
     conn.commit()
     conn.close()
 
-    # GENUINE incremental V121→V122: reduce a migrated DB to a real V121 shape — DROP the v122 marker, the
-    # generations table, the reconciliation index, AND every v122-added column (sqlite 3.35+ DROP COLUMN) —
-    # then re-apply and prove v122 actually recreates the table, index, all six columns, and the marker
-    # while the prior manifest data (120/121) survives.
     v122_columns = [
-        ("source_intelligence_sources", "last_seen_generation"),
-        ("source_intelligence_sources", "last_seen_at"),
-        ("source_intelligence_sources", "last_indexed_fingerprint"),
+        ("source_index_locators", "last_seen_generation"),
+        ("source_index_locators", "last_seen_at"),
+        ("source_index_locators", "last_indexed_fingerprint"),
         ("source_intelligence_metadata", "extraction_disposition"),
         ("source_intelligence_metadata", "content_indexed_at"),
         ("source_index_bootstrap_runs", "generation_id"),
     ]
-    conn = sqlite3.connect(db)
-    conn.execute("DELETE FROM schema_migrations WHERE version=122")
-    conn.execute("DROP TABLE source_index_scan_generations")
-    conn.execute("DROP INDEX IF EXISTS idx_si_sources_last_seen_gen")
-    for table, col in v122_columns:
-        conn.execute(f"ALTER TABLE {table} DROP COLUMN {col}")
-    conn.commit()
-    for table, col in v122_columns:  # sanity: genuinely V121-shaped now
-        assert col not in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-    conn.close()
 
     assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
-    for table, col in v122_columns:  # every column recreated
+    for table, col in v122_columns:
         assert col in {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}, (table, col)
     assert conn.execute(
         "SELECT 1 FROM sqlite_master WHERE name='source_index_scan_generations'"
     ).fetchone()
     assert conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_si_sources_last_seen_gen'"
+        "SELECT 1 FROM sqlite_master WHERE type='index' "
+        "AND name='idx_locators_reconcile'"
     ).fetchone()
     assert {
         r[0]
         for r in conn.execute(
             "SELECT version FROM schema_migrations WHERE version IN (120,121,122)"
         )
-    } == {120, 121, 122}  # v122 marker rewritten; 120/121 markers intact
+    } == {120, 121, 122}
     # The stronger claim: representative V120/V121 manifest ROWS survive the V122 reapply untouched.
     assert (
         conn.execute(
@@ -1214,8 +1207,6 @@ def test_validate_cursor_round4_rules(tmp_path):
 def test_sensitive_to_plain_transition_clears_vault_content(tmp_path):
     """A completed SENSITIVE→PLAIN transition must re-evaluate an encrypted-to-vault row: it is not left
     fast-skipped/preserved — the stale vault content is cleared (path discoverability preserved)."""
-    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-
     root_dir = tmp_path / "root"
     root_dir.mkdir()
     (root_dir / "secret.txt").write_text("x")
@@ -1224,10 +1215,13 @@ def test_sensitive_to_plain_transition_clears_vault_content(tmp_path):
     r_sens = ExternalSourceRoot(source_root_key="work", path=str(root_dir), sensitive=True)
     _run_to_completion(r_sens, repo, _cfg(root_dir))
     # Simulate an extracted-to-vault content row (sensitive: text_vault_ref set, no plaintext excerpt).
-    sid = source_id_for("external_file", source_root_key="work", rel_path="secret.txt")
+    sid = repo.lookup_by_path(
+        "external_file", "secret.txt", source_root_key="work"
+    )["source_id"]
     conn = sqlite3.connect(db)
     conn.execute(
-        "INSERT INTO source_intelligence_text (source_id, text_excerpt, text_vault_ref, updated_at) "
+        "INSERT INTO source_intelligence_text "
+        "(source_entity_id, text_excerpt, text_vault_ref, updated_at) "
         "VALUES (?,?,?,?)",
         (sid, None, "vault-ref-blob", "2020-01-01T00:00:00"),
     )
@@ -1348,8 +1342,6 @@ def test_preserve_rebuilds_fts_from_retained_text(tmp_path):
     """Preserve rebuilds the FTS row FROM the retained extracted text — not an empty path-only row — so a
     content row with a missing FTS row stays body-searchable and health keeps counting it content-searchable
     (blocker 3: the concrete plaintext-content-with-missing-FTS failure)."""
-    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-
     root_dir = tmp_path / "root"
     root_dir.mkdir()
     f = root_dir / "report.txt"
@@ -1362,16 +1354,23 @@ def test_preserve_rebuilds_fts_from_retained_text(tmp_path):
     assert any("report.txt" in h["rel_path"] for h in repo.search_source_files("concrete"))
 
     # Drop the FTS row (retain the extracted text) and NULL the fingerprint so the next scan PRESERVES.
-    sid = source_id_for("external_file", source_root_key="work", rel_path="report.txt")
+    sid = repo.lookup_by_path(
+        "external_file", "report.txt", source_root_key="work"
+    )["source_id"]
     conn = sqlite3.connect(db)
     conn.execute(
         "DELETE FROM source_intelligence_fts WHERE rowid=("
-        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_id=?)",
+        "SELECT fts_rowid FROM source_intelligence_metadata WHERE source_entity_id=?)",
         (sid,),
     )
-    conn.execute("UPDATE source_intelligence_metadata SET fts_rowid=NULL WHERE source_id=?", (sid,))
     conn.execute(
-        "UPDATE source_intelligence_sources SET last_indexed_fingerprint=NULL WHERE source_id=?",
+        "UPDATE source_intelligence_metadata SET fts_rowid=NULL "
+        "WHERE source_entity_id=?",
+        (sid,),
+    )
+    conn.execute(
+        "UPDATE source_index_locators SET last_indexed_fingerprint=NULL "
+        "WHERE source_entity_id=? AND is_current_locator=1",
         (sid,),
     )
     conn.commit()
@@ -1388,8 +1387,6 @@ def test_preserve_rebuilds_fts_from_retained_text(tmp_path):
 def test_preserve_refreshes_abs_path_hash_and_project_relationship(tmp_path):
     """Preserve authoritatively refreshes derived identity — abs_path_hash and the belongs_to_project edge —
     on a fingerprint mismatch, so a root-path or matcher-version change never leaves them stale (blocker 3)."""
-    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-
     root_dir = tmp_path / "root"
     (root_dir / "24-118-00").mkdir(parents=True)
     f = root_dir / "24-118-00" / "plan.txt"
@@ -1398,19 +1395,26 @@ def test_preserve_refreshes_abs_path_hash_and_project_relationship(tmp_path):
     repo = SourceIndexRepository(db)
     r = ExternalSourceRoot(source_root_key="work", path=str(root_dir))
     _run_to_completion(r, repo, _cfg(root_dir))
-    sid = source_id_for("external_file", source_root_key="work", rel_path="24-118-00/plan.txt")
+    sid = repo.lookup_by_path(
+        "external_file", "24-118-00/plan.txt", source_root_key="work"
+    )["source_id"]
     correct_hash = si.hashlib.sha256(str(f).encode()).hexdigest()[:32]
 
     # Corrupt abs_path_hash + the relationship confidence, NULL the fingerprint (→ preserve on rescan).
     conn = sqlite3.connect(db)
     conn.execute(
-        "UPDATE source_intelligence_sources SET abs_path_hash='STALEHASH', "
-        "last_indexed_fingerprint=NULL WHERE source_id=?",
+        "UPDATE source_intelligence_sources SET abs_path_hash='STALEHASH' "
+        "WHERE source_entity_id=?",
+        (sid,),
+    )
+    conn.execute(
+        "UPDATE source_index_locators SET last_indexed_fingerprint=NULL "
+        "WHERE source_entity_id=? AND is_current_locator=1",
         (sid,),
     )
     conn.execute(
         "UPDATE source_intelligence_relationships SET confidence='WRONG' "
-        "WHERE src_source_id=? AND relation='belongs_to_project'",
+        "WHERE src_source_entity_id=? AND relation='belongs_to_project'",
         (sid,),
     )
     conn.commit()
@@ -1419,11 +1423,13 @@ def test_preserve_refreshes_abs_path_hash_and_project_relationship(tmp_path):
     _run_to_completion(r, repo, _cfg(root_dir))
     conn = sqlite3.connect(db)
     got_hash = conn.execute(
-        "SELECT abs_path_hash FROM source_intelligence_sources WHERE source_id=?", (sid,)
+        "SELECT abs_path_hash FROM source_intelligence_sources "
+        "WHERE source_entity_id=?",
+        (sid,),
     ).fetchone()[0]
     conf = conn.execute(
         "SELECT confidence FROM source_intelligence_relationships "
-        "WHERE src_source_id=? AND relation='belongs_to_project'",
+        "WHERE src_source_entity_id=? AND relation='belongs_to_project'",
         (sid,),
     ).fetchone()[0]
     conn.close()
@@ -1591,8 +1597,6 @@ def test_project_reroute_restales_generated_note(tmp_path, monkeypatch):
     """A project re-route (matcher change, same file bytes) is a MATERIAL derived-state change: content is
     preserved but the generated card — which persists project_key/number/tags — must be re-staled, even
     though the fast-skip is only defeated by the project mismatch (blocker 3, walk path)."""
-    from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-
     root_dir = tmp_path / "root"
     root_dir.mkdir()
     f = root_dir / "plan.txt"
@@ -1603,11 +1607,13 @@ def test_project_reroute_restales_generated_note(tmp_path, monkeypatch):
 
     monkeypatch.setattr(si, "match_path_to_project", lambda rel: ("24-100-00", "24-100-00", "high"))
     _run_to_completion(r, repo, _cfg(root_dir))
-    sid = source_id_for("external_file", source_root_key="work", rel_path="plan.txt")
+    sid = repo.lookup_by_path(
+        "external_file", "plan.txt", source_root_key="work"
+    )["source_id"]
     conn = sqlite3.connect(db)
     conn.execute(
         "INSERT INTO source_intelligence_generated_notes "
-        "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+        "(generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at, updated_at) "
         "VALUES ('n1', ?, 'cards/plan.md', 'generated', 't', 't')",
         (sid,),
     )
@@ -1620,7 +1626,8 @@ def test_project_reroute_restales_generated_note(tmp_path, monkeypatch):
     status = (
         sqlite3.connect(db)
         .execute(
-            "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?",
+            "SELECT generation_status FROM source_intelligence_generated_notes "
+            "WHERE source_entity_id=?",
             (sid,),
         )
         .fetchone()[0]

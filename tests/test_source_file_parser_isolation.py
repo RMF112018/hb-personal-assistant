@@ -24,7 +24,7 @@ from hb_assistant.files.parsers import isolated as iso
 from hb_assistant.obsidian_mcp import source_connector_service as svc
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
 from hb_assistant.obsidian_mcp.source_connector_models import encode_source_ref
-from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.store.migrator import SQLiteMigrator
 
 _LIMITS = {"max_input_bytes": 25_000_000, "max_output_bytes": 1_000_000, "timeout_s": 15.0,
@@ -273,19 +273,23 @@ def _index_and_trust(db: str, config: ObsidianMcpConfig, root_key: str, rel_path
                      abs_file: Path, ext: str) -> str:
     from hb_assistant.obsidian_mcp.source_indexer import _root_fingerprint
 
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
     st = abs_file.stat()
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     cfg_root = next(r for r in config.external_sources if r.source_root_key == root_key)
     fp = _root_fingerprint(cfg_root, config)
     rph = hashlib.sha256(str(Path(cfg_root.path)).encode()).hexdigest()[:32]
+    sid = SourceIndexRepository(db).upsert_source_file({
+        "source_kind": "external_file",
+        "source_root_key": root_key,
+        "rel_path": rel_path,
+        "file_ext": ext,
+        "size_bytes": st.st_size,
+        "mtime_ns": st.st_mtime_ns,
+        "content_sha256": "d",
+        "extraction_status": "pending",
+        "extraction_disposition": "metadata_only",
+    })
     with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
-                  (sid, ext, st.st_size, st.st_mtime_ns, "d", "pending", now))
         c.execute("INSERT OR REPLACE INTO source_index_scan_generations(generation_id, root_key, status, "
                   "root_path_hash, policy_fingerprint, started_at, updated_at, metadata_walk_completed_at, "
                   "reconciliation_completed_at, finished_at) VALUES(?,?,?,?,?,?,?,?,?,?)",

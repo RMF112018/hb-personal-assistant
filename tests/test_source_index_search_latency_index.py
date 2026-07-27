@@ -36,7 +36,7 @@ def test_search_join_uses_fts_rowid_index_not_full_scan(tmp_path: Path) -> None:
     c = _migrate(tmp_path)
     plan = c.execute(
         "EXPLAIN QUERY PLAN "
-        "SELECT m.source_id FROM source_intelligence_fts f "
+        "SELECT m.source_entity_id FROM source_intelligence_fts f "
         "JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
         "WHERE source_intelligence_fts MATCH 'x'"
     ).fetchall()

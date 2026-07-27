@@ -31,7 +31,10 @@ from pathlib import Path
 from hb_assistant.obsidian_mcp import source_connector_service as svc
 from hb_assistant.obsidian_mcp import source_indexer as si
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
-from hb_assistant.obsidian_mcp.source_connector_models import CONTENT_LIVE_EXTRACT
+from hb_assistant.obsidian_mcp.source_connector_models import (
+    CONTENT_LIVE_EXTRACT,
+    encode_source_ref,
+)
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.obsidian_mcp.source_quarantine_ops import retry_quarantine
 from hb_assistant.obsidian_mcp.source_root_mapping import REASON_EXACT_MATCH, StructureRootMapping
@@ -148,7 +151,9 @@ def test_quarantine_lifecycle_blocks_serving_and_reconcile_then_recovers(tmp_pat
     # A readable, indexed file may not be live-read while its root is untrusted.
     a_row = repo.lookup_by_path("external_file", "alpha.txt")
     assert a_row is not None
-    read_blocked = svc.read_source_file(repo, cfg, source_id=a_row["source_id"])
+    read_blocked = svc.read_source_file(
+        repo, cfg, source_ref=encode_source_ref(a_row["source_id"])
+    )
     assert read_blocked.get("reason") == "root_not_trusted"
     assert read_blocked.get("content_source") != CONTENT_LIVE_EXTRACT
 
@@ -203,7 +208,9 @@ def test_quarantine_lifecycle_blocks_serving_and_reconcile_then_recovers(tmp_pat
     assert list_ok["status"] == "ok"
 
     # A trusted root permits the live bounded read again.
-    read_ok = svc.read_source_file(repo, cfg, source_id=a_row["source_id"])
+    read_ok = svc.read_source_file(
+        repo, cfg, source_ref=encode_source_ref(a_row["source_id"])
+    )
     assert read_ok.get("reason") != "root_not_trusted"
 
     # The next generation pass is no longer blocked.
