@@ -40,6 +40,9 @@ from pathlib import Path
 
 # Source-index tables whose row counts are inventoried when present. Ordered for stable output.
 SOURCE_INDEX_TABLES: tuple[str, ...] = (
+    "source_index_entities",
+    "source_index_locators",
+    "source_index_move_signals",
     "source_intelligence_sources",
     "source_intelligence_metadata",
     "source_intelligence_text",
@@ -61,6 +64,9 @@ SOURCE_INDEX_TABLES: tuple[str, ...] = (
 # Tables whose full logical content feeds the deterministic logical hash.
 _LOGICAL_HASH_TABLES: tuple[str, ...] = (
     "schema_migrations",
+    "source_index_entities",
+    "source_index_locators",
+    "source_index_move_signals",
     "source_intelligence_sources",
     "source_intelligence_metadata",
     "source_intelligence_text",
@@ -314,6 +320,11 @@ def fts_parity(conn: sqlite3.Connection) -> FtsParity:
     ):
         return FtsParity(0, 0, 0)
     matched = dangling = orphan = 0
+    entity_keyed = _column_exists(
+        conn, "source_intelligence_metadata", "source_entity_id"
+    )
+    metadata_key = "source_entity_id" if entity_keyed else "source_id"
+    source_key = "source_entity_id" if entity_keyed else "source_id"
     for kind, fts_table in _FTS_BY_KIND.items():
         if not _table_exists(conn, fts_table):
             continue
@@ -321,7 +332,7 @@ def fts_parity(conn: sqlite3.Connection) -> FtsParity:
             int(r[0])
             for r in conn.execute(
                 "SELECT m.fts_rowid FROM source_intelligence_metadata m "
-                "JOIN source_intelligence_sources s ON s.source_id = m.source_id "
+                f"JOIN source_intelligence_sources s ON s.{source_key} = m.{metadata_key} "
                 "WHERE s.source_kind = ? AND m.fts_rowid IS NOT NULL",
                 (kind,),
             ).fetchall()
@@ -543,6 +554,9 @@ PARITY_INFORMATIONAL = "informational"
 # Source-content tables whose row counts must be preserved across migration (present at every supported
 # origin >= V121). A migration must never drop or fabricate their rows.
 _DATA_PRESERVED_TABLES: tuple[str, ...] = (
+    "source_index_entities",
+    "source_index_locators",
+    "source_index_move_signals",
     "source_intelligence_sources",
     "source_intelligence_metadata",
     "source_intelligence_text",
@@ -902,6 +916,8 @@ _SEMANTIC_IDENTITY_COLUMNS: dict[str, tuple[str, ...]] = {
 
 @dataclass
 class SemanticInventory:
+    permanent_identity_digests: list[str]
+    move_signal_digests: list[str]
     events_by_status: dict[str, int]
     events_by_type: dict[str, int]
     event_digests: list[str]
@@ -948,6 +964,43 @@ def _redacted_row_digests(
     return sorted(digests)
 
 
+def _entity_rekeyed_digests(
+    conn: sqlite3.Connection,
+    table: str,
+    legacy_source_column: str,
+    entity_source_column: str,
+    other_columns: tuple[str, ...],
+) -> list[str]:
+    """Digest a source child by stable locator ``source_id`` across the V128 entity re-key.
+
+    V128 replaces each child's mutable-key column with ``source_entity_id`` while retaining the
+    historical source id in the current locator. Joining through that locator gives the same logical
+    identity before and after migration without treating the randomly minted entity id as user data.
+    """
+    if not _table_exists(conn, table):
+        return []
+    if _column_exists(conn, table, legacy_source_column):
+        columns = (other_columns[0], legacy_source_column, *other_columns[1:])
+        return _redacted_row_digests(conn, table, columns)
+    if not _column_exists(conn, table, entity_source_column):
+        return []
+    select_cols = [f"t.{other_columns[0]}", "l.source_id"]
+    select_cols.extend(f"t.{column}" for column in other_columns[1:])
+    rows = conn.execute(
+        f"SELECT {', '.join(select_cols)} FROM {table} t "
+        f"JOIN source_index_locators l ON l.source_entity_id = t.{entity_source_column} "
+        "AND l.is_current_locator = 1"
+    ).fetchall()
+    return sorted(
+        hashlib.sha256(
+            "\x1f".join([table, *["" if value is None else str(value) for value in row]]).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+        for row in rows
+    )
+
+
 def _generation_authority(conn: sqlite3.Connection) -> tuple[dict[str, list[str]], int]:
     """Per-root generation-authority digests and the number of roots with >1 active generation."""
     if not _table_exists(conn, "source_index_scan_generations"):
@@ -976,9 +1029,18 @@ def _lineage_facts(conn: sqlite3.Connection) -> tuple[list[str], bool, bool]:
         return [], True, True
     edges: dict[str, str] = {}
     ids: set[str] = set()
-    for row in conn.execute(
-        "SELECT source_id, renamed_from_source_id FROM source_intelligence_sources"
-    ).fetchall():
+    if _column_exists(conn, "source_intelligence_sources", "source_id"):
+        rows = conn.execute(
+            "SELECT source_id, renamed_from_source_id FROM source_intelligence_sources"
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT l.source_id, s.renamed_from_source_id "
+            "FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "AND l.is_current_locator = 1"
+        ).fetchall()
+    for row in rows:
         ids.add(str(row["source_id"]))
         if row["renamed_from_source_id"] is not None:
             edges[str(row["source_id"])] = str(row["renamed_from_source_id"])
@@ -1013,23 +1075,65 @@ def source_index_semantic_inventory(db_path: Path) -> SemanticInventory:
         gen_per_root, gen_multi_active = _generation_authority(conn)
         lineage_edges, predecessors_exist, acyclic = _lineage_facts(conn)
         return SemanticInventory(
+            permanent_identity_digests=sorted(
+                _redacted_row_digests(
+                    conn,
+                    "source_index_entities",
+                    ("source_entity_id", "created_at", "status"),
+                )
+                + _redacted_row_digests(
+                    conn,
+                    "source_index_locators",
+                    (
+                        "locator_id",
+                        "source_entity_id",
+                        "source_id",
+                        "source_root_key",
+                        "rel_path",
+                        "is_current_locator",
+                        "tombstoned_at",
+                        "generation_seq",
+                    ),
+                )
+            ),
+            move_signal_digests=_redacted_row_digests(
+                conn,
+                "source_index_move_signals",
+                (
+                    "move_signal_id",
+                    "source_locator_id",
+                    "source_root_key",
+                    "source_rel_path",
+                    "target_root_key",
+                    "target_rel_path",
+                    "detected_at",
+                    "generation_id",
+                    "applied_at",
+                ),
+            ),
             events_by_status=by_status,
             events_by_type=by_type,
             event_digests=_redacted_row_digests(
                 conn, "source_intelligence_events",
                 _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_events"],
             ),
-            card_digests=_redacted_row_digests(
-                conn, "source_intelligence_generated_notes",
-                _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_generated_notes"],
+            card_digests=_entity_rekeyed_digests(
+                conn,
+                "source_intelligence_generated_notes",
+                "source_id",
+                "source_entity_id",
+                ("generated_note_id", "note_rel_path", "generation_status"),
             ),
             pass_run_digests=_redacted_row_digests(
                 conn, "source_index_bootstrap_runs",
                 _SEMANTIC_IDENTITY_COLUMNS["source_index_bootstrap_runs"],
             ),
-            relationship_digests=_redacted_row_digests(
-                conn, "source_intelligence_relationships",
-                _SEMANTIC_IDENTITY_COLUMNS["source_intelligence_relationships"],
+            relationship_digests=_entity_rekeyed_digests(
+                conn,
+                "source_intelligence_relationships",
+                "src_source_id",
+                "src_source_entity_id",
+                ("relationship_id", "dst_kind", "dst_ref", "relation"),
             ),
             quarantine_unresolved_count=_count_where(
                 conn, "source_index_scan_quarantine", "resolution_state = 'unresolved'"
@@ -1065,7 +1169,31 @@ def compare_semantic_inventories(
     the migrated database must independently satisfy the validity invariants (single active generation
     per root, acyclic lineage, all lineage predecessors present).
     """
+    identity_preexisting = bool(before.permanent_identity_digests)
+    move_signals_preexisting = bool(before.move_signal_digests)
     diffs: list[ParityDiff] = [
+        ParityDiff(
+            "permanent_identity.identity_digests",
+            PARITY_EXACT if identity_preexisting else PARITY_MIGRATION_TRANSFORMED,
+            before.permanent_identity_digests,
+            after.permanent_identity_digests,
+            ok=(
+                after.permanent_identity_digests == before.permanent_identity_digests
+                if identity_preexisting
+                else bool(after.permanent_identity_digests)
+            ),
+        ),
+        ParityDiff(
+            "move_signals.identity_digests",
+            PARITY_EXACT if move_signals_preexisting else PARITY_MIGRATION_TRANSFORMED,
+            before.move_signal_digests,
+            after.move_signal_digests,
+            ok=(
+                after.move_signal_digests == before.move_signal_digests
+                if move_signals_preexisting
+                else True
+            ),
+        ),
         ParityDiff("events.identity_digests", PARITY_EXACT, before.event_digests, after.event_digests,
                    ok=(after.event_digests == before.event_digests)),
         ParityDiff("events.by_status", PARITY_EXACT, before.events_by_status, after.events_by_status,

@@ -6,7 +6,7 @@ executable/database compatibility classification and the rollback contract. It i
 historical SHA `6b57a406`, head V124) via a `git worktree` and performs bounded reads against
 representative databases. It does not activate the application, migrate, or touch a production database.
 
-## Exact schema changes V125 → V127 (not "strictly additive")
+## Exact schema changes V125 → current V129 (not "strictly additive")
 
 The head is **not** uniformly additive. The precise post-V124 changes are:
 
@@ -15,11 +15,18 @@ The head is **not** uniformly additive. The precise post-V124 changes are:
 | **V125** `v125_source_index_scan_quarantine` | adds the `source_index_scan_quarantine` table | additive |
 | **V126** `v126_source_rename_lineage` | adds source rename-lineage tables/columns | additive |
 | **V127** `v127_events_moved_dest_backoff` | **rebuilds `source_intelligence_events`** (`DROP`/recreate via `_rebuild_v127_events`): widens the `event_type` CHECK to accept the governed **`moved`** type and adds the `dest_rel_path` + `next_attempt_at` columns | **NOT additive — a table rebuild** |
+| **V128** `v128_permanent_source_identity` | adds entities/locators/move signals and **rebuilds the source parent plus six content children** around permanent entity identity | **NOT additive — seven-table re-key** |
+| **V129** `v129_observation_rehoming` | adds locator observation/serving-trust fields, a reconciliation index, and move-signal disposition/result fields | additive over V128 |
 
 The V127 migrator body itself records the code-rollback caveat: after V127, **old application code
 cannot read/insert `moved` rows**, and Phase B must not deploy or migrate production because of it.
+V128/V129 strengthen that incompatibility boundary by replacing the legacy source/content keys; no
+general-operation compatibility claim is made for a V124 executable against V128 or V129.
 
 ## Compatibility matrix (from executing the prior V124 executable)
+
+This matrix deliberately answers the original Phase C V124↔V127 rollback question. It is historical
+bounded evidence, not a claim that the V124 executable supports the current V129 schema.
 
 | Executable | Database | Observed (bounded reads under the prior executable) | Classification |
 |---|---|---|---|
@@ -49,7 +56,7 @@ Rollback is **restore + prior executable**, never an in-place schema downgrade (
 
 **In-place schema downgrade is unsupported unless separately implemented and approved.** There is no
 reverse migration path; the schema head only moves forward (V127 rebuilds `source_intelligence_events`,
-which cannot be losslessly reversed). A rollback reverts the *database* (by restoring a prior backup)
+and V128 re-keys permanent identity; neither can be losslessly reversed in place). A rollback reverts the *database* (by restoring a prior backup)
 and the *executable* (by running the matching prior build) together — it never rewrites a V127 database
 down to a prior head.
 

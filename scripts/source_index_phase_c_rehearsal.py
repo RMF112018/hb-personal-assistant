@@ -26,6 +26,8 @@ import tempfile
 import time
 from pathlib import Path
 
+MINIMUM_SOURCE_ROWS = 800_000
+
 
 def _size(path: Path) -> int:
     return path.stat().st_size if path.exists() else 0
@@ -69,9 +71,13 @@ def main(argv: list[str] | None = None) -> int:
         "rows_per_root": args.rows,
         "origin": args.origin,
         "head": HEAD_VERSION,
-        "rehearsal_root": str(root),
+        # Evidence is safe to commit: never emit the host-specific absolute rehearsal path.
+        "rehearsal_root": "<redacted-disposable-root>",
         "synthetic": True,
         "production_or_nas_touched": False,
+        "minimum_source_rows": MINIMUM_SOURCE_ROWS,
+        "python_version": sys.version.split()[0],
+        "sqlite_version": sqlite3.sqlite_version,
     }
 
     # 1) generate the synthetic fixture (Stage-1 generator), timed
@@ -100,6 +106,9 @@ def main(argv: list[str] | None = None) -> int:
         conn.close()
     ev["origin_row_counts"] = counts
     ev["source_rows"] = counts.get("source_intelligence_sources")
+    ev["scale_requirement_met"] = bool(
+        isinstance(ev["source_rows"], int) and ev["source_rows"] >= MINIMUM_SOURCE_ROWS
+    )
     ev["total_source_index_rows"] = sum(v for v in counts.values() if isinstance(v, int))
     ev["origin_version"] = origin_version
     ev["origin_db_size_bytes"] = _size(db)
@@ -141,6 +150,10 @@ def main(argv: list[str] | None = None) -> int:
     ev["backup_seconds"] = round(_now() - t0, 3)
     ev["backup_size_bytes"] = _size(result.backup_path)
     ev["backup_status"] = result.receipt.status
+    ev["backup_sha256"] = result.receipt.backup_sha256
+    ev["backup_logical_hash"] = result.receipt.backup_logical_hash
+    ev["source_logical_hash"] = result.receipt.source_logical_hash
+    ev["backup_schema_version"] = result.receipt.schema_version
     backup_ok, backup_reason = verify_backup(result.backup_path, result.receipt)
     ev["backup_verify"] = {"ok": backup_ok, "reason": backup_reason}
 
@@ -154,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     ev["restore_validation"] = {"ok": restore_ok, "reason": restore_reason}
     ev["restored_db_size_bytes"] = _size(restored)
 
-    # 5) bounded compatibility read (current executable repository DAO against the migrated V127 DB), timed
+    # 5) bounded compatibility read (current executable repository DAO against the migrated head), timed
     t0 = _now()
     note_counts = dict(SourceIndexRepository(db).generated_note_counts())
     ev["compat_seconds"] = round(_now() - t0, 3)
@@ -162,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
 
     ev["rehearsal_ok"] = bool(
         migrated == HEAD_VERSION
+        and ev["scale_requirement_met"]
         and ev["ledger_complete_1_to_head"]
         and inv.integrity.integrity_check == "ok"
         and inv.integrity.quick_check == "ok"
@@ -174,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
         k: ev[k]
         for k in (
             "source_rows",
+            "scale_requirement_met",
             "total_source_index_rows",
             "generate_seconds",
             "migrate_seconds",

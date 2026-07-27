@@ -26,7 +26,7 @@ from tests.support.source_index_migration_fixture import (
     build_fixture,
 )
 
-# Origins that require an actual upward migration (head is already at V127; ``fresh`` too).
+# Origins that require an actual upward migration (the execution-time head and ``fresh`` do not).
 LEGACY_ORIGINS: list[int] = [o for o in SUPPORTED_ORIGINS if o < HEAD_VERSION]
 
 
@@ -182,14 +182,19 @@ def test_lineage_cycle_is_detected(tmp_path):  # PC-AC-023
     conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         edge = conn.execute(
-            "SELECT source_id, renamed_from_source_id FROM source_intelligence_sources "
-            "WHERE renamed_from_source_id IS NOT NULL LIMIT 1"
+            "SELECT l.source_id, s.renamed_from_source_id "
+            "FROM source_intelligence_sources s "
+            "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+            "AND l.is_current_locator = 1 "
+            "WHERE s.renamed_from_source_id IS NOT NULL LIMIT 1"
         ).fetchone()
     finally:
         conn.close()
     new, predecessor = edge[0], edge[1]  # new.renamed_from = predecessor
     _mutate(db, [(  # predecessor.renamed_from = new  -> 2-cycle
-        "UPDATE source_intelligence_sources SET renamed_from_source_id = ? WHERE source_id = ?",
+        "UPDATE source_intelligence_sources SET renamed_from_source_id = ? "
+        "WHERE source_entity_id = (SELECT source_entity_id FROM source_index_locators "
+        "WHERE source_id = ? AND is_current_locator = 1)",
         (new, predecessor),
     )])
     after = source_index_semantic_inventory(db)
@@ -206,6 +211,21 @@ def test_lineage_dangling_predecessor_is_detected(tmp_path):  # PC-AC-023
     after = source_index_semantic_inventory(db)
     assert not compare_semantic_inventories(before, after).ok
     assert not after.lineage_all_predecessors_exist
+
+
+def test_v128_permanent_identity_mapping_change_is_detected(tmp_path):  # PC-AC-018/023
+    db, before = _origin_then_head(tmp_path, 128, "identity_map.sqlite")
+    _mutate(db, [(
+        "UPDATE source_index_locators SET source_id = 'tampered-source-id' "
+        "WHERE rowid IN (SELECT rowid FROM source_index_locators LIMIT 1)",
+        (),
+    )])
+    after = source_index_semantic_inventory(db)
+    result = compare_semantic_inventories(before, after)
+    assert not result.ok
+    assert any(
+        f.field == "permanent_identity.identity_digests" for f in result.failures()
+    )
 
 
 def test_card_alteration_is_detected(tmp_path):  # PC-AC-025

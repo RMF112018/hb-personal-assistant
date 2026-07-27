@@ -1,6 +1,6 @@
 """PC-WI-01 Stage-2 — migration matrix.
 
-Every supported origin migrates to exactly the execution-time head (V127) and the resulting
+Every supported origin migrates to exactly the execution-time head and the resulting
 ``schema_migrations`` ledger contains every version 1..head exactly once (PC-AC-014, PC-AC-015).
 Read-only inventory is taken via the Stage-1 assurance engine; the migrator is the real
 ``SQLiteMigrator``. No production database, NAS, or watcher is touched.

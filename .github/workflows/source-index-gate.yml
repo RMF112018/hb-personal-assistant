@@ -1,6 +1,7 @@
 name: Source Index Gate
 
-# Phase A correctness & trust gate for the NAS source-index subsystem. Runs the vault deletion-safety,
+# Phase A/B correctness and Phase C migration-assurance gate for the NAS source-index subsystem.
+# Runs the vault deletion-safety,
 # canonical root-mapping, root-trust, poison-file quarantine, generation-hardening, migration, watcher-
 # lifecycle, connector-serving, and tool-surface/manifest-parity suites plus Ruff.
 #
@@ -28,7 +29,11 @@ on:
       - "tests/test_n8c23_client_tool_manifest.py"
       - "tests/test_manifest_schema_parity.py"
       - "tests/test_migrator_v*source_index*.py"
+      - "tests/source_index/**"
+      - "tests/support/source_index_*.py"
       - "scripts/ci_source_index_gate.sh"
+      - "scripts/ci_source_index_phase_c_gate.sh"
+      - "scripts/source_index_phase_c_rehearsal.py"
       - ".github/workflows/source-index-gate.yml"
   push:
     branches:
@@ -50,7 +55,11 @@ on:
       - "tests/test_n8c23_client_tool_manifest.py"
       - "tests/test_manifest_schema_parity.py"
       - "tests/test_migrator_v*source_index*.py"
+      - "tests/source_index/**"
+      - "tests/support/source_index_*.py"
       - "scripts/ci_source_index_gate.sh"
+      - "scripts/ci_source_index_phase_c_gate.sh"
+      - "scripts/source_index_phase_c_rehearsal.py"
       - ".github/workflows/source-index-gate.yml"
 
 jobs:
@@ -58,6 +67,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Phase C's bounded prior-executable compatibility proof checks out a pinned historical SHA.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -73,3 +85,6 @@ jobs:
 
       - name: Run source-index correctness & trust gate
         run: bash scripts/ci_source_index_gate.sh
+
+      - name: Run source-index Phase C migration assurance gate
+        run: bash scripts/ci_source_index_phase_c_gate.sh

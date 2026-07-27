@@ -1,0 +1,59 @@
+{
+  "acceptance_criterion": "PC-AC-048",
+  "backup_seconds": 99.41,
+  "backup_logical_hash": "9f8d90ed97a7f2da27c7c9ce4aebf241d3ea7d3f1e8bbc893d0fd79ded0e12ef",
+  "backup_schema_version": 129,
+  "backup_sha256": "bb63f485d207e85bada3dd3db9d02cea03b82fec6b52b8ce1b3b552210b1bd2b",
+  "backup_size_bytes": 1738481664,
+  "backup_status": "complete",
+  "backup_verify": {
+    "ok": true,
+    "reason": "valid"
+  },
+  "compat_generated_note_counts": {
+    "generated_card_count": 266666
+  },
+  "compat_seconds": 0.08,
+  "generate_seconds": 72.457,
+  "head": 129,
+  "integrity": {
+    "foreign_key_violations": 0,
+    "integrity_check": "ok",
+    "quick_check": "ok"
+  },
+  "ledger_complete_1_to_head": true,
+  "migrate_seconds": 87.615,
+  "migrated_db_size_bytes": 1738481664,
+  "migrated_version": 129,
+  "minimum_source_rows": 800000,
+  "origin": 124,
+  "origin_db_size_bytes": 792150016,
+  "origin_row_counts": {
+    "schema_migrations": 124,
+    "source_intelligence_events": 2,
+    "source_intelligence_fts": 400000,
+    "source_intelligence_metadata": 800002,
+    "source_intelligence_sources": 800002,
+    "source_intelligence_text": 400002
+  },
+  "origin_version": 124,
+  "production_or_nas_touched": false,
+  "python_version": "3.13.5",
+  "rehearsal_ok": true,
+  "rehearsal_root": "<redacted-disposable-root>",
+  "restore_seconds": 2.969,
+  "restore_validation": {
+    "ok": true,
+    "reason": "valid"
+  },
+  "restored_db_size_bytes": 1738481664,
+  "rows_per_root": 400000,
+  "scale_requirement_met": true,
+  "source_rows": 800002,
+  "source_logical_hash": "9f8d90ed97a7f2da27c7c9ce4aebf241d3ea7d3f1e8bbc893d0fd79ded0e12ef",
+  "sqlite_version": "3.49.1",
+  "synthetic": true,
+  "total_source_index_rows": 2400132,
+  "wal_size_bytes_after_migrate": 0,
+  "work_item": "PC-WI-06"
+}
