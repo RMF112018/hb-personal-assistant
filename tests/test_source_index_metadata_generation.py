@@ -56,7 +56,7 @@ def test_v120_migration_idempotent_and_additive(tmp_path):
     assert v1 == v2 == LATEST_SCHEMA_VERSION
     conn = sqlite3.connect(db)
     gcols = {r[1] for r in conn.execute("PRAGMA table_info(source_index_scan_generations)")}
-    scols = {r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)")}
+    lcols = {r[1] for r in conn.execute("PRAGMA table_info(source_index_locators)")}
     mcols = {r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_metadata)")}
     idx = {
         r[0]
@@ -72,7 +72,7 @@ def test_v120_migration_idempotent_and_additive(tmp_path):
         "reconcile_cursor_json",
         "policy_fingerprint",
     } <= gcols
-    assert {"last_seen_generation", "last_seen_at"} <= scols
+    assert {"last_seen_generation", "last_seen_at"} <= lcols
     assert {"extraction_disposition", "content_indexed_at"} <= mcols
     assert "idx_source_index_scan_generations_active" in idx
 

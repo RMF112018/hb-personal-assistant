@@ -119,7 +119,8 @@ def test_metadata_only_files_never_hashed_or_parsed(tmp_path, monkeypatch):
         r[0]: (r[1], r[2], r[3])
         for r in conn.execute(
             "SELECT s.rel_path, m.extraction_status, m.content_sha256, m.extraction_disposition "
-            "FROM source_intelligence_sources s JOIN source_intelligence_metadata m USING(source_id)"
+            "FROM source_intelligence_sources s "
+            "JOIN source_intelligence_metadata m USING(source_entity_id)"
         ).fetchall()
     }
     txt = conn.execute("SELECT COUNT(*) FROM source_intelligence_text").fetchone()[0]
@@ -460,6 +461,7 @@ def test_health_counts_and_completeness(tmp_path):
         "content_pending": 1,  # ...but pending extraction (targeted path / PR 3 queue)
         "intentional_metadata_only": 1,  # b.xlsx
         "metadata_only": 1,
+        "policy_unverified": 0,
         "failed": 0,
         "unsupported": 1,  # c.png
         "too_large": 0,
@@ -481,9 +483,12 @@ def test_health_query_uses_root_index_no_full_scan(tmp_path):
     conn = sqlite3.connect(db)
     plan = conn.execute(
         "EXPLAIN QUERY PLAN SELECT m.extraction_status, COUNT(*) "
-        "FROM source_intelligence_sources s JOIN source_intelligence_metadata m ON m.source_id=s.source_id "
-        "LEFT JOIN source_intelligence_text t ON t.source_id=s.source_id "
-        "WHERE s.source_kind='external_file' AND s.source_root_key=? AND s.deleted=0 "
+        "FROM source_intelligence_sources s "
+        "JOIN source_index_locators l ON l.source_entity_id=s.source_entity_id "
+        " AND l.is_current_locator=1 "
+        "JOIN source_intelligence_metadata m ON m.source_entity_id=s.source_entity_id "
+        "LEFT JOIN source_intelligence_text t ON t.source_entity_id=s.source_entity_id "
+        "WHERE s.source_kind='external_file' AND l.source_root_key=? AND s.deleted=0 "
         "GROUP BY m.extraction_status",
         ("work",),
     ).fetchall()
@@ -491,7 +496,7 @@ def test_health_query_uses_root_index_no_full_scan(tmp_path):
     txt = " | ".join(str(r[-1]) for r in plan)
     # A root-scoped index is used (idx_si_sources_root, or after V122 the wider reconciliation index
     # idx_si_sources_last_seen_gen, which is also source_root_key-prefixed) — never a full-table scan.
-    assert "idx_si_sources_root" in txt or "idx_si_sources_last_seen_gen" in txt
+    assert "idx_locators_active_path" in txt or "idx_locators_reconcile" in txt
     assert "SCAN source_intelligence_sources" not in txt  # no full-table scan on health
 
 

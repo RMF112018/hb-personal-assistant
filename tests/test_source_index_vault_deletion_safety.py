@@ -57,7 +57,7 @@ def _seed_generated_card(db: str, source_id: str, rel_path: str) -> None:
     with sqlite3.connect(db) as c:
         c.execute(
             "INSERT INTO source_intelligence_generated_notes "
-            "(generated_note_id, source_id, note_rel_path, generation_status, generated_at, updated_at) "
+            "(generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at, updated_at) "
             "VALUES (?,?,?,?,?,?)",
             (f"gn__{source_id}", source_id, rel_path, "generated", "2026-01-01", "2026-01-01"),
         )
@@ -67,7 +67,8 @@ def _seed_generated_card(db: str, source_id: str, rel_path: str) -> None:
 def _card_status(db: str, source_id: str) -> str | None:
     with sqlite3.connect(db) as c:
         row = c.execute(
-            "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?",
+            "SELECT generation_status FROM source_intelligence_generated_notes "
+            "WHERE source_entity_id=?",
             (source_id,),
         ).fetchone()
     return row[0] if row else None
@@ -289,7 +290,7 @@ def test_vault_confirmed_delete_updates_source_fts_and_card_state_atomically(
     (vault / "b.md").unlink()
     report = scan_vault_notes(repo, cfg)
     assert report.deleted == 1
-    b_after = repo.lookup_by_path("obsidian_note", "b.md")
+    b_after = repo.get_source_detail(sid)
     # all three side-effects applied consistently: source deactivated, FTS row gone, card staled
     assert b_after["deleted"] is True
     assert not _fts_rowid_present(db, b["fts_rowid"])

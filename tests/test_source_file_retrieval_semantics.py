@@ -22,22 +22,22 @@ from hb_assistant.obsidian_mcp.source_connector_models import (
     SourceConnectorValidationError,
     encode_source_ref,
 )
-from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
 def _row(db: str, *, root_key: str, rel_path: str, ext: str) -> str:
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
-    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
-                  (sid, ext, 10, 1, "d", "pending", now))
-        c.commit()
-    return sid
+    return SourceIndexRepository(db).upsert_source_file({
+        "source_kind": "external_file",
+        "source_root_key": root_key,
+        "rel_path": rel_path,
+        "file_ext": ext,
+        "size_bytes": 10,
+        "mtime_ns": 1,
+        "content_sha256": "d",
+        "extraction_status": "pending",
+        "extraction_disposition": "metadata_only",
+    })
 
 
 def _trust(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
