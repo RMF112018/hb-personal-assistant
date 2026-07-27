@@ -6,9 +6,14 @@ apply() is safe to call repeatedly.
 
 from __future__ import annotations
 
+import re
 import sqlite3
+import threading
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Literal
 
 from .connection import get_connection, open_connection, transaction
 
@@ -18,7 +23,759 @@ if TYPE_CHECKING:
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 127
+LATEST_SCHEMA_VERSION = 129
+
+# --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R8) -------
+# The V128 always-revalidate oracle validates a live DB by exact-equality against a CANONICAL V128
+# reference (``V128Reference``), built once per process from a fresh scratch migrate and cached in
+# ``_V128_REFERENCE``. It has two parts, both reference-derived (nothing hand-typed):
+#   * ``owned_schema`` — byte-exact ``{"type:name": create_sql}`` for the 10 fully-V128-owned tables +
+#     their own indexes. Complete by construction: every column/type/nullability/PK/CHECK/UNIQUE/FK
+#     (incl. on_delete/on_update)/default and every index (columns/uniqueness/partial predicate).
+#   * ``nonfk_contracts`` — a per-table ``NonFkContract`` for the two non-FK tables (events,
+#     scan_quarantine). Their FULL CREATE sql is construction-dependent (``source_entity_id`` is
+#     ALTER-appended in a fresh migrate but inline in a V127/quarantine rebuild), so V128's exact
+#     contribution — one column, one FK (incl. DEFERRABLE/INITIALLY, which PRAGMA cannot expose, so
+#     the FK clause is parsed from ``sqlite_master.sql`` into ``FkClauseSignature``), one entity index
+#     — is compared reference-derived rather than byte-compared. Unrelated V125/V127/future indexes are
+#     deliberately NOT policed.
+# Construction is single-flight + connection-bound + reentrancy-safe (see ``_v128_canonical_schema`` /
+# ``_v128_schema_current``): an explicit three-way state machine, not an RLock (whose same-thread
+# reacquire would allow recursive rebuilds). ``_V128_BUILD_STATE`` (a ``threading.local``) holds the
+# actual scratch ``sqlite3.Connection`` object on the builder thread only, so the bootstrap check is
+# bound to one real connection object, never a path another connection could reopen.
+_V128_REFERENCE: "V128Reference | None" = None
+_V128_BUILD_LOCK = threading.Lock()
+_V128_BUILD_STATE = threading.local()
+# Test-only synchronous build-barrier seam: a module-level callback invoked ON THE BUILDER THREAD after
+# the scratch connection is stored in the thread-local and before the scratch migrate runs. Defaults to
+# ``None`` (no production effect). Deterministic tests set it to block (two-thread single-flight proof)
+# or to re-enter the oracle on a different connection (same-thread reentrancy proof).
+_V128_BUILD_BARRIER: "Callable[[], None] | None" = None
+# ADR-003 R10 §R10.6.2 — the 128-reference cache. The V129 attribution oracle compares the live
+# V128-owned surface against a reference built by the REAL migrator STOPPED at version 128 (the
+# private capability-gated ``_apply_reference_build_stop_at_128`` route — F-001; there is NO public
+# ``target_version`` seam on ``apply()``), so the reference-derived V129 delta (129 − 128) is derived,
+# never hand-listed. Cached once per process (single-flight) alongside the head (129) reference in
+# ``_V128_REFERENCE``. Its own lock so a concurrent 128-build never blocks on the 129-build lock; the
+# two builds are sequential on any one thread (never nested) so they safely share ``_V128_BUILD_STATE``.
+_V128_REFERENCE_128: "V128Reference | None" = None
+_V128_BUILD_LOCK_128 = threading.Lock()
+
+
+class _V128ReferenceBuildCapability:
+    """Unforgeable private capability that authorizes the internal stop-at-128 reference-build route
+    (ADR-003 R10 §R10.6.2 / IMPL-V129-R2-F-001). A single module-private instance
+    (``_V128_REFERENCE_BUILD_CAPABILITY``) exists; the route verifies object identity against it AND
+    requires the exact builder-state connection, so the stop-at-128 seam is unreachable through the
+    public ``apply`` surface (which exposes NO target-version selection)."""
+
+    __slots__ = ()
+
+
+_V128_REFERENCE_BUILD_CAPABILITY = _V128ReferenceBuildCapability()
+
+
+class V128OracleError(RuntimeError):
+    """Fail-closed condition in the V128 structural oracle: an unparseable/ambiguous FK clause, or a
+    reentrant reference build (``v128_reference_build_reentrancy``). Never swallowed into a silent
+    True — it propagates so the caller fails closed rather than trusting an unverifiable schema."""
+
+
+# Tables whose FULL schema is owned + constructed by the V128 rebuild (always via one CREATE): the 3
+# new identity tables, the rebuilt parent, and the 6 content children. These are byte-exact compared
+# against the canonical reference. The two non-FK tables (events, scan_quarantine) are handled
+# SEPARATELY (``_v128_nonfk_entity_refs_ok`` + ``NonFkContract``): V127 / the quarantine migration own
+# their base schema, and V128 only ADDS a nullable ``source_entity_id`` FK + index.
+_V128_OWNED_TABLES: tuple[str, ...] = (
+    "source_index_entities",
+    "source_index_locators",
+    "source_index_move_signals",
+    "source_intelligence_sources",
+    "source_intelligence_metadata",
+    "source_intelligence_text",
+    "source_intelligence_summaries",
+    "source_intelligence_chunks",
+    "source_intelligence_generated_notes",
+    "source_intelligence_relationships",
+)
+# The two non-FK tables V128 reparents, paired with the entity index V128 adds to each.
+_V128_NONFK_ENTITY_INDEXES: tuple[tuple[str, str], ...] = (
+    ("source_intelligence_events", "idx_si_events_entity"),
+    ("source_index_scan_quarantine", "idx_si_scan_quarantine_entity"),
+)
+
+# --- V129 additive layer (ADR-003 R8): observation re-homing + serving-trust gate + move disposition -
+# V129 is forward-only, immutable-additive (ALTER … ADD COLUMN, all nullable + one new index) on the
+# two ALREADY V128-owned identity tables (source_index_locators, source_index_move_signals). It rides
+# the V128 byte-exact permanent-identity oracle (§9): the canonical reference migrates to
+# LATEST_SCHEMA_VERSION (=129), so its two identity-table CREATE SQLs already carry these columns/index
+# and ``_v128_schema_current`` detects a dropped V129 column for free. These constants single-source the
+# V129 additive shape shared by the migrator's structural bootstrap (§9.2) and the fail-closed layer
+# attribution (§9.3) so the two never diverge. (Runtime WRITE/apply of the disposition columns is
+# PI-WI-03b — NOT realized here; this unit only ADDS the columns.)
+# Four nullable observation/serving columns re-homed onto the locator epoch (ADR-003 R8 §4.1).
+_V129_LOCATOR_COLS: tuple[str, ...] = (
+    "last_seen_generation", "last_seen_at", "last_indexed_fingerprint", "policy_validation_state",
+)
+# Five nullable move-signal disposition columns; the last two are the applied-only resulting_* FKs
+# (ADR-003 R8 §7.2).
+_V129_MOVE_SIGNAL_COLS: tuple[str, ...] = (
+    "disposition", "disposition_at", "disposition_reason",
+    "resulting_entity_id", "resulting_locator_id",
+)
+# from-column -> (target table, target column) for the two applied-only nullable resulting_* FK edges.
+_V129_MOVE_SIGNAL_FKS: dict[str, tuple[str, str]] = {
+    "resulting_entity_id": ("source_index_entities", "source_entity_id"),
+    "resulting_locator_id": ("source_index_locators", "locator_id"),
+}
+# Column-level enum/serving CHECK fragments each V129 column must retain verbatim (normalized substring
+# match, mirroring the V128 REQUIRED_SQL_FRAGMENTS check).
+_V129_LOCATOR_CHECK_FRAGMENTS: tuple[str, ...] = (
+    "policy_validation_state IS NULL OR policy_validation_state='policy_stale'",
+)
+_V129_MOVE_SIGNAL_CHECK_FRAGMENTS: tuple[str, ...] = (
+    "disposition IN ('applied','rejected_stale','rejected_target_occupied','malformed')",
+    "disposition_reason IN ('ok','source_locator_not_current','source_locator_tombstoned',"
+    "'missing_source_locator','target_path_occupied','malformed_payload')",
+)
+
+
+@dataclass(frozen=True)
+class FkClauseSignature:
+    """Structured, immutable signature of a ``source_entity_id`` FK clause, parsed token/paren/quote-
+    aware from ``sqlite_master.sql`` (a permissive regex would risk another incomplete oracle). Carries
+    the facets PRAGMA cannot expose — DEFERRABLE / INITIALLY — plus the column-vs-table declaration
+    kind and composite column lists, all case/whitespace-normalized."""
+
+    declaration_kind: Literal["column", "table"]
+    source_columns: tuple[str, ...]
+    target_table: str
+    target_columns: tuple[str, ...]
+    match: str
+    on_update: str
+    on_delete: str
+    deferrability: Literal["omitted", "deferrable", "not_deferrable"]
+    initially: Literal["omitted", "deferred", "immediate"]
+
+
+@dataclass(frozen=True)
+class NonFkContract:
+    """V128's exact, reference-derived contribution to one non-FK table — all members immutable."""
+
+    column: tuple  # PRAGMA table_xinfo tuple for source_entity_id: (type, notnull, dflt, pk, hidden)
+    fk_groups: tuple  # tuple of FK groups (tuple of rows) that contain a source_entity_id row
+    fk_signature: FkClauseSignature  # structured source_entity_id FK-clause signature
+    entity_indexes: tuple  # sorted tuple of tagged index signatures involving source_entity_id
+    # (("sql", normalized_sql) for explicit indexes, ("auto", origin, unique, partial, key_terms) for
+    # auto-created UNIQUE/PK indexes) — see ``_v128_entity_index_signatures``
+
+
+@dataclass(frozen=True)
+class V128Reference:
+    """The single, deeply-immutable canonical V128 reference bundle (published atomically)."""
+
+    owned_schema: "MappingProxyType[str, str]"  # byte-exact 10 core tables + their indexes
+    nonfk_contracts: "MappingProxyType[str, NonFkContract]"
+
+
+def _v128_normalize_sql(sql: "str | None") -> str:
+    """Shared SQL normalizer used everywhere V128 sql is compared: collapse all whitespace and strip
+    the ``IF [NOT] EXISTS`` guard so DDL created with or without the guard (the rebuild vs the additive
+    repair) compares equal. ``None`` (an auto-created object with no stored sql) normalizes to ``""``."""
+    if not sql:
+        return ""
+    norm = " ".join(sql.split())
+    return norm.replace("IF NOT EXISTS ", "").replace("IF EXISTS ", "")
+
+
+def _v128_schema_snapshot(conn: "sqlite3.Connection") -> "dict[str, str]":
+    """Normalized ``{"type:name": create_sql}`` for every V128-owned table and every explicit index
+    on those tables (``sqlite_master``). Auto-created indexes (from UNIQUE/PK constraints; ``sql IS
+    NULL``) are skipped because their definition already lives verbatim in the parent table's CREATE
+    sql. ``IF [NOT] EXISTS`` is stripped (via ``_v128_normalize_sql``) so identical DDL created with or
+    without the guard compares equal. An exact dict-equality of two snapshots is complete structural
+    parity."""
+    owned = set(_V128_OWNED_TABLES)
+    snapshot: dict[str, str] = {}
+    for obj_type, name, tbl_name, sql in conn.execute(
+        "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE type IN ('table', 'index')"
+    ).fetchall():
+        if tbl_name not in owned or sql is None:
+            continue
+        snapshot[f"{obj_type}:{name}"] = _v128_normalize_sql(sql)
+    return snapshot
+
+
+# A leading SQL identifier: bare word, or a quoted/bracketed identifier.
+_V128_IDENT_RE = re.compile(r"""\s*(?:"(?:[^"]|"")*"|`(?:[^`]|``)*`|\[[^\]]*\]|[A-Za-z_][A-Za-z0-9_$]*)""")
+# The word-boundary REFERENCES keyword inside a column definition (case-insensitive).
+_V128_REFERENCES_RE = re.compile(r"\bREFERENCES\b", re.IGNORECASE)
+
+
+def _v128_split_top_level(body: str) -> "list[str]":
+    """Split a CREATE-TABLE body into top-level comma-separated segments, respecting nested parens and
+    quoted identifiers/strings (``'`` ``"`` `` ` `` ``[]``). Quote-aware so a comma or paren inside a
+    string/identifier never splits a segment."""
+    segments: list[str] = []
+    depth = 0
+    cur: list[str] = []
+    i = 0
+    n = len(body)
+    while i < n:
+        ch = body[i]
+        if ch in ("'", '"', "`"):
+            cur.append(ch)
+            i += 1
+            while i < n:
+                cur.append(body[i])
+                if body[i] == ch:
+                    # A doubled quote is an escaped literal quote, not a close.
+                    if i + 1 < n and body[i + 1] == ch:
+                        cur.append(body[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "[":
+            while i < n:
+                cur.append(body[i])
+                if body[i] == "]":
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            segments.append("".join(cur))
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
+    if "".join(cur).strip():
+        segments.append("".join(cur))
+    return segments
+
+
+def _v128_unquote_ident(tok: str) -> str:
+    """Normalize a possibly-quoted SQL identifier to its bare lowercase form."""
+    t = tok.strip()
+    if len(t) >= 2 and t[0] in ("'", '"', "`") and t[-1] == t[0]:
+        t = t[1:-1].replace(t[0] * 2, t[0])
+    elif len(t) >= 2 and t[0] == "[" and t[-1] == "]":
+        t = t[1:-1]
+    return t.lower()
+
+
+def _v128_paren_list(segment: str, start: int) -> "tuple[list[str], int]":
+    """Parse a parenthesized, comma-separated identifier list beginning at ``segment[start] == '('``.
+    Returns the unquoted identifiers and the index just past the closing paren. Quote/paren-aware."""
+    assert segment[start] == "("
+    depth = 0
+    i = start
+    n = len(segment)
+    buf: list[str] = []
+    parts: list[str] = []
+    while i < n:
+        ch = segment[i]
+        if ch in ("'", '"', "`"):
+            buf.append(ch)
+            i += 1
+            while i < n:
+                buf.append(segment[i])
+                if segment[i] == ch:
+                    if i + 1 < n and segment[i + 1] == ch:
+                        buf.append(segment[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "[":
+            while i < n:
+                buf.append(segment[i])
+                if segment[i] == "]":
+                    i += 1
+                    break
+                i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            if depth == 1:
+                i += 1
+                continue
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                parts.append("".join(buf))
+                i += 1
+                break
+        if ch == "," and depth == 1:
+            parts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    cols = [_v128_unquote_ident(p) for p in parts if p.strip()]
+    return cols, i
+
+
+def _v128_parse_references_tail(tail: str) -> "tuple[str, tuple[str, ...], str, str, str, str, str]":
+    """Parse the portion of an FK clause STARTING at the ``REFERENCES`` keyword (already consumed by
+    the caller): ``<target_table> [ (cols) ] [MATCH x] [ON DELETE ...] [ON UPDATE ...]
+    [[NOT] DEFERRABLE [INITIALLY ...]]``. Returns
+    ``(target_table, target_columns, match, on_update, on_delete, deferrability, initially)``. Raises
+    ``V128OracleError`` on an unparseable/ambiguous tail."""
+    s = tail.strip()
+    # target table (bare or quoted), then optional (col, ...)
+    m = _V128_IDENT_RE.match(s)
+    if not m:
+        raise V128OracleError("v128_fk_clause_unparseable")
+    target_table = _v128_unquote_ident(m.group(0))
+    i = m.end()
+    while i < len(s) and s[i].isspace():
+        i += 1
+    target_columns: tuple[str, ...] = ()
+    if i < len(s) and s[i] == "(":
+        cols, i = _v128_paren_list(s, i)
+        target_columns = tuple(cols)
+    rest = " ".join(s[i:].split()).upper()
+    toks = rest.split()
+
+    match = "SIMPLE"
+    on_update = "NO ACTION"
+    on_delete = "NO ACTION"
+    deferrability: str = "omitted"
+    initially: str = "omitted"
+
+    j = 0
+    while j < len(toks):
+        t = toks[j]
+        if t == "MATCH" and j + 1 < len(toks):
+            match = toks[j + 1]
+            j += 2
+            continue
+        if t == "ON" and j + 2 < len(toks):
+            action_kw = toks[j + 1]
+            action, consumed = _v128_read_fk_action(toks, j + 2)
+            if action_kw == "UPDATE":
+                on_update = action
+            elif action_kw == "DELETE":
+                on_delete = action
+            else:
+                raise V128OracleError("v128_fk_clause_unparseable")
+            j += 2 + consumed
+            continue
+        if t == "NOT" and j + 1 < len(toks) and toks[j + 1] == "DEFERRABLE":
+            deferrability = "not_deferrable"
+            j += 2
+            continue
+        if t == "DEFERRABLE":
+            deferrability = "deferrable"
+            j += 1
+            if j + 1 < len(toks) and toks[j] == "INITIALLY":
+                mode = toks[j + 1]
+                if mode == "DEFERRED":
+                    initially = "deferred"
+                elif mode == "IMMEDIATE":
+                    initially = "immediate"
+                else:
+                    raise V128OracleError("v128_fk_clause_unparseable")
+                j += 2
+            continue
+        # Any unrecognized trailing token in an FK clause is ambiguous -> fail closed.
+        raise V128OracleError("v128_fk_clause_unparseable")
+    return target_table, target_columns, match, on_update, on_delete, deferrability, initially
+
+
+def _v128_read_fk_action(toks: "list[str]", i: int) -> "tuple[str, int]":
+    """Read an ON UPDATE/ON DELETE action starting at ``toks[i]``. Returns (canonical action, tokens
+    consumed). Recognizes CASCADE / RESTRICT / SET NULL / SET DEFAULT / NO ACTION."""
+    if i >= len(toks):
+        raise V128OracleError("v128_fk_clause_unparseable")
+    t = toks[i]
+    if t in ("CASCADE", "RESTRICT"):
+        return t, 1
+    if t == "SET" and i + 1 < len(toks) and toks[i + 1] in ("NULL", "DEFAULT"):
+        return f"SET {toks[i + 1]}", 2
+    if t == "NO" and i + 1 < len(toks) and toks[i + 1] == "ACTION":
+        return "NO ACTION", 2
+    raise V128OracleError("v128_fk_clause_unparseable")
+
+
+def _v128_parse_fk_clause_signature(create_sql: str) -> FkClauseSignature:
+    """Token/paren/quote-aware extraction of the ONE ``source_entity_id`` FK clause from a table's
+    ``CREATE`` sql. Distinguishes column-level (``source_entity_id ... REFERENCES ...``) from
+    table-level (``FOREIGN KEY(...source_entity_id...) REFERENCES ...``), preserves composite column
+    lists, normalizes case/whitespace, and requires EXACTLY ONE recognized entity-FK declaration —
+    raising ``V128OracleError`` on zero, more than one, or an ambiguous/unparseable clause (NEVER a
+    PRAGMA-only fallback). Deferrability/init-mode (absent from PRAGMA) come from here."""
+    open_paren = create_sql.find("(")
+    close_paren = create_sql.rfind(")")
+    if open_paren == -1 or close_paren <= open_paren:
+        raise V128OracleError("v128_fk_clause_unparseable")
+    body = create_sql[open_paren + 1 : close_paren]
+    found: list[FkClauseSignature] = []
+    for raw in _v128_split_top_level(body):
+        seg = raw.strip()
+        if not seg:
+            continue
+        upper = seg.upper()
+        # Table-level constraint? (optionally CONSTRAINT <name>) FOREIGN KEY (cols) REFERENCES ...
+        head = upper
+        work = seg
+        if head.startswith("CONSTRAINT"):
+            cm = _V128_IDENT_RE.match(seg[len("CONSTRAINT"):].lstrip())
+            if cm is None:
+                continue
+            after = seg[len("CONSTRAINT"):].lstrip()[cm.end():].lstrip()
+            work = after
+            head = after.upper()
+        if head.startswith("FOREIGN KEY") or head.startswith("FOREIGN  KEY"):
+            fk_start = work.upper().find("FOREIGN")
+            paren = work.find("(", fk_start)
+            if paren == -1:
+                raise V128OracleError("v128_fk_clause_unparseable")
+            src_cols, after_idx = _v128_paren_list(work, paren)
+            if "source_entity_id" not in src_cols:
+                continue
+            rest = work[after_idx:].lstrip()
+            if not rest.upper().startswith("REFERENCES"):
+                raise V128OracleError("v128_fk_clause_unparseable")
+            tt, tc, match, onu, ond, def_, init_ = _v128_parse_references_tail(
+                rest[len("REFERENCES"):]
+            )
+            found.append(FkClauseSignature(
+                declaration_kind="table", source_columns=tuple(src_cols), target_table=tt,
+                target_columns=tc, match=match, on_update=onu, on_delete=ond,
+                deferrability=def_, initially=init_,  # type: ignore[arg-type]
+            ))
+            continue
+        if head.startswith(("PRIMARY KEY", "UNIQUE", "CHECK")):
+            continue  # other table-level constraints — not FK declarations
+        # Column definition: first token is the column name.
+        cm = _V128_IDENT_RE.match(seg)
+        if cm is None:
+            continue
+        col_name = _v128_unquote_ident(cm.group(0))
+        if col_name != "source_entity_id":
+            continue
+        ref_idx = _V128_REFERENCES_RE.search(seg)
+        if ref_idx is None:
+            continue  # source_entity_id column with no inline FK — not an FK declaration
+        tt, tc, match, onu, ond, def_, init_ = _v128_parse_references_tail(
+            seg[ref_idx.end():]
+        )
+        found.append(FkClauseSignature(
+            declaration_kind="column", source_columns=("source_entity_id",), target_table=tt,
+            target_columns=tc, match=match, on_update=onu, on_delete=ond,
+            deferrability=def_, initially=init_,  # type: ignore[arg-type]
+        ))
+    if len(found) != 1:
+        raise V128OracleError("v128_fk_clause_ambiguous")
+    return found[0]
+
+
+def _v128_skip_quoted(s: str, i: int, quote: str) -> int:
+    """Return the index just past a quoted region opened by ``quote`` at ``s[i]`` — a ``'`` string
+    literal or a ``"``/`` ` `` quoted identifier, honoring the doubled-quote escape. Raises
+    ``V128OracleError`` when the region is unterminated (fail-closed, never a silent stop)."""
+    i += 1
+    n = len(s)
+    while i < n:
+        if s[i] == quote:
+            if i + 1 < n and s[i + 1] == quote:
+                i += 2
+                continue
+            return i + 1
+        i += 1
+    raise V128OracleError("v128_index_expr_unterminated_quote")
+
+
+def _v128_skip_bracket(s: str, i: int) -> int:
+    """Return the index just past a ``[...]`` bracketed identifier opened at ``s[i]``. Raises
+    ``V128OracleError`` when unterminated."""
+    i += 1
+    n = len(s)
+    while i < n:
+        if s[i] == "]":
+            return i + 1
+        i += 1
+    raise V128OracleError("v128_index_expr_unterminated_bracket")
+
+
+def _v128_skip_ws_comments(s: str, i: int) -> int:
+    """Advance past any run of whitespace, ``--`` line comments (to ``\\n`` / end), and ``/* */`` block
+    comments starting at ``s[i]``; return the index of the first following char that is neither
+    whitespace nor a comment (or ``len(s)``). Raises ``V128OracleError`` on an unterminated block
+    comment (fail-closed, never a silent stop). This is the single comment/whitespace-skip idiom shared
+    by ``_v128_tokenize_index_expr`` and ``_v128_index_key_region`` so the two never diverge on what
+    counts as ignorable text — a ``(`` inside a comment must never be mistaken for the key list."""
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        if ch.isspace():
+            i += 1
+            continue
+        if ch == "-" and i + 1 < n and s[i + 1] == "-":  # -- line comment (to newline / end)
+            i += 2
+            while i < n and s[i] != "\n":
+                i += 1
+            continue
+        if ch == "/" and i + 1 < n and s[i + 1] == "*":  # /* block comment */
+            end = s.find("*/", i + 2)
+            if end == -1:
+                raise V128OracleError("v128_index_expr_unterminated_comment")
+            i = end + 2
+            continue
+        break
+    return i
+
+
+def _v128_tokenize_index_expr(s: str) -> "list[tuple[str, str, bool]]":
+    """Tokenize an index key-expression region into ``(kind, value, quoted)`` tuples for
+    ``_v128_expr_references_column``. ``kind`` is ``"ident"`` (``value`` = the unquoted, lowercased
+    identifier; ``quoted`` True for a ``"…"``/`` `…` ``/``[…]`` form) or ``"punct"`` (a single
+    operator/punctuation char). Whitespace, string literals, and ``--`` line / ``/* */`` block comments
+    are dropped (via ``_v128_skip_ws_comments``). Parenthesis balance is enforced: a ``)`` that drops
+    depth below zero, or a residual non-zero depth at end, raises ``V128OracleError`` (fail-closed —
+    an unbalanced key expression yields no silent verdict). Raises ``V128OracleError`` on an
+    unterminated string / block comment / quoted identifier. Reuses the quote-aware scanning idiom of
+    ``_v128_split_top_level`` rather than a permissive regex."""
+    tokens: list[tuple[str, str, bool]] = []
+    i = 0
+    n = len(s)
+    depth = 0
+    while i < n:
+        i = _v128_skip_ws_comments(s, i)
+        if i >= n:
+            break
+        ch = s[i]
+        if ch == "'":  # string literal — skipped (never a column reference)
+            i = _v128_skip_quoted(s, i, "'")
+            continue
+        if ch in ('"', "`"):  # quoted identifier
+            end = _v128_skip_quoted(s, i, ch)
+            tokens.append(("ident", _v128_unquote_ident(s[i:end]), True))
+            i = end
+            continue
+        if ch == "[":  # bracketed identifier
+            end = _v128_skip_bracket(s, i)
+            tokens.append(("ident", _v128_unquote_ident(s[i:end]), True))
+            i = end
+            continue
+        if ch.isalpha() or ch == "_":  # bare identifier / keyword
+            j = i + 1
+            while j < n and (s[j].isalnum() or s[j] in "_$"):
+                j += 1
+            tokens.append(("ident", s[i:j].lower(), False))
+            i = j
+            continue
+        if ch == "(":  # track paren balance — fail closed on unbalanced input
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                raise V128OracleError("v128_index_expr_unbalanced_paren")
+        tokens.append(("punct", ch, False))  # operator / punctuation / digit
+        i += 1
+    if depth != 0:
+        raise V128OracleError("v128_index_expr_unbalanced_paren")
+    return tokens
+
+
+def _v128_expr_references_column(expr_sql: str, column: str) -> bool:
+    """Fail-closed, token/paren/quote-aware test of whether the indexed-columns expression region
+    ``expr_sql`` contains a **column reference** to ``column`` (e.g. ``source_entity_id``).
+
+    A ``column`` token is a reference when it is a bare identifier (case-insensitive) or a quoted
+    identifier (``"…"``/`` `…` ``/``[…]``), UNLESS its syntactic role is — per that token — a function
+    name (immediately followed by ``(``), a type name (the identifier right after ``AS`` in a
+    ``CAST(… AS <type>)``), or a collation name (the identifier right after ``COLLATE``). The exclusion
+    is per-token, not whole-construct suppression, so a genuine column reference inside those constructs
+    still matches: ``lower(source_entity_id)``, ``CAST(source_entity_id AS TEXT)``,
+    ``source_entity_id COLLATE NOCASE`` and ``coalesce(source_entity_id, 'source_entity_id')`` are all
+    True, while ``source_entity_id(status)``, ``CAST(status AS source_entity_id)``,
+    ``status COLLATE source_entity_id`` and the string literal ``'source_entity_id'`` are all False.
+    String literals and comments are ignored. Raises ``V128OracleError`` on malformed/unterminated
+    input — ambiguity fails closed, never a silent ``False``."""
+    target = column.lower()
+    tokens = _v128_tokenize_index_expr(expr_sql)
+    for k, (kind, value, _quoted) in enumerate(tokens):
+        if kind != "ident" or value != target:
+            continue
+        nxt = tokens[k + 1] if k + 1 < len(tokens) else None
+        if nxt is not None and nxt[0] == "punct" and nxt[1] == "(":
+            continue  # function name: source_entity_id(...)
+        prev = tokens[k - 1] if k >= 1 else None
+        if prev is not None and prev[0] == "ident" and not prev[2] and prev[1] in ("as", "collate"):
+            continue  # type name (CAST(... AS source_entity_id)) / collation (COLLATE source_entity_id)
+        return True
+    return False
+
+
+def _v128_index_key_region(index_sql: str) -> str:
+    """Extract the indexed-columns expression region (the text INSIDE the key-list parentheses) from a
+    ``CREATE INDEX`` statement, quote/bracket/paren/comment-aware. ``--`` line and ``/* */`` block
+    comments are skipped (via ``_v128_skip_ws_comments``) both while locating the first top-level ``(``
+    and while depth-tracking to its match, so a ``(`` inside a preceding/intervening comment never
+    mis-locates the key list. The trailing ``WHERE`` partial predicate, which lives AFTER the key-list
+    close paren, is excluded — detection is key-only (R9-PR-F-002). Raises ``V128OracleError`` when no
+    balanced key-list parenthesis is present (fail-closed)."""
+    n = len(index_sql)
+    # Locate the first top-level '(' (the key list), skipping any quoted/bracketed identifier AND any
+    # -- / /* */ comment (via _v128_skip_ws_comments) so a '(' inside a comment is never mis-detected.
+    i = 0
+    start = -1
+    while i < n:
+        i = _v128_skip_ws_comments(index_sql, i)
+        if i >= n:
+            break
+        ch = index_sql[i]
+        if ch in ("'", '"', "`"):
+            i = _v128_skip_quoted(index_sql, i, ch)
+            continue
+        if ch == "[":
+            i = _v128_skip_bracket(index_sql, i)
+            continue
+        if ch == "(":
+            start = i
+            break
+        i += 1
+    if start == -1:
+        raise V128OracleError("v128_index_key_region_missing")
+    depth = 0
+    j = start
+    while j < n:
+        j = _v128_skip_ws_comments(index_sql, j)
+        if j >= n:
+            break
+        ch = index_sql[j]
+        if ch in ("'", '"', "`"):
+            j = _v128_skip_quoted(index_sql, j, ch)
+            continue
+        if ch == "[":
+            j = _v128_skip_bracket(index_sql, j)
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return index_sql[start + 1 : j]
+        j += 1
+    raise V128OracleError("v128_index_key_region_unbalanced")
+
+
+def _v128_entity_index_signatures(conn: "sqlite3.Connection", table: str) -> tuple:
+    """Construction-independent signatures of every index on ``table`` whose KEY (a named column or a
+    key expression — NOT the ``WHERE`` partial predicate, R9-PR-F-002) references the
+    ``source_entity_id`` column. Auto-created indexes (``sqlite_master.sql IS NULL`` — a table-level
+    ``UNIQUE``/``PRIMARY KEY`` on ``source_entity_id``) are INCLUDED (the pre-R9 loop skipped them,
+    false-open). An index involves ``source_entity_id`` when a named key term (``cid >= 0``) equals it
+    case-insensitively, or a key expression (``cid == -2``) references it via
+    ``_v128_expr_references_column`` on the paren-extracted indexed-columns region.
+
+    Each involved index becomes a type-homogeneous tagged tuple so ``sorted()`` never mixes shapes:
+
+      * explicit index (has sql) -> ``("sql", normalized_sql)`` (full sql, incl. any ``WHERE``);
+      * auto-index (sql NULL, unstable ``sqlite_autoindex_*`` name) ->
+        ``("auto", origin, unique, partial, ordered_key_terms)`` with ``ordered_key_terms`` a tuple of
+        ``(cid, name, descending, collation)`` per key term in ``seqno`` order (name-independent,
+        order-preserving, multiplicity kept).
+
+    Returns ``tuple(sorted(signatures))``. Raises ``V128OracleError`` (via the key-expression parser)
+    on a malformed/ambiguous index expression — fail-closed, never a silent miss."""
+    signatures: list[tuple] = []
+    # Bind both dynamic names via the table-valued pragma form (reserved-word columns quoted) so an
+    # index/table named with a reserved word, space, hyphen, or embedded quote is passed as a ``?``
+    # parameter and can never raise ``sqlite3.OperationalError`` before its relevance is judged.
+    index_list = conn.execute(
+        'SELECT seq, name, "unique", origin, partial FROM pragma_index_list(?)', (table,)
+    ).fetchall()
+    for row in index_list:
+        # row = (seq, name, unique, origin, partial)
+        iname = row[1]
+        unique = int(row[2])
+        origin = str(row[3])
+        partial = int(row[4])
+        xinfo = conn.execute(
+            'SELECT seqno, cid, name, "desc", coll, "key" FROM pragma_index_xinfo(?)', (iname,)
+        ).fetchall()
+        # xr = (seqno, cid, name, desc, coll, key); key terms have xr[5] == 1.
+        key_terms = sorted((xr for xr in xinfo if int(xr[5]) == 1), key=lambda xr: int(xr[0]))
+        involves = any(
+            int(xr[1]) >= 0 and xr[2] is not None and str(xr[2]).lower() == "source_entity_id"
+            for xr in key_terms
+        )
+        idx_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (iname,)
+        ).fetchone()
+        sql = idx_row[0] if idx_row is not None else None
+        if not involves and sql is not None and any(int(xr[1]) == -2 for xr in key_terms):
+            if _v128_expr_references_column(_v128_index_key_region(sql), "source_entity_id"):
+                involves = True
+        if not involves:
+            continue
+        if sql is not None:
+            signatures.append(("sql", _v128_normalize_sql(sql)))
+        else:
+            ordered_key_terms = tuple(
+                (int(xr[1]), xr[2], int(xr[3]), xr[4]) for xr in key_terms
+            )
+            signatures.append(("auto", origin, unique, partial, ordered_key_terms))
+    return tuple(sorted(signatures))
+
+
+def _v128_extract_nonfk_contract(conn: "sqlite3.Connection", table: str) -> NonFkContract:
+    """Extract the reference-derived ``NonFkContract`` for one non-FK table from a live/scratch conn.
+    Raises ``V128OracleError`` (via the FK-clause parser) when the table's entity FK is ambiguous /
+    unparseable / not exactly one — a fail-closed condition, never a silent pass. The required
+    canonical entity index is enforced implicitly: the reference's ``entity_indexes`` contains it, so
+    any live DB missing it (or carrying an extra/variant one) mismatches the reference."""
+    xinfo = conn.execute(f"PRAGMA table_xinfo({table})").fetchall()
+    column: tuple = ()
+    for r in xinfo:
+        if r[1] == "source_entity_id":
+            # (type, notnull, dflt_value, pk, hidden)
+            column = (str(r[2] or ""), int(r[3]), r[4], int(r[5]), int(r[6]))
+            break
+
+    # FK groups containing a source_entity_id row (grouped by FK id, ordering canonicalized).
+    groups: dict[int, list[tuple]] = {}
+    for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall():
+        # r = (id, seq, table, from, to, on_update, on_delete, match)
+        groups.setdefault(int(r[0]), []).append(
+            (int(r[1]), r[3], r[4], r[2], r[5], r[6], r[7])
+        )
+    kept: list[tuple] = []
+    for _gid, rows in groups.items():
+        if any(row[1] == "source_entity_id" for row in rows):
+            kept.append(tuple(sorted(rows, key=lambda x: x[0])))
+    fk_groups = tuple(sorted(kept))
+
+    # FK clause signature parsed from the table's CREATE sql (deferrability/declaration-kind).
+    create_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone()
+    fk_signature = _v128_parse_fk_clause_signature(create_row[0] if create_row else "")
+
+    # Entity-index set: every index (auto-created or explicit, any identifier case, quoted or bare)
+    # whose KEY columns/expressions involve source_entity_id — factored into a unit-testable helper.
+    return NonFkContract(
+        column=column,
+        fk_groups=fk_groups,
+        fk_signature=fk_signature,
+        entity_indexes=_v128_entity_index_signatures(conn, table),
+    )
 
 
 def ensure_schema_ready(db_path: "str | None" = None, *, require_schedule_schema: bool = False) -> int:
@@ -7661,28 +8418,59 @@ class SQLiteMigrator:
         authorization: MigrationAuthorization | None = None,
         require_backup_receipt: bool = False,
     ) -> int:
-        """Apply all pending migrations (idempotent). Returns current schema version.
+        """Apply all pending migrations to ``LATEST_SCHEMA_VERSION`` (idempotent). Returns the current
+        schema version.
 
         NF-F-001 migration-ownership guard: every migration of a managed database MUST carry an
         explicit ``authorization`` bound to the actual opened target; it is validated (and, for a
         borrowed connection, its transaction state checked) BEFORE any DDL. When ``conn`` is
         provided the caller owns it (it must have no pending transaction — RC-3); otherwise apply()
         opens and deterministically closes its own connection.
+
+        IMPL-V129-R2-F-001: the PUBLIC ``apply`` exposes NO target-version selection — it always
+        migrates to ``LATEST_SCHEMA_VERSION`` (a legacy ``apply(target_version=...)`` / an extra
+        positional target argument fails with ``TypeError`` at the API boundary). The V128 attribution
+        reference is built by the private capability-gated ``_apply_reference_build_stop_at_128`` route
+        (callable only by ``_v128_canonical_schema_128``), never through this surface.
         """
         if conn is not None:
             return self._apply_on_connection(
-                conn, authorization, require_backup_receipt, owned=False
+                conn, authorization, require_backup_receipt, owned=False,
             )
         owned_conn = get_connection(self._db_path)
         try:
             return self._apply_on_connection(
-                owned_conn, authorization, require_backup_receipt, owned=True
+                owned_conn, authorization, require_backup_receipt, owned=True,
             )
         finally:
             # Deterministic WAL-connection closure: a left-open WAL handle only checkpoints on GC,
             # non-deterministically flushing -wal into the main file and perturbing byte-compare
             # readers. Close the owned connection exactly once, here.
             owned_conn.close()
+
+    def _apply_reference_build_stop_at_128(
+        self, conn: sqlite3.Connection, *, capability: object
+    ) -> int:
+        """Private capability-gated stop-at-128 reference-build route (ADR-003 R10 §R10.6.2 /
+        IMPL-V129-R2-F-001). NOT part of the public migration surface: it is the ONLY way to run the
+        real migrator stopped at version 128, and it is callable ONLY with the module-private
+        ``_V128_REFERENCE_BUILD_CAPABILITY`` sentinel AND on the exact builder-state connection object.
+
+        It traverses the SAME guarded migration transaction + migration blocks as ``apply`` (opened-
+        target identity, guard-FD lifecycle, transaction-ownership, audit), stopping ONLY before V129
+        realization and the version-129 ledger insertion — NOT a materially separate migration. Before
+        any DDL (in ``_run_guarded_migration``) it additionally requires: scratch/dev storage, origin
+        version 0, a fresh empty DB, no pending transaction, the exact builder-state connection object,
+        and NO authorization object.
+        """
+        if capability is not _V128_REFERENCE_BUILD_CAPABILITY:
+            raise V128OracleError("v128_reference_build_capability_invalid")
+        builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+        if builder_conn is None or conn is not builder_conn:
+            raise V128OracleError("v128_reference_build_requires_builder_connection")
+        return self._apply_on_connection(
+            conn, None, False, owned=False, _reference_build_capability=capability,
+        )
 
     def _apply_on_connection(
         self,
@@ -7691,6 +8479,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
+        _reference_build_capability: object | None = None,
     ) -> int:
         """Establish the opened-target identity (retaining a read-only guard FD) and run the guarded
         migration, deterministically closing the guard FD on every path (NF-AUD-005)."""
@@ -7701,7 +8490,8 @@ class SQLiteMigrator:
         opened = describe_opened_database(conn, self._db_path)
         try:
             return self._run_guarded_migration(
-                conn, opened, authorization, require_backup_receipt, owned=owned
+                conn, opened, authorization, require_backup_receipt, owned=owned,
+                _reference_build_capability=_reference_build_capability,
             )
         finally:
             if opened.guard_fd is not None:
@@ -7715,6 +8505,7 @@ class SQLiteMigrator:
         require_backup_receipt: bool,
         *,
         owned: bool,
+        _reference_build_capability: object | None = None,
     ) -> int:
         """Validate authorization against the opened identity, run the migration body in one atomic
         transaction, and revalidate identity at the commit boundary.
@@ -7734,6 +8525,14 @@ class SQLiteMigrator:
 
         _op = authorization.operation.value if authorization is not None else None
         origin = self._current_version_on(conn)
+
+        # IMPL-V129-R2-F-001: the private stop-at-128 reference-build route (the ONLY caller that
+        # passes a capability) is authenticated by unforgeable sentinel identity — never a generic
+        # Boolean. When present the migration realizes the V128 core ONLY (see ``apply_v129`` below);
+        # when absent this is an ordinary production/self-heal apply() to LATEST_SCHEMA_VERSION.
+        stop_at_128 = _reference_build_capability is not None
+        if stop_at_128 and _reference_build_capability is not _V128_REFERENCE_BUILD_CAPABILITY:
+            raise V128OracleError("v128_reference_build_capability_invalid")
 
         try:
             validate_authorization(
@@ -7766,6 +8565,32 @@ class SQLiteMigrator:
 
         if authorization is not None:
             assert_origin_version(authorization, origin)
+
+        if stop_at_128:
+            # IMPL-V129-R2-F-001 pre-DDL preconditions for the private reference-build route, enforced
+            # BEFORE any DDL: exact builder-state connection identity, NO authorization object,
+            # scratch/dev storage, origin version 0, no pending transaction, and a fresh empty DB.
+            from ..config.db_storage_guard import DatabaseStorageClass  # noqa: PLC0415
+
+            builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+            if builder_conn is None or conn is not builder_conn:
+                raise V128OracleError("v128_reference_build_requires_builder_connection")
+            if authorization is not None:
+                raise V128OracleError("v128_reference_build_forbids_authorization")
+            if opened.storage_class not in (
+                DatabaseStorageClass.DISPOSABLE_REHEARSAL,
+                DatabaseStorageClass.EXPLICIT_DEVELOPMENT,
+            ):
+                raise V128OracleError("v128_reference_build_requires_scratch_storage")
+            if origin != 0:
+                raise V128OracleError("v128_reference_build_requires_fresh_origin")
+            if conn.in_transaction:
+                raise V128OracleError("v128_reference_build_forbids_open_transaction")
+            table_count = conn.execute(
+                "SELECT count(*) FROM sqlite_master WHERE type='table'"
+            ).fetchone()[0]
+            if int(table_count) != 0:
+                raise V128OracleError("v128_reference_build_requires_empty_db")
 
         emit_migration_event(
             "migration_started",
@@ -9436,6 +10261,142 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # --- V128: permanent source identity — Realization A (entity-scoped content, 7-table rebuild) ---
+            # Introduce an immutable per-source surrogate ``source_entity_id`` as the durable key.
+            # Mint one entity id per existing source, seed a single current locator per source, then
+            # rebuild source_intelligence_sources + its 6 FK children so every table is keyed/FK'd to
+            # the entity id (not the mutable source_id). Two non-FK tables (events, scan_quarantine)
+            # gain a nullable, locator-resolved source_entity_id. PRE-SWAP semantic gates
+            # (bijection / bidirectional PK-set equality / null-safe per-column payload fidelity /
+            # no-orphan / single-current-locator) assert BEFORE any DROP so any violation raises and
+            # rolls back the whole apply() transaction — content is never silently lost or remapped.
+            # FK enforcement is deferred to COMMIT. Code-rollback caveat: after V128, OLD application
+            # code that reads source_id off these tables cannot run — NOT for production/NAS this phase.
+            #
+            # REV-F-002 ALWAYS-REVALIDATE (mirrors V127's ``_events_schema_current``): the previous
+            # version-record-only guard failed OPEN — a drifted V128 DB (a dropped identity table /
+            # locator index, or a self-heal-re-created obsolete parent path-unique index) passed
+            # silently and apply() still returned 128. Instead, ``_v128_schema_current`` checks the
+            # FULL entity-keyed shape on EVERY apply. When it is False the rebuild/repair path runs:
+            # a still-source_id-keyed DB gets the full 7-table rebuild; an already entity-keyed but
+            # drifted DB gets a bounded, idempotent additive repair (never a re-mint). If parity is
+            # still not met afterwards it raises fail-closed (whole-transaction rollback). Fresh-migrate
+            # and idempotent-no-op behavior are preserved: a fresh DB rebuilds once; a healthy V128 DB
+            # returns True and does nothing.
+            # The V129 additive layer is applied on every ordinary apply() (to LATEST_SCHEMA_VERSION);
+            # ``stop_at_128`` (the private capability-gated reference-build route) realizes the V128
+            # core ALONE, to build the reference-derived V128 attribution reference on a fresh scratch
+            # connection (ADR-003 R10 §R10.6.2). ``in_reference_build`` (the exact builder-state
+            # connection — the 129 head-reference build) BYPASSES the reference-derived classifier that
+            # would otherwise recurse into this very reference build (the nonrecursive canonical-
+            # reference bootstrap).
+            apply_v129 = not stop_at_128
+            _builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+            in_reference_build = _builder_conn is not None and conn is _builder_conn
+            if not self._v128_schema_current(conn):
+                self._rebuild_v128_permanent_identity(conn)
+                if apply_v129 and in_reference_build:
+                    # --- Reference-build MODE (ADR-003 R10 nonrecursive bootstrap) ----------------
+                    # Building the 129 HEAD reference on the exact builder-state connection. The
+                    # reference-derived classifier/repair below needs the 129 reference, so on the
+                    # builder connection it would recurse; reference-build mode therefore BYPASSES
+                    # classification and runs the SAME canonical V129 realization DDL production uses on
+                    # a fresh empty scratch DB. Unreachable outside the exact builder-state connection.
+                    self._v129_ensure_locator_observation_columns(conn)
+                    self._v129_ensure_move_signal_disposition_columns(conn)
+                    self._v129_ensure_reconcile_index(conn)
+                    if not self._v128_schema_current(conn):
+                        # On the builder connection the attribution oracle would recurse into a
+                        # reference build; fail closed with a plain reason instead.
+                        raise RuntimeError("v128_schema_parity_failed")
+                elif apply_v129:
+                    # --- Normal/repair MODE (live DB) --------------------------------------------
+                    # (ADR-003 R8 §4/§7/§8/§9 + R10 §R10.1/§R10.2/§R10.6.2). V129 is forward-only,
+                    # immutable-additive (nullable ADD COLUMN + one new index) on the two already-V128-
+                    # owned identity tables and RIDES the V128 byte-exact oracle.
+                    #
+                    # IMPL-V129-R2-F-002: the canonical V129 delta (129 − 128) is REFERENCE-DERIVED
+                    # from the two authenticated references with COMPLETE normalized column
+                    # declarations, and it drives BOTH the order-aware prefix classifier AND the
+                    # additive repair — never the hand-maintained ``_V129_*_COLS`` tuples. If the delta
+                    # is unbuildable/underivable the migration fails closed on the V128 layer.
+                    try:
+                        ref128 = self._v128_canonical_schema_128()
+                        ref129 = self._v128_canonical_schema()
+                        loc_delta = self._v129_derive_table_delta(
+                            ref128, ref129, "source_index_locators"
+                        )
+                        ms_delta = self._v129_derive_table_delta(
+                            ref128, ref129, "source_index_move_signals"
+                        )
+                    except Exception as exc:  # noqa: BLE001 — underivable delta → fail closed (V128)
+                        raise RuntimeError("v128_schema_parity_failed") from exc
+                    loc_names = tuple(self._v129_seg_leading_ident(seg) for seg in loc_delta)
+                    ms_names = tuple(self._v129_seg_leading_ident(seg) for seg in ms_delta)
+                    # F-001 (R10 §R10.1) — ORDER-AWARE PREFIX PREFLIGHT: classify BOTH V129-touched
+                    # tables from their ACTUAL ``PRAGMA table_info`` column order BEFORE any ADD COLUMN,
+                    # using the reference-DERIVED delta column names. The prefix guard yields ONLY a
+                    # classification and assigns NO reason code; on the non-prefix
+                    # (``nonrepairable_v129_shape``) path it makes NO schema change (declines repair).
+                    loc_cls = self._v129_classify_trailing_suffix(
+                        conn, "source_index_locators", loc_names
+                    )
+                    ms_cls = self._v129_classify_trailing_suffix(
+                        conn, "source_index_move_signals", ms_names
+                    )
+                    if (
+                        loc_cls == "repairable_trailing_suffix"
+                        and ms_cls == "repairable_trailing_suffix"
+                    ):
+                        # D1 additive trailing-suffix repair, driven by the reference-DERIVED COMPLETE
+                        # column declarations (F-002). Present V129 columns are a canonical prefix, so
+                        # only the missing trailing suffix is appended → byte-identical head CREATE.
+                        self._v129_repair_trailing_from_delta(
+                            conn, "source_index_locators", loc_names, loc_delta
+                        )
+                        self._v129_repair_trailing_from_delta(
+                            conn, "source_index_move_signals", ms_names, ms_delta
+                        )
+                    # Reconcile-index repair (DROP+recreate) — preserved unchanged from R9 (§R10.1);
+                    # a separate repair, always run (a same-name index that drifted is REPAIRED).
+                    self._v129_ensure_reconcile_index(conn)
+                    if not self._v128_schema_current(conn):
+                        # The whole apply() transaction rolls back — the prior schema is preserved
+                        # intact. F-002 (R10 §R10.2/§R10.3): in EVERY residual-failure case (repair
+                        # declined, or repair attempted and exact parity still false) the reason code is
+                        # determined SOLELY by the reference-derived exact-V128-core attribution — never
+                        # by the prefix guard. Exact V128 projection → ``v129_schema_parity_failed``; any
+                        # V128 drift (or an unbuildable/ambiguous projection) → ``v128_schema_parity_
+                        # failed``, never a pure-V129 reason before V128 correctness is positively proven.
+                        raise RuntimeError(self._v129_attribute_layer(conn))
+                else:
+                    # Private stop-at-128 reference-build seam (R10 §R10.6.2 / the V128-reference
+                    # construction acceptance criterion): realize the V128 core ONLY (no V129 additive
+                    # layer), gated by the same enumerative bootstrap the reference build already rides
+                    # (``_v128_core_structural_ok``, minus the V129 additions). Never a production path.
+                    if not self._v128_core_structural_ok(conn):
+                        raise RuntimeError("v128_schema_parity_failed")
+            if conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = 128"
+            ).fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) "
+                    "VALUES (128, 'v128_permanent_source_identity', ?)",
+                    (now,),
+                )
+            # V129 version record (ADR-003 R8 §8): the schema shape is realized/repaired above via the
+            # V128-oracle-riding ``_v129_ensure_*`` pass; this idempotent gate records version 129 once.
+            # Skipped on the stop-at-128 reference-build seam so the 128-reference records only 128.
+            if apply_v129 and conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = 129"
+            ).fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) "
+                    "VALUES (129, 'v129_locator_observation_rehoming_serving_gate_and_move_disposition',"
+                    " ?)",
+                    (now,),
+                )
+
             # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
             # drifted (path swapped to a different inode) before this single migration transaction
             # commits. A failure here raises and rolls the entire migration back.
@@ -9501,9 +10462,17 @@ class SQLiteMigrator:
         ]
         info = conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         actual = {r[1]: (_norm_type(r[2]), int(r[3]), _norm_default(r[4]), int(r[5])) for r in info}
-        if len(actual) != len(expected):
+        # IMP-F-002: TOLERATE an OPTIONAL nullable ``source_entity_id`` FK column that V128 adds. When
+        # present it must be exactly (TEXT, nullable, no default, non-pk) with a single FK to
+        # source_index_entities and its own index — so the guard neither strips it nor accepts a
+        # malformed variant. When absent, the exact V127 shape is required (pre-V128 databases).
+        has_entity = "source_entity_id" in actual
+        expected_full = list(expected)
+        if has_entity:
+            expected_full.append(("source_entity_id", "TEXT", 0, None, 0))
+        if len(actual) != len(expected_full):
             return False
-        for name, typ, nn, dflt, pk in expected:
+        for name, typ, nn, dflt, pk in expected_full:
             if actual.get(name) != (typ, nn, dflt, pk):
                 return False
         # Required indexes: correct ordered columns + non-unique (an extra PK autoindex is allowed).
@@ -9515,13 +10484,28 @@ class SQLiteMigrator:
             "idx_si_events_status": (["status", "created_at"], 0),
             "idx_si_events_source": (["source_id"], 0),
         }
+        if has_entity:
+            # IMP-F-002: the FK column must carry its (non-unique) index.
+            want_idx["idx_si_events_entity"] = (["source_entity_id"], 0)
         for iname, (want_cols, want_unique) in want_idx.items():
             if idx_unique.get(iname) != want_unique:
                 return False
             actual_cols = [r[2] for r in conn.execute(f"PRAGMA index_info({iname})").fetchall()]
             if actual_cols != want_cols:
                 return False
-        if conn.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall():
+        fks = conn.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall()
+        if has_entity:
+            # IMP-F-002: EXACTLY one FK, and it must be source_entity_id -> source_index_entities.
+            # (PRAGMA foreign_key_list columns: id, seq, table, from, to, on_update, on_delete, match.)
+            if len(fks) != 1:
+                return False
+            fk = fks[0]
+            if (fk[2], fk[3], fk[4]) != (
+                "source_index_entities", "source_entity_id", "source_entity_id"
+            ):
+                return False
+        elif fks:
+            # No FK permitted on the pre-V128 (entity-less) events shape.
             return False
         if conn.execute(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='trigger' "
@@ -9562,12 +10546,17 @@ class SQLiteMigrator:
         table missing ``attempts``) is repaired LOSSLESSLY rather than crashing a static SELECT. Existing
         rows with an invalid ``event_type``/``status`` or NULL ``event_id`` raise
         ``v127_events_invalid_existing_rows`` so the whole apply() transaction rolls back — queued work is
-        never silently coerced or discarded. Runs inside the apply() transaction (atomic)."""
+        never silently coerced or discarded. Runs inside the apply() transaction (atomic).
+
+        IMP-F-002: if the OLD table already carries the optional V128 ``source_entity_id`` FK column,
+        the rebuild PRESERVES it (column + FK to source_index_entities + its index), so a repair
+        triggered for any OTHER reason never strips the entity reparenting."""
         old_cols = {
             r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_events)").fetchall()
         }
         if "event_id" not in old_cols:
             raise RuntimeError("v127_events_invalid_existing_rows")
+        keep_entity = "source_entity_id" in old_cols
         et_set = "(" + ",".join(f"'{v}'" for v in event_types) + ")"
         st_set = "(" + ",".join(f"'{v}'" for v in statuses) + ")"
         row_count = conn.execute("SELECT COUNT(*) FROM source_intelligence_events").fetchone()[0]
@@ -9586,7 +10575,7 @@ class SQLiteMigrator:
         def _src(name: str, fallback: str) -> str:
             return name if name in old_cols else fallback
 
-        projection = ", ".join([
+        proj_cols = [
             "event_id",
             _src("source_id", "NULL"),
             _src("rel_path", "NULL"),
@@ -9599,9 +10588,22 @@ class SQLiteMigrator:
             "COALESCE(attempts, 0)" if "attempts" in old_cols else "0",
             "COALESCE(created_at, CURRENT_TIMESTAMP)" if "created_at" in old_cols else "CURRENT_TIMESTAMP",
             "COALESCE(updated_at, CURRENT_TIMESTAMP)" if "updated_at" in old_cols else "CURRENT_TIMESTAMP",
-        ])
+        ]
+        insert_cols = [
+            "event_id", "source_id", "rel_path", "source_root_key", "dest_rel_path",
+            "next_attempt_at", "event_type", "status", "error_code", "attempts", "created_at",
+            "updated_at",
+        ]
+        if keep_entity:  # IMP-F-002: carry the optional V128 entity FK column through the rebuild.
+            proj_cols.append("source_entity_id")
+            insert_cols.append("source_entity_id")
+        projection = ", ".join(proj_cols)
         et_csv = ", ".join(f"'{v}'" for v in event_types)
         st_csv = ", ".join(f"'{v}'" for v in statuses)
+        entity_col_ddl = (
+            " , source_entity_id TEXT REFERENCES source_index_entities(source_entity_id)"
+            if keep_entity else ""
+        )
         conn.execute("DROP TABLE IF EXISTS source_intelligence_events_v127")
         conn.execute(
             "CREATE TABLE source_intelligence_events_v127 ("
@@ -9612,12 +10614,12 @@ class SQLiteMigrator:
             " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
             " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
             " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            f"{entity_col_ddl}"
             ")"
         )
         conn.execute(
             "INSERT INTO source_intelligence_events_v127 "
-            "(event_id, source_id, rel_path, source_root_key, dest_rel_path, next_attempt_at, "
-            " event_type, status, error_code, attempts, created_at, updated_at) "
+            f"({', '.join(insert_cols)}) "
             f"SELECT {projection} FROM source_intelligence_events"
         )
         conn.execute("DROP TABLE source_intelligence_events")
@@ -9631,6 +10633,1505 @@ class SQLiteMigrator:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_si_events_source "
             "ON source_intelligence_events(source_id)"
+        )
+        if keep_entity:  # IMP-F-002: preserve the FK column's index too.
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_si_events_entity "
+                "ON source_intelligence_events(source_entity_id)"
+            )
+
+    @staticmethod
+    def _rebuild_v128_permanent_identity(conn: sqlite3.Connection) -> None:
+        """Realize permanent source identity — Realization A (entity-scoped content, 7-table rebuild).
+
+        Mint one immutable surrogate ``source_entity_id`` per existing source, seed a single current
+        ``source_index_locators`` row per source, then rebuild ``source_intelligence_sources`` and its
+        six FK children so every table is keyed/FK'd to the durable ENTITY id instead of the mutable
+        ``source_id``. PRE-SWAP semantic gates (entity bijection, bidirectional PK-set equality,
+        per-column payload fidelity with null-safe IS NOT, no-orphan, single-current-locator) assert
+        BEFORE any DROP, so any violation raises and rolls back the entire apply() transaction —
+        content is never silently lost or remapped. FK enforcement is deferred to COMMIT
+        (``PRAGMA defer_foreign_keys``). Runs inside apply()'s single transaction (atomic).
+
+        Repo-truth note: the rebuilt parent keeps only the durable attributes; the V122
+        generation-tracking scratch columns (``last_seen_generation``/``last_seen_at``/
+        ``last_indexed_fingerprint``) and their index are intentionally dropped from the parent per
+        the accepted design. The two non-FK tables (events, scan_quarantine) gain a nullable,
+        locator-resolved ``source_entity_id`` (unresolved stays NULL).
+        """
+        from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
+            EXTRACTION_STATUS_VALUES,
+            GENERATION_STATUS_VALUES,
+            RELATION_DST_KIND_VALUES,
+            RELATION_VALUES,
+            SOURCE_KIND_VALUES,
+        )
+
+        def _vcsv(vals: tuple[str, ...]) -> str:
+            return ", ".join(f"'{v}'" for v in vals)
+
+        def _count(sql: str) -> int:
+            return int(conn.execute(sql).fetchone()[0])
+
+        def _fail(gate: str) -> None:
+            raise RuntimeError(f"v128_{gate}_failed")
+
+        def _payload_ne(cols: tuple[str, ...], a: str, b: str) -> str:
+            # Null-safe inequality across every non-key column (IS NOT distinguishes NULLs).
+            return " OR ".join(f"{a}.{c} IS NOT {b}.{c}" for c in cols)
+
+        _kind_csv = _vcsv(SOURCE_KIND_VALUES)
+        _ext_csv = _vcsv(EXTRACTION_STATUS_VALUES)
+        _gen_csv = _vcsv(GENERATION_STATUS_VALUES)
+        _dstkind_csv = _vcsv(RELATION_DST_KIND_VALUES)
+        _rel_csv = _vcsv(RELATION_VALUES)
+
+        _PARENT_COLS = (
+            "source_kind", "source_root_key", "rel_path", "abs_path_hash", "domain_ref_table",
+            "domain_ref_id", "project_key", "project_number", "active", "deleted",
+            "created_at", "updated_at", "renamed_from_source_id",
+        )
+        _METADATA_COLS = (
+            "file_ext", "size_bytes", "mtime_ns", "content_sha256", "page_count",
+            "paragraph_count", "sheet_count", "extraction_status", "extraction_failure_code",
+            "fts_rowid", "indexed_at", "extraction_disposition", "content_indexed_at",
+        )
+        _TEXT_COLS = (
+            "text_excerpt", "excerpt_char_count", "excerpt_truncated", "full_text_sha256",
+            "text_vault_ref", "raw_body_persisted", "redaction_applied", "updated_at",
+        )
+        _SUMMARIES_COLS = (
+            "model_provider", "model_name", "prompt_version", "prompt_sha256", "summary_sha256",
+            "source_sha256", "advisory", "generated_at",
+        )
+        _CHUNKS_COLS = ("ordinal", "chunk_text", "char_count", "raw_body_persisted", "created_at")
+        _GEN_NOTES_COLS = ("note_rel_path", "generation_status", "generated_at", "updated_at")
+        _REL_COLS = ("dst_kind", "dst_ref", "relation", "confidence", "evidence_json", "created_at")
+
+        # Re-runnability guard: if the sources table is already ENTITY-keyed (no ``source_id``), V128
+        # has already applied the core rebuild on a prior pass. Re-minting would be destructive
+        # (a second entity-id mint would orphan every row). But a self-heal (schema_migrations reset to
+        # a stale version) re-runs the WHOLE additive chain BEFORE this block — additive V93/V123/V99
+        # re-create ``idx_si_sources_root_relpath`` (a UNIQUE parent path index) which, on the
+        # entity-keyed parent, wrongly blocks a NEW entity from reusing a TOMBSTONED path (IMP-F-003),
+        # and a drift may have dropped an additive V128 structure (move_signals / a locator index).
+        # So instead of a bare no-op return, run the bounded, idempotent additive REPAIR: never
+        # re-mint, but drop the obsolete parent index and re-ensure the additive V128 structures.
+        source_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)").fetchall()
+        }
+        if "source_id" not in source_cols:
+            SQLiteMigrator._v128_repair_additive(conn)
+            return
+
+        # Defer FK enforcement to COMMIT so the drop/rename swap can proceed with a self-consistent
+        # graph at commit time.
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+
+        # --- Step 1: new identity tables -----------------------------------------------------------
+        conn.execute(
+            "CREATE TABLE source_index_entities ("
+            # REV-F-001: a non-INTEGER TEXT PRIMARY KEY permits NULLs in SQLite unless NOT NULL is
+            # declared. The entity id is THE durable identity key — a NULL is never a valid identity.
+            " source_entity_id TEXT NOT NULL PRIMARY KEY,"
+            " created_at TEXT NOT NULL,"
+            " status TEXT NOT NULL CHECK(status IN ('LIVE','TOMBSTONED'))"
+            ")"
+        )
+        conn.execute(
+            "CREATE TABLE source_index_locators ("
+            " locator_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " source_id TEXT NOT NULL,"
+            " source_root_key TEXT,"
+            " rel_path TEXT,"
+            " is_current_locator INTEGER NOT NULL DEFAULT 0,"
+            " tombstoned_at TEXT,"
+            " generation_seq INTEGER NOT NULL DEFAULT 0"
+            ")"
+        )
+        SQLiteMigrator._v128_ensure_locator_indexes(conn)
+        SQLiteMigrator._v128_ensure_move_signals(conn)
+
+        # --- Step 2: mint one entity id per source + rebuild parent --------------------------------
+        # Scratch column so the SAME minted id is reused for entities, locators, parent, and every
+        # child join. Dropped when the old parent table is dropped in Step 4.
+        conn.execute("ALTER TABLE source_intelligence_sources ADD COLUMN __eid TEXT")
+        conn.execute("UPDATE source_intelligence_sources SET __eid = lower(hex(randomblob(16)))")
+        conn.execute(
+            "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+            "SELECT __eid, created_at, 'LIVE' FROM source_intelligence_sources"
+        )
+        conn.execute(
+            "INSERT INTO source_index_locators("
+            " locator_id, source_entity_id, source_id, source_root_key, rel_path,"
+            " is_current_locator, tombstoned_at, generation_seq) "
+            "SELECT lower(hex(randomblob(16))), __eid, source_id, source_root_key, rel_path, 1, NULL, 0 "
+            "FROM source_intelligence_sources"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_sources__v128 ("
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
+            f" source_kind TEXT NOT NULL CHECK(source_kind IN ({_kind_csv})),"
+            " source_root_key TEXT,"
+            " rel_path TEXT,"
+            " abs_path_hash TEXT,"
+            " domain_ref_table TEXT,"
+            " domain_ref_id TEXT,"
+            " project_key TEXT,"
+            " project_number TEXT,"
+            " active INTEGER NOT NULL DEFAULT 1,"
+            " deleted INTEGER NOT NULL DEFAULT 0,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " renamed_from_source_id TEXT,"
+            # REV-F-003: restore the V93 parent domain/path CHECK (verbatim columns) dropped by the
+            # V128 rebuild — a source row must carry either a rel_path or a full domain reference.
+            " CHECK((rel_path IS NOT NULL)"
+            " OR (domain_ref_table IS NOT NULL AND domain_ref_id IS NOT NULL))"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_sources__v128("
+            " source_entity_id, source_kind, source_root_key, rel_path, abs_path_hash,"
+            " domain_ref_table, domain_ref_id, project_key, project_number, active, deleted,"
+            " created_at, updated_at, renamed_from_source_id) "
+            "SELECT __eid, source_kind, source_root_key, rel_path, abs_path_hash,"
+            " domain_ref_table, domain_ref_id, project_key, project_number, active, deleted,"
+            " created_at, updated_at, renamed_from_source_id FROM source_intelligence_sources"
+        )
+
+        # --- Step 3: rebuild each of the 6 children keyed/FK'd to source_entity_id -----------------
+        conn.execute(
+            "CREATE TABLE source_intelligence_metadata__v128 ("
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
+            " file_ext TEXT, size_bytes INTEGER, mtime_ns INTEGER, content_sha256 TEXT,"
+            " page_count INTEGER, paragraph_count INTEGER, sheet_count INTEGER,"
+            " extraction_status TEXT NOT NULL DEFAULT 'pending'"
+            f" CHECK(extraction_status IN ({_ext_csv})),"
+            " extraction_failure_code TEXT, fts_rowid INTEGER,"
+            " indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " extraction_disposition TEXT, content_indexed_at TEXT"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_metadata__v128("
+            " source_entity_id, file_ext, size_bytes, mtime_ns, content_sha256, page_count,"
+            " paragraph_count, sheet_count, extraction_status, extraction_failure_code, fts_rowid,"
+            " indexed_at, extraction_disposition, content_indexed_at) "
+            "SELECT s.__eid, m.file_ext, m.size_bytes, m.mtime_ns, m.content_sha256, m.page_count,"
+            " m.paragraph_count, m.sheet_count, m.extraction_status, m.extraction_failure_code,"
+            " m.fts_rowid, m.indexed_at, m.extraction_disposition, m.content_indexed_at "
+            "FROM source_intelligence_metadata m "
+            "JOIN source_intelligence_sources s ON s.source_id = m.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_text__v128 ("
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
+            " text_excerpt TEXT,"
+            " excerpt_char_count INTEGER NOT NULL DEFAULT 0 CHECK(excerpt_char_count >= 0),"
+            " excerpt_truncated INTEGER NOT NULL DEFAULT 0,"
+            " full_text_sha256 TEXT, text_vault_ref TEXT,"
+            " raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),"
+            " redaction_applied INTEGER NOT NULL DEFAULT 1 CHECK(redaction_applied = 1),"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_text__v128("
+            " source_entity_id, text_excerpt, excerpt_char_count, excerpt_truncated,"
+            " full_text_sha256, text_vault_ref, raw_body_persisted, redaction_applied, updated_at) "
+            "SELECT s.__eid, t.text_excerpt, t.excerpt_char_count, t.excerpt_truncated,"
+            " t.full_text_sha256, t.text_vault_ref, t.raw_body_persisted, t.redaction_applied,"
+            " t.updated_at "
+            "FROM source_intelligence_text t "
+            "JOIN source_intelligence_sources s ON s.source_id = t.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_summaries__v128 ("
+            # REV-F-001: NOT NULL on the entity PK (TEXT PK allows NULL without it).
+            " source_entity_id TEXT NOT NULL PRIMARY KEY"
+            " REFERENCES source_index_entities(source_entity_id),"
+            " model_provider TEXT NOT NULL, model_name TEXT, prompt_version TEXT NOT NULL,"
+            " prompt_sha256 TEXT, summary_sha256 TEXT, source_sha256 TEXT,"
+            " advisory INTEGER NOT NULL DEFAULT 1 CHECK(advisory = 1),"
+            " generated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_summaries__v128("
+            " source_entity_id, model_provider, model_name, prompt_version, prompt_sha256,"
+            " summary_sha256, source_sha256, advisory, generated_at) "
+            "SELECT s.__eid, u.model_provider, u.model_name, u.prompt_version, u.prompt_sha256,"
+            " u.summary_sha256, u.source_sha256, u.advisory, u.generated_at "
+            "FROM source_intelligence_summaries u "
+            "JOIN source_intelligence_sources s ON s.source_id = u.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_chunks__v128 ("
+            " chunk_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " ordinal INTEGER NOT NULL, chunk_text TEXT NOT NULL, char_count INTEGER NOT NULL,"
+            " raw_body_persisted INTEGER NOT NULL DEFAULT 0 CHECK(raw_body_persisted = 0),"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(source_entity_id, ordinal)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_chunks__v128("
+            " chunk_id, source_entity_id, ordinal, chunk_text, char_count, raw_body_persisted,"
+            " created_at) "
+            "SELECT c.chunk_id, s.__eid, c.ordinal, c.chunk_text, c.char_count, c.raw_body_persisted,"
+            " c.created_at "
+            "FROM source_intelligence_chunks c "
+            "JOIN source_intelligence_sources s ON s.source_id = c.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_generated_notes__v128 ("
+            " generated_note_id TEXT PRIMARY KEY,"
+            " source_entity_id TEXT NOT NULL REFERENCES source_index_entities(source_entity_id),"
+            " note_rel_path TEXT,"
+            " generation_status TEXT NOT NULL DEFAULT 'not_generated'"
+            f" CHECK(generation_status IN ({_gen_csv})),"
+            " generated_at TEXT,"
+            " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(source_entity_id, note_rel_path)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_generated_notes__v128("
+            " generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at,"
+            " updated_at) "
+            "SELECT g.generated_note_id, s.__eid, g.note_rel_path, g.generation_status,"
+            " g.generated_at, g.updated_at "
+            "FROM source_intelligence_generated_notes g "
+            "JOIN source_intelligence_sources s ON s.source_id = g.source_id"
+        )
+        conn.execute(
+            "CREATE TABLE source_intelligence_relationships__v128 ("
+            " relationship_id TEXT PRIMARY KEY,"
+            " src_source_entity_id TEXT NOT NULL"
+            " REFERENCES source_index_entities(source_entity_id),"
+            f" dst_kind TEXT NOT NULL CHECK(dst_kind IN ({_dstkind_csv})),"
+            " dst_ref TEXT NOT NULL,"
+            f" relation TEXT NOT NULL CHECK(relation IN ({_rel_csv})),"
+            " confidence TEXT, evidence_json TEXT,"
+            " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+            " UNIQUE(src_source_entity_id, dst_kind, dst_ref, relation)"
+            ")"
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_relationships__v128("
+            " relationship_id, src_source_entity_id, dst_kind, dst_ref, relation, confidence,"
+            " evidence_json, created_at) "
+            "SELECT r.relationship_id, s.__eid, r.dst_kind, r.dst_ref, r.relation, r.confidence,"
+            " r.evidence_json, r.created_at "
+            "FROM source_intelligence_relationships r "
+            "JOIN source_intelligence_sources s ON s.source_id = r.src_source_id"
+        )
+
+        # --- Step 3b: PRE-SWAP semantic gates (assert BEFORE any DROP; raise → whole-tx rollback) --
+        n_sources = _count("SELECT COUNT(*) FROM source_intelligence_sources")
+        if n_sources != _count("SELECT COUNT(*) FROM source_index_entities"):
+            _fail("entity_bijection_count")
+        if _count("SELECT COUNT(DISTINCT __eid) FROM source_intelligence_sources") != n_sources:
+            _fail("entity_bijection_distinct")
+
+        if _count("SELECT COUNT(*) FROM source_intelligence_sources__v128") != n_sources:
+            _fail("parent_count")
+        if _count(
+            "SELECT COUNT(*) FROM (SELECT __eid FROM source_intelligence_sources "
+            "EXCEPT SELECT source_entity_id FROM source_intelligence_sources__v128)"
+        ):
+            _fail("parent_keyset_forward")
+        if _count(
+            "SELECT COUNT(*) FROM (SELECT source_entity_id FROM source_intelligence_sources__v128 "
+            "EXCEPT SELECT __eid FROM source_intelligence_sources)"
+        ):
+            _fail("parent_keyset_reverse")
+        if _count(
+            "SELECT COUNT(*) FROM source_intelligence_sources o "
+            "JOIN source_intelligence_sources__v128 n ON o.__eid = n.source_entity_id "
+            f"WHERE {_payload_ne(_PARENT_COLS, 'o', 'n')}"
+        ):
+            _fail("parent_payload")
+
+        def _child_gate(
+            name: str,
+            table: str,
+            src_col: str,
+            entity_col: str,
+            pk: str | None,
+            cols: tuple[str, ...],
+        ) -> None:
+            new = f"{table}__v128"
+            # No-orphan: zero old child rows whose source_id has no parent.
+            if _count(
+                f"SELECT COUNT(*) FROM {table} x "
+                f"LEFT JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                "WHERE s.source_id IS NULL"
+            ):
+                _fail(f"{name}_orphan")
+            if pk is None:
+                # 1:1 child — pairing key is the mapped entity id (old.source_id → __eid → new key).
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT s.__eid FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"EXCEPT SELECT {entity_col} FROM {new})"
+                ):
+                    _fail(f"{name}_keyset_forward")
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {entity_col} FROM {new} "
+                    f"EXCEPT SELECT s.__eid FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col})"
+                ):
+                    _fail(f"{name}_keyset_reverse")
+                if _count(
+                    f"SELECT COUNT(*) FROM {table} x "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"JOIN {new} n ON n.{entity_col} = s.__eid "
+                    f"WHERE {_payload_ne(cols, 'x', 'n')}"
+                ):
+                    _fail(f"{name}_payload")
+            else:
+                # 1:N child — pairing key is the declared PK (no rowid).
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {pk} FROM {table} EXCEPT SELECT {pk} FROM {new})"
+                ):
+                    _fail(f"{name}_keyset_forward")
+                if _count(
+                    f"SELECT COUNT(*) FROM (SELECT {pk} FROM {new} EXCEPT SELECT {pk} FROM {table})"
+                ):
+                    _fail(f"{name}_keyset_reverse")
+                # Correct entity mapping per row (new entity col == the source's minted __eid).
+                if _count(
+                    f"SELECT COUNT(*) FROM {new} n JOIN {table} x ON x.{pk} = n.{pk} "
+                    f"JOIN source_intelligence_sources s ON s.source_id = x.{src_col} "
+                    f"WHERE n.{entity_col} IS NOT s.__eid"
+                ):
+                    _fail(f"{name}_entity_map")
+                if _count(
+                    f"SELECT COUNT(*) FROM {new} n JOIN {table} x ON x.{pk} = n.{pk} "
+                    f"WHERE {_payload_ne(cols, 'x', 'n')}"
+                ):
+                    _fail(f"{name}_payload")
+
+        _child_gate(
+            "metadata", "source_intelligence_metadata", "source_id", "source_entity_id", None,
+            _METADATA_COLS,
+        )
+        _child_gate(
+            "text", "source_intelligence_text", "source_id", "source_entity_id", None, _TEXT_COLS,
+        )
+        _child_gate(
+            "summaries", "source_intelligence_summaries", "source_id", "source_entity_id", None,
+            _SUMMARIES_COLS,
+        )
+        _child_gate(
+            "chunks", "source_intelligence_chunks", "source_id", "source_entity_id", "chunk_id",
+            _CHUNKS_COLS,
+        )
+        _child_gate(
+            "generated_notes", "source_intelligence_generated_notes", "source_id",
+            "source_entity_id", "generated_note_id", _GEN_NOTES_COLS,
+        )
+        _child_gate(
+            "relationships", "source_intelligence_relationships", "src_source_id",
+            "src_source_entity_id", "relationship_id", _REL_COLS,
+        )
+
+        # Locator: every entity has exactly one current locator row.
+        if _count(
+            "SELECT COUNT(*) FROM source_index_entities e WHERE ("
+            "SELECT COUNT(*) FROM source_index_locators l "
+            "WHERE l.source_entity_id = e.source_entity_id AND l.is_current_locator = 1) != 1"
+        ):
+            _fail("locator_single_current")
+
+        # --- Step 4: swap (drop old children, drop old parent, rename rebuilt tables) --------------
+        for child in (
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+            "source_intelligence_chunks",
+            "source_intelligence_generated_notes",
+            "source_intelligence_relationships",
+        ):
+            conn.execute(f"DROP TABLE {child}")
+        conn.execute("DROP TABLE source_intelligence_sources")
+        for base in (
+            "source_intelligence_sources",
+            "source_intelligence_metadata",
+            "source_intelligence_text",
+            "source_intelligence_summaries",
+            "source_intelligence_chunks",
+            "source_intelligence_generated_notes",
+            "source_intelligence_relationships",
+        ):
+            conn.execute(f"ALTER TABLE {base}__v128 RENAME TO {base}")
+
+        # IMP-F-003: the obsolete per-path unique index (idx_si_sources_root_relpath, and the even
+        # older narrow idx_si_sources_relpath) must NOT survive on the entity-keyed parent — a
+        # tombstoned path may be reused by a NEW entity, and a UNIQUE parent path index would wrongly
+        # block that second row. Drop them explicitly here (the old parent's copies also vanished with
+        # DROP TABLE above; this defends against a same-transaction self-heal re-creation).
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_root_relpath")
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
+        # Recreate the supporting indexes on the rebuilt tables (shared with the additive-repair path
+        # so a dropped supporting index is repaired, not fail-closed, and the reference/repaired DDL
+        # stay identical). The obsolete per-path unique index (idx_si_sources_root_relpath) is
+        # intentionally NOT recreated — rel_path is no longer a unique key on sources (a path's
+        # identity now lives on the locator, not the source row).
+        SQLiteMigrator._v128_ensure_supporting_indexes(conn)
+
+        # --- Step 5: non-FK tables gain a locator-resolved entity ref -----------------------------
+        # IMP-F-002 (ADR-002 R12): BOTH source_intelligence_events and source_index_scan_quarantine
+        # gain a nullable ``source_entity_id`` FK to source_index_entities (+ index), backfilled from
+        # the (source_id → entity) locator map (an unresolved source_id stays NULL). The events
+        # reparenting is now durable: V127's always-revalidate guard (``_events_schema_current``) and
+        # rebuild (``_rebuild_v127_events``) were extended to TOLERATE and PRESERVE this optional FK
+        # column, so a subsequent apply() no longer strips it. Reused by the additive-repair path.
+        SQLiteMigrator._v128_reparent_nonfk_tables(conn)
+
+        # --- Step 6: post-swap integrity (immediate FK check must be clean) ------------------------
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            _fail("foreign_key_check")
+
+    @staticmethod
+    def _v128_ensure_supporting_indexes(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the V128 supporting indexes on the rebuilt source/payload tables.
+        Single source of truth shared by the fresh rebuild (Step 4) and the additive-repair path, so a
+        dropped supporting index is REPAIRED (not fail-closed) and the canonical-reference DDL matches
+        the repaired DDL (the snapshot normalizer strips ``IF NOT EXISTS``). Does NOT recreate the
+        obsolete parent path-unique index (rel_path is no longer a unique key on sources)."""
+        for stmt in (
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_si_sources_domain "
+            "ON source_intelligence_sources(domain_ref_table, domain_ref_id) "
+            "WHERE domain_ref_id IS NOT NULL",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_project "
+            "ON source_intelligence_sources(project_key)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_active "
+            "ON source_intelligence_sources(active, deleted)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_root "
+            "ON source_intelligence_sources(source_root_key)",
+            "CREATE INDEX IF NOT EXISTS idx_si_sources_renamed_from "
+            "ON source_intelligence_sources(renamed_from_source_id) "
+            "WHERE renamed_from_source_id IS NOT NULL",
+            "CREATE INDEX IF NOT EXISTS idx_si_metadata_sha "
+            "ON source_intelligence_metadata(content_sha256)",
+            "CREATE INDEX IF NOT EXISTS idx_si_metadata_fts_rowid "
+            "ON source_intelligence_metadata(fts_rowid)",
+            "CREATE INDEX IF NOT EXISTS idx_si_chunks_source "
+            "ON source_intelligence_chunks(source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_rel_src "
+            "ON source_intelligence_relationships(src_source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_rel_dst "
+            "ON source_intelligence_relationships(dst_kind, dst_ref)",
+            "CREATE INDEX IF NOT EXISTS idx_si_gennotes_source "
+            "ON source_intelligence_generated_notes(source_entity_id)",
+            "CREATE INDEX IF NOT EXISTS idx_si_gennotes_status "
+            "ON source_intelligence_generated_notes(generation_status)",
+            "CREATE INDEX IF NOT EXISTS idx_si_summaries_source "
+            "ON source_intelligence_summaries(source_entity_id)",
+        ):
+            conn.execute(stmt)
+
+    @staticmethod
+    def _v128_ensure_move_signals(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the (empty, additive) move-signals table exists. Reused by the fresh
+        rebuild (Step 1) and the additive-repair path (drift may have dropped it)."""
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS source_index_move_signals ("
+            " move_signal_id TEXT PRIMARY KEY,"
+            " source_locator_id TEXT,"
+            " source_root_key TEXT,"
+            " source_rel_path TEXT,"
+            " target_root_key TEXT,"
+            " target_rel_path TEXT,"
+            " detected_at TEXT,"
+            " generation_id TEXT,"
+            " applied_at TEXT"
+            ")"
+        )
+
+    @staticmethod
+    def _v128_ensure_locator_indexes(conn: sqlite3.Connection) -> None:
+        """Idempotently ensure the three required locator indexes exist. Reused by the fresh rebuild
+        (Step 1) and the additive-repair path (drift may have dropped one)."""
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_locators_current_per_entity "
+            "ON source_index_locators(source_entity_id) WHERE is_current_locator=1"
+        )
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_locators_active_path "
+            "ON source_index_locators(source_root_key, rel_path) "
+            "WHERE is_current_locator=1 AND tombstoned_at IS NULL"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_locators_source_id "
+            "ON source_index_locators(source_id)"
+        )
+
+    @staticmethod
+    def _v129_ensure_locator_observation_columns(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §4.1/§9.3: idempotently ADD the four nullable V129 observation / serving-trust
+        columns to ``source_index_locators`` (parity-guarded — skip a column already present). Re-homes
+        the three V122 observation columns the V128 rebuild dropped from the parent
+        (``last_seen_generation`` — a scan-generation UUID, NOT the integer ``generation_seq``;
+        ``last_seen_at``; ``last_indexed_fingerprint``) onto the locator epoch, plus the AR-F-001
+        serving-trust gate ``policy_validation_state`` (NULL ≡ validated, ``'policy_stale'`` ≡ content
+        unverified under this locator's current policy). All nullable/additive; V128 historical DDL is
+        untouched, so a fresh rebuild and an in-place V128→V129 upgrade produce byte-identical CREATE
+        SQL (both realize these columns ONLY via this same ordered ADD COLUMN sequence). Runs on the
+        already-failed-parity apply() path so a dropped column is re-ensured (§9.3)."""
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(source_index_locators)"
+        ).fetchall()}
+        if "last_seen_generation" not in cols:
+            conn.execute("ALTER TABLE source_index_locators ADD COLUMN last_seen_generation TEXT")
+        if "last_seen_at" not in cols:
+            conn.execute("ALTER TABLE source_index_locators ADD COLUMN last_seen_at TEXT")
+        if "last_indexed_fingerprint" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_locators ADD COLUMN last_indexed_fingerprint TEXT"
+            )
+        if "policy_validation_state" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_locators ADD COLUMN policy_validation_state TEXT "
+                "CHECK(policy_validation_state IS NULL OR policy_validation_state='policy_stale')"
+            )
+
+    @staticmethod
+    def _v129_ensure_reconcile_index(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §4.4/§9.3: single-sourced DROP + recreate of the V129 reconcile index on
+        ``source_index_locators`` (replaces the V122 reconcile index the V128 rebuild dropped with the
+        parent columns). Keyed ``(source_root_key, source_id)`` restricted to current locators — the
+        root-scope + ``source_id`` keyset ``stale_candidates_batch`` needs; deliberately NOT
+        ``last_seen_generation``-leading. DROP + recreate (repair symmetry with the V128 locator
+        indexes) so a same-name index that drifted (wrong columns / partial predicate) is REPAIRED, not
+        skipped. Idempotent; runs only on the already-failed-parity path (healthy DBs skip repair). The
+        ``is_current_locator=1`` predicate is written unspaced to match the V128 locator-index house
+        style + the ``_LOC_IDX`` structural-check substring (§9.2)."""
+        conn.execute("DROP INDEX IF EXISTS idx_locators_reconcile")
+        conn.execute(
+            "CREATE INDEX idx_locators_reconcile "
+            "ON source_index_locators(source_root_key, source_id) "
+            "WHERE is_current_locator=1"
+        )
+
+    @staticmethod
+    def _v129_ensure_move_signal_disposition_columns(conn: sqlite3.Connection) -> None:
+        """ADR-003 R8 §7.2/§9.3: idempotently ADD the five nullable V129 disposition columns to
+        ``source_index_move_signals`` (parity-guarded). ``disposition`` NULL ≡ pending; the terminal
+        set and reason enum are bound structurally by column-level CHECKs (a NULL satisfies an ``IN``
+        CHECK). ``resulting_entity_id``/``resulting_locator_id`` are the two applied-only nullable FK
+        edges (repo-precedented nullable-FK-via-ADD-COLUMN, §2.6). All additive → byte-identical CREATE
+        SQL across fresh-rebuild and V128→V129 upgrade; a dropped column is re-ensured on the
+        already-failed-parity path (§9.3). SQLite cannot ADD a table-level cross-column CHECK, so the
+        cross-column terminal-state contract is a runtime in-transaction oracle (PI-WI-03b), NOT this
+        unit — this method only ADDS the columns and writes/applies none of them."""
+        cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(source_index_move_signals)"
+        ).fetchall()}
+        if "disposition" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN disposition TEXT "
+                "CHECK(disposition IN "
+                "('applied','rejected_stale','rejected_target_occupied','malformed'))"
+            )
+        if "disposition_at" not in cols:
+            conn.execute("ALTER TABLE source_index_move_signals ADD COLUMN disposition_at TEXT")
+        if "disposition_reason" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN disposition_reason TEXT "
+                "CHECK(disposition_reason IN ('ok','source_locator_not_current',"
+                "'source_locator_tombstoned','missing_source_locator','target_path_occupied',"
+                "'malformed_payload'))"
+            )
+        if "resulting_entity_id" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN resulting_entity_id TEXT "
+                "REFERENCES source_index_entities(source_entity_id)"
+            )
+        if "resulting_locator_id" not in cols:
+            conn.execute(
+                "ALTER TABLE source_index_move_signals ADD COLUMN resulting_locator_id TEXT "
+                "REFERENCES source_index_locators(locator_id)"
+            )
+
+    @staticmethod
+    def _v129_schema_additions_present(conn: sqlite3.Connection) -> bool:
+        """True when the V129 additive layer is structurally intact on a live DB: the four locator
+        columns + five move-signal columns present as nullable non-PK TEXT, both column-level enum
+        CHECK fragments + the policy CHECK retained verbatim, the two applied-only resulting_* FK edges
+        present, and the reconcile index present with the exact columns + partial predicate. Used ONLY
+        to ATTRIBUTE a fail-closed non-repairable drift (§9.3): after the ``_v129_ensure_*`` repair
+        pass has run, a still-absent-or-malformed V129 element (a malformed column-level CHECK / an
+        incompatible declaration that additive repair cannot fix) means the V129 layer could not be
+        repaired → ``apply()`` raises ``v129_schema_parity_failed`` (vs a V128-core parity failure).
+        Byte-exact live-drift DETECTION itself is ``_v128_schema_current``; this is the error-attribution
+        slice only, sourced from the SAME V129 constants as the structural bootstrap so they never
+        diverge."""
+        def _cols(table: str) -> dict[str, tuple[str, int, int]]:
+            return {
+                r[1]: (str(r[2] or "").upper(), int(r[3]), int(r[5]))
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+
+        def _tbl_sql(table: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        loc = _cols("source_index_locators")
+        for name in _V129_LOCATOR_COLS:
+            if loc.get(name) != ("TEXT", 0, 0):
+                return False
+        ms = _cols("source_index_move_signals")
+        for name in _V129_MOVE_SIGNAL_COLS:
+            if ms.get(name) != ("TEXT", 0, 0):
+                return False
+        loc_sql = _tbl_sql("source_index_locators")
+        if any(frag not in loc_sql for frag in _V129_LOCATOR_CHECK_FRAGMENTS):
+            return False
+        ms_sql = _tbl_sql("source_index_move_signals")
+        if any(frag not in ms_sql for frag in _V129_MOVE_SIGNAL_CHECK_FRAGMENTS):
+            return False
+        ms_fks = {
+            r[3]: (r[2], r[4])
+            for r in conn.execute(
+                "PRAGMA foreign_key_list(source_index_move_signals)"
+            ).fetchall()
+        }
+        for col, target in _V129_MOVE_SIGNAL_FKS.items():
+            if ms_fks.get(col) != target:
+                return False
+        loc_idx = {
+            r[1]: int(r[4])
+            for r in conn.execute("PRAGMA index_list(source_index_locators)").fetchall()
+        }
+        if loc_idx.get("idx_locators_reconcile") != 1:  # must exist AND be partial
+            return False
+        recon_cols = [
+            r[2] for r in conn.execute("PRAGMA index_info(idx_locators_reconcile)").fetchall()
+        ]
+        if recon_cols != ["source_root_key", "source_id"]:
+            return False
+        recon_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_locators_reconcile'"
+        ).fetchone()
+        recon_norm = " ".join((recon_sql[0] or "").split()) if recon_sql and recon_sql[0] else ""
+        return "is_current_locator=1" in recon_norm
+
+    @staticmethod
+    def _v129_classify_trailing_suffix(
+        conn: sqlite3.Connection, table: str, canonical_v129: tuple[str, ...]
+    ) -> str:
+        """F-001 order-aware prefix guard (ADR-003 R10 §R10.1) — CLASSIFY one V129-touched table, assign
+        NO reason code, make NO schema change. Inspects the table's ACTUAL ordered column positions
+        (``PRAGMA table_info`` ``cid`` order) BEFORE any ``ADD COLUMN`` and returns:
+
+          * ``"repairable_trailing_suffix"`` — the present V129 columns are a canonical PREFIX
+            ``[c1…cj]`` appended as a trailing block after the V128 columns, each in its correct ordered
+            position (missing == the canonical trailing suffix ``[c(j+1)…ck]``). D1's additive repair
+            applies. The empty-prefix case (no V129 columns present yet — a pristine V128 DB / a whole-
+            suffix deletion) classifies here too.
+          * ``"nonrepairable_v129_shape"`` — the present V129 columns are NOT a canonical prefix (some
+            canonical ``ci`` absent while a later ``cj`` is present), or a present V129 column is out of
+            its canonical ordered position (interleaved among the V128 columns, or in the wrong intra-
+            suffix order). ``ADD COLUMN`` cannot re-position it and the byte-exact detection oracle is
+            order-sensitive, so repair is declined.
+
+        This is stricter than a name-filter set-prefix test: a present-but-mis-positioned V129 column is
+        detected because the ordered tail after the first V129 column must equal the canonical prefix of
+        that length. The eventual reason code is chosen downstream by the exact-V128-core attribution."""
+        ordered = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+        v129_set = set(canonical_v129)
+        first_v129_idx = next(
+            (i for i, name in enumerate(ordered) if name in v129_set), len(ordered)
+        )
+        # Everything after the first present V129 column. For a repairable trailing block this must be
+        # exactly the canonical prefix of its own length (canonical order, no interleaved non-V129
+        # column, no out-of-order V129 column). ``ordered[:first_v129_idx]`` contains no V129 column by
+        # construction, so a V129 column appearing inside the V128 block forces ``first_v129_idx`` early
+        # and leaves a non-matching tail — classified non-repairable.
+        v129_tail = ordered[first_v129_idx:]
+        if v129_tail == list(canonical_v129[: len(v129_tail)]):
+            return "repairable_trailing_suffix"
+        return "nonrepairable_v129_shape"
+
+    @staticmethod
+    def _v129_derive_table_delta(
+        ref128: "V128Reference", ref129: "V128Reference", table: str
+    ) -> "list[str]":
+        """IMPL-V129-R2-F-002 — derive the ordered per-table V129 delta (129 − 128) as the trailing-
+        additive block of COMPLETE normalized column declarations, from the two AUTHENTICATED
+        references (ADR-003 R10 §R10.6.2). Each returned segment is a complete normalized column
+        declaration (name + ordered position, type + nullability, default + PK, complete column-level
+        CHECK, complete REFERENCES + FK actions) — exactly as the real migrator realized it, never a
+        hand-listed name.
+
+        It requires the table's V128 CREATE segments to be an EXACT ordered prefix of its V129 segments
+        (identical header; no modified / removed / reordered V128 segment) and the trailing delta to be
+        one-or-more DISTINCT COLUMN declarations (no table-constraint segment, no duplicate identifier,
+        no collision with a V128 column). Raises ``V128OracleError`` if the delta is not cleanly
+        trailing-additive, so the caller fails closed with ``v128_schema_parity_failed``."""
+        key = f"table:{table}"
+        ref128_sql = dict(ref128.owned_schema).get(key)
+        ref129_sql = dict(ref129.owned_schema).get(key)
+        if not ref128_sql or not ref129_sql:
+            raise V128OracleError("v128_reference_delta_missing_table")
+        ref128_header, ref128_segs = SQLiteMigrator._v129_split_create(ref128_sql)
+        ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
+        if ref129_header != ref128_header:
+            raise V128OracleError("v128_reference_delta_header_drift")
+        if ref129_segs[: len(ref128_segs)] != ref128_segs:
+            raise V128OracleError("v128_reference_delta_v128_core_drift")
+        delta_segs = ref129_segs[len(ref128_segs):]
+        if not delta_segs:
+            raise V128OracleError("v128_reference_delta_empty")
+        delta_names = [SQLiteMigrator._v129_seg_leading_ident(seg) for seg in delta_segs]
+        constraint_kw = {"check", "foreign", "unique", "primary", "constraint"}
+        if any(name == "" or name in constraint_kw for name in delta_names):
+            raise V128OracleError("v128_reference_delta_not_all_columns")
+        if len(set(delta_names)) != len(delta_names):
+            raise V128OracleError("v128_reference_delta_duplicate_column")
+        v128_names = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
+        if set(delta_names) & v128_names:
+            raise V128OracleError("v128_reference_delta_collides_with_v128")
+        return delta_segs
+
+    @staticmethod
+    def _v129_repair_trailing_from_delta(
+        conn: sqlite3.Connection,
+        table: str,
+        delta_names: "tuple[str, ...]",
+        delta_segs: "list[str]",
+    ) -> None:
+        """IMPL-V129-R2-F-002 — D1 additive trailing-suffix repair driven by the reference-DERIVED
+        COMPLETE column declarations (ADR-003 R10 §R10.1 D1). ``delta_segs`` are the ordered complete
+        normalized declarations of the reference-derived V129 delta (129 − 128); each missing trailing
+        column is appended via ``ALTER TABLE ... ADD COLUMN`` using its derived declaration VERBATIM
+        (parity-guarded — a column already present is skipped). Because the declarations are derived
+        from the head (129) reference the real migrator built, re-adding them reproduces the byte-
+        identical head CREATE SQL. Only ever called when the order-aware prefix guard classified the
+        table ``repairable_trailing_suffix`` (the present V129 columns are a canonical prefix)."""
+        present = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        for name, seg in zip(delta_names, delta_segs, strict=True):
+            if name and name not in present:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {seg}")
+
+    @staticmethod
+    def _v129_attribute_layer(conn: sqlite3.Connection) -> str:
+        """F-002 reference-derived exact-V128-core attribution oracle (ADR-003 R10 §R10.2/§R10.3/
+        §R10.6.2). Invoked SOLELY after D3 byte-exact detection has failed AND the F-001 repair has not
+        restored parity, to choose the reason code — never as the detection oracle. Returns one of
+        ``"v129_schema_parity_failed"`` / ``"v128_schema_parity_failed"``.
+
+        It compares the COMPLETE accepted V128-owned surface (all ten ``_V128_OWNED_TABLES`` byte-exact
+        + every owned explicit index + the two V128 non-FK contracts) of the live DB against a
+        128-reference, with the reference-derived V129 delta (129 − 128) projected out ONLY from the two
+        V129-touched tables + ``idx_locators_reconcile``. Both references are built by the REAL migrator
+        on FRESH scratch connections (128 via the stop-at-128 seam; 129 via the head canonical schema) —
+        the delta is a reference-derived difference, NOT a hand-listed exclusion, and no enumerative
+        subset serves as the oracle:
+
+          * exact V128 projection equals the 128-reference (V128 layer proven exactly correct) →
+            ``v129_schema_parity_failed`` (a pure-V129 residual defect);
+          * ANY V128 drift → ``v128_schema_parity_failed``;
+          * unbuildable / unparseable / ambiguous projection (a reference cannot be built, the live
+            surface cannot be parsed, or the delta cannot be unambiguously projected) → fails closed with
+            ``v128_schema_parity_failed``, NEVER a pure-V129 reason — a pure-V129 verdict is permitted
+            only after exact V128 correctness is positively proven.
+        """
+        try:
+            ref128 = SQLiteMigrator._v128_canonical_schema_128()
+            ref129 = SQLiteMigrator._v128_canonical_schema()
+        except Exception:  # noqa: BLE001 — reference unbuildable → fail closed on the V128 layer
+            return "v128_schema_parity_failed"
+        try:
+            live_owned = _v128_schema_snapshot(conn)
+            live_contracts = {
+                table: _v128_extract_nonfk_contract(conn, table)
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES
+            }
+        except Exception:  # noqa: BLE001 — live surface unparseable → fail closed on the V128 layer
+            return "v128_schema_parity_failed"
+        if SQLiteMigrator._v129_projected_v128_core_equals_ref128(
+            live_owned, live_contracts, ref128, ref129
+        ):
+            return "v129_schema_parity_failed"
+        return "v128_schema_parity_failed"
+
+    @staticmethod
+    def _v129_projected_v128_core_equals_ref128(
+        live_owned: "dict[str, str]",
+        live_contracts: "dict[str, NonFkContract]",
+        ref128: "V128Reference",
+        ref129: "V128Reference",
+    ) -> bool:
+        """Compare the live V128-owned surface against ``ref128`` with the reference-derived V129 delta
+        projected out ONLY from the two V129-touched tables + the reconcile index (ADR-003 R10 §R10.3).
+        Returns True ONLY when the projected live V128-core equals ``ref128`` EXACTLY; any drift, or any
+        ambiguity/unbuildability, returns False (→ the caller attributes ``v128_schema_parity_failed``)."""
+        reconcile_key = "index:idx_locators_reconcile"
+        touched_keys = {"table:source_index_locators", "table:source_index_move_signals"}
+        expected_delta = touched_keys | {reconcile_key}
+        try:
+            ref128_owned = dict(ref128.owned_schema)
+            ref129_owned = dict(ref129.owned_schema)
+            # (1) The reference-derived owned-schema delta (129 − 128) MUST touch ONLY the two
+            # V129-touched tables + the reconcile index; anything else means the reference relationship
+            # is not the accepted-delta shape → ambiguous → fail closed (v128).
+            delta_keys = {
+                key
+                for key in set(ref128_owned) | set(ref129_owned)
+                if ref128_owned.get(key) != ref129_owned.get(key)
+            }
+            if delta_keys != expected_delta:
+                return False
+            # (2) The two V128 non-FK contracts are outside the V129 delta and MUST be identical between
+            # the references; if they differ the delta is not cleanly isolated → fail closed (v128).
+            if dict(ref128.nonfk_contracts) != dict(ref129.nonfk_contracts):
+                return False
+            # (3) Compare the COMPLETE V128-owned surface. The reconcile index is projected out entirely
+            # (it is a V129 addition, never present in ref128); the two touched tables are compared with
+            # their reference-derived V129 columns projected out; every OTHER owned object must compare
+            # EXACTLY UNCHANGED against ref128.
+            for key in set(live_owned) | set(ref128_owned):
+                if key == reconcile_key:
+                    continue
+                if key in touched_keys:
+                    if not SQLiteMigrator._v129_table_v128_core_matches(
+                        live_owned.get(key), ref128_owned.get(key), ref129_owned.get(key)
+                    ):
+                        return False
+                elif live_owned.get(key) != ref128_owned.get(key):
+                    return False
+            # (4) Both V128 non-FK contracts must compare EXACTLY unchanged against ref128.
+            for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                if live_contracts.get(table) != ref128.nonfk_contracts.get(table):
+                    return False
+            return True
+        except Exception:  # noqa: BLE001 — any parse/projection failure → fail closed (v128)
+            return False
+
+    @staticmethod
+    def _v129_table_v128_core_matches(
+        live_sql: "str | None", ref128_sql: "str | None", ref129_sql: "str | None"
+    ) -> bool:
+        """IMPL-V129-R2-F-003 — prove the ref129→ref128 reference relationship BEFORE the live
+        comparison, then project the reference-derived V129 delta out of one live V129-touched table
+        and compare the remaining V128 core to ``ref128`` (ADR-003 R10 §R10.3). Returns True ONLY when
+        every check holds:
+
+          1. ref129's header equals ref128's, and ref128's ordered segments are an EXACT prefix of
+             ref129's — so every ref129-vs-ref128 difference in this touched table is an ADDED trailing
+             V129 column, never a modified / removed / reordered / unexplained V128 segment.
+          2. the trailing delta is one-or-more DISTINCT column identifiers, none colliding with a V128
+             column (a duplicated / malformed delta identifier fails closed).
+          3. projecting the derived delta OUT of ref129 reduces it to ref128 EXACTLY (header + ordered
+             segments).
+          4. projecting the SAME delta out of the LIVE table (order-preserving, by name) equals ref128
+             (header + ordered segments) EXACTLY.
+
+        Any failure returns False → the caller attributes ``v128_schema_parity_failed`` (a pure-V129
+        verdict is permitted only after exact V128 correctness is positively proven)."""
+        if not live_sql or not ref128_sql or not ref129_sql:
+            return False
+        ref128_header, ref128_segs = SQLiteMigrator._v129_split_create(ref128_sql)
+        ref129_header, ref129_segs = SQLiteMigrator._v129_split_create(ref129_sql)
+        live_header, live_segs = SQLiteMigrator._v129_split_create(live_sql)
+        # (1) ref128 must be an exact ordered prefix of ref129 (same header, no modified/removed/
+        # reordered/unexplained V128 segment in ref129's touched table).
+        if ref129_header != ref128_header:
+            return False
+        if ref129_segs[: len(ref128_segs)] != ref128_segs:
+            return False
+        # (2) the trailing delta is one-or-more DISTINCT COLUMN identifiers, disjoint from V128 (a
+        # table-constraint / malformed / empty leading identifier in the delta region fails closed).
+        delta_segs = ref129_segs[len(ref128_segs):]
+        delta_names_list = [SQLiteMigrator._v129_seg_leading_ident(seg) for seg in delta_segs]
+        _constraint_kw = {"check", "foreign", "unique", "primary", "constraint"}
+        if not delta_names_list or any(
+            name == "" or name in _constraint_kw for name in delta_names_list
+        ):
+            return False
+        if len(set(delta_names_list)) != len(delta_names_list):
+            return False  # duplicated delta identifier
+        delta_names = set(delta_names_list)
+        ref128_idents = {SQLiteMigrator._v129_seg_leading_ident(seg) for seg in ref128_segs}
+        if delta_names & ref128_idents:
+            return False  # a delta name collides with a V128 column
+        # (3) projecting the derived delta out of ref129 must reduce it to ref128 EXACTLY.
+        ref129_projected = [
+            seg
+            for seg in ref129_segs
+            if SQLiteMigrator._v129_seg_leading_ident(seg) not in delta_names
+        ]
+        if ref129_projected != ref128_segs:
+            return False
+        # (4) projecting the SAME delta out of the LIVE table must equal ref128 EXACTLY.
+        projected_live = [
+            seg
+            for seg in live_segs
+            if SQLiteMigrator._v129_seg_leading_ident(seg) not in delta_names
+        ]
+        return live_header == ref128_header and projected_live == ref128_segs
+
+    @staticmethod
+    def _v129_split_create(sql: str) -> "tuple[str, list[str]]":
+        """Split a normalized single-line ``CREATE TABLE name ( … )`` into its header (text before the
+        first top-level ``(``) and its ordered top-level column/constraint segments (via the shared
+        quote/paren-aware ``_v128_split_top_level``). Used only for the two V129-touched tables, whose
+        column list opens at the first ``(`` and closes at the final ``)`` (no trailing table options)."""
+        open_idx = sql.index("(")
+        close_idx = sql.rindex(")")
+        header = sql[:open_idx].strip()
+        body = sql[open_idx + 1 : close_idx]
+        segments = [seg.strip() for seg in _v128_split_top_level(body) if seg.strip()]
+        return header, segments
+
+    @staticmethod
+    def _v129_seg_leading_ident(segment: str) -> str:
+        """The leading (lowercased, unquoted) identifier of a top-level CREATE-TABLE segment. A column
+        segment yields its column name; a table-level constraint segment yields its leading keyword
+        (``check`` / ``foreign`` / ``unique`` / ``primary`` / ``constraint``) — none of which collide
+        with a V129 column name, so a reference-derived V129 delta name only ever matches a column."""
+        match = _V128_IDENT_RE.match(segment)
+        if match is None:
+            return ""
+        return _v128_unquote_ident(match.group(0))
+
+    @staticmethod
+    def _v128_canonical_schema_128() -> "V128Reference":
+        """Build (once per process, cached) the V128 attribution reference — the COMPLETE V128-owned
+        surface at version 128 (no V129 additive layer) — from a fresh scratch migrate STOPPED at
+        version 128 via the PRIVATE capability-gated ``_apply_reference_build_stop_at_128`` route
+        (ADR-003 R10 §R10.6.2 / IMPL-V129-R2-F-001; there is NO public ``target_version`` seam).
+        Mirrors ``_v128_canonical_schema`` exactly (single-flight, connection-bound builder state) but
+        stops at 128, so its two identity tables carry NO V129 columns and its owned index set has NO
+        ``idx_locators_reconcile``. Never hand-replays or copies V128 DDL and never mutates
+        ``LATEST_SCHEMA_VERSION`` — the schema is realized by the real migrator itself."""
+        global _V128_REFERENCE_128
+        if _V128_REFERENCE_128 is not None:
+            return _V128_REFERENCE_128
+        import shutil  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
+        with _V128_BUILD_LOCK_128:
+            if _V128_REFERENCE_128 is not None:  # double-check under the lock (single-flight)
+                return _V128_REFERENCE_128
+            tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref128_")
+            ref_conn: sqlite3.Connection | None = None
+            try:
+                ref_db = str(Path(tmpdir) / "v128_reference_128.sqlite")
+                ref_conn = get_connection(ref_db)
+                _V128_BUILD_STATE.conn = ref_conn
+                # Private capability-gated stop-at-128 route (F-001) — the ONLY way to run the real
+                # migrator stopped at 128; it traverses the same guarded migration transaction/blocks
+                # on this exact builder-state connection and stops before the V129 realization/ledger.
+                SQLiteMigrator(db_path=ref_db)._apply_reference_build_stop_at_128(
+                    ref_conn, capability=_V128_REFERENCE_BUILD_CAPABILITY
+                )
+                owned = MappingProxyType(dict(_v128_schema_snapshot(ref_conn)))
+                contracts: dict[str, NonFkContract] = {}
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                    contracts[table] = _v128_extract_nonfk_contract(ref_conn, table)
+                reference = V128Reference(
+                    owned_schema=owned,
+                    nonfk_contracts=MappingProxyType(contracts),
+                )
+                _V128_REFERENCE_128 = reference  # publish atomically, only after all extraction succeeded
+                return reference
+            finally:
+                try:
+                    del _V128_BUILD_STATE.conn
+                except AttributeError:
+                    pass
+                if ref_conn is not None:
+                    ref_conn.close()
+                shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @staticmethod
+    def _v128_reparent_nonfk_tables(conn: sqlite3.Connection) -> None:
+        """IMP-F-002 (ADR-002 R12): give the two non-FK tables (events, scan_quarantine) a nullable
+        ``source_entity_id`` FK to source_index_entities (+ index), backfilled via the
+        (source_id → entity) locator map; an unresolved source_id stays NULL. Idempotent (parity-
+        guarded ADD COLUMN). Reused by Step 5 and the additive-repair path. The ADD COLUMN is nullable
+        with NULL default so SQLite permits the REFERENCES clause.
+
+        CP-PI-WI-02-R8 repair symmetry: the two canonical NAMED entity indexes are DROPPed then
+        recreated (single-sourced DDL), so a same-name entity index that drifted (wrong column /
+        UNIQUE / partial / etc.) is REPAIRED on an already-failed-parity apply() — a bare
+        ``CREATE INDEX IF NOT EXISTS`` would see the name and skip it, leaving the malformed index. This
+        runs only when parity has already failed (healthy DBs skip rebuild/repair entirely). It
+        recreates ONLY the two canonical named entity indexes and deletes NO other index (an
+        additional/noncanonical entity index is detected + fail-closed, not silently dropped — expanding
+        that would need a separate scope/authorization change; see the plan's rebuild-scope boundary)."""
+        for tbl in ("source_index_scan_quarantine", "source_intelligence_events"):
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()}
+            if not cols:
+                continue  # table absent (should not happen post-swap); skip rather than raise here
+            if "source_entity_id" not in cols:
+                conn.execute(
+                    f"ALTER TABLE {tbl} ADD COLUMN source_entity_id TEXT "
+                    "REFERENCES source_index_entities(source_entity_id)"
+                )
+            conn.execute(
+                f"UPDATE {tbl} SET source_entity_id = ("
+                " SELECT l.source_entity_id FROM source_index_locators l "
+                f" WHERE l.source_id = {tbl}.source_id AND l.is_current_locator = 1) "
+                "WHERE source_id IS NOT NULL AND source_entity_id IS NULL"
+            )
+        # Drop+recreate the two canonical named entity indexes (repair symmetry). Same DDL the fresh
+        # rebuild emits, so the reference and the repaired index compare identically.
+        conn.execute("DROP INDEX IF EXISTS idx_si_scan_quarantine_entity")
+        conn.execute(
+            "CREATE INDEX idx_si_scan_quarantine_entity "
+            "ON source_index_scan_quarantine(source_entity_id)"
+        )
+        conn.execute("DROP INDEX IF EXISTS idx_si_events_entity")
+        conn.execute(
+            "CREATE INDEX idx_si_events_entity "
+            "ON source_intelligence_events(source_entity_id)"
+        )
+
+    @staticmethod
+    def _v128_repair_additive(conn: sqlite3.Connection) -> None:
+        """Bounded, idempotent additive repair for an ALREADY entity-keyed DB (IMP-F-003 + REV-F-002
+        drift). Never re-mints identity (that would orphan every row). It (a) drops the obsolete parent
+        path-unique indexes that a self-heal re-run of additive V93/V123/V99 re-creates and which would
+        wrongly block same-path reuse after a tombstone, (b) re-ensures the additive V128 structures a
+        drift may have dropped (move_signals table + the 3 locator indexes, only when the locators
+        table is present), and (c) re-ensures the non-FK entity refs. If an identity table itself was
+        destructively dropped (e.g. source_index_locators), the index/reparent DDL raises inside the
+        apply() transaction → whole-transaction rollback (fail-closed), never a silent pass."""
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_root_relpath")
+        conn.execute("DROP INDEX IF EXISTS idx_si_sources_relpath")
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "source_index_move_signals" not in tables:
+            SQLiteMigrator._v128_ensure_move_signals(conn)
+        if "source_index_locators" in tables:
+            # DROP then re-create the locator indexes so a drifted index that kept the required NAME
+            # but indexes the WRONG column (REV-F-002) is actually repaired — a bare CREATE INDEX IF
+            # NOT EXISTS would see the name and skip it, leaving the malformed index in place.
+            for _idx in (
+                "idx_locators_current_per_entity",
+                "idx_locators_active_path",
+                "idx_locators_source_id",
+            ):
+                conn.execute(f"DROP INDEX IF EXISTS {_idx}")
+            SQLiteMigrator._v128_ensure_locator_indexes(conn)
+        # Re-ensure the supporting indexes on the rebuilt source/payload tables (CP-PI-WI-02-R5): a
+        # dropped supporting index is repaired here so it is not fail-closed, and the repaired DDL
+        # matches the canonical reference (both go through _v128_ensure_supporting_indexes).
+        if "source_intelligence_sources" in tables:
+            SQLiteMigrator._v128_ensure_supporting_indexes(conn)
+        SQLiteMigrator._v128_reparent_nonfk_tables(conn)
+
+    @staticmethod
+    def _v128_canonical_schema() -> "V128Reference":
+        """Build (once per process, cached) the deeply-immutable canonical ``V128Reference`` from a
+        fresh scratch migrate, and return it. Single-flight + connection-bound + reentrancy-safe
+        (CP-PI-WI-02-R8):
+
+        * Return the published cache if set; else acquire ``_V128_BUILD_LOCK`` (so concurrent callers
+          block here and, on wake, see the published cache — never a half-built reference), double-check
+          the cache, then open the scratch connection MYSELF and store it in ``_V128_BUILD_STATE.conn``
+          (a ``threading.local`` — set on the builder thread only) so ``_v128_schema_current`` can bind
+          the bootstrap to this EXACT connection object.
+        * Run the migration through the PUBLIC borrowed-connection API
+          ``SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn)`` (retains opened-target identity
+          validation, guard-FD lifecycle, and transaction-ownership checks — never the private
+          ``_apply_on_connection``). The borrowed conn has no pending transaction (RC-3).
+        * Extract ``owned_schema`` + ``nonfk_contracts`` into LOCALS and publish the single frozen
+          ``V128Reference`` to the cache ONLY after all extraction succeeds; on any failure the cache
+          stays unset and a later caller can construct successfully.
+        * In ``finally``: release the lock (via ``with``), ``del _V128_BUILD_STATE.conn`` (so "builder
+          state absent" is unambiguous — not a lingering closed connection), and close the scratch conn.
+
+        The scratch DB is a disposable temp file (an absolute path the storage guard permits as
+        ``dev_permissive``); ``:memory:`` and relative paths are rejected by the guard."""
+        global _V128_REFERENCE
+        if _V128_REFERENCE is not None:
+            return _V128_REFERENCE
+        import shutil  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
+        with _V128_BUILD_LOCK:
+            if _V128_REFERENCE is not None:  # double-check under the lock (single-flight)
+                return _V128_REFERENCE
+            tmpdir = tempfile.mkdtemp(prefix="hb_v128_ref_")
+            ref_conn: sqlite3.Connection | None = None
+            try:
+                ref_db = str(Path(tmpdir) / "v128_reference.sqlite")
+                ref_conn = get_connection(ref_db)
+                _V128_BUILD_STATE.conn = ref_conn
+                if _V128_BUILD_BARRIER is not None:  # test-only seam; no production effect
+                    _V128_BUILD_BARRIER()
+                # Public borrowed-connection migration path (R8-R3-F-001): apply() treats the
+                # connection as borrowed and delegates through _apply_on_connection itself.
+                SQLiteMigrator(db_path=ref_db).apply(conn=ref_conn)
+                owned = MappingProxyType(dict(_v128_schema_snapshot(ref_conn)))
+                contracts: dict[str, NonFkContract] = {}
+                for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+                    contracts[table] = _v128_extract_nonfk_contract(ref_conn, table)
+                reference = V128Reference(
+                    owned_schema=owned,
+                    nonfk_contracts=MappingProxyType(contracts),
+                )
+                _V128_REFERENCE = reference  # publish atomically, only after all extraction succeeded
+                return reference
+            finally:
+                try:
+                    del _V128_BUILD_STATE.conn
+                except AttributeError:
+                    pass
+                if ref_conn is not None:
+                    ref_conn.close()
+                shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @staticmethod
+    def _v128_schema_current(conn: sqlite3.Connection) -> bool:
+        """REV-F-002 always-revalidate COMPLETE structural-parity oracle for the V128 entity-scoped
+        shape (ADR-002 R12), mirroring ``_events_schema_current``. Validates a live DB by
+        EXACT-EQUALITY against the canonical ``V128Reference`` (``_v128_canonical_schema``): the 10
+        owned tables byte-exact, plus the two non-FK tables' reference-derived contracts. Complete by
+        construction — every column/type/nullability/PK/CHECK/UNIQUE/FK (incl. on_delete/on_update
+        actions + DEFERRABLE/INITIALLY)/default and every index's columns/uniqueness/partial predicate
+        is captured. Returns True ONLY on full parity. A drift the additive repair can restore is
+        repaired on the next apply(); a structural drift it cannot restore fails closed
+        (v128_schema_parity_failed), never trusted.
+
+        Three-way state machine (CP-PI-WI-02-R8), keyed on the ``threading.local`` builder state:
+          1. Builder thread AND ``conn is _V128_BUILD_STATE.conn`` -> the enumerated bootstrap
+             (``_v128_schema_structural_ok``), so the nested scratch apply() drives the V128 rebuild on
+             the empty scratch DB and does not raise once rebuilt.
+          2. Builder thread AND any OTHER connection -> fail closed immediately
+             (``v128_reference_build_reentrancy``); NEVER re-enter the builder (no recursion).
+          3. Any other thread -> ``_v128_canonical_schema()`` (blocks on the single-flight lock until
+             the reference is published, never using the bootstrap), then compare snapshot + contracts.
+        """
+        builder_conn = getattr(_V128_BUILD_STATE, "conn", None)
+        if builder_conn is not None:
+            if conn is builder_conn:
+                return SQLiteMigrator._v128_schema_structural_ok(conn)
+            raise V128OracleError("v128_reference_build_reentrancy")
+        reference = SQLiteMigrator._v128_canonical_schema()
+        if _v128_schema_snapshot(conn) != dict(reference.owned_schema):
+            return False
+        return SQLiteMigrator._v128_nonfk_entity_refs_ok(conn, reference)
+
+    @staticmethod
+    def _v128_nonfk_entity_refs_ok(conn: sqlite3.Connection, reference: "V128Reference") -> bool:
+        """Compare V128's contribution to the two non-FK tables (events, scan_quarantine) against the
+        reference-derived ``NonFkContract`` bundle. Each table's live contract (column xinfo, FK groups
+        containing source_entity_id, parsed FK-clause signature, source_entity_id index set) must equal
+        the reference exactly; any mismatch -> False. A ``V128OracleError`` from the FK-clause parser on
+        the LIVE schema (an ambiguous/duplicate/unparseable entity FK) is treated as a detected drift ->
+        False; the same error while BUILDING the reference propagates (fail-closed), which is intended.
+        """
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        for table, _entity_idx in _V128_NONFK_ENTITY_INDEXES:
+            if table not in tables:
+                return False
+            ref_contract = reference.nonfk_contracts.get(table)
+            if ref_contract is None:
+                return False
+            try:
+                live = _v128_extract_nonfk_contract(conn, table)
+            except V128OracleError:
+                return False
+            if live != ref_contract:
+                return False
+        return True
+
+    @staticmethod
+    def _v128_core_structural_ok(conn: sqlite3.Connection) -> bool:
+        """Enumerative parity check for the V128-CORE entity-keyed shape (the V129 additive layer is
+        checked SEPARATELY by ``_v129_schema_additions_present``; the bootstrap wrapper
+        ``_v128_schema_structural_ok`` ANDs the two). Used while the reference schema is being built (the
+        normal path is the reference comparison in ``_v128_schema_current``) and, on a live drifted DB,
+        to ATTRIBUTE a fail-closed error to the V128 core vs the V129 layer (§9.3). Checks the FULL
+        per-table V128 column set (declared type, nullability, primary-key role), required FK edges to
+        the identity authority, EXACT required SQL fragments (full CHECK clauses, UNIQUE table-
+        constraints, enum ``IN (...)`` lists from the same live value tuples the rebuild imports), each
+        V128 locator index's columns + UNIQUEness + full partial predicate, mandatory events/quarantine
+        tables with their entity FK + index, and absent demoted keys / obsolete parent path-unique
+        index. Subset-based, so the extra nullable V129 columns/index are ignored here. Returns False on
+        a still-source_id-keyed DB so the scratch apply() runs the rebuild, and True once rebuilt."""
+        from hb_assistant.store.source_intelligence_tables import (  # noqa: PLC0415
+            EXTRACTION_STATUS_VALUES,
+            GENERATION_STATUS_VALUES,
+            RELATION_DST_KIND_VALUES,
+            RELATION_VALUES,
+            SOURCE_KIND_VALUES,
+        )
+
+        def _in(col: str, vals: tuple[str, ...]) -> str:
+            # Mirror _rebuild_v128_permanent_identity's ``_vcsv`` exactly so the expected enum-CHECK
+            # substring tracks the SAME live value tuples the rebuild baked into the stored DDL.
+            return f"{col} IN (" + ", ".join(f"'{v}'" for v in vals) + ")"
+        def _cols(table: str) -> dict[str, tuple[str, int, int]]:
+            # name -> (declared_type_upper, notnull, pk).
+            return {
+                r[1]: (str(r[2] or "").upper(), int(r[3]), int(r[5]))
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+
+        def _fks(table: str) -> dict[str, tuple[str, str]]:
+            # from-column -> (referenced table, referenced column).
+            return {
+                r[3]: (r[2], r[4])
+                for r in conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+            }
+
+        def _idx_meta(table: str) -> dict[str, tuple[int, int]]:
+            # index name -> (unique, partial) flags.
+            return {
+                r[1]: (int(r[2]), int(r[4]))
+                for r in conn.execute(f"PRAGMA index_list({table})").fetchall()
+            }
+
+        def _idx_cols(index: str) -> list[str]:
+            return [r[2] for r in conn.execute(f"PRAGMA index_info({index})").fetchall()]
+
+        def _tbl_sql(table: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        def _idx_sql(index: str) -> str:
+            row = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='index' AND name=?", (index,)
+            ).fetchone()
+            return " ".join((row[0] or "").split()) if row and row[0] else ""
+
+        _T, _I = "TEXT", "INTEGER"
+        # FULL required column set per table: name -> (declared_type, notnull, pk). Transcribed
+        # verbatim from _rebuild_v128_permanent_identity's DDL (repo truth). CP-PI-WI-02-R4: the whole
+        # column set is enumerated so a payload table stripped to its key columns is rejected.
+        REQUIRED_COLS: dict[str, dict[str, tuple[str, int, int]]] = {
+            "source_index_entities": {
+                "source_entity_id": (_T, 1, 1), "created_at": (_T, 1, 0), "status": (_T, 1, 0),
+            },
+            "source_index_locators": {
+                "locator_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0), "source_id": (_T, 1, 0),
+                "source_root_key": (_T, 0, 0), "rel_path": (_T, 0, 0),
+                "is_current_locator": (_I, 1, 0), "tombstoned_at": (_T, 0, 0),
+                "generation_seq": (_I, 1, 0),
+            },
+            "source_index_move_signals": {
+                "move_signal_id": (_T, 0, 1), "source_locator_id": (_T, 0, 0),
+                "source_root_key": (_T, 0, 0), "source_rel_path": (_T, 0, 0),
+                "target_root_key": (_T, 0, 0), "target_rel_path": (_T, 0, 0),
+                "detected_at": (_T, 0, 0), "generation_id": (_T, 0, 0), "applied_at": (_T, 0, 0),
+            },
+            "source_intelligence_sources": {
+                "source_entity_id": (_T, 1, 1), "source_kind": (_T, 1, 0),
+                "source_root_key": (_T, 0, 0), "rel_path": (_T, 0, 0), "abs_path_hash": (_T, 0, 0),
+                "domain_ref_table": (_T, 0, 0), "domain_ref_id": (_T, 0, 0),
+                "project_key": (_T, 0, 0), "project_number": (_T, 0, 0),
+                "active": (_I, 1, 0), "deleted": (_I, 1, 0),
+                "created_at": (_T, 1, 0), "updated_at": (_T, 1, 0),
+                "renamed_from_source_id": (_T, 0, 0),
+            },
+            "source_intelligence_metadata": {
+                "source_entity_id": (_T, 1, 1), "file_ext": (_T, 0, 0), "size_bytes": (_I, 0, 0),
+                "mtime_ns": (_I, 0, 0), "content_sha256": (_T, 0, 0), "page_count": (_I, 0, 0),
+                "paragraph_count": (_I, 0, 0), "sheet_count": (_I, 0, 0),
+                "extraction_status": (_T, 1, 0), "extraction_failure_code": (_T, 0, 0),
+                "fts_rowid": (_I, 0, 0), "indexed_at": (_T, 1, 0),
+                "extraction_disposition": (_T, 0, 0), "content_indexed_at": (_T, 0, 0),
+            },
+            "source_intelligence_text": {
+                "source_entity_id": (_T, 1, 1), "text_excerpt": (_T, 0, 0),
+                "excerpt_char_count": (_I, 1, 0), "excerpt_truncated": (_I, 1, 0),
+                "full_text_sha256": (_T, 0, 0), "text_vault_ref": (_T, 0, 0),
+                "raw_body_persisted": (_I, 1, 0), "redaction_applied": (_I, 1, 0),
+                "updated_at": (_T, 1, 0),
+            },
+            "source_intelligence_summaries": {
+                "source_entity_id": (_T, 1, 1), "model_provider": (_T, 1, 0),
+                "model_name": (_T, 0, 0), "prompt_version": (_T, 1, 0), "prompt_sha256": (_T, 0, 0),
+                "summary_sha256": (_T, 0, 0), "source_sha256": (_T, 0, 0),
+                "advisory": (_I, 1, 0), "generated_at": (_T, 1, 0),
+            },
+            "source_intelligence_chunks": {
+                "chunk_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0), "ordinal": (_I, 1, 0),
+                "chunk_text": (_T, 1, 0), "char_count": (_I, 1, 0),
+                "raw_body_persisted": (_I, 1, 0), "created_at": (_T, 1, 0),
+            },
+            "source_intelligence_generated_notes": {
+                "generated_note_id": (_T, 0, 1), "source_entity_id": (_T, 1, 0),
+                "note_rel_path": (_T, 0, 0), "generation_status": (_T, 1, 0),
+                "generated_at": (_T, 0, 0), "updated_at": (_T, 1, 0),
+            },
+            "source_intelligence_relationships": {
+                "relationship_id": (_T, 0, 1), "src_source_entity_id": (_T, 1, 0),
+                "dst_kind": (_T, 1, 0), "dst_ref": (_T, 1, 0), "relation": (_T, 1, 0),
+                "confidence": (_T, 0, 0), "evidence_json": (_T, 0, 0), "created_at": (_T, 1, 0),
+            },
+        }
+        # Demoted legacy keys that MUST be absent from the entity-keyed tables.
+        FORBIDDEN_COLS: dict[str, tuple[str, ...]] = {
+            "source_intelligence_sources": ("source_id",),
+            "source_intelligence_metadata": ("source_id",),
+            "source_intelligence_text": ("source_id",),
+            "source_intelligence_summaries": ("source_id",),
+            "source_intelligence_chunks": ("source_id",),
+            "source_intelligence_generated_notes": ("source_id",),
+            "source_intelligence_relationships": ("src_source_id", "source_id"),
+        }
+        # from-column -> (target table, target column) FK edges that must be present.
+        _AUTH = ("source_index_entities", "source_entity_id")
+        REQUIRED_FKS: dict[str, dict[str, tuple[str, str]]] = {
+            "source_index_locators": {"source_entity_id": _AUTH},
+            "source_intelligence_sources": {"source_entity_id": _AUTH},
+            "source_intelligence_metadata": {"source_entity_id": _AUTH},
+            "source_intelligence_text": {"source_entity_id": _AUTH},
+            "source_intelligence_summaries": {"source_entity_id": _AUTH},
+            "source_intelligence_chunks": {"source_entity_id": _AUTH},
+            "source_intelligence_generated_notes": {"source_entity_id": _AUTH},
+            "source_intelligence_relationships": {"src_source_entity_id": _AUTH},
+        }
+        # FULL normalized SQL fragments (complete CHECK clauses, UNIQUE table-constraints, and enum
+        # IN-lists) that must survive verbatim in each table's stored SQL. CP-PI-WI-02-R4: exact full
+        # clauses, not loose substrings — a weakened CHECK (e.g. the parent addressability CHECK cut
+        # to domain-only) no longer contains the full expected text and is rejected.
+        REQUIRED_SQL_FRAGMENTS: dict[str, tuple[str, ...]] = {
+            "source_index_entities": ("status IN ('LIVE','TOMBSTONED')",),
+            "source_intelligence_sources": (
+                _in("source_kind", SOURCE_KIND_VALUES),
+                "(rel_path IS NOT NULL) OR (domain_ref_table IS NOT NULL"
+                " AND domain_ref_id IS NOT NULL)",
+            ),
+            "source_intelligence_metadata": (_in("extraction_status", EXTRACTION_STATUS_VALUES),),
+            "source_intelligence_text": (
+                "excerpt_char_count >= 0", "raw_body_persisted = 0", "redaction_applied = 1",
+            ),
+            "source_intelligence_summaries": ("advisory = 1",),
+            "source_intelligence_chunks": (
+                "raw_body_persisted = 0", "UNIQUE(source_entity_id, ordinal)",
+            ),
+            "source_intelligence_generated_notes": (
+                _in("generation_status", GENERATION_STATUS_VALUES),
+                "UNIQUE(source_entity_id, note_rel_path)",
+            ),
+            "source_intelligence_relationships": (
+                _in("dst_kind", RELATION_DST_KIND_VALUES),
+                _in("relation", RELATION_VALUES),
+                "UNIQUE(src_source_entity_id, dst_kind, dst_ref, relation)",
+            ),
+        }
+
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+
+        # (1) required tables present; columns match type+nullability+pk; forbidden columns absent.
+        for table, want in REQUIRED_COLS.items():
+            if table not in tables:
+                return False
+            have = _cols(table)
+            for name, (typ, notnull, pk) in want.items():
+                got = have.get(name)
+                if got is None:
+                    return False
+                if typ and got[0] != typ:
+                    return False
+                if got[1] != notnull or got[2] != pk:
+                    return False
+            for name in FORBIDDEN_COLS.get(table, ()):
+                if name in have:
+                    return False
+
+        # (2) required FK edges to the identity authority.
+        for table, want_fk in REQUIRED_FKS.items():
+            fks = _fks(table)
+            for col, target in want_fk.items():
+                if fks.get(col) != target:
+                    return False
+
+        # (3) required SQL fragments — full CHECK clauses, UNIQUE constraints, enum IN-lists.
+        for table, frags in REQUIRED_SQL_FRAGMENTS.items():
+            sql = _tbl_sql(table)
+            for frag in frags:
+                if frag not in sql:
+                    return False
+
+        # (4) required locator indexes — exact indexed columns, UNIQUEness, and the FULL partial
+        #     predicate. (name, columns, unique, full-partial-predicate or None-if-non-partial)
+        _LOC_IDX = (
+            ("idx_locators_current_per_entity", ["source_entity_id"], 1, "is_current_locator=1"),
+            ("idx_locators_active_path", ["source_root_key", "rel_path"], 1,
+             "is_current_locator=1 AND tombstoned_at IS NULL"),
+            ("idx_locators_source_id", ["source_id"], 0, None),
+        )
+        loc_meta = _idx_meta("source_index_locators")
+        for name, want_cols, want_unique, want_partial in _LOC_IDX:
+            meta = loc_meta.get(name)
+            if meta is None:
+                return False
+            unique, partial = meta
+            if _idx_cols(name) != want_cols or unique != want_unique:
+                return False
+            if want_partial is None:
+                if partial:
+                    return False
+            elif not partial or want_partial not in _idx_sql(name):
+                return False
+
+        # obsolete parent path-unique indexes must be absent (IMP-F-003).
+        src_idx = _idx_meta("source_intelligence_sources")
+        if "idx_si_sources_root_relpath" in src_idx or "idx_si_sources_relpath" in src_idx:
+            return False
+
+        # (5) non-FK tables (events, scan_quarantine) — CP-PI-WI-02-R4: MANDATORY (not conditional).
+        #     Each must exist, carry the nullable source_entity_id FK to the identity authority, and
+        #     carry its entity index. (All are re-established by _v128_reparent_nonfk_tables, so a
+        #     dropped column/index is repairable; a fully-absent table fails closed.)
+        _NONFK = (
+            ("source_intelligence_events", "idx_si_events_entity"),
+            ("source_index_scan_quarantine", "idx_si_scan_quarantine_entity"),
+        )
+        for table, entity_idx in _NONFK:
+            if table not in tables:
+                return False
+            if "source_entity_id" not in _cols(table):
+                return False
+            if _fks(table).get("source_entity_id") != _AUTH:
+                return False
+            if entity_idx not in _idx_meta(table):
+                return False
+        return True
+
+    @staticmethod
+    def _v128_schema_structural_ok(conn: sqlite3.Connection) -> bool:
+        """Structural bootstrap check used ONLY while the reference schema is being built (the normal
+        path is the reference comparison in ``_v128_schema_current``). ADR-003 R8 §9.2: V129 rides the
+        V128 oracle, so a broken V129 migration is caught during reference build too — the bootstrap
+        requires BOTH the V128-core shape (``_v128_core_structural_ok``) AND the V129 additive layer
+        (``_v129_schema_additions_present``). Returns False on a still-source_id-keyed DB so the scratch
+        apply() runs the rebuild, and True once the full head (V128 core + V129 additions) is realized."""
+        return (
+            SQLiteMigrator._v128_core_structural_ok(conn)
+            and SQLiteMigrator._v129_schema_additions_present(conn)
         )
 
     @staticmethod
@@ -9653,6 +12154,19 @@ class SQLiteMigrator:
             "SELECT name FROM sqlite_master WHERE type='table'"
         )}
         if "source_intelligence_sources" not in tables:
+            return
+
+        # Post-V128 the sources table is ENTITY-keyed (no ``source_id`` column) — the root-scoped
+        # source_id remap is obsolete and meaningless. Return before touching the schema so the whole
+        # migration chain stays re-runnable: self-heal (resetting schema_migrations to a stale version
+        # and re-applying) re-executes this block against the already-rebuilt schema, and the historical
+        # ``SELECT source_id …`` below would raise ``no such column: source_id``. (V128 owns the
+        # entity-scoped identity; this idempotency guard extends the existing "no-op if already
+        # migrated" contract.)
+        source_cols = {
+            r[1] for r in conn.execute("PRAGMA table_info(source_intelligence_sources)").fetchall()
+        }
+        if "source_id" not in source_cols:
             return
 
         # (1) swap the uniqueness index to include the root.

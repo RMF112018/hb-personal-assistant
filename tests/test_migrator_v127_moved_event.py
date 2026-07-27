@@ -75,7 +75,7 @@ def fresh(tmp_path: Path) -> str:
 
 
 def test_latest_version_is_127(fresh) -> None:
-    assert LATEST_SCHEMA_VERSION == 127
+    assert LATEST_SCHEMA_VERSION == 129
     assert 127 in _versions(fresh)
 
 
@@ -102,7 +102,7 @@ def test_rebuild_from_old_shape_preserves_rows_and_ids(tmp_path) -> None:
                           rows=[("evt-1", "created"), ("evt-2", "deleted")])
     assert "dest_rel_path" not in _cols(db)  # confirm we are genuinely pre-V127
     # re-apply -> V127 rebuild fires
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert {"dest_rel_path", "next_attempt_at"}.issubset(_cols(db))
     with sqlite3.connect(db) as c:
         preserved = {r[0]: r[1] for r in c.execute(
@@ -124,7 +124,7 @@ def test_parity_incomplete_table_is_rebuilt_not_marked_applied(tmp_path) -> None
         c.execute("INSERT INTO source_intelligence_events(event_id,event_type,status) "
                   "VALUES('probe','moved','queued')")
     # re-apply -> parity probe fails on the stale CHECK -> full rebuild -> now accepts 'moved'
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert 127 in _versions(db)
     SourceIndexRepository(db).enqueue_event(event_type="moved", rel_path="x", dest_rel_path="y",
                                             source_root_key="R")
@@ -135,7 +135,7 @@ def test_parity_incomplete_table_is_rebuilt_not_marked_applied(tmp_path) -> None
 
 def test_idempotent_reapply(fresh) -> None:
     for _ in range(3):
-        assert SQLiteMigrator(db_path=fresh).apply() == 127
+        assert SQLiteMigrator(db_path=fresh).apply() == LATEST_SCHEMA_VERSION
 
 
 def test_v122_to_v126_preserved(fresh) -> None:
@@ -188,7 +188,7 @@ def test_missing_attempts_column_rebuilds_losslessly_even_with_v127_recorded(tmp
         "dest_rel_path TEXT, next_attempt_at TEXT, created_at TEXT, updated_at TEXT)",
         [("e1", "created")], keep_v127=True,
     )
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     assert "attempts" in _cols(db)
     with sqlite3.connect(db) as c:
         assert c.execute("SELECT event_type, attempts FROM source_intelligence_events "
@@ -215,7 +215,7 @@ def test_wrong_status_default_rebuilds(tmp_path) -> None:
         assert SQLiteMigrator._events_schema_current(c) is False  # wrong default/nullability detected
     finally:
         c.close()
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     c = _get_conn(db)
     try:
         assert SQLiteMigrator._events_schema_current(c) is True
@@ -249,7 +249,7 @@ def test_index_right_name_wrong_columns_rebuilds(tmp_path) -> None:
         assert SQLiteMigrator._events_schema_current(c) is False  # wrong index columns detected
     finally:
         c.close()
-    assert SQLiteMigrator(db_path=db).apply() == 127
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
     cols = [r[2] for r in sqlite3.connect(db).execute(
         "PRAGMA index_info(idx_si_events_source)").fetchall()]
     assert cols == ["source_id"]  # index repaired
@@ -272,3 +272,73 @@ def test_invalid_existing_rows_fail_closed_and_roll_back(tmp_path) -> None:
         assert c.execute("SELECT event_type FROM source_intelligence_events "
                          "WHERE event_id='bad'").fetchone()[0] == "__nope__"
     assert 127 not in _versions(db)
+
+
+# ---------------- IMP-F-002: optional V128 entity FK column tolerated + preserved ----------------
+
+
+def _fk_list(db: str) -> list:
+    with sqlite3.connect(db) as c:
+        return c.execute("PRAGMA foreign_key_list(source_intelligence_events)").fetchall()
+
+
+def test_events_entity_fk_tolerated_on_fresh(fresh) -> None:
+    # IMP-F-002: V128 adds a nullable source_entity_id FK to events; the V127 always-revalidate guard
+    # must TOLERATE it (no false rebuild) — _events_schema_current is True on a fresh (post-V128) DB.
+    assert "source_entity_id" in _cols(fresh)
+    assert "idx_si_events_entity" in _indexes(fresh)
+    fks = _fk_list(fresh)
+    assert len(fks) == 1
+    assert (fks[0][2], fks[0][3], fks[0][4]) == (
+        "source_index_entities", "source_entity_id", "source_entity_id")
+    c = _get_conn(fresh)
+    try:
+        assert SQLiteMigrator._events_schema_current(c) is True
+    finally:
+        c.close()
+
+
+def test_v127_rebuild_preserves_entity_fk(tmp_path) -> None:
+    # IMP-F-002: when a V127 rebuild fires on a post-V128 events table (which carries the entity FK
+    # column), the column + FK + index must be PRESERVED, never stripped.
+    db = str(tmp_path / "db.sqlite")
+    SQLiteMigrator(db_path=db).apply()
+    assert "source_entity_id" in _cols(db)  # V128 added it
+    # Torn events table that KEEPS the entity column but has a wrong status default -> forces rebuild.
+    _install_events(
+        db,
+        "CREATE TABLE source_intelligence_events (event_id TEXT PRIMARY KEY, source_id TEXT, "
+        "rel_path TEXT, source_root_key TEXT, dest_rel_path TEXT, next_attempt_at TEXT, "
+        "event_type TEXT NOT NULL CHECK(event_type IN "
+        "('created','modified','deleted','reindex_requested','rebuild','moved')), "
+        "status TEXT DEFAULT 'wrong', error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0, "
+        "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        "updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        "source_entity_id TEXT REFERENCES source_index_entities(source_entity_id))",
+        [("e1", "created")], keep_v127=False,
+        indexes=[
+            "CREATE INDEX idx_si_events_status ON source_intelligence_events(status, created_at)",
+            "CREATE INDEX idx_si_events_source ON source_intelligence_events(source_id)",
+            "CREATE INDEX idx_si_events_entity ON source_intelligence_events(source_entity_id)",
+        ],
+    )
+    c = _get_conn(db)
+    try:
+        assert SQLiteMigrator._events_schema_current(c) is False  # wrong status default -> rebuild
+    finally:
+        c.close()
+    assert SQLiteMigrator(db_path=db).apply() == LATEST_SCHEMA_VERSION
+    assert "source_entity_id" in _cols(db)  # preserved through the rebuild
+    assert "idx_si_events_entity" in _indexes(db)
+    fks = _fk_list(db)
+    assert len(fks) == 1
+    assert (fks[0][2], fks[0][3], fks[0][4]) == (
+        "source_index_entities", "source_entity_id", "source_entity_id")
+    with sqlite3.connect(db) as cc:
+        assert cc.execute("SELECT event_type FROM source_intelligence_events "
+                          "WHERE event_id='e1'").fetchone()[0] == "created"  # row preserved
+    c = _get_conn(db)
+    try:
+        assert SQLiteMigrator._events_schema_current(c) is True
+    finally:
+        c.close()

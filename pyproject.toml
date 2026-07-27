@@ -192,6 +192,8 @@ module = [
   "hb_assistant.cli.scheduler",
   # Phase C Stage 1: read-only source-index migration-assurance inventory engine (PCR-004).
   "hb_assistant.store.source_index_migration_assurance",
+  # Phase C Stage 2 (PC-WI-02): online backup / independent restore assurance (deferred from PC-WI-02).
+  "hb_assistant.store.sqlite_backup",
 ]
 ignore_errors = false
 follow_imports = "normal"

@@ -1,7 +1,7 @@
 # Source-Index Phase C — Migration & Rollback Proof (durable specification)
 
-**Status:** Stage 1 (foundation) implemented; Stages 2–3 specified, not implemented.
-**Governance:** AEOS. **Production / deployment / NAS authority:** none.
+**Status:** COMPLETE — terminal 800k+ rehearsal and both source-index gates passed.
+**Governance:** Repository operating guide. **Production / deployment / NAS authority:** none.
 **Approved objective source:** `AUDIT-NAS-SOURCE-INDEX-FULL-REMEDIATION-REPORT.md` (Phase C), as
 reconciled to current repository truth in `docs/evidence/source-index-phase-c/preflight/00-c0-repository-truth.md`.
 
@@ -21,10 +21,10 @@ migrating, repairing, reindexing, or activating the production source-index data
 
 ## 2. Execution-time truth (from C0)
 
-- **Schema head:** V127 (`LATEST_SCHEMA_VERSION`, `src/hb_assistant/store/migrator.py:17`), proven by
-  applying the migrator to a scratch DB (127-row ledger, versions 1..127, no gaps/duplicates).
-- **Migration engine:** `SQLiteMigrator(db_path=…).apply()` runs the entire V1→V127 body in **one**
-  `with transaction(conn)` block (`migrator.py:7638-7641`; `connection.py:150-162`). No per-migration
+- **Schema head:** V129 (`LATEST_SCHEMA_VERSION`), proven by applying the migrator to a scratch DB
+  (129-row ledger, versions 1..129, no gaps/duplicates).
+- **Migration engine:** `SQLiteMigrator(db_path=…).apply()` runs the entire V1→V129 body in **one**
+  `with transaction(conn)` block. No per-migration
   commits. Interruption during `apply()` rolls back to the origin head atomically.
 - **Runtime:** Python 3.14.5, SQLite 3.53.1, `sqlite3` legacy transaction control
   (`isolation_level=''`) — DDL participates in the transaction.
@@ -43,12 +43,12 @@ means `MAX(version)=N`.
 | **V124** | has V122 generations + V123 index fix + V124 fts index | audit-named origin |
 | **V125** | + quarantine | post-audit intermediate |
 | **V126** | + rename lineage | post-audit intermediate |
-| **V127** | head (idempotency origin) | reapply-at-head must be a no-op |
+| **V127** | + durable moved-event contract | former Phase C head; legacy migration origin |
+| **V128** | permanent entity identity and locator graph | post-Phase-C schema transition |
+| **V129** | observation re-homing and move-signal disposition | execution-time head; reapply-at-head must be a no-op |
 | **fresh** | apply from empty → head, **no legacy seeding** (empty source tables) | baseline forward path; a distinct fixture identity (`origin="fresh"`), not overloaded onto an integer |
 
-Head for every migration path = **V127**. V123 introduces no positive source-index *object* delta
-observable on a from-head fixture (the narrow `idx_si_sources_relpath` it drops is already absent by
-V99 < V121), so V123 is discriminated only by its `schema_migrations` row, not a schema object.
+Head for every migration path = **V129**.
 
 ## 4. Source-index object deltas (the discriminator contract)
 
@@ -67,11 +67,13 @@ with the fixture builder.
 | V125 | `source_index_scan_quarantine` (+ `idx_source_index_scan_quarantine_active`/`_root_state`) | table + indexes |
 | V126 | `source_intelligence_sources.renamed_from_source_id` (+ `idx_si_sources_renamed_from`) | column + index |
 | V127 | `source_intelligence_events.dest_rel_path` / `next_attempt_at`; `event_type` CHECK accepts `'moved'` | columns + constraint |
+| V128 | `source_index_entities`, `source_index_locators`, `source_index_move_signals`; seven source/content tables re-keyed from `source_id` to permanent entity identity; events/quarantine gain nullable entity FKs | tables + rebuild + indexes |
+| V129 | locator observation/serving-trust columns; `idx_locators_reconcile`; move-signal disposition/result columns | columns + index + FKs |
 
 **Relpath uniqueness indexes (S1-AUD-006) — two distinct objects, do not conflate:**
 - `idx_si_sources_root_relpath` (root-scoped, `(source_kind, source_root_key, rel_path)`) is a **V93**
-  object present at **every** origin. It is NOT introduced by V123. The oracle asserts its **exact**
-  canonical SQL at all origins.
+  object present through V127. V128 moves active-path uniqueness to
+  `idx_locators_active_path (source_root_key, rel_path)` on current, non-tombstoned locators.
 - `idx_si_sources_relpath` is the historical **narrow** unique index `(source_kind, rel_path)` that
   omits the root. The current migrator never creates it (grep: only V99/V123 `DROP` statements), but a
   real **pre-V123 deployed** database carried it — which is precisely why it blocked cross-root
@@ -115,8 +117,12 @@ Seeded only into tables that exist at the fixture's origin version:
   `completed` states, incl. one active per root (partial-unique honored).
 - **V125+ only:** `source_index_scan_quarantine` unresolved rows (root-level trust blocker).
 - **V126+ only:** `renamed_from_source_id` lineage (new row → prior `source_id`; old row `deleted`).
-- **V127 only:** `source_intelligence_events` including a governed `'moved'` event with
+- **V127+:** `source_intelligence_events` including a governed `'moved'` event with
   `dest_rel_path` + `next_attempt_at`; pre-V127 origins carry only legacy event types.
+- **V128+:** permanent entities, one current locator per entity, entity-keyed source/content rows,
+  reparented event/quarantine rows, and representative move-signal state.
+- **V129:** locator-scoped last-seen/policy observations and the additive move-signal disposition
+  contract.
 
 All fixture data is **synthetic** — no production absolute paths, secrets, or real source content.
 
@@ -141,16 +147,14 @@ separately implemented and approved.
 
 ## 9. Staging and boundaries
 
-- **Stage 1 (this increment) — foundation.** C0 evidence; this spec; the fixture framework +
-  independent oracle; the read-only inventory/parity engine. **No** backup/restore, migration-matrix,
-  atomicity, lock, compatibility, gate, or 800k work.
-- **Stage 2 — proof.** Backup/restore harness (`Connection.backup()` over a read-only source URI;
-  never a raw copy while WAL is active); migration matrix (V121/V124/V125/V126/head/fresh → V127);
+- **Stage 1 — foundation (complete).** C0 evidence; this spec; the fixture framework +
+  independent oracle; the read-only inventory/parity engine.
+- **Stage 2 — proof (complete).** Backup/restore harness (`Connection.backup()` over a read-only source URI;
+  never a raw copy while WAL is active); migration matrix
+  (V121/V124/V125/V126/V127/V128/head/fresh → V129);
   interruption/recovery under the **single-atomic-transaction** model.
-- **Stage 3 — compatibility, gate, evidence.** Compatibility/rollback matrix + runbook; CI-gate
-  wiring; redacted evidence bundle.
-
-Each stage returns for a **new AEOS review** before it begins. Stage 1 may not begin C4 backup work.
+- **Stage 3 — compatibility, gate, evidence (complete).**
+  Compatibility/rollback matrix + runbook; CI gate; redacted evidence bundle; authorized 800k+ run.
 
 ### Deferred requirements recorded now (do not lose)
 
@@ -167,10 +171,11 @@ Each stage returns for a **new AEOS review** before it begins. Stage 1 may not b
   reproduction, worktree authorization, whether the probe is executable-startup vs bounded DAO reads,
   and result meanings. If historical execution cannot be reproduced → `INSUFFICIENT EVIDENCE`, never
   static inspection relabeled as compatibility proof.
-- **800k+ rehearsal (PCR-006):** the configurable generator (Stage 1) and any bounded CI run are
-  **not** the audit's production-shaped proof. Until an authorized 800k+ rehearsal is run with raw
-  evidence: `PC-AC-048 = NOT VERIFIED` and **Phase C = INCOMPLETE**. Generator existence must never be
-  reported as `PASS` for the large-scale requirement.
+- **800k+ rehearsal (PCR-006):** the authorized V124→V129 rehearsal completed with 800,002 source
+  rows and 2,400,132 measured rows. Migration, integrity, backup verification, independent restore,
+  and compatibility read all passed. Redacted raw evidence:
+  `docs/evidence/source-index-phase-c/phase-c-v129-800k-rehearsal.json`
+  (SHA-256 `895df98bfe5d45b58d6ca9b2fe361ee1dc40fbcc1cb85c7ced781f285e9aecd3`).
 
 ### Rehearsal-root isolation (PCR-001 / PCR-008)
 
@@ -184,15 +189,15 @@ target proven disposable (fixture marker/manifest present).
 
 ## 10. Acceptance criteria
 
-All criteria begin at `NOT VERIFIED`. The "Stage" column marks where each is exercised. Stage 1
-criteria are the only ones an agent may move off `NOT VERIFIED` in this increment.
+The "Stage" column records where each criterion is exercised. Final dispositions and exact evidence
+are recorded in the Phase C closure report.
 
 | ID | Criterion | Stage |
 |----|-----------|-------|
 | PC-AC-001 | Execution-time schema head and supported legacy origins recorded | 1 |
 | PC-AC-002 | Deterministic **V121/pre-V122 monolithic** fixture generated **and validated against an independent historical object inventory**; inability to reconstruct is a Stage 1 blocker requiring plan review | 1 |
 | PC-AC-003 | Deterministic V124 fixture generated | 1 |
-| PC-AC-004 | Fixtures for each post-audit version through head (V125, V126, V127) | 1 |
+| PC-AC-004 | Fixtures for each post-audit version through head (V125, V126, V127, V128, V129) | 1 |
 | PC-AC-005 | Production-shaped fixture includes duplicate relative paths under multiple roots | 1 |
 | PC-AC-006 | Fixture includes ALL six generation states — running/partial/reconcile_pending/completed/failed/abandoned — one active per root across three roots (V122+) | 1 |
 | PC-AC-007 | Fixture includes FTS-present and intentionally FTS-missing source rows | 1 |
@@ -254,10 +259,8 @@ criteria are the only ones an agent may move off `NOT VERIFIED` in this incremen
 
 ---
 
-## 11. Stage 1 dispositions
+## 11. Closure disposition
 
-Stage 1 concludes with exactly one of: `STAGE 1 COMPLETE — READY FOR INDEPENDENT AUDIT` /
-`STAGE 1 COMPLETE WITH NON-BLOCKING GAPS` / `STAGE 1 PARTIAL — BLOCKED` /
-`STAGE 1 NOT STARTED — PREFLIGHT CONFLICT` / `STAGE 1 INSUFFICIENT EVIDENCE`, plus a Stage 2 delta
-proposal. No agent may issue `GO`, and Phase C remains `INCOMPLETE` until the deferred requirements
-(§9) are satisfied under separate authorization.
+Phase C is complete when the raw rehearsal evidence remains valid, both source-index gates pass on
+the integration candidate, GitHub CI passes, and the integration is merged without drift. The
+repository closure report records the candidate/merge identities and any residual non-blocking risk.

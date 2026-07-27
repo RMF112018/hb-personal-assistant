@@ -4,7 +4,7 @@ Produces a source-index SQLite database at a supported legacy origin version by 
 migrator to the current head on a *disposable* copy, (2) surgically reverting the schema down to the
 target origin, and (3) seeding origin-aware synthetic data. This mirrors the established reversion
 pattern in ``tests/test_migrator_v127_moved_event.py`` (``_revert_to_old_events`` / ``_install_events``)
-but generalizes it across V122-V127. It also supports a distinct ``fresh`` fixture (empty database
+but generalizes it across V122-V129. It also supports a distinct ``fresh`` fixture (empty database
 migrated to head, no legacy seeding).
 
 Independence (PCR-002): this builder *produces* origins with SQL mutation; the judgement of whether a
@@ -33,16 +33,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
-from hb_assistant.store.migrator import SQLiteMigrator
+from hb_assistant.store.migrator import LATEST_SCHEMA_VERSION, SQLiteMigrator
 from hb_assistant.store.source_index_migration_assurance import collect_inventory
+from hb_assistant.store.source_index_scan_generations_tables import (
+    V122_ADD_COLUMNS,
+    V122_POST_COLUMN_STATEMENTS,
+)
+from hb_assistant.store.source_index_scan_quarantine_tables import (
+    V125_SOURCE_INDEX_SCAN_QUARANTINE_STATEMENTS,
+)
 from hb_assistant.store.source_intelligence_tables import (
     EVENT_STATUS_VALUES,
     EVENT_TYPE_VALUES,
+    EVENT_TYPE_VALUES_V127,
+    V93_STATEMENTS,
+    V94_STATEMENTS,
 )
 
-SUPPORTED_ORIGINS: tuple[int, ...] = (121, 124, 125, 126, 127)
+SUPPORTED_ORIGINS: tuple[int, ...] = (121, 124, 125, 126, 127, 128, 129)
 FRESH: str = "fresh"
-HEAD_VERSION: int = 127
+HEAD_VERSION: int = LATEST_SCHEMA_VERSION
 NARROW_INDEX_DROPPED_AT: int = 123
 
 # Deterministic constants (no wall-clock, no randomness) so a fixture's logical content is stable.
@@ -118,6 +128,101 @@ def _validate_target(rehearsal_root: Path, filename: str) -> Path:
 # --- Schema reversion (head → origin) ---------------------------------------------------------
 
 
+def _install_v127_events(conn: sqlite3.Connection) -> None:
+    """Replace the empty current events table with the exact entity-less V127 contract."""
+    et_csv = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES_V127)
+    st_csv = ", ".join(f"'{v}'" for v in EVENT_STATUS_VALUES)
+    conn.execute("DROP TABLE IF EXISTS source_intelligence_events")
+    conn.execute(
+        "CREATE TABLE source_intelligence_events_v127 ("
+        " event_id TEXT PRIMARY KEY, source_id TEXT, rel_path TEXT, source_root_key TEXT,"
+        " dest_rel_path TEXT, next_attempt_at TEXT,"
+        f" event_type TEXT NOT NULL CHECK(event_type IN ({et_csv})),"
+        f" status TEXT NOT NULL DEFAULT 'queued' CHECK(status IN ({st_csv})),"
+        " error_code TEXT, attempts INTEGER NOT NULL DEFAULT 0,"
+        " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+        " updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ")"
+    )
+    conn.execute(
+        "ALTER TABLE source_intelligence_events_v127 RENAME TO source_intelligence_events"
+    )
+    conn.execute(
+        "CREATE INDEX idx_si_events_status ON source_intelligence_events(status, created_at)"
+    )
+    conn.execute("CREATE INDEX idx_si_events_source ON source_intelligence_events(source_id)")
+
+
+def _revert_empty_head_to_v127(conn: sqlite3.Connection) -> None:
+    """Project a freshly migrated, empty V129 database back to the exact V127 source-index shape.
+
+    Phase C fixtures are intentionally synthesized only from an empty scratch database. Rebuilding
+    the seven V128 entity-keyed tables here is therefore lossless and keeps the legacy-origin producer
+    independent from the read-only expected-inventory oracle.
+    """
+    # Remove the two non-FK tables that V128 reparents before dropping the identity graph.
+    conn.execute("DROP TABLE IF EXISTS source_intelligence_events")
+    conn.execute("DROP TABLE IF EXISTS source_index_scan_quarantine")
+    for table in (
+        "source_intelligence_metadata",
+        "source_intelligence_text",
+        "source_intelligence_chunks",
+        "source_intelligence_relationships",
+        "source_intelligence_generated_notes",
+        "source_intelligence_summaries",
+        "source_intelligence_sources",
+        "source_index_move_signals",
+        "source_index_locators",
+        "source_index_entities",
+    ):
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
+
+    # Recreate the legacy V93/V94 source graph from its canonical DDL, then layer the exact
+    # V122/V125/V126/V127 deltas that constituted the former Phase C head.
+    for stmt in (*V93_STATEMENTS, *V94_STATEMENTS):
+        conn.execute(stmt)
+    for table, column, decl in V122_ADD_COLUMNS:
+        if table == "source_index_bootstrap_runs":
+            # The table was not rebuilt and already carries this V122 column.
+            continue
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    for stmt in V122_POST_COLUMN_STATEMENTS:
+        conn.execute(stmt)
+    for stmt in V125_SOURCE_INDEX_SCAN_QUARANTINE_STATEMENTS:
+        conn.execute(stmt)
+    conn.execute(
+        "ALTER TABLE source_intelligence_sources ADD COLUMN renamed_from_source_id TEXT"
+    )
+    conn.execute(
+        "CREATE INDEX idx_si_sources_renamed_from "
+        "ON source_intelligence_sources(renamed_from_source_id) "
+        "WHERE renamed_from_source_id IS NOT NULL"
+    )
+    _install_v127_events(conn)
+    conn.execute("DELETE FROM schema_migrations WHERE version > 127")
+
+
+def _revert_head_to_v128(conn: sqlite3.Connection) -> None:
+    """Strip the complete additive V129 suffix from an empty current-head database."""
+    conn.execute("DROP INDEX IF EXISTS idx_locators_reconcile")
+    for col in (
+        "last_seen_generation",
+        "last_seen_at",
+        "last_indexed_fingerprint",
+        "policy_validation_state",
+    ):
+        conn.execute(f"ALTER TABLE source_index_locators DROP COLUMN {col}")
+    for col in (
+        "disposition",
+        "disposition_at",
+        "disposition_reason",
+        "resulting_entity_id",
+        "resulting_locator_id",
+    ):
+        conn.execute(f"ALTER TABLE source_index_move_signals DROP COLUMN {col}")
+    conn.execute("DELETE FROM schema_migrations WHERE version > 128")
+
+
 def _revert_events_to_pre_v127(conn: sqlite3.Connection) -> None:
     """Rebuild ``source_intelligence_events`` to its pre-V127 shape (no dest/backoff cols, no 'moved')."""
     et_csv = ", ".join(f"'{v}'" for v in EVENT_TYPE_VALUES)
@@ -146,6 +251,12 @@ def _revert_to_origin(conn: sqlite3.Connection, origin: int) -> None:
     """
     if origin >= HEAD_VERSION:
         return
+    if origin == 128:
+        _revert_head_to_v128(conn)
+        return
+    _revert_empty_head_to_v127(conn)
+    if origin == 127:
+        return
     if origin < 127:
         _revert_events_to_pre_v127(conn)
     if origin < 126:
@@ -172,7 +283,7 @@ def _revert_to_origin(conn: sqlite3.Connection, origin: int) -> None:
 # --- Origin-aware seeding ---------------------------------------------------------------------
 
 
-def _seed(conn: sqlite3.Connection, origin: int, row_count: int) -> None:
+def _seed_legacy(conn: sqlite3.Connection, origin: int, row_count: int) -> None:
     kind = "external_file"
     per_root = max(2, row_count)
     # Cross-root duplicate rel_paths are only valid once V123 drops the narrow unique index.
@@ -351,6 +462,200 @@ def _seed(conn: sqlite3.Connection, origin: int, row_count: int) -> None:
         )
 
 
+def _stable_identity(prefix: str, *parts: object) -> str:
+    payload = "\x1f".join(str(p) for p in parts)
+    return f"{prefix}-{hashlib.sha256(payload.encode()).hexdigest()[:24]}"
+
+
+def _seed_identity(conn: sqlite3.Connection, origin: int, row_count: int) -> None:
+    """Seed the V128/V129 entity-keyed source graph with deterministic synthetic identities."""
+    kind = "external_file"
+    per_root = max(2, row_count)
+    source_ids: dict[str, list[str]] = {root: [] for root in _ROOTS}
+    entity_ids: dict[str, list[str]] = {root: [] for root in _ROOTS}
+    locator_ids: dict[str, list[str]] = {root: [] for root in _ROOTS}
+
+    def _add_source(root: str, rel_path: str, source_kind: str, ordinal: int) -> tuple[str, str, str]:
+        sid = source_id_for(source_kind, source_root_key=root, rel_path=rel_path)
+        eid = _stable_identity("entity", source_kind, root, rel_path)
+        lid = _stable_identity("locator", source_kind, root, rel_path)
+        conn.execute(
+            "INSERT INTO source_index_entities(source_entity_id, created_at, status) "
+            "VALUES (?, ?, 'LIVE')",
+            (eid, _BASE_TS),
+        )
+        locator_cols = (
+            "locator_id, source_entity_id, source_id, source_root_key, rel_path, "
+            "is_current_locator, tombstoned_at, generation_seq"
+        )
+        locator_values: list[object] = [lid, eid, sid, root, rel_path, 1, None, 0]
+        if origin >= 129:
+            locator_cols += ", last_seen_generation, last_seen_at, last_indexed_fingerprint"
+            locator_values += [
+                "gen-work-running" if root == "work" else "gen-syn-partial",
+                _BASE_TS,
+                "fp-v1",
+            ]
+        placeholders = ", ".join("?" for _ in locator_values)
+        conn.execute(
+            f"INSERT INTO source_index_locators({locator_cols}) VALUES ({placeholders})",
+            locator_values,
+        )
+        conn.execute(
+            "INSERT INTO source_intelligence_sources "
+            "(source_entity_id, source_kind, source_root_key, rel_path, active, deleted, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, 1, 0, ?, ?)",
+            (eid, source_kind, root, rel_path, _BASE_TS, _BASE_TS),
+        )
+        fts_present = ordinal % 2 == 0
+        fts_rowid: int | None = None
+        fts_table = (
+            "source_intelligence_fts" if source_kind == "external_file" else "obsidian_note_fts"
+        )
+        if fts_present:
+            excerpt = (
+                f"excerpt for {root} {ordinal}"
+                if source_kind == "external_file"
+                else f"note excerpt {ordinal}"
+            )
+            cur = conn.execute(
+                f"INSERT INTO {fts_table} (text_excerpt, rel_path, aux) VALUES (?, ?, ?)",
+                (excerpt, rel_path, "proj-x" if source_kind == "external_file" else "tag-a"),
+            )
+            fts_rowid = int(cur.lastrowid) if cur.lastrowid is not None else None
+            conn.execute(
+                "INSERT INTO source_intelligence_text "
+                "(source_entity_id, text_excerpt, excerpt_char_count, full_text_sha256, "
+                "raw_body_persisted, redaction_applied, updated_at) VALUES (?, ?, ?, ?, 0, 1, ?)",
+                (
+                    eid,
+                    excerpt,
+                    len(excerpt),
+                    hashlib.sha256(f"{root}{ordinal}{source_kind}".encode()).hexdigest(),
+                    _BASE_TS,
+                ),
+            )
+        conn.execute(
+            "INSERT INTO source_intelligence_metadata "
+            "(source_entity_id, file_ext, extraction_status, fts_rowid, indexed_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                eid,
+                "pdf" if source_kind == "external_file" else "md",
+                "ok" if fts_present else "pending",
+                fts_rowid,
+                _BASE_TS,
+            ),
+        )
+        status = ("not_generated", "generated", "stale")[ordinal % 3]
+        conn.execute(
+            "INSERT INTO source_intelligence_generated_notes "
+            "(generated_note_id, source_entity_id, note_rel_path, generation_status, generated_at, "
+            "updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                f"card-{root}-{ordinal}-{source_kind}",
+                eid,
+                f"Cards/{root}/{ordinal}-{source_kind}.md",
+                status,
+                _BASE_TS if status != "not_generated" else None,
+                _BASE_TS,
+            ),
+        )
+        return sid, eid, lid
+
+    for root in _ROOTS:
+        for i in range(per_root):
+            rel_path = _SHARED_REL_PATH if i == 0 else f"{root}/docs/file_{i}.pdf"
+            sid, eid, lid = _add_source(root, rel_path, kind, i)
+            source_ids[root].append(sid)
+            entity_ids[root].append(eid)
+            locator_ids[root].append(lid)
+
+    for j in range(2):
+        _add_source("work", f"Notes/note_{j}.md", "obsidian_note", j * 2)
+
+    for root in _ROOTS:
+        conn.execute(
+            "INSERT INTO source_index_bootstrap_runs "
+            "(run_id, root_key, mode, status, started_at, created_at) "
+            "VALUES (?, ?, 'bootstrap', 'completed', ?, ?)",
+            (f"run-{root}", root, _BASE_TS, _BASE_TS),
+        )
+
+    gens = [
+        ("gen-work-running", "work", "running"),
+        ("gen-work-completed", "work", "completed"),
+        ("gen-work-failed", "work", "failed"),
+        ("gen-syn-partial", "syn-work", "partial"),
+        ("gen-syn-abandoned", "syn-work", "abandoned"),
+        ("gen-nas-reconcile", _GEN_ONLY_ROOT, "reconcile_pending"),
+    ]
+    for gen_id, root, status in gens:
+        conn.execute(
+            "INSERT INTO source_index_scan_generations "
+            "(generation_id, root_key, status, root_path_hash, policy_fingerprint, started_at, "
+            "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (gen_id, root, status, f"rph-{root}", "fp-v1", _BASE_TS, _BASE_TS),
+        )
+
+    conn.execute(
+        "INSERT INTO source_index_scan_quarantine "
+        "(quarantine_id, source_root_key, source_id, rel_path, failure_stage, error_code, "
+        "attempt_count, first_seen_at, last_seen_at, status, resolution_state, source_entity_id) "
+        "VALUES (?, 'work', ?, 'work/docs/poison.bin', 'observe', 'parse_failed', 3, ?, ?, "
+        "'quarantined', 'unresolved', ?)",
+        ("q-work-1", source_ids["work"][0], _BASE_TS, _BASE_TS, entity_ids["work"][0]),
+    )
+
+    predecessor = source_ids["work"][1]
+    successor_entity = entity_ids["work"][2]
+    conn.execute(
+        "UPDATE source_intelligence_sources SET renamed_from_source_id = ? "
+        "WHERE source_entity_id = ?",
+        (predecessor, successor_entity),
+    )
+    conn.execute(
+        "UPDATE source_intelligence_sources SET deleted = 1 WHERE source_entity_id = ?",
+        (entity_ids["work"][1],),
+    )
+
+    conn.execute(
+        "INSERT INTO source_intelligence_events "
+        "(event_id, source_id, source_entity_id, rel_path, source_root_key, event_type, status, "
+        "attempts, created_at, updated_at) "
+        "VALUES (?, ?, ?, 'work/docs/file_0.pdf', 'work', 'created', 'done', 1, ?, ?)",
+        (
+            "evt-created",
+            source_ids["work"][0],
+            entity_ids["work"][0],
+            _BASE_TS,
+            _BASE_TS,
+        ),
+    )
+    conn.execute(
+        "INSERT INTO source_intelligence_events "
+        "(event_id, source_id, source_entity_id, rel_path, source_root_key, dest_rel_path, "
+        "next_attempt_at, event_type, status, attempts, created_at, updated_at) "
+        "VALUES (?, ?, ?, 'work/docs/file_1.pdf', 'work', 'work/docs/moved_1.pdf', ?, "
+        "'moved', 'queued', 2, ?, ?)",
+        (
+            "evt-moved",
+            source_ids["work"][1],
+            entity_ids["work"][1],
+            _BASE_TS,
+            _BASE_TS,
+            _BASE_TS,
+        ),
+    )
+    conn.execute(
+        "INSERT INTO source_index_move_signals "
+        "(move_signal_id, source_locator_id, source_root_key, source_rel_path, target_root_key, "
+        "target_rel_path, detected_at, generation_id) VALUES (?, ?, 'work', "
+        "'work/docs/file_1.pdf', 'work', 'work/docs/moved_1.pdf', ?, 'gen-work-running')",
+        ("move-signal-1", locator_ids["work"][1], _BASE_TS),
+    )
+
+
 # --- Public builder ---------------------------------------------------------------------------
 
 
@@ -371,7 +676,7 @@ def build_fixture(
 ) -> FixtureResult:
     """Build a deterministic source-index fixture under ``rehearsal_root``.
 
-    ``origin`` is a supported integer version (121/124/125/126/127) or the string ``"fresh"`` (an
+    ``origin`` is a supported integer version (121/124/125/126/127/128/129) or the string ``"fresh"`` (an
     empty database migrated to head, no legacy seeding). Returns a :class:`FixtureResult` with the
     database path, a disposable marker, a manifest, the logical-inventory hash, and whole-file SHA-256.
     """
@@ -396,7 +701,10 @@ def build_fixture(
         if not is_fresh:
             assert isinstance(origin, int)
             _revert_to_origin(conn, origin)
-            _seed(conn, origin, row_count)
+            if origin >= 128:
+                _seed_identity(conn, origin, row_count)
+            else:
+                _seed_legacy(conn, origin, row_count)
         conn.commit()
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     finally:

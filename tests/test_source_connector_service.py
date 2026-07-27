@@ -20,7 +20,10 @@ import pytest
 
 from hb_assistant.obsidian_mcp import source_connector_service as svc
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
-from hb_assistant.obsidian_mcp.source_connector_models import SourceConnectorValidationError
+from hb_assistant.obsidian_mcp.source_connector_models import (
+    SourceConnectorValidationError,
+    encode_source_ref,
+)
 from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
 from hb_assistant.store.migrator import SQLiteMigrator
 
@@ -31,27 +34,38 @@ _RECENT_TS = "2026-07-01T12:00:00+00:00"
 
 def _insert(db: str, *, root_key: str, rel_path: str, body: str | None, ext: str,
             extraction_status: str = "ok") -> str:
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
+    """Seed one indexed external-file ENTITY (post-V128 permanent-identity schema): a LIVE entity + a
+    CURRENT locator carrying the legacy deterministic source_id + entity-keyed metadata/text/FTS. Returns
+    the durable ``source_entity_id`` — callers hand it off via ``encode_source_ref`` (a v2 entity ref)."""
+    import uuid
+    legacy = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
+    eid = uuid.uuid4().hex
     with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
+        c.execute("INSERT INTO source_index_entities(source_entity_id,created_at,status) "
+                  "VALUES(?,?, 'LIVE')", (eid, _RECENT_TS))
+        c.execute("INSERT INTO source_index_locators(locator_id,source_entity_id,source_id,"
+                  "source_root_key,rel_path,is_current_locator,tombstoned_at,generation_seq) "
+                  "VALUES(?,?,?,?,?,1,NULL,0)", (uuid.uuid4().hex, eid, legacy, root_key, rel_path))
+        c.execute("INSERT INTO source_intelligence_sources(source_entity_id,source_kind,source_root_key,"
                   "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
+                  (eid, "external_file", root_key, rel_path))
         digest = hashlib.sha256((body or "").encode()).hexdigest()
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
-                  (sid, ext, len(body or ""), 1, digest, extraction_status, _RECENT_TS))
+        c.execute("INSERT INTO source_intelligence_metadata(source_entity_id,file_ext,size_bytes,"
+                  "mtime_ns,content_sha256,extraction_status,fts_rowid,indexed_at) "
+                  "VALUES(?,?,?,?,?,?,NULL,?)",
+                  (eid, ext, len(body or ""), 1, digest, extraction_status, _RECENT_TS))
         if body is not None:
-            c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
-                      "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
-                      "VALUES(?,?,?,0,0,1,'t')", (sid, body, len(body)))
+            c.execute("INSERT INTO source_intelligence_text(source_entity_id,text_excerpt,"
+                      "excerpt_char_count,excerpt_truncated,raw_body_persisted,redaction_applied,"
+                      "updated_at) VALUES(?,?,?,0,0,1,'t')", (eid, body, len(body)))
             rowid = c.execute("INSERT INTO source_intelligence_fts(text_excerpt,rel_path,aux) "
                               "VALUES(?,?,NULL)", (body, rel_path)).lastrowid
-            c.execute("UPDATE source_intelligence_metadata SET fts_rowid=? WHERE source_id=?",
-                      (rowid, sid))
+            c.execute("UPDATE source_intelligence_metadata SET fts_rowid=? WHERE source_entity_id=?",
+                      (rowid, eid))
         c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
                   "VALUES('fts_available','1','t')")
         c.commit()
-    return sid
+    return eid
 
 
 def _make_root_trusted(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
@@ -67,7 +81,7 @@ def _make_root_trusted(db: str, config: ObsidianMcpConfig, root_key: str) -> Non
     root_path_hash = hashlib.sha256(str(Path(cfg_root.path)).encode("utf-8")).hexdigest()[:32]
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     with sqlite3.connect(db) as c:
-        c.execute("UPDATE source_intelligence_metadata SET indexed_at=? WHERE indexed_at='t'", (now,))
+        c.execute("UPDATE source_intelligence_metadata SET indexed_at=?", (now,))
         c.execute(
             "INSERT INTO source_index_scan_generations(generation_id, root_key, status, root_path_hash, "
             "policy_fingerprint, started_at, updated_at, metadata_walk_completed_at, "
@@ -236,7 +250,7 @@ def test_list_requires_root(env) -> None:
 def test_metadata_distinguishes_source_and_card(env) -> None:
     # attach a generated card to source 'a'
     env["repo"].record_generated_note(env["ids"]["a"], "Source Notes/contract_A.md", "generated", "t")
-    md = svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["a"])
+    md = svc.source_file_metadata(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]))
     assert md["object_type"] == "source_file" and md["is_source_file"] is True
     assert md["generated_card_available"] is True
     assert md["generated_card_rel_path"] == "Source Notes/contract_A.md"
@@ -244,12 +258,12 @@ def test_metadata_distinguishes_source_and_card(env) -> None:
     assert md["indexed_text_available"] is True
     _no_abs(md, env["tmp"])
     # a source with no card is still returned as the primary object (never forced into a card)
-    md_b = svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["b"])
+    md_b = svc.source_file_metadata(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["b"]))
     assert md_b["generated_card_available"] is False and md_b["is_source_file"] is True
 
 
 def test_metadata_by_source_ref(env) -> None:
-    md = svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["a"])
+    md = svc.source_file_metadata(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]))
     md2 = svc.source_file_metadata(env["repo"], env["config"], source_ref=md["source_ref"])
     assert md2["source_id"] == env["ids"]["a"]
 
@@ -261,30 +275,30 @@ def test_metadata_unknown_raises(env) -> None:
 
 
 def test_read_live_bounded(env) -> None:
-    r = svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["a"], max_chars=10)
+    r = svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]), max_chars=10)
     assert r["content_source"] == "live_extract"
     assert r["char_count"] == 10 and len(r["content"]) == 10 and r["truncated"] is True
     _no_abs(r, env["tmp"])
 
 
 def test_read_indexed_fallback_when_not_live(env) -> None:
-    r = svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["a"], prefer_live=False)
+    r = svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]), prefer_live=False)
     assert r["content_source"] == "indexed_excerpt_fallback" and r["reason"] == "indexed_requested"
     assert r["content"] is not None
 
 
 def test_read_sensitive_root_never_live(env) -> None:
-    r = svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["sensitive"])
+    r = svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["sensitive"]))
     assert r["content_source"] == "indexed_excerpt_fallback" and r["reason"] == "sensitive_root"
 
 
 def test_read_denies_unsupported_binary(env) -> None:
-    r = svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["binary"])
+    r = svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["binary"]))
     assert r["denied"] is True and r["content"] is None and r["reason"] == "unsupported_type"
 
 
 def test_read_path_escape_is_contained(env) -> None:
-    r = svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["escape"])
+    r = svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["escape"]))
     # a ``../`` rel_path never yields a live read outside the root — it is rejected by the hidden-segment
     # rule (blocked_path) or the containment guard (path_escape); either way → indexed fallback.
     assert r["content_source"] == "indexed_excerpt_fallback"
@@ -296,7 +310,7 @@ def test_read_no_directory_traversal(env, monkeypatch: pytest.MonkeyPatch) -> No
     real_scandir = os.scandir
     monkeypatch.setattr(os, "scandir", lambda *a, **k: (calls.append("scandir"), real_scandir(*a, **k))[1])
     monkeypatch.setattr(os, "walk", lambda *a, **k: calls.append("walk") or iter(()))
-    svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["a"], max_chars=50)
+    svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]), max_chars=50)
     svc.search_source_files(env["repo"], env["config"], query="payment", limit=5)
     svc.list_source_files(env["repo"], env["config"], source_root_key="work", limit=5)
     assert calls == [], f"unexpected filesystem traversal: {calls}"
@@ -318,8 +332,8 @@ def test_reads_do_not_mutate(env) -> None:
     svc.list_source_roots(env["repo"], env["config"])
     svc.search_source_files(env["repo"], env["config"], query="payment", limit=10)
     svc.list_source_files(env["repo"], env["config"], source_root_key="work", limit=10)
-    svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["a"])
-    svc.read_source_file(env["repo"], env["config"], source_id=env["ids"]["a"], max_chars=50)
+    svc.source_file_metadata(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]))
+    svc.read_source_file(env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["a"]), max_chars=50)
     assert _snapshot(env["db"]) == before
 
 
@@ -354,3 +368,90 @@ def test_status_and_roots_no_abs_paths(env) -> None:
     keys = {r["source_root_key"] for r in roots["roots"]}
     assert keys == {"work", "secure"}
     _no_abs(roots, env["tmp"])
+
+
+# ============================================================================================
+# F-003 — strict canonical base64url v2 codec (fail-closed on non-canonical / malformed input)
+# ============================================================================================
+import uuid  # noqa: E402
+
+from hb_assistant.obsidian_mcp.source_connector_models import (  # noqa: E402
+    _B64U_ALPHABET,
+    _b64u_decode,
+    _b64u_encode,
+    classify_source_ref,
+    decode_source_ref,
+)
+
+_V2_PREFIX = "hbsrc2_"
+
+
+def _v2_body() -> str:
+    """The canonical unpadded base64url body of a fresh v2 entity ref."""
+    return encode_source_ref(uuid.uuid4().hex)[len(_V2_PREFIX):]
+
+
+def _noncanonical_alt(body: str) -> str:
+    """An ALTERNATE non-canonical base64url string that lax-decodes to the SAME bytes as ``body``
+    (the final char carries unused low bits) — a distinct token for one payload."""
+    import base64
+    raw = _b64u_decode(body)
+
+    def _lax(tok: str) -> bytes:
+        return base64.urlsafe_b64decode(tok + "=" * (-len(tok) % 4))
+
+    for ch in _B64U_ALPHABET:
+        cand = body[:-1] + ch
+        if ch != body[-1] and _lax(cand) == raw:
+            return cand
+    raise AssertionError("no non-canonical alternate exists for this payload")
+
+
+def test_f003_b64u_decode_rejects_adversarial_forms() -> None:
+    body = _v2_body()
+    assert _b64u_decode(body)  # canonical body still decodes
+    adversarial = {
+        "inserted_punctuation": body[:4] + "!" + body[5:],
+        "embedded_space": body[:4] + " " + body[4:],
+        "embedded_newline": body[:4] + "\n" + body[4:],
+        "equals_padding": body + "=",
+        "trailing_padding_block": body + "==",
+        "truncated_body": body[:-1],  # length % 4 == 1 → structurally impossible base64
+        "noncanonical_alternate": _noncanonical_alt(body),
+    }
+    for name, tok in adversarial.items():
+        with pytest.raises(ValueError):
+            _b64u_decode(tok)  # noqa: PT011 — strict decoder is the unit under test
+        # ... and the alternate is genuinely a DIFFERENT string that would lax-decode identically
+        if name == "noncanonical_alternate":
+            assert tok != body and _b64u_encode(_b64u_decode(body)) == body
+
+
+def test_f003_classify_and_decode_reject_noncanonical_v2_ref() -> None:
+    body = _v2_body()
+    for tok in (
+        body[:4] + "!" + body[5:],           # inserted punctuation
+        body[:4] + "\n" + body[4:],          # embedded newline
+        body + "=",                          # padding
+        body[:-1],                           # truncated (length % 4 == 1)
+        _noncanonical_alt(body),             # alternate non-canonical encoding of the same payload
+    ):
+        ref = _V2_PREFIX + tok
+        with pytest.raises(SourceConnectorValidationError):
+            classify_source_ref(source_ref=ref)
+        with pytest.raises(SourceConnectorValidationError):
+            decode_source_ref(ref)
+
+
+def test_f003_canonical_v2_ref_still_valid() -> None:
+    # regression guard: the strict codec must not reject a legitimately-minted v2 ref or v1/bare handles
+    eid = uuid.uuid4().hex
+    assert classify_source_ref(source_ref=encode_source_ref(eid)) == ("entity", eid)
+    assert classify_source_ref(source_id=eid) == ("legacy", eid)
+    # v1 hbsrc1_ ref remains a valid LEGACY handle (unchanged by the strict decoder)
+    from hb_assistant.obsidian_mcp.source_connector_models import (
+        _SOURCE_REF_PREFIX,
+        _source_id_checksum,
+    )
+    v1 = _SOURCE_REF_PREFIX + _b64u_encode(f"{eid}{_source_id_checksum(eid)}".encode())
+    assert classify_source_ref(source_ref=v1) == ("legacy", eid)

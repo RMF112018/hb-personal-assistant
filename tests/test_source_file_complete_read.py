@@ -24,7 +24,7 @@ from hb_assistant.obsidian_mcp.source_connector_models import (
     SourceConnectorValidationError,
     encode_source_ref,
 )
-from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
@@ -33,7 +33,6 @@ def _index_file(db: str, *, root_key: str, rel_path: str, abs_file: Path | None,
                 mtime_ns: int | None = None, size_bytes: int | None = None) -> str:
     """Insert a source row + metadata (+ excerpt) using the REAL on-disk size/mtime by default so a
     complete read is not spuriously flagged stale."""
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
     if abs_file is not None and abs_file.exists():
         st = abs_file.stat()
         size = size_bytes if size_bytes is not None else st.st_size
@@ -41,27 +40,20 @@ def _index_file(db: str, *, root_key: str, rel_path: str, abs_file: Path | None,
     else:
         size = size_bytes if size_bytes is not None else len(body or "")
         mt = mtime_ns if mtime_ns is not None else 1
-    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        digest = hashlib.sha256((body or "").encode()).hexdigest()
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,?,?,?,NULL,?)",
-                  (sid, ext, size, mt, digest, extraction_status, now))
-        if body is not None:
-            c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
-                      "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
-                      "VALUES(?,?,?,0,0,1,'t')", (sid, body[:600], len(body[:600])))
-            rowid = c.execute("INSERT INTO source_intelligence_fts(text_excerpt,rel_path,aux) "
-                              "VALUES(?,?,NULL)", (body, rel_path)).lastrowid
-            c.execute("UPDATE source_intelligence_metadata SET fts_rowid=? WHERE source_id=?",
-                      (rowid, sid))
-        c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
-                  "VALUES('fts_available','1','t')")
-        c.commit()
-    return sid
+    excerpt = body[:600] if body is not None else None
+    return SourceIndexRepository(db).upsert_source_file({
+        "source_kind": "external_file",
+        "source_root_key": root_key,
+        "rel_path": rel_path,
+        "file_ext": ext,
+        "size_bytes": size,
+        "mtime_ns": mt,
+        "content_sha256": hashlib.sha256((body or "").encode()).hexdigest(),
+        "extraction_status": extraction_status,
+        "extraction_disposition": "content" if body is not None else "metadata_only",
+        "text_excerpt": excerpt,
+        "excerpt_char_count": len(excerpt or ""),
+    })
 
 
 def _trust(db: str, config: ObsidianMcpConfig, root_key: str) -> None:
@@ -178,7 +170,11 @@ def test_complete_input_over_limit_too_large(env, monkeypatch) -> None:
 def test_complete_deleted_is_unavailable(env) -> None:
     sid = env["ids"]["txt"]
     with sqlite3.connect(env["db"]) as c:
-        c.execute("UPDATE source_intelligence_sources SET deleted=1, active=0 WHERE source_id=?", (sid,))
+        c.execute(
+            "UPDATE source_intelligence_sources SET deleted=1, active=0 "
+            "WHERE source_entity_id=?",
+            (sid,),
+        )
         c.commit()
     r = _read(env, source_ref=encode_source_ref(sid), mode="complete")
     assert r["retrieval_state"] == "unavailable" and r["content"] is None

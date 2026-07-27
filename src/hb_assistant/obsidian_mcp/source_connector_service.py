@@ -30,7 +30,6 @@ from .source_connector_models import (
     encode_source_ref,
     mime_for_ext,
     page_envelope,
-    resolve_source_id,
     shape_source_file,
 )
 from .source_content_provider import SourceContentProvider
@@ -378,7 +377,11 @@ def source_file_metadata(repo: SourceIndexRepository, config: ObsidianMcpConfig,
         root_readiness_envelope,
     )
 
-    sid = resolve_source_id(source_id=source_id, source_ref=source_ref)
+    # Fail-closed DB-aware resolution to a durable entity (PI-WI-03a): v2 entity ref → the entity;
+    # v1/bare legacy handle → the DISTINCT legacy resolver; UNRESOLVED → source_not_found.
+    sid = repo.resolve_entity(source_id=source_id, source_ref=source_ref, conn=conn)
+    if sid is None:
+        raise SourceConnectorValidationError("source_not_found")
     detail = repo.get_source_detail(sid, conn=conn)
     if detail is None:
         raise SourceConnectorValidationError("source_not_found")
@@ -477,7 +480,11 @@ def read_source_file(repo: SourceIndexRepository, config: ObsidianMcpConfig, *,
     ``retrieval_state``/``content_state``/``completeness_state``; it never truncates and labels the result
     complete. Prefer a ``source_ref`` handoff from a search result; absolute paths are never accepted or
     returned."""
-    sid = resolve_source_id(source_id=source_id, source_ref=source_ref)
+    # Fail-closed DB-aware resolution to a durable entity (PI-WI-03a); the content provider then receives
+    # an already-resolved entity id (it is NOT modified).
+    sid = repo.resolve_entity(source_id=source_id, source_ref=source_ref, conn=conn)
+    if sid is None:
+        raise SourceConnectorValidationError("source_not_found")
     provider = SourceContentProvider(repo, config)
     return provider.read(sid, max_chars=max_chars, max_bytes=max_bytes,
                          prefer_live=prefer_live, mode=mode, conn=conn)

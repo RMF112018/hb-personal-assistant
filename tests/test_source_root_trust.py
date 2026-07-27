@@ -19,8 +19,9 @@ import pytest
 
 from hb_assistant.obsidian_mcp import source_connector_service as svc
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
+from hb_assistant.obsidian_mcp.source_connector_models import encode_source_ref
 from hb_assistant.obsidian_mcp.source_content_provider import SourceContentProvider
-from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository, source_id_for
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.obsidian_mcp.source_indexer import _root_fingerprint
 from hb_assistant.obsidian_mcp.source_root_trust import (
     AUTH_UNVERIFIED,
@@ -35,24 +36,19 @@ _TS = "2026-07-01T12:00:00+00:00"
 
 def _insert(db: str, *, root_key: str, rel_path: str, body: str, ext: str = "txt",
             extraction_status: str = "ok") -> str:
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
-    with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,1,?,?,NULL,?)",
-                  (sid, ext, len(body), hashlib.sha256(body.encode()).hexdigest(), extraction_status, _TS))
-        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
-                  "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
-                  "VALUES(?,?,?,0,0,1,'t')", (sid, body, len(body)))
-        rid = c.execute("INSERT INTO source_intelligence_fts(text_excerpt,rel_path,aux) VALUES(?,?,NULL)",
-                        (body, rel_path)).lastrowid
-        c.execute("UPDATE source_intelligence_metadata SET fts_rowid=? WHERE source_id=?", (rid, sid))
-        c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
-                  "VALUES('fts_available','1','t')")
-        c.commit()
-    return sid
+    return SourceIndexRepository(db).upsert_source_file({
+        "source_kind": "external_file",
+        "source_root_key": root_key,
+        "rel_path": rel_path,
+        "file_ext": ext,
+        "size_bytes": len(body),
+        "mtime_ns": 1,
+        "content_sha256": hashlib.sha256(body.encode()).hexdigest(),
+        "extraction_status": extraction_status,
+        "extraction_disposition": "content",
+        "text_excerpt": body,
+        "excerpt_char_count": len(body),
+    })
 
 
 def _certify(db: str, config: ObsidianMcpConfig, root_key: str, *, status: str = "completed") -> None:
@@ -262,7 +258,10 @@ def test_list_safe_root_works(env):
 
 
 def test_metadata_unsafe_root_blocked(env):
-    md = svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["uncertified"])
+    md = svc.source_file_metadata(
+        env["repo"], env["config"],
+        source_ref=encode_source_ref(env["ids"]["uncertified"]),
+    )
     assert md["status"] == "blocked_root_unready"
     assert md["authoritative"] is False
     # No advisory item metadata is exposed.
@@ -271,7 +270,9 @@ def test_metadata_unsafe_root_blocked(env):
 
 
 def test_metadata_safe_root_works(env):
-    md = svc.source_file_metadata(env["repo"], env["config"], source_id=env["ids"]["safe"])
+    md = svc.source_file_metadata(
+        env["repo"], env["config"], source_ref=encode_source_ref(env["ids"]["safe"])
+    )
     assert md["status"] == "ok"
     assert md["object_type"] == "source_file"
     assert md["rel_path"] == "doc.txt"

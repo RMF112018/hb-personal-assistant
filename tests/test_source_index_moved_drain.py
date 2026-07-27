@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import types
+import uuid
 from pathlib import Path
 
 import pytest
@@ -54,10 +55,29 @@ def _index_file(root: Path, rel: str, body: str, repo, config) -> str:
     return sid
 
 
-def _row(db: str, sid: str):
+def _resolve_entity(db: str, handle: str) -> str | None:
+    """Resolve a durable entity id OR a legacy locator source_id to the entity (DISTINCT). None if
+    absent/ambiguous."""
     with sqlite3.connect(db) as c:
-        return c.execute("SELECT deleted, active, renamed_from_source_id FROM "
-                         "source_intelligence_sources WHERE source_id=?", (sid,)).fetchone()
+        if c.execute("SELECT 1 FROM source_index_entities WHERE source_entity_id=?",
+                     (handle,)).fetchone():
+            return handle
+        rows = c.execute("SELECT DISTINCT source_entity_id FROM source_index_locators WHERE source_id=?",
+                         (handle,)).fetchall()
+    return rows[0][0] if len(rows) == 1 else None
+
+
+def _row(db: str, handle: str):
+    """(deleted, active, entity_status) for an entity addressed by its durable id or a legacy handle;
+    None if the entity does not exist (e.g. a destination the drain has not yet re-indexed)."""
+    ent = _resolve_entity(db, handle)
+    if ent is None:
+        return None
+    with sqlite3.connect(db) as c:
+        return c.execute(
+            "SELECT s.deleted, s.active, e.status FROM source_intelligence_sources s "
+            "JOIN source_index_entities e ON e.source_entity_id = s.source_entity_id "
+            "WHERE s.source_entity_id=?", (ent,)).fetchone()
 
 
 def _event(db: str):
@@ -81,9 +101,9 @@ def test_ready_root_move_applies(tmp_path, monkeypatch) -> None:
     new = source_id_for("external_file", source_root_key="work", rel_path="a/new.txt")
     _enqueue_move(repo, "a/old.txt", "a/new.txt")
     drain_queue(repo, config)
-    assert _row(db, old)[0] == 1                     # old superseded
-    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] == old   # dest current + lineage
-    assert repo.find_successor_source_id(old) == new
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED"   # old P2-tombstoned
+    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] == "LIVE"   # dest re-indexed: fresh LIVE entity
+    assert repo.find_successor_source_id(old) is None                   # R11-D1: no lineage successor
     assert _event(db)[0] == "done"
 
 
@@ -96,7 +116,7 @@ def test_source_missing_indexes_destination_as_ordinary(tmp_path, monkeypatch) -
     new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
     _enqueue_move(repo, "missing.txt", "new.txt")
     drain_queue(repo, config)
-    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] is None   # ordinary, no lineage
+    assert _row(db, new)[:2] == (0, 1) and _row(db, new)[2] == "LIVE"   # ordinary LIVE entity, no lineage
     assert _event(db)[0] == "done"
 
 
@@ -120,17 +140,24 @@ def test_stale_root_defers_then_applies_after_recovery(tmp_path, monkeypatch) ->
         c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
         c.commit()
     drain_queue(repo, config)
-    assert _row(db, old)[0] == 1 and repo.find_successor_source_id(old) == new
+    assert _row(db, old)[0] == 1 and repo.find_successor_source_id(old) is None
+    assert _row(db, new)[2] == "LIVE"
     assert _event(db)[0] == "done"
 
 
 def test_unavailable_mount_defers_not_consumed(tmp_path, monkeypatch) -> None:
     db, root, config, repo = _env(tmp_path)
     _patch_trust(monkeypatch, safe=True)
-    # old row present in the index, but the mount is gone at drain time
-    old = source_id_for("external_file", source_root_key="work", rel_path="old.txt")
+    # old entity present in the index, but the mount is gone at drain time
+    legacy = source_id_for("external_file", source_root_key="work", rel_path="old.txt")
+    old = uuid.uuid4().hex
     with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
+        c.execute("INSERT INTO source_index_entities(source_entity_id,created_at,status) "
+                  "VALUES(?,?, 'LIVE')", (old, "t"))
+        c.execute("INSERT INTO source_index_locators(locator_id,source_entity_id,source_id,"
+                  "source_root_key,rel_path,is_current_locator,tombstoned_at,generation_seq) "
+                  "VALUES(?,?,?,?,?,1,NULL,0)", (uuid.uuid4().hex, old, legacy, "work", "old.txt"))
+        c.execute("INSERT INTO source_intelligence_sources(source_entity_id,source_kind,source_root_key,"
                   "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
                   (old, "external_file", "work", "old.txt"))
         c.commit()
@@ -198,16 +225,15 @@ def test_reindex_failure_is_retryable_then_succeeds(tmp_path, monkeypatch) -> No
     (root / "new.txt").write_text("x moved")
     new = source_id_for("external_file", source_root_key="work", rel_path="new.txt")
     _enqueue_move(repo, "old.txt", "new.txt")
-    # 1) reindex returns None -> move committed, event retryable, dest pending, old superseded
+    # 1) R11-D3: the source-side P2 tombstone commits; the destination P1 is the drain's re-index. With
+    #    re-index -> None the destination is NOT yet created (pending = not indexed), event retryable.
     monkeypatch.setattr(si, "index_source_file", lambda *a, **k: None)
     drain_queue(repo, config)
     st, code, _ = _event(db)
     assert st == "queued" and code == "dest_reindex_pending"
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old       # move already committed
-    with sqlite3.connect(db) as c:
-        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
-                         (new,)).fetchone()[0] == "pending"
-    # 2) reindex recovers (real) on retry -> move_already_applied -> done
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED"   # source side committed
+    assert _row(db, new) is None                                        # destination not yet indexed
+    # 2) reindex recovers on retry -> destination P1 established -> done; no lineage carried
     monkeypatch.undo()
     _patch_trust(monkeypatch, safe=True)
     with sqlite3.connect(db) as c:
@@ -215,7 +241,7 @@ def test_reindex_failure_is_retryable_then_succeeds(tmp_path, monkeypatch) -> No
         c.commit()
     drain_queue(repo, config)
     assert _event(db)[0] == "done"
-    assert _row(db, new)[2] == old  # lineage not duplicated/altered
+    assert _row(db, new)[2] == "LIVE" and repo.find_successor_source_id(old) is None
 
 
 def test_reindex_exhaustion_is_error_not_done(tmp_path, monkeypatch) -> None:
@@ -236,8 +262,8 @@ def test_reindex_exhaustion_is_error_not_done(tmp_path, monkeypatch) -> None:
             break
     st, code, _ = _event(db)
     assert st == "error" and code == "dest_reindex_exhausted"
-    # trust-critical invariants still hold: move committed, dest pending (never advertised complete)
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
+    # trust-critical invariants: source side committed (TOMBSTONED); destination never created/advertised
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED" and _row(db, new) is None
 
 
 # ---------------- pre/post-transaction resolved-path/identity drift ----------------
@@ -282,11 +308,10 @@ def test_post_transaction_drift_leaves_old_superseded(tmp_path, monkeypatch) -> 
     drain_queue(repo, config)
     st, code, _ = _event(db)
     assert st == "queued" and code == "dest_changed_during_move"
-    # old is already SUPERSEDED (not restored); dest pending, never advertised complete
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
-    with sqlite3.connect(db) as c:
-        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
-                         (new,)).fetchone()[0] == "pending"
+    # source side already committed (TOMBSTONED, not restored); post-move drift defers BEFORE the
+    # destination re-index, so the destination is not yet created (never advertised complete).
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED"
+    assert _row(db, new) is None
 
 
 # ---------------- queue safety ----------------
@@ -436,7 +461,9 @@ def test_concurrent_reclaim_cannot_race_owned_move(tmp_path, monkeypatch) -> Non
     assert outcome.get("busy") in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)  # B blocked at the boundary
     assert "reclaimed" not in outcome                                          # B never reclaimed under A
     assert res["result"] == "move_applied"
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old  # legitimate owner superseded old + lineage
+    # the legitimate owner P2-tombstoned old (source side); the destination P1 is the drain's separate
+    # re-index (not performed by this direct owned-move call).
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED" and _row(db, new) is None
 
 
 def test_reclaim_after_move_blocks_stale_indexing(tmp_path, monkeypatch) -> None:
@@ -466,12 +493,11 @@ def test_reclaim_after_move_blocks_stale_indexing(tmp_path, monkeypatch) -> None
     monkeypatch.setattr(repo, "apply_owned_confirmed_same_root_move", wrap)
     drain_queue(repo, config)
     assert calls["index"] == 0                                # stale attempt-1 never indexed
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old  # move committed; lineage intact
+    # source side committed (TOMBSTONED); the reclaim blocked indexing so the destination is not created.
+    assert _row(db, old)[0] == 1 and _row(db, old)[2] == "TOMBSTONED" and _row(db, new) is None
     with sqlite3.connect(db) as c:
         assert c.execute("SELECT status, attempts FROM source_intelligence_events WHERE event_id=?",
                          (eid,)).fetchone() == ("processing", 2)  # current owner (attempt 2) untouched
-        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
-                         (new,)).fetchone()[0] == "pending"        # dest left pending for the owner
 
 
 def test_db_busy_through_defer_is_recoverable(tmp_path, monkeypatch) -> None:
@@ -514,7 +540,7 @@ def test_db_busy_through_defer_is_recoverable(tmp_path, monkeypatch) -> None:
     assert repo.requeue_stuck(900) == 1
     drain_queue(repo, config)                                     # attempt 2 claims + completes the move
     assert _event(db)[0] == "done"
-    assert _row(db, old)[0] == 1 and _row(db, new)[2] == old
+    assert _row(db, old)[0] == 1 and _row(db, new)[2] == "LIVE"   # source tombstoned; dest re-indexed
 
 
 def test_db_busy_during_terminal_completion_is_recoverable(tmp_path) -> None:
@@ -878,61 +904,58 @@ NEW_TOKEN = "zqxnewtoken9273"
 
 
 def _seed_indexed_destination(db: str, rel: str, token: str) -> str:
-    """Give ``rel`` a REAL pre-existing indexed content representation (sources+metadata+text+FTS row)
-    whose excerpt contains ``token``, so it is discoverable via public search before a move overwrites it."""
-    sid = source_id_for("external_file", source_root_key="work", rel_path=rel)
+    """Give ``rel`` a REAL pre-existing indexed content representation (entity + current locator +
+    metadata + text + FTS row) whose excerpt contains ``token``, so it is discoverable via public search
+    before a move overwrites it. Returns the durable source_entity_id."""
+    legacy = source_id_for("external_file", source_root_key="work", rel_path=rel)
+    eid = uuid.uuid4().hex
     with sqlite3.connect(db) as c:
         c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
                   "VALUES('fts_available','1','t')")
         c.execute("INSERT INTO source_intelligence_fts(text_excerpt, rel_path, aux) VALUES(?,?,?)",
                   (token, rel, ""))
         rowid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,rel_path,"
-                  "active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", "work", rel))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at,extraction_disposition,"
+        c.execute("INSERT INTO source_index_entities(source_entity_id,created_at,status) "
+                  "VALUES(?,?, 'LIVE')", (eid, "t"))
+        c.execute("INSERT INTO source_index_locators(locator_id,source_entity_id,source_id,"
+                  "source_root_key,rel_path,is_current_locator,tombstoned_at,generation_seq) "
+                  "VALUES(?,?,?,?,?,1,NULL,0)", (uuid.uuid4().hex, eid, legacy, "work", rel))
+        c.execute("INSERT INTO source_intelligence_sources(source_entity_id,source_kind,source_root_key,"
+                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
+                  (eid, "external_file", "work", rel))
+        c.execute("INSERT INTO source_intelligence_metadata(source_entity_id,file_ext,size_bytes,"
+                  "mtime_ns,content_sha256,extraction_status,fts_rowid,indexed_at,extraction_disposition,"
                   "content_indexed_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                  (sid, "txt", 5, 5, "OLDH", "ok", rowid, "t", "content", "t"))
-        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
+                  (eid, "txt", 5, 5, "OLDH", "ok", rowid, "t", "content", "t"))
+        c.execute("INSERT INTO source_intelligence_text(source_entity_id,text_excerpt,excerpt_char_count,"
                   "excerpt_truncated,full_text_sha256,raw_body_persisted,redaction_applied,updated_at) "
-                  "VALUES(?,?,?,?,?,0,1,'t')", (sid, token, len(token), 0, "fsha"))
+                  "VALUES(?,?,?,?,?,0,1,'t')", (eid, token, len(token), 0, "fsha"))
         c.commit()
-    return sid
+    return eid
 
 
-def test_move_invalidates_fts_and_public_search_two_stage(tmp_path, monkeypatch) -> None:
+def test_move_onto_occupied_destination_is_conservative_conflict(tmp_path, monkeypatch) -> None:
+    # R11-D3 case 2: old is still current AND the destination is already occupied by a LIVE entity. This
+    # is a CONSERVATIVE CONFLICT — the move performs NO mutation (fail closed), the drain terminal-skips
+    # (`conflicting_successor`), the old entity stays current, and the destination's existing content is
+    # untouched. R11 never overwrites an occupied destination via a degraded move.
     db, root, config, repo = _env(tmp_path)
     _patch_trust(monkeypatch, safe=True)
     old = _index_file(root, "old.txt", "x", repo, config)
-    # destination pre-indexed with OLD_TOKEN; on disk it now holds NEW_TOKEN (a move overwrite).
     dest_rel = "dest.txt"
     dest_sid = _seed_indexed_destination(db, dest_rel, OLD_TOKEN)
     (root / dest_rel).write_text(f"{NEW_TOKEN} replacement body")
-    assert [r["source_id"] for r in repo.search_source_files(OLD_TOKEN)] == [dest_sid]  # searchable before
+    assert [r["source_id"] for r in repo.search_source_files(OLD_TOKEN)] == [dest_sid]
 
     _enqueue_move(repo, "old.txt", dest_rel)
-    # --- pass 1: reindex fails → move committed, OLD FTS gone, dest pending, event deferred ---
-    monkeypatch.setattr(si, "index_source_file", lambda *a, **k: None)
     drain_queue(repo, config)
-    assert repo.search_source_files(OLD_TOKEN) == []        # old token no longer publicly searchable
-    with sqlite3.connect(db) as c:
-        assert c.execute("SELECT extraction_status FROM source_intelligence_metadata WHERE source_id=?",
-                         (dest_sid,)).fetchone()[0] == "pending"   # not advertised complete
-    assert _event(db)[:2] == ("queued", "dest_reindex_pending")
-    assert _row(db, old)[0] == 1 and _row(db, dest_sid)[2] == old  # move committed + lineage
-
-    # --- pass 2: reindex recovers → move_already_applied → only NEW_TOKEN searchable ---
-    monkeypatch.undo()
-    _patch_trust(monkeypatch, safe=True)
-    with sqlite3.connect(db) as c:
-        c.execute("UPDATE source_intelligence_events SET next_attempt_at=NULL")
-        c.commit()
-    drain_queue(repo, config)
-    assert _event(db)[0] == "done"
-    assert repo.search_source_files(OLD_TOKEN) == []               # stale token still absent
-    assert [r["source_id"] for r in repo.search_source_files(NEW_TOKEN)] == [dest_sid]  # only new content
-    assert _row(db, dest_sid)[2] == old                            # lineage not duplicated/altered
+    assert _event(db)[:2] == ("skipped", "conflicting_successor")
+    # NO mutation: old stays current, destination keeps its OLD_TOKEN content, NEW_TOKEN not indexed.
+    assert _row(db, old)[:2] == (0, 1) and _row(db, old)[2] == "LIVE"
+    assert _row(db, dest_sid)[:2] == (0, 1) and _row(db, dest_sid)[2] == "LIVE"
+    assert [r["source_id"] for r in repo.search_source_files(OLD_TOKEN)] == [dest_sid]
+    assert repo.search_source_files(NEW_TOKEN) == []
+    assert repo.find_successor_source_id(old) is None
 
 
 def test_unexpected_moved_exception_cannot_overwrite_current_claim(tmp_path, monkeypatch) -> None:

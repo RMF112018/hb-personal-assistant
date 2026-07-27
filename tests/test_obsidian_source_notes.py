@@ -58,7 +58,7 @@ def test_generate_card_traceability(env) -> None:
         assert token in card, token
     assert "## Source Basis" in card and f"Source ID: `{sid}`" in card
     assert sqlite3.connect(db).execute(
-        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
+        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_entity_id=?", (sid,)
     ).fetchone()[0] == "generated"
 
 
@@ -126,7 +126,7 @@ def test_exists_requires_overwrite_then_single_row(env) -> None:
     assert exc.value.code == "note_already_exists"
     generate_source_card(repo, config, source_id=sid, overwrite=True)  # SHA-gated refresh
     assert sqlite3.connect(db).execute(
-        "SELECT COUNT(*) FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
+        "SELECT COUNT(*) FROM source_intelligence_generated_notes WHERE source_entity_id=?", (sid,)
     ).fetchone()[0] == 1
 
 
@@ -138,12 +138,12 @@ def test_stale_then_refresh(env) -> None:
     (root_dir / "a.md").write_text("beta tunnel revised content", encoding="utf-8")
     scan_source_root(config.external_sources[0], repo, config)
     assert sqlite3.connect(db).execute(
-        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
+        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_entity_id=?", (sid,)
     ).fetchone()[0] == "stale"
     res = refresh_stale_source_notes(repo, config)
     assert res["count"] == 1 and res["failed"] == []
     assert sqlite3.connect(db).execute(
-        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_id=?", (sid,)
+        "SELECT generation_status FROM source_intelligence_generated_notes WHERE source_entity_id=?", (sid,)
     ).fetchone()[0] == "generated"
     # Refreshed deterministic card was re-rendered (the body carries no raw source text to assert on).
     assert "## Source Basis" in (vault / out["note_path"]).read_text(encoding="utf-8")
@@ -154,3 +154,34 @@ def test_source_not_found(env) -> None:
     with pytest.raises(ObsidianMcpToolError) as exc:
         generate_source_card(repo, config, source_id="does-not-exist")
     assert exc.value.code == "source_not_found"
+
+
+# ---------------- R11-D2 domain-locator collision coverage (card layer) ----------------
+
+def test_r11_d2_cross_table_link_cards_distinct(env) -> None:
+    # same (source_kind, domain_ref_id) across DIFFERENT domain_ref_table → distinct entities + distinct
+    # cards (the synthetic locator address includes domain_ref_table).
+    repo, config, _root, vault, _db = env
+    e1 = repo.link_domain_source(source_kind="email", domain_ref_table="email_messages",
+                                 domain_ref_id="dup-1", project_number="22-101-00")
+    e2 = repo.link_domain_source(source_kind="email", domain_ref_table="email_threads",
+                                 domain_ref_id="dup-1", project_number="22-101-00")
+    assert e1 != e2
+    o1 = generate_source_card(repo, config, source_id=e1)
+    o2 = generate_source_card(repo, config, source_id=e2)
+    assert o1["note_path"] != o2["note_path"]
+    c1 = (vault / o1["note_path"]).read_text(encoding="utf-8")
+    c2 = (vault / o2["note_path"]).read_text(encoding="utf-8")
+    assert "email_messages" in c1 and "email_threads" in c2
+
+
+def test_r11_d2_cross_kind_same_table_id_fails_closed(env) -> None:
+    # same (domain_ref_table, id) across DIFFERENT source_kind: the frozen V128 UNIQUE(domain_ref_table,
+    # domain_ref_id) forbids a distinct second entity, so the link is refused fail-closed (no silent
+    # rebind to the first entity). Repo truth supersedes the accepted "distinct entities" here — flagged
+    # for reauthorization in the implementation report.
+    repo, _config, _root, _vault, _db = env
+    repo.link_domain_source(source_kind="email", domain_ref_table="records", domain_ref_id="col-1")
+    with pytest.raises(sqlite3.IntegrityError):
+        repo.link_domain_source(source_kind="schedule", domain_ref_table="records",
+                                domain_ref_id="col-1")

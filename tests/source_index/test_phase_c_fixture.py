@@ -17,6 +17,7 @@ from hb_assistant.store.source_index_migration_assurance import collect_inventor
 from tests.support.source_index_expected_inventory import (
     EXPECTED_NARROW_RELPATH_SQL,
     EXPECTED_ROOT_RELPATH_SQL,
+    HEAD_VERSION,
     SUPPORTED_ORIGINS,
     assert_origin,
     validate_origin,
@@ -135,7 +136,7 @@ def test_oracle_rejects_v121_with_narrow_index_removed(tmp_path):
 
 
 def test_head_fixture_carries_all_invariants(tmp_path):
-    res = build_fixture(tmp_path, 127, row_count=6)
+    res = build_fixture(tmp_path, HEAD_VERSION, row_count=6)
     inv = collect_inventory(res.db_path)
     assert inv.duplicate_relpath_across_roots > 0  # multi-root duplicate paths (PC-AC-005)
     assert inv.fts_present_count > 0 and inv.fts_missing_count > 0  # FTS present + missing (PC-AC-007)
@@ -152,6 +153,9 @@ def test_head_fixture_carries_all_invariants(tmp_path):
     assert inv.events_moved_supported and inv.events_by_type.get("moved", 0) == 1  # V127 (PC-AC-011)
     assert inv.row_counts["source_intelligence_generated_notes"] > 0  # cards (PC-AC-008)
     assert inv.row_counts["source_index_bootstrap_runs"] == 2  # pass links (PC-AC-008)
+    assert inv.row_counts["source_index_entities"] == inv.row_counts["source_intelligence_sources"]
+    assert inv.row_counts["source_index_locators"] == inv.row_counts["source_intelligence_sources"]
+    assert inv.row_counts["source_index_move_signals"] == 1
     assert inv.fts_parity.matched > 0 and inv.fts_parity.dangling == 0 and inv.fts_parity.orphan == 0
 
 
@@ -180,19 +184,19 @@ def test_fresh_fixture_is_empty_head_schema(tmp_path):
     res = build_fixture(tmp_path, FRESH)
     assert res.origin == FRESH
     inv = collect_inventory(res.db_path)
-    assert inv.schema_head == 127
+    assert inv.schema_head == HEAD_VERSION
     assert inv.events_moved_supported  # head schema
     assert inv.row_counts.get("source_intelligence_sources", 0) == 0  # genuinely empty
     conn = _ro(res.db_path)
     try:
-        # No narrow index at head; schema matches the V127 oracle.
+        # No narrow index at head; schema matches the execution-time oracle.
         assert (
             conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_si_sources_relpath'"
             ).fetchone()
             is None
         )
-        assert validate_origin(conn, 127).ok
+        assert validate_origin(conn, HEAD_VERSION).ok
     finally:
         conn.close()
 
@@ -201,7 +205,7 @@ def test_fresh_fixture_is_empty_head_schema(tmp_path):
 
 
 def test_no_absolute_host_paths_in_data(tmp_path):
-    res = build_fixture(tmp_path, 127, row_count=6)
+    res = build_fixture(tmp_path, HEAD_VERSION, row_count=6)
     conn = _ro(res.db_path)
     try:
         rel_paths = [

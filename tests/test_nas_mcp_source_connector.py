@@ -32,7 +32,8 @@ from hb_assistant.nas_mcp.db_tools import _ro_uri
 from hb_assistant.nas_mcp.root_tools import hb_root_search
 from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools
 from hb_assistant.obsidian_mcp.config import ExternalSourceRoot, ObsidianMcpConfig
-from hb_assistant.obsidian_mcp.source_index_repository import source_id_for
+from hb_assistant.obsidian_mcp.source_connector_models import encode_source_ref
+from hb_assistant.obsidian_mcp.source_index_repository import SourceIndexRepository
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
@@ -71,24 +72,19 @@ def _make_root_trusted(db: str, config: ObsidianMcpConfig, root_key: str) -> Non
 
 
 def _seed(db: str, root_key: str, rel_path: str, body: str) -> str:
-    sid = source_id_for("external_file", source_root_key=root_key, rel_path=rel_path)
-    with sqlite3.connect(db) as c:
-        c.execute("INSERT INTO source_intelligence_sources(source_id,source_kind,source_root_key,"
-                  "rel_path,active,deleted,created_at,updated_at) VALUES(?,?,?,?,1,0,'t','t')",
-                  (sid, "external_file", root_key, rel_path))
-        c.execute("INSERT INTO source_intelligence_metadata(source_id,file_ext,size_bytes,mtime_ns,"
-                  "content_sha256,extraction_status,fts_rowid,indexed_at) VALUES(?,?,?,1,?,?,NULL,?)",
-                  (sid, "txt", len(body), hashlib.sha256(body.encode()).hexdigest(), "ok", _RECENT_TS))
-        c.execute("INSERT INTO source_intelligence_text(source_id,text_excerpt,excerpt_char_count,"
-                  "excerpt_truncated,raw_body_persisted,redaction_applied,updated_at) "
-                  "VALUES(?,?,?,0,0,1,'t')", (sid, body, len(body)))
-        rowid = c.execute("INSERT INTO source_intelligence_fts(text_excerpt,rel_path,aux) "
-                          "VALUES(?,?,NULL)", (body, rel_path)).lastrowid
-        c.execute("UPDATE source_intelligence_metadata SET fts_rowid=? WHERE source_id=?", (rowid, sid))
-        c.execute("INSERT OR REPLACE INTO source_intelligence_state(state_key,state_value,updated_at) "
-                  "VALUES('fts_available','1','t')")
-        c.commit()
-    return sid
+    return SourceIndexRepository(db).upsert_source_file({
+        "source_kind": "external_file",
+        "source_root_key": root_key,
+        "rel_path": rel_path,
+        "file_ext": "txt",
+        "size_bytes": len(body),
+        "mtime_ns": 1,
+        "content_sha256": hashlib.sha256(body.encode()).hexdigest(),
+        "extraction_status": "ok",
+        "extraction_disposition": "content",
+        "text_excerpt": body,
+        "excerpt_char_count": len(body),
+    })
 
 
 @pytest.fixture()
@@ -134,15 +130,24 @@ def test_tools_return_data(mcp_env) -> None:
     assert _ok(b, "assistant_source_files_list", {"source_root_key": "work"})["count"] == 2
     sr = _ok(b, "assistant_source_file_search", {"query": "payment"})
     assert sr["count"] >= 2 and all("source_root_key" in i for i in sr["items"])
-    md = _ok(b, "assistant_source_file_metadata", {"source_id": sid})
+    md = _ok(b, "assistant_source_file_metadata", {"source_ref": encode_source_ref(sid)})
     assert md["object_type"] == "source_file"
-    rd = _ok(b, "assistant_source_file_read", {"source_id": sid, "max_chars": 10})
+    rd = _ok(b, "assistant_source_file_read", {
+        "source_ref": encode_source_ref(sid), "max_chars": 10,
+    })
     assert rd["char_count"] <= 10 and rd["content_source"] == "live_extract"
 
 
 def test_missing_denied_cleanly(mcp_env) -> None:
     r = mcp_env["broker"].dispatch("assistant_source_file_metadata", {"source_id": "0" * 32})
     assert r["ok"] is False and "source_not_found" in r["error"]
+
+
+def test_file_read_without_source_identity_is_denied(mcp_env) -> None:
+    r = mcp_env["broker"].dispatch("assistant_source_file_read", {"max_chars": 10})
+    assert r["ok"] is False
+    assert r["error_code"] == "missing_required_argument"
+    assert r["missing_fields"] == ["source_id"]
 
 
 def test_snapshot_is_read_only(mcp_env) -> None:
@@ -247,5 +252,8 @@ def test_live_read_resolves_via_nas_root_injection(tmp_path: Path, monkeypatch: 
     roots = broker.dispatch("assistant_source_roots_list", {})["result"]
     assert any(r["source_root_key"] == "syn-work" for r in roots["roots"])
     # live read resolves instead of falling back to the indexed excerpt.
-    rd = broker.dispatch("assistant_source_file_read", {"source_id": sid, "max_chars": 10})["result"]
+    rd = broker.dispatch(
+        "assistant_source_file_read",
+        {"source_ref": encode_source_ref(sid), "max_chars": 10},
+    )["result"]
     assert rd["content_source"] == "live_extract", rd

@@ -2,13 +2,13 @@
 
 This module is the *independent* authority for "what a source-index database looks like at legacy
 origin version N". It is hand-authored from a reading of the migration source
-(``src/hb_assistant/store/migrator.py`` V119-V127 blocks and the ``*_tables.py`` DDL modules) and
+(``src/hb_assistant/store/migrator.py`` V119-V129 blocks and the ``*_tables.py`` DDL modules) and
 frozen here as data. It shares **no code path** with the fixture builder
 (``source_index_migration_fixture.py``): the builder mutates a database with SQL to *produce* an
 origin; this oracle introspects a database read-only to *judge* whether it matches the expected
 origin. A fixture is valid only when it passes this oracle before it is used for any migration proof.
 
-The oracle checks the *discriminating* source-index objects (the V122-V127 deltas) plus a base-object
+The oracle checks the *discriminating* source-index objects (the V122-V129 deltas) plus a base-object
 presence sanity set. V123 IS a real object discriminator: a faithful pre-V123 fixture carries the
 historical narrow unique index ``idx_si_sources_relpath (source_kind, rel_path)`` (which a real
 deployed pre-V123 database had, and which is why it blocked cross-root duplicate paths), and V123
@@ -26,8 +26,8 @@ from dataclasses import dataclass, field
 
 # --- Supported origins -------------------------------------------------------------------------
 
-SUPPORTED_ORIGINS: tuple[int, ...] = (121, 124, 125, 126, 127)
-HEAD_VERSION: int = 127
+SUPPORTED_ORIGINS: tuple[int, ...] = (121, 124, 125, 126, 127, 128, 129)
+HEAD_VERSION: int = 129
 
 # --- Delta objects, keyed by the migration version that introduces them ------------------------
 # Derived from migrator.py:9148-9297 and the *_tables.py DDL. An object introduced at version V is
@@ -36,6 +36,7 @@ HEAD_VERSION: int = 127
 DELTA_TABLES: dict[int, tuple[str, ...]] = {
     122: ("source_index_scan_generations",),
     125: ("source_index_scan_quarantine",),
+    128: ("source_index_entities", "source_index_locators", "source_index_move_signals"),
 }
 
 DELTA_INDEXES: dict[int, tuple[str, ...]] = {
@@ -43,7 +44,6 @@ DELTA_INDEXES: dict[int, tuple[str, ...]] = {
         "idx_source_index_scan_generations_active",
         "idx_source_index_scan_generations_root",
         "idx_source_index_scan_generations_status",
-        "idx_si_sources_last_seen_gen",
     ),
     124: ("idx_si_metadata_fts_rowid",),
     125: (
@@ -51,6 +51,14 @@ DELTA_INDEXES: dict[int, tuple[str, ...]] = {
         "idx_source_index_scan_quarantine_root_state",
     ),
     126: ("idx_si_sources_renamed_from",),
+    128: (
+        "idx_locators_current_per_entity",
+        "idx_locators_active_path",
+        "idx_locators_source_id",
+        "idx_si_scan_quarantine_entity",
+        "idx_si_events_entity",
+    ),
+    129: ("idx_locators_reconcile",),
 }
 
 # (table, column) added at each version.
@@ -67,6 +75,31 @@ DELTA_COLUMNS: dict[int, tuple[tuple[str, str], ...]] = {
     127: (
         ("source_intelligence_events", "dest_rel_path"),
         ("source_intelligence_events", "next_attempt_at"),
+    ),
+    128: (
+        ("source_index_entities", "source_entity_id"),
+        ("source_index_locators", "source_entity_id"),
+        ("source_index_locators", "source_id"),
+        ("source_intelligence_sources", "source_entity_id"),
+        ("source_intelligence_metadata", "source_entity_id"),
+        ("source_intelligence_text", "source_entity_id"),
+        ("source_intelligence_chunks", "source_entity_id"),
+        ("source_intelligence_generated_notes", "source_entity_id"),
+        ("source_intelligence_summaries", "source_entity_id"),
+        ("source_intelligence_relationships", "src_source_entity_id"),
+        ("source_intelligence_events", "source_entity_id"),
+        ("source_index_scan_quarantine", "source_entity_id"),
+    ),
+    129: (
+        ("source_index_locators", "last_seen_generation"),
+        ("source_index_locators", "last_seen_at"),
+        ("source_index_locators", "last_indexed_fingerprint"),
+        ("source_index_locators", "policy_validation_state"),
+        ("source_index_move_signals", "disposition"),
+        ("source_index_move_signals", "disposition_at"),
+        ("source_index_move_signals", "disposition_reason"),
+        ("source_index_move_signals", "resulting_entity_id"),
+        ("source_index_move_signals", "resulting_locator_id"),
     ),
 }
 
@@ -115,9 +148,8 @@ BASE_TABLES: tuple[str, ...] = (
     "source_index_bootstrap_runs",
 )
 
-# Present at every origin regardless of version (root-scoped uniqueness is the multi-root invariant).
+# Present at every origin regardless of version.
 BASE_INDEXES: tuple[str, ...] = (
-    "idx_si_sources_root_relpath",
     "idx_si_sources_domain",
     "idx_si_events_status",
     "idx_si_events_source",
@@ -234,16 +266,45 @@ def validate_origin(conn: sqlite3.Connection, origin: int) -> InventoryVerdict:
                     f"index {idx}: present={present}, expected_present={expected} (intro V{intro})"
                 )
 
-    # 5. Delta columns.
+    # 5. Delta columns. V128 re-keys the seven-table source graph, so the legacy V122 observation
+    # columns on ``source_intelligence_sources`` exist only through V127; V129 re-homes them to the
+    # current locator.
     for intro, columns in DELTA_COLUMNS.items():
         for table, column in columns:
             present = _column_exists(conn, table, column)
             expected = origin >= intro
+            if intro == 122 and table == "source_intelligence_sources":
+                expected = 122 <= origin < 128
             if present != expected:
                 violations.append(
                     f"column {table}.{column}: present={present}, "
                     f"expected_present={expected} (intro V{intro})"
                 )
+
+    legacy_source_id_columns = (
+        ("source_intelligence_sources", "source_id"),
+        ("source_intelligence_metadata", "source_id"),
+        ("source_intelligence_text", "source_id"),
+        ("source_intelligence_chunks", "source_id"),
+        ("source_intelligence_generated_notes", "source_id"),
+        ("source_intelligence_summaries", "source_id"),
+        ("source_intelligence_relationships", "src_source_id"),
+    )
+    for table, column in legacy_source_id_columns:
+        present = _column_exists(conn, table, column)
+        expected = origin < 128
+        if present != expected:
+            violations.append(
+                f"legacy key {table}.{column}: present={present}, expected_present={expected}"
+            )
+
+    last_seen_index_present = _index_exists(conn, "idx_si_sources_last_seen_gen")
+    expected_last_seen_index = 122 <= origin < 128
+    if last_seen_index_present != expected_last_seen_index:
+        violations.append(
+            "idx_si_sources_last_seen_gen: "
+            f"present={last_seen_index_present}, expected_present={expected_last_seen_index}"
+        )
 
     # 6. events CHECK accepts 'moved' iff origin >= 127 (read-only sqlite_master inspection).
     events_sql = _events_create_sql(conn)
@@ -255,12 +316,16 @@ def validate_origin(conn: sqlite3.Connection, origin: int) -> InventoryVerdict:
             f"(intro V{MOVED_ACCEPTED_AT})"
         )
 
-    # 7. Root-scoped relpath index: present at ALL origins with the EXACT V93 definition (S1-AUD-006).
+    # 7. Root-scoped relpath index: present through V127 with the exact V93 definition. V128 moves
+    # path uniqueness to ``idx_locators_active_path`` and deliberately removes this parent index.
     root_sql = _index_sql(conn, "idx_si_sources_root_relpath")
-    if root_sql != _normalize_sql(EXPECTED_ROOT_RELPATH_SQL):
+    expected_root_sql = (
+        _normalize_sql(EXPECTED_ROOT_RELPATH_SQL) if origin < 128 else ""
+    )
+    if root_sql != expected_root_sql:
         violations.append(
             f"idx_si_sources_root_relpath SQL mismatch:\n    got:      {root_sql or '<absent>'}\n"
-            f"    expected: {_normalize_sql(EXPECTED_ROOT_RELPATH_SQL)}"
+            f"    expected: {expected_root_sql or '<absent>'}"
         )
 
     # 8. Narrow relpath index: present iff origin < 123 (pre-V123 deployed shape), with EXACT SQL.

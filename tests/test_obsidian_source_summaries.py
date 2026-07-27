@@ -165,3 +165,32 @@ def test_summarize_source_not_found(env, monkeypatch) -> None:
     with pytest.raises(ObsidianMcpToolError) as exc:
         summarize_source(repo, config, source_id="missing")
     assert exc.value.code == "source_not_found"
+
+
+# ---------------- R11-D2 domain-locator collision coverage (summary/link layer) ----------------
+
+def test_r11_d2_domain_links_distinct_across_table_and_kind(env) -> None:
+    repo, _config, _root, _vault, _db = env
+    # same (kind, id) across different domain_ref_table → distinct entities + distinct current locators
+    a = repo.link_domain_source(source_kind="procore", domain_ref_table="rfis", domain_ref_id="7")
+    b = repo.link_domain_source(source_kind="procore", domain_ref_table="submittals", domain_ref_id="7")
+    assert a != b
+    con = sqlite3.connect(repo.db_path)
+    roots = {
+        r[0] for r in con.execute(
+            "SELECT source_root_key FROM source_index_locators "
+            "WHERE source_entity_id IN (?,?) AND is_current_locator=1", (a, b)).fetchall()
+    }
+    assert roots == {"domain::procore::rfis", "domain::procore::submittals"}
+    # idempotent re-link of the SAME identity resolves to the SAME entity
+    assert repo.link_domain_source(source_kind="procore", domain_ref_table="rfis",
+                                   domain_ref_id="7") == a
+
+
+def test_r11_d2_cross_kind_same_table_id_fails_closed(env) -> None:
+    # repo-truth conflict: frozen UNIQUE(domain_ref_table, domain_ref_id) refuses a distinct second
+    # entity for the same (table,id) under a different kind (fail-closed, no silent rebind).
+    repo, _config, _root, _vault, _db = env
+    repo.link_domain_source(source_kind="procore", domain_ref_table="records", domain_ref_id="c9")
+    with pytest.raises(sqlite3.IntegrityError):
+        repo.link_domain_source(source_kind="email", domain_ref_table="records", domain_ref_id="c9")
