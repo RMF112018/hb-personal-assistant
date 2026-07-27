@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.3"
 status: normative
 license: internal-use
 ---
@@ -9,78 +9,135 @@ license: internal-use
 
 ## 1. Purpose
 
-This document is the required entry point for AEOS-governed software engineering work. It routes a session, tool, model, or human reviewer to the governing standards, required artifacts, authority hierarchy, and expected disposition for the work being performed.
+This document is the required entry point for AEOS-governed software engineering
+work. It routes a session, tool, model, or human reviewer to the governing
+standards, repository-local controls, required artifacts, evidence standard,
+authority boundary, and expected disposition.
 
-This index is intentionally thin. It does not replace the standards it references. It SHALL be used to identify which standards govern the current task and which artifacts or decisions must be produced.
+This index is intentionally thin. It does not replace the standards it
+references and does not establish repository or runtime truth.
 
 ## 2. Scope
 
 This index applies to:
 
 - repository-truth discovery;
-- architecture planning;
+- architecture;
 - implementation planning;
-- local coding-agent handoff;
-- implementation-plan review;
-- post-implementation audit;
-- corrective review;
-- production-readiness review;
-- merge, deployment, and operational Go/No-Go decisions;
+- plan review;
+- implementation execution;
+- evidence packaging;
+- implementation audit;
+- corrective implementation and review;
+- finding reconciliation;
+- merge readiness and merge authorization;
+- post-merge validation;
+- branch and worktree closeout;
+- deployment, production, and operational readiness;
+- Go/No-Go decisions;
 - AEOS conformance checks.
 
-This index does not define project-specific architecture. Repository-specific source files, approved specifications, acceptance criteria, ADRs, and runtime evidence remain authoritative for implementation details.
+Repository-specific implementation, accepted ADRs, policies, approved
+specifications, authenticated GitHub state, and runtime evidence remain
+authoritative for their applicable domains.
 
-## 3. Authority Order
+## 3. Truth Precedence and Action Authority
 
-When information conflicts, use the following authority order:
+### 3.1 Truth precedence
 
-1. Current repository state and runtime evidence.
-2. Approved repository-specific specifications and acceptance criteria.
-3. Repository-local operating documents, including `AGENTS.md`, `AI_OPERATING_MANUAL.md`, ADRs, and policies.
-4. AEOS governance standards listed in this index.
-5. Current-session human instructions.
-6. Prior project conversations.
-7. Model memory or general knowledge.
+When factual sources conflict, use:
 
-A lower-authority source SHALL NOT override a higher-authority source. If a conflict is material, the conflict SHALL be reported explicitly.
+1. authenticated runtime evidence for deployed behavior;
+2. authenticated repository and GitHub state for engineering identity and
+   lifecycle;
+3. repository-local governance, accepted ADRs, approved specifications, and
+   acceptance criteria;
+4. AEOS standards;
+5. approved publication/reference governance for publication matters;
+6. prior conversations and agent reports as claim indexes;
+7. model memory or general knowledge.
 
-## 4. Required Session Preflight
+A lower-authority source SHALL NOT override a higher-authority source. Material
+conflicts SHALL be reported explicitly.
 
-At the start of any substantive AEOS-governed session, identify:
+### 3.2 Action authority
 
-- Mode.
-- Target repository.
-- Target branch, PR, worktree, or commit.
-- Objective.
-- Governing source documents.
-- Available evidence.
-- Acceptance criteria, if any.
-- Known constraints.
-- Material access limitations.
-- Required final artifact or disposition.
+The current operator instruction defines task intent and permitted scope. It
+does not alter factual evidence or approve work by implication.
 
-If a repository cannot be inspected directly, the session SHALL state that limitation and downgrade conclusions accordingly.
+The operator retains final decision, authorization, and risk authority.
+Repository access, Workspace access, publication state, a prior approval, or
+tool capability SHALL NOT be treated as action authority.
 
-## 5. Workflow Routing
+## 4. Repository-Specific Control Plane
 
-### 5.1 Discovery / Repository Truth
+For `RMF112018/hb-personal-assistant`, also read the current accepted repository controls:
+
+```text
+AI_OPERATING_MANUAL.md
+AGENTS.md
+docs/decisions/ADR-019-github-first-engineering-control-plane.md
+docs/governance/branch-worktree-lifecycle-policy.md
+docs/implementation-plans/github-first-control-plane-migration.md
+.ai/project-sources/11_REPOSITORY_TEST_SELECTION_STANDARD.md
+```
+
+The repository and authenticated GitHub state are canonical for active
+engineering state. Runtime evidence is canonical for deployed behavior. Google
+Drive is an approved publication/reference surface and must not maintain a
+competing active-state ledger.
+
+ADR-019 Phase A is merged at
+`8b44cbd216d531a1894b4257355469edf922029f`. The lifecycle remains
+`MERGED_PENDING_CLEANUP`; cleanup requires separate authorization. Phase B
+remains separately unauthorized.
+
+## 5. Required Session Preflight
+
+At the start of substantive work, identify:
+
+- operating mode;
+- target repository and authenticated remote;
+- issue or goal;
+- work item;
+- authorization identifier;
+- branch and worktree identities;
+- base SHA and exact head SHA;
+- pull request and required checks, when applicable;
+- review identity and reviewed head, when applicable;
+- lifecycle state and checkpoint;
+- objective;
+- governing sources;
+- available and inaccessible evidence;
+- acceptance criteria;
+- constraints and stop conditions;
+- required artifact or bounded disposition.
+
+If repository or GitHub state can be authenticated, do not proceed on a
+material identity assumption. Runtime claims require runtime evidence.
+
+## 6. Workflow Routing
+
+### 6.1 Discovery / Repository Truth
 
 Use:
 
 - `01_AEOS_OPERATING_MANUAL.md`
 - `02_AEOS_WORKFLOW_STANDARD.md`
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
+- `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md` when branch/worktree inventory is material
 
 Required outputs:
 
 - repository-truth report;
+- exact repository identity;
+- branch/worktree/ref inventory when material;
 - verified facts;
-- assumptions;
-- unknowns;
+- assumptions and unknowns;
 - evidence gaps;
 - recommended next gate.
 
-### 5.2 Architecture
+### 6.2 Architecture
 
 Use:
 
@@ -94,169 +151,222 @@ Required outputs:
 
 - architecture artifact;
 - constraints and invariants;
-- alternatives considered;
+- alternatives;
 - acceptance criteria;
 - risks;
 - decision points.
 
-### 5.3 Implementation Planning
+### 6.3 Implementation Planning
 
 Use:
 
 - `02_AEOS_WORKFLOW_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
 - `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
 Required outputs:
 
 - executable implementation plan;
+- branch/worktree ownership and expected closeout disposition;
 - local-agent handoff prompt;
-- test plan;
-- evidence requirements;
-- stop conditions.
+- proportional test plan and failure-disposition rules;
+- evidence and representation requirements;
+- rollback and stop conditions.
 
-### 5.4 Plan Review
+### 6.4 Plan or Architecture Review
 
 Use:
 
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
 - `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md` when test scope is material
 
 Permitted dispositions:
 
-- APPROVE
-- APPROVE WITH REQUIRED CHANGES
-- REVISE BEFORE IMPLEMENTATION
-- REJECT
+- `APPROVE`
+- `APPROVE WITH REQUIRED CHANGES`
+- `REVISE`
+- `REJECT`
+- `INSUFFICIENT EVIDENCE`
 
-### 5.5 Implementation Audit
+A review SHALL identify the exact artifact and repository head reviewed.
+
+### 6.5 Implementation Execution
+
+Use:
+
+- `02_AEOS_WORKFLOW_STANDARD.md`
+- `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
+
+Required outputs:
+
+- bounded implementation receipt;
+- exact base/head identity;
+- changed-file and work-item traceability;
+- proportional test evidence;
+- deviations and stop conditions;
+- final repository state.
+
+### 6.6 Evidence Packaging
+
+Use:
+
+- `03_AEOS_ARTIFACT_STANDARD.md`
+- `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
+
+Required outputs:
+
+- immutable run identity;
+- representation-aware evidence index;
+- exact commands, outputs, and exit codes;
+- artifact hashes scoped to identified representations;
+- limitations and redaction receipts.
+
+### 6.7 Implementation Audit
 
 Use:
 
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
 - `03_AEOS_ARTIFACT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
 Required outputs:
 
+- reviewed exact head SHA;
 - acceptance-criteria matrix;
 - finding ledger;
-- evidence assessment;
-- corrective actions;
+- evidence and test-selection assessment;
 - audit disposition.
 
-### 5.6 Corrective Review
+### 6.8 Corrective Review and Finding Reconciliation
 
 Use:
 
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md` when failures or parallel correction are involved
 
 Required outputs:
 
 - finding-by-finding reconciliation;
-- verification evidence;
+- corrected exact head identity;
+- closure evidence;
 - remaining blockers;
-- authorized next gate.
+- bounded next-gate recommendation.
 
-### 5.7 Production Readiness / Go-No-Go
+### 6.9 Merge Readiness and Authorization
+
+Use:
+
+- `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
+- `06_AEOS_PRODUCTION_READINESS_STANDARD.md`
+- `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
+
+Required outputs:
+
+- exact candidate head;
+- current-head independent review;
+- required checks and applicable safe-suite status;
+- unresolved finding and failure status;
+- explicit operator merge authorization or non-authorization.
+
+Mergeability is not merge authorization.
+
+### 6.10 Post-Merge Validation and Branch/Worktree Closeout
+
+Use:
+
+- `02_AEOS_WORKFLOW_STANDARD.md`
+- `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
+- `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md`
+- repository `POL-GIT-HYGIENE-001`
+
+Required outputs:
+
+- accepted merge identity;
+- post-merge validation or explicit not-required decision;
+- preservation and integration proof;
+- worktree, local branch, remote branch, metadata, and remote-ref dispositions;
+- cleanup, retention, or blocker receipt.
+
+A merge moves work to `MERGED_PENDING_CLEANUP`, not directly to `CLOSED`.
+
+### 6.11 Deployment / Production / Operational Readiness
 
 Use:
 
 - `06_AEOS_PRODUCTION_READINESS_STANDARD.md`
 - `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md`
 - `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md`
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md`
 
-Separate these decisions:
+Evaluate separately:
 
-- merge readiness;
 - deployment readiness;
 - production readiness;
 - operational readiness.
 
-Permitted dispositions:
+Permitted decisions:
 
-- GO
-- CONDITIONAL GO
-- NO-GO
-- INSUFFICIENT EVIDENCE
+- `GO`
+- `CONDITIONAL GO`
+- `NO-GO`
+- `INSUFFICIENT EVIDENCE`
 
-## 6. Governing Source Catalogue
+## 7. Governing Source Catalogue
 
-### 01 — AEOS Operating Manual
+- `01_AEOS_OPERATING_MANUAL.md` — authority, operating modes, session discipline, and evidence-first behavior.
+- `02_AEOS_WORKFLOW_STANDARD.md` — lifecycle, gates, transitions, merge, post-merge validation, and closeout.
+- `03_AEOS_ARTIFACT_STANDARD.md` — artifact identity, traceability, representation, and required records.
+- `04_AEOS_EVIDENCE_AND_TRUST_STANDARD.md` — admissible evidence, exact identity, representation scope, and trust.
+- `05_AEOS_REVIEW_AND_AUDIT_STANDARD.md` — independent review, exact-head binding, findings, and dispositions.
+- `06_AEOS_PRODUCTION_READINESS_STANDARD.md` — merge, cleanup, deployment, production, and operational gates.
+- `07_AEOS_LOCAL_AGENT_OPERATING_CONTRACT.md` — agent permissions, repository hygiene, tests, evidence, and stops.
+- `08_AEOS_VOCABULARY_AND_TAXONOMY.md` — controlled terms and lifecycle values.
+- `09_AEOS_PATTERN_LANGUAGE.md` — evidence-derived patterns and anti-patterns.
+- `10_AEOS_PROMPT_ENTRY_POINTS.md` — reusable entry prompts.
+- `11_REPOSITORY_TEST_SELECTION_STANDARD.md` — proportional test selection, failure disposition, isolated corrective work, and integrated-green requirements.
 
-Defines AEOS principles, authority hierarchy, session discipline, operating modes, human authority, model responsibilities, and evidence-first posture.
+## 8. Source Use Rules
 
-### 02 — AEOS Workflow Standard
-
-Defines the end-to-end lifecycle, phase gates, required inputs, outputs, exit criteria, and transition rules.
-
-### 03 — AEOS Artifact Standard
-
-Defines the structure, required fields, identifiers, status values, and traceability rules for AEOS artifacts.
-
-### 04 — AEOS Evidence and Trust Standard
-
-Defines admissible evidence, source provenance, verification, evidence insufficiency, trust degradation, and fail-closed behavior.
-
-### 05 — AEOS Review and Audit Standard
-
-Defines plan review, implementation audit, corrective review, severity classification, finding lifecycle, and acceptance-criteria verification.
-
-### 06 — AEOS Production Readiness Standard
-
-Defines merge, deployment, production, and operational gates, including required proof and permitted Go/No-Go decisions.
-
-### 07 — Local Agent Operating Contract
-
-Defines constraints, permissions, stop conditions, reporting requirements, and evidence obligations for coding agents.
-
-### 08 — Vocabulary and Taxonomy
-
-Defines controlled terms, classifications, and naming conventions used throughout AEOS.
-
-### 09 — Pattern Language
-
-Defines evidence-derived positive patterns, negative patterns, generalization boundaries, and pattern promotion requirements.
-
-### 10 — Prompt Entry Points
-
-Provides concise, reusable prompts for each AEOS workflow mode.
-
-## 7. Source Use Rules
-
-- Consult only the sources relevant to the current mode.
-- Do not restate every standard in every response.
+- Consult only sources relevant to the active mode.
 - Do not infer repository state from AEOS standards.
-- Do not treat prior conversations as evidence.
-- Use stable identifiers for requirements, criteria, findings, risks, and decisions.
-- Preserve unresolved findings until formally dispositioned.
-- If evidence is unavailable, use `INSUFFICIENT EVIDENCE` rather than inventing certainty.
+- Do not treat prior conversations or agent reports as proof.
+- Use stable identifiers for requirements, findings, risks, decisions, branches,
+  worktrees, authorizations, reviews, and evidence.
+- Bind reviews and audits to exact artifact and repository identities.
+- Preserve unresolved findings and failing-test evidence until dispositioned.
+- Do not declare merge readiness while an applicable required-safe suite has an
+  unresolved failure.
+- Do not transition from merge directly to closure.
+- Use `INSUFFICIENT EVIDENCE` rather than inventing certainty.
 
-## 8. Default Session Opening
-
-A compliant AEOS session SHOULD open with a compact preflight:
+## 9. Default Session Opening
 
 ```text
 Mode:
-Target:
+Repository / authenticated remote:
+Issue or goal:
+Work item:
+Branch / worktree:
+Base SHA:
+Exact head SHA:
+Pull request / checks:
+Authorization:
 Objective:
 Governing sources:
 Available evidence:
-Assumptions:
 Limitations:
-Expected output/disposition:
+Expected artifact or disposition:
 ```
 
-## 9. Revision Control
+## 10. Revision Control
 
-This index SHALL be updated when:
-
-- a standard is added, renamed, superseded, or deprecated;
-- a workflow phase is added or materially changed;
-- permitted dispositions change;
-- authority hierarchy changes;
-- artifact names or paths change.
-
-The index SHALL NOT be used as a place to add detailed procedure that belongs in the underlying standards.
+Update this index when a standard, workflow phase, disposition, authority model,
+identity requirement, or governed artifact changes. Detailed procedure belongs
+in the underlying standards.

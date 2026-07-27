@@ -64,7 +64,7 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
         ensure_schema_index_frozen(config)
         groups = current_tool_groups(config)
         live_gateway = frozenset(GATEWAY_ALLOWLIST) | set(PROMPT_ROUTING_TOOLS)
-        build_kwargs = _runtime_manifest_build_kwargs()
+        build_kwargs = _runtime_manifest_build_kwargs(config)
         live_fps = build_live_surface_fingerprints(
             _build_tool_index(config, for_manifest=True),
             surface_profile=build_kwargs.get("surface_profile"),
@@ -121,7 +121,7 @@ def live_freshness(config: NasMcpConfig) -> dict[str, Any]:
             stored_semantic_checksum=stored_semantic,
             live_exposure_checksum=live_fps.get("exposure_checksum"),
             stored_exposure_checksum=stored_exposure,
-            live_profile=surface_profile_label(),
+            live_profile=surface_profile_label(config),
             stored_profile=stored_profile,
             help_index=dict.fromkeys(groups, True),
             **att_kw,

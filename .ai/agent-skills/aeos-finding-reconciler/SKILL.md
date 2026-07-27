@@ -1,40 +1,38 @@
 ---
 name: aeos-finding-reconciler
-description: Reconcile an independent AEOS findings ledger into authorized corrective work while preserving finding IDs, history, evidence requirements, rejected/deferred decisions, and re-audit boundaries.
+description: Reconcile an independent AEOS findings ledger into separately authorized corrective work while preserving finding identity and history, binding closure evidence to the corrected exact head, and retaining re-audit and risk boundaries.
 ---
-
 
 ## Governing contract
 
-Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md` before using this skill. Repository governance remains authoritative.
-
-Do not use this skill when the active goal state or operator authorization does not permit its workflow.
+Read and apply `../_aeos-shared/AEOS_SKILL_OPERATING_CONTRACT.md`. Repository
+governance remains authoritative.
 
 # AEOS Finding Reconciler
 
 ## Use when
 
-Use after an independent audit and before or during authorized corrective implementation.
+Use after an independent audit and before or during separately authorized
+corrective implementation.
 
-Required:
+Required inputs:
 
-- original findings ledger;
-- audit report;
-- operator disposition;
-- authorization identifying findings permitted for correction;
-- approved scope and repository state.
+- original findings ledger and audit report;
+- exact audited head and corrected candidate identity;
+- operator disposition and authorization;
+- findings permitted for correction;
+- approved scope, branch, worktree, tests, and evidence requirements.
 
 ## Procedure
 
 ### 1. Preserve the original ledger
 
-Do not delete, rewrite, merge, or renumber original findings.
+Do not delete, rewrite, merge, or renumber findings. Append history with
+timestamp, actor/context, authorization, repository head, and evidence.
 
-Append disposition history with timestamp, actor/context, evidence, and authorization.
+### 2. Validate operator treatment
 
-### 2. Validate operator decisions
-
-For each finding classify operator treatment:
+For each finding classify:
 
 - `AUTHORIZED_FOR_CORRECTION`
 - `DEFERRED_WITH_ACCEPTED_RISK`
@@ -42,53 +40,50 @@ For each finding classify operator treatment:
 - `NEEDS_CLARIFICATION`
 - `NOT_AUTHORIZED`
 
-Only the operator may accept risk. An external model recommendation is not risk acceptance.
+Only the operator may accept risk. A reviewer recommendation or publication is
+not risk acceptance.
 
-### 3. Reproduce before correction
+### 3. Authenticate corrective identity
 
-For each authorized finding:
+Verify the corrective branch and worktree are registered, authorization binds
+the permitted finding IDs and expected head, unrelated scope is excluded, and
+any parallel corrective stream is separately authorized and non-overlapping.
 
-- identify expected failing behavior;
-- run or define the closure test;
-- capture prove-red evidence where reproducible;
-- state when the finding cannot be reproduced;
-- stop rather than silently substituting a different defect.
+### 4. Reproduce before correction
 
-### 4. Build corrective work packages
+For each authorized finding, identify expected failure and closure test, capture
+prove-red or baseline evidence when reproducible, and stop rather than silently
+substituting a different defect.
 
-Each package must map to one or more finding IDs and include:
+### 5. Build corrective work packages
 
-- bounded correction;
-- affected files/symbols;
-- prohibited collateral changes;
-- closure test;
-- regression tests;
-- evidence;
-- retry limit;
-- re-audit requirement.
+Each package maps to one or more finding IDs and includes bounded correction,
+files/symbols, prohibited collateral change, proportional tests, closure test,
+evidence representation/hash scope, retry limit, and independent re-audit.
 
-Avoid combining unrelated findings solely for convenience.
+### 6. Execute only under separate authorization
 
-### 5. Execute only when separately authorized
+Use `aeos-work-package-executor` for code changes. This reconciler does not
+confer implementation authority or authorize unrelated-failure correction.
 
-Use `aeos-work-package-executor` for code changes. This reconciler does not itself confer implementation authority.
+### 7. Update finding history after implementation
 
-### 6. Update finding history after implementation
+The implementation context may propose:
 
-Allowed status proposals:
-
-- `CLAIMED_NOT_VERIFIED`
+- `FIX CLAIMED`
 - `OPEN`
-- `NOT_REPRODUCIBLE`
+- `NOT REPRODUCIBLE`
 
-The implementation context must not set `VERIFIED_FIXED`. Only independent re-audit may do that.
+It SHALL NOT set `VERIFIED FIXED`. Only independent re-audit at the corrected
+exact head may do that.
 
-### 7. Prepare re-audit package
+A later commit after re-audit invalidates current-head closure verification.
 
-Produce:
+### 8. Prepare the re-audit package
 
 ```text
 corrective-implementation-report.md
+corrected-identity.yaml
 finding-reconciliation.yaml
 corrective-evidence-index.json
 residual-risk.md
@@ -96,22 +91,21 @@ reaudit-handoff.md
 checkpoint-request.yaml
 ```
 
-The re-audit handoff must include every original finding, including deferred, rejected, and not-authorized findings.
+Include every original finding, including deferred, rejected, and not-authorized
+items. Bind each claim and closure test to the corrected exact head.
 
-### 8. Stop
+### 9. Stop
 
-Disposition:
-
-```text
-CORRECTIVE_WORK_READY_FOR_REAUDIT
-```
-
-or a bounded failure/blocker disposition.
+Return `CORRECTIVE_WORK_READY_FOR_REAUDIT` or a bounded blocker/failure
+disposition. Do not self-verify, merge, perform cleanup, accept risk, or activate
+the next state.
 
 ## Integrity rules
 
-- Finding closure requires evidence.
-- A changed finding statement creates a new finding; it does not mutate the original.
-- Deferred risk remains visible.
-- Rejected findings retain rationale and operator identity.
-- Corrective success does not imply broader readiness.
+- Finding closure requires independent evidence at the exact corrected head.
+- A changed finding statement creates a new finding rather than mutating the
+  original.
+- Deferred risk remains visible with operator identity.
+- Rejected findings retain rationale.
+- Corrective success does not imply merge, cleanup, deployment, or production
+  readiness.

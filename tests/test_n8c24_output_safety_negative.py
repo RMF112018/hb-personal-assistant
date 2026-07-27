@@ -21,7 +21,7 @@ def surface(tmp_path: Path):
     env = make_env(tmp_path)
     mcp = FastMCP("x", json_response=True, stateless_http=True)
     broker = NasMcpBroker(env["config"])
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(mcp, broker, capability_profile="legacy-v12")
     fn = {t.name: t.fn for t in mcp._tool_manager.list_tools()}
     return {"env": env, "broker": broker, "fn": fn, "names": {t.name for t in mcp._tool_manager.list_tools()}}
 

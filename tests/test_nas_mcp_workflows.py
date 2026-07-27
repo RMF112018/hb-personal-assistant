@@ -114,7 +114,7 @@ def test_no_workflow_persistence_table_in_migrator() -> None:
 # -- tool inventory + finality -----------------------------------------------------------
 def test_workflow_tools_registered_when_enabled(mcp_env) -> None:
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assert set(ASSISTANT_WORKFLOW_TOOLS) <= set(mcp.names)
     assert len(ASSISTANT_WORKFLOW_TOOLS) == 6
 
@@ -129,7 +129,7 @@ def test_kill_switch_disables_only_workflows(mcp_env, monkeypatch) -> None:
     assert mcp_env["broker"].dispatch("assistant_list_drafts", {})["ok"] is True
     # and not registered when off
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assert not (set(ASSISTANT_WORKFLOW_TOOLS) & set(mcp.names))
 
 
@@ -137,10 +137,10 @@ def test_tool_count_delta_is_exactly_six(mcp_env, monkeypatch) -> None:
     # Delta proof (not brittle absolute): enabling workflows adds exactly the 6 workflow tools.
     monkeypatch.setenv("HB_MCP_ASSISTANT_WORKFLOWS", "0")
     off = _FakeMcp()
-    register_nas_mcp_tools(off, mcp_env["broker"])
+    register_nas_mcp_tools(off, mcp_env["broker"], capability_profile="legacy-v12")
     monkeypatch.delenv("HB_MCP_ASSISTANT_WORKFLOWS", raising=False)
     on = _FakeMcp()
-    register_nas_mcp_tools(on, mcp_env["broker"])
+    register_nas_mcp_tools(on, mcp_env["broker"], capability_profile="legacy-v12")
     added = set(on.names) - set(off.names)
     assert added == set(ASSISTANT_WORKFLOW_TOOLS)
 
@@ -152,7 +152,7 @@ def test_no_forbidden_substring_in_workflow_names() -> None:
 
 def test_existing_finality_guard_still_passes(mcp_env) -> None:
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assistant = [n for n in mcp.names if n.startswith("assistant_")]
     for tools in (ASSISTANT_NAV_TOOLS, ASSISTANT_CONTEXT_PACK_TOOLS, ASSISTANT_MEMORY_TOOLS,
                   ASSISTANT_DECISION_MEMORY_TOOLS, ASSISTANT_REVIEW_TOOLS, ASSISTANT_INTELLIGENCE_TOOLS,

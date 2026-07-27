@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AEOS Work Item Ledger v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "goal_id",
+    "work_items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "work_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "work_item_id",
+          "title",
+          "status",
+          "authorization_id",
+          "repository",
+          "prerequisites",
+          "scope",
+          "out_of_scope",
+          "acceptance_criteria",
+          "required_tests",
+          "required_evidence",
+          "evidence_representation_requirements",
+          "retry_limit",
+          "stop_conditions",
+          "expected_closeout_disposition",
+          "disposition",
+          "closeout_receipt"
+        ],
+        "properties": {
+          "work_item_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "PROPOSED",
+              "AUTHORIZED",
+              "IN_PROGRESS",
+              "READY_FOR_REVIEW",
+              "BLOCKED",
+              "COMPLETE",
+              "MERGED_PENDING_CLEANUP",
+              "CLOSED"
+            ]
+          },
+          "authorization_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repository": {
+            "type": "object",
+            "required": [
+              "remote",
+              "default_branch",
+              "base_sha",
+              "head_sha",
+              "branch",
+              "worktree_mode",
+              "worktree_id",
+              "worktree_path",
+              "pull_request"
+            ],
+            "properties": {
+              "remote": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default_branch": {
+                "type": "string",
+                "minLength": 1
+              },
+              "base_sha": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              },
+              "head_sha": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              },
+              "branch": {
+                "type": "string",
+                "minLength": 1
+              },
+              "worktree_mode": {
+                "enum": [
+                  "local",
+                  "remote_only",
+                  "not_applicable"
+                ]
+              },
+              "worktree_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "worktree_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "pull_request": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "worktree_mode": {
+                      "const": "local"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "worktree_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "worktree_path": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "worktree_mode": {
+                      "enum": [
+                        "remote_only",
+                        "not_applicable"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "worktree_id": {
+                      "type": "null"
+                    },
+                    "worktree_path": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ],
+            "additionalProperties": false
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "out_of_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_tests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_representation_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "retry_limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stop_conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expected_closeout_disposition": {
+            "enum": [
+              null,
+              "REMOVE_AFTER_MERGE",
+              "RETAIN",
+              "BLOCKED"
+            ]
+          },
+          "disposition": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "closeout_receipt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

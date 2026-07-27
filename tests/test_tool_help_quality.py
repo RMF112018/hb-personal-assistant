@@ -7,6 +7,9 @@ import tempfile
 
 import pytest
 
+from hb_assistant.nas_mcp.config import NasMcpConfig
+from hb_assistant.nas_mcp.live_tool_surface import build_tool_index
+from hb_assistant.nas_mcp.tool_registration import _TOOL_TO_GROUP, _assistant_tool_meta
 from hb_assistant.obsidian_mcp.canonical_tool_specs import (
     AUDIT_HELP_TOOL_NAMES,
     GENERIC_FAMILY_PURPOSES,
@@ -16,10 +19,6 @@ from hb_assistant.obsidian_mcp.canonical_tool_specs import (
     resolve_tool_spec,
     tool_spec_public_entry,
 )
-from hb_assistant.nas_mcp.tool_registration import _TOOL_TO_GROUP
-from hb_assistant.nas_mcp.config import NasMcpConfig
-from hb_assistant.nas_mcp.live_tool_surface import build_tool_index
-from hb_assistant.nas_mcp.tool_registration import _assistant_tool_meta
 from hb_assistant.store.migrator import SQLiteMigrator
 
 
@@ -27,7 +26,9 @@ def _test_config() -> NasMcpConfig:
     d = tempfile.mkdtemp()
     db = os.path.join(d, "t.db")
     SQLiteMigrator(db_path=db).apply()
-    return NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    config = NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    config.capability_profile = "legacy-v12"
+    return config
 
 
 @pytest.mark.parametrize("tool_name", sorted(AUDIT_HELP_TOOL_NAMES))

@@ -1,42 +1,455 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AEOS Goal State",
+  "$id": "https://aeos.local/schemas/goal-loop/state-v2.schema.json",
+  "title": "AEOS Goal State v2",
   "type": "object",
   "required": [
     "schema_version",
     "goal_id",
     "state",
     "status",
+    "iteration",
     "repository",
-    "authorization"
+    "lifecycle",
+    "review",
+    "authorization",
+    "current_work_item",
+    "expected_artifacts",
+    "last_checkpoint",
+    "requested_next_state",
+    "updated_at"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "goal_id": {
       "type": "string",
       "minLength": 1
     },
     "state": {
-      "type": "string",
-      "minLength": 1
+      "enum": [
+        "GOVERNANCE_INITIALIZATION",
+        "REPOSITORY_TRUTH",
+        "ARCHITECTURE",
+        "IMPLEMENTATION_PLANNING",
+        "PLAN_EXTERNAL_REVIEW",
+        "IMPLEMENTATION",
+        "IMPLEMENTATION_EXTERNAL_AUDIT",
+        "CORRECTIVE_IMPLEMENTATION",
+        "CORRECTIVE_EXTERNAL_AUDIT",
+        "MERGE_READINESS",
+        "MERGE_AUTHORIZATION",
+        "MERGED_PENDING_CLEANUP",
+        "POST_MERGE_VALIDATION",
+        "BRANCH_WORKTREE_CLOSEOUT",
+        "BOUNDED_CLOSURE_ASSESSMENT",
+        "CLOSED"
+      ]
     },
     "status": {
       "enum": [
         "NOT_STARTED",
         "IN_PROGRESS",
         "READY_FOR_REVIEW",
+        "REVIEW_BLOCKED",
         "BLOCKED",
-        "COMPLETE"
+        "COMPLETE",
+        "CLEANUP_AUTHORIZED",
+        "RETAINED",
+        "CLEANUP_BLOCKED",
+        "CLOSED"
       ]
     },
+    "iteration": {
+      "type": "integer",
+      "minimum": 0
+    },
     "repository": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "remote",
+        "default_branch",
+        "base_sha",
+        "head_sha",
+        "branch",
+        "worktree_mode",
+        "worktree_id",
+        "worktree_path",
+        "pull_request"
+      ],
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_mode": {
+          "enum": [
+            "local",
+            "remote_only",
+            "not_applicable"
+          ]
+        },
+        "worktree_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktree_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pull_request": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "const": "local"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "worktree_path": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "enum": [
+                  "remote_only",
+                  "not_applicable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "null"
+              },
+              "worktree_path": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "lifecycle": {
+      "type": "object",
+      "required": [
+        "merge_status",
+        "post_merge_validation",
+        "cleanup_disposition",
+        "closure_status"
+      ],
+      "properties": {
+        "merge_status": {
+          "enum": [
+            "NOT_MERGED",
+            "MERGE_AUTHORIZED",
+            "MERGED_PENDING_CLEANUP",
+            "MERGED"
+          ]
+        },
+        "post_merge_validation": {
+          "enum": [
+            "NOT_APPLICABLE",
+            "PENDING",
+            "COMPLETE",
+            "NOT_REQUIRED",
+            "BLOCKED"
+          ]
+        },
+        "cleanup_disposition": {
+          "enum": [
+            "NOT_APPLICABLE",
+            "PENDING",
+            "AUTHORIZED",
+            "COMPLETE",
+            "RETAINED",
+            "BLOCKED"
+          ]
+        },
+        "closure_status": {
+          "enum": [
+            "OPEN",
+            "PENDING",
+            "READY",
+            "CLOSED",
+            "BLOCKED"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "review_id",
+        "reviewed_head_sha",
+        "disposition",
+        "stale_on_head_change"
+      ],
+      "properties": {
+        "review_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reviewed_head_sha": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40}$"
+            }
+          ]
+        },
+        "disposition": {
+          "enum": [
+            null,
+            "APPROVE",
+            "APPROVE_WITH_REQUIRED_CHANGES",
+            "REVISE",
+            "REJECT",
+            "INSUFFICIENT_EVIDENCE",
+            "PASS",
+            "PASS_WITH_NON_BLOCKING_FINDINGS",
+            "FAIL_BLOCKERS_REMAIN",
+            "READY_TO_MERGE",
+            "READY_WITH_REQUIRED_CONDITIONS",
+            "NOT_READY"
+          ]
+        },
+        "stale_on_head_change": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
     },
     "authorization": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "required",
+        "authorization_id",
+        "authorized_state",
+        "authorized_action",
+        "authorized_identity",
+        "artifact_hash",
+        "expires_on_repository_drift"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "authorization_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authorized_state": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "GOVERNANCE_INITIALIZATION",
+                "REPOSITORY_TRUTH",
+                "ARCHITECTURE",
+                "IMPLEMENTATION_PLANNING",
+                "PLAN_EXTERNAL_REVIEW",
+                "IMPLEMENTATION",
+                "IMPLEMENTATION_EXTERNAL_AUDIT",
+                "CORRECTIVE_IMPLEMENTATION",
+                "CORRECTIVE_EXTERNAL_AUDIT",
+                "MERGE_READINESS",
+                "MERGE_AUTHORIZATION",
+                "MERGED_PENDING_CLEANUP",
+                "POST_MERGE_VALIDATION",
+                "BRANCH_WORKTREE_CLOSEOUT",
+                "BOUNDED_CLOSURE_ASSESSMENT",
+                "CLOSED"
+              ]
+            }
+          ]
+        },
+        "authorized_action": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authorized_identity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "branch",
+                "base_sha",
+                "head_sha",
+                "worktree_mode",
+                "worktree_id",
+                "worktree_path",
+                "pull_request"
+              ],
+              "properties": {
+                "branch": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "base_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "head_sha": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$"
+                },
+                "worktree_mode": {
+                  "enum": [
+                    "local",
+                    "remote_only",
+                    "not_applicable"
+                  ]
+                },
+                "worktree_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "worktree_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pull_request": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "artifact_hash": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "expires_on_repository_drift": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "current_work_item": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "expected_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "last_checkpoint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "requested_next_state": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "enum": [
+            "GOVERNANCE_INITIALIZATION",
+            "REPOSITORY_TRUTH",
+            "ARCHITECTURE",
+            "IMPLEMENTATION_PLANNING",
+            "PLAN_EXTERNAL_REVIEW",
+            "IMPLEMENTATION",
+            "IMPLEMENTATION_EXTERNAL_AUDIT",
+            "CORRECTIVE_IMPLEMENTATION",
+            "CORRECTIVE_EXTERNAL_AUDIT",
+            "MERGE_READINESS",
+            "MERGE_AUTHORIZATION",
+            "MERGED_PENDING_CLEANUP",
+            "POST_MERGE_VALIDATION",
+            "BRANCH_WORKTREE_CLOSEOUT",
+            "BOUNDED_CLOSURE_ASSESSMENT",
+            "CLOSED"
+          ]
+        }
+      ]
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

@@ -1,42 +1,328 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "AEOS Evidence Index",
+  "$id": "https://aeos.local/schemas/goal-loop/evidence-v2.schema.json",
+  "title": "AEOS Evidence Index v2",
   "type": "object",
   "required": [
     "schema_version",
     "goal_id",
+    "work_item_id",
+    "checkpoint_id",
     "repository",
-    "evidence"
+    "environment",
+    "evidence",
+    "limitations",
+    "generated_at"
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "work_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "checkpoint_id": {
       "type": "string",
       "minLength": 1
     },
     "repository": {
       "type": "object",
       "required": [
+        "remote",
+        "default_branch",
+        "base_sha",
+        "head_sha",
         "branch",
-        "baseline_sha",
-        "current_sha"
+        "worktree_mode",
+        "worktree_id",
+        "worktree_path",
+        "pull_request"
+      ],
+      "properties": {
+        "remote": {
+          "type": "string",
+          "minLength": 1
+        },
+        "default_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "worktree_mode": {
+          "enum": [
+            "local",
+            "remote_only",
+            "not_applicable"
+          ]
+        },
+        "worktree_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "worktree_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pull_request": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "const": "local"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "worktree_path": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "worktree_mode": {
+                "enum": [
+                  "remote_only",
+                  "not_applicable"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "worktree_id": {
+                "type": "null"
+              },
+              "worktree_path": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": [
+        "string",
+        "object"
       ]
     },
     "evidence": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": [
           "evidence_id",
           "path",
           "kind",
+          "representation",
+          "mime_type",
+          "hash_scope",
           "sha256",
-          "claim_ids"
-        ]
+          "source_relation",
+          "claim_ids",
+          "generated_by",
+          "repository_head",
+          "environment",
+          "verification",
+          "status"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "representation": {
+            "enum": [
+              "raw_file",
+              "repository_blob",
+              "native_google_doc",
+              "exported_representation",
+              "runtime_observation",
+              "external_object",
+              "narrative",
+              "unavailable"
+            ]
+          },
+          "mime_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hash_scope": {
+            "enum": [
+              "stored_raw_bytes",
+              "source_bytes",
+              "exported_bytes",
+              "not_applicable"
+            ]
+          },
+          "sha256": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            ]
+          },
+          "source_relation": {
+            "enum": [
+              "direct",
+              "derived",
+              "export_of",
+              "source_of",
+              "narrative",
+              "unavailable"
+            ]
+          },
+          "claim_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "uniqueItems": true
+          },
+          "generated_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "repository_head": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "environment": {
+            "type": [
+              "string",
+              "object",
+              "null"
+            ]
+          },
+          "verification": {
+            "enum": [
+              "verified",
+              "claimed_not_verified",
+              "not_applicable",
+              "unavailable"
+            ]
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial",
+              "invalid",
+              "unavailable",
+              "pending"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "hash_scope": {
+                  "enum": [
+                    "stored_raw_bytes",
+                    "source_bytes",
+                    "exported_bytes"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "hash_scope": {
+                  "const": "not_applicable"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sha256": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
       }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

@@ -8,6 +8,7 @@ import pytest
 
 from hb_assistant.nas_mcp.artifact_tools import ALL_PA_TOOLS
 from hb_assistant.nas_mcp.broker import ALL_ASSISTANT_TOOLS, DENIED_TOOL_NAMES, NasMcpBroker
+from hb_assistant.nas_mcp.capability_registry import definitions_for_profile
 from hb_assistant.nas_mcp.tool_registration import register_nas_mcp_tools
 from tests.n8c23_helpers import make_env
 
@@ -20,7 +21,7 @@ def surface(tmp_path: Path):
     env = make_env(tmp_path)
     mcp = FastMCP("hb-nas-mcp", json_response=True, stateless_http=True)
     broker = NasMcpBroker(env["config"])
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(mcp, broker, capability_profile="legacy-v12")
     tools = {t.name: t for t in mcp._tool_manager.list_tools()}
     return {"env": env, "broker": broker, "tools": tools, "names": set(tools),
             "fn": {n: t.fn for n, t in tools.items()}}
@@ -28,7 +29,12 @@ def surface(tmp_path: Path):
 
 def test_n8c22_invariants_preserved(surface) -> None:
     names = surface["names"]
-    assert len([n for n in names if n.startswith("assistant_")]) == 78
+    expected_assistant = {
+        item.registered_name
+        for item in definitions_for_profile("legacy-v12")
+        if item.registered_name.startswith("assistant_")
+    }
+    assert {name for name in names if name.startswith("assistant_")} == expected_assistant
     assert set(ALL_PA_TOOLS) <= names
     # pa_ tools are NOT part of the canonical 78 nor the gateway allowlist.
     assert set(ALL_PA_TOOLS).isdisjoint(set(ALL_ASSISTANT_TOOLS))

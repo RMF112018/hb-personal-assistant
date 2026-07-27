@@ -1,0 +1,40 @@
+name: AEOS Governance Validation
+
+on:
+  pull_request:
+    paths:
+      - "AI_OPERATING_MANUAL.md"
+      - ".ai/**"
+      - "pyproject.toml"
+      - ".github/workflows/aeos-governance-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "AI_OPERATING_MANUAL.md"
+      - ".ai/**"
+      - "pyproject.toml"
+      - ".github/workflows/aeos-governance-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install governance validation dependencies
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Compile validator sources
+        run: python -m compileall -q .ai/aeos/bin .ai/agent-skills/_aeos-shared/scripts
+      - name: Validate goal-loop contracts
+        run: python .ai/aeos/bin/validate_goal_loop_contracts.py
+      - name: Validate AEOS skill package
+        run: python .ai/agent-skills/_aeos-shared/scripts/validate_skill_package.py
+      - name: Validate AI layout and checksums
+        run: python .ai/aeos/bin/validate_ai_layout.py
+      - name: Verify checksum manifest without mutation
+        run: python .ai/aeos/bin/generate_checksums.py --check

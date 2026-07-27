@@ -111,7 +111,7 @@ def test_kill_switch_disables_only_feedback(mcp_env, monkeypatch: pytest.MonkeyP
 
 def test_no_write_build_or_disposition_tool_registered(mcp_env) -> None:
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assistant = [n for n in mcp.names if n.startswith("assistant_")]
     for tools in (ASSISTANT_RESEARCH_PACKET_TOOLS, ASSISTANT_SOURCE_CONNECTOR_TOOLS,
                   ASSISTANT_ANSWER_DRAFT_TOOLS, ASSISTANT_INTELLIGENCE_TOOLS, ASSISTANT_FEEDBACK_TOOLS):

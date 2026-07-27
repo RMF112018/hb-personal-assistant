@@ -1,13 +1,40 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "goal_id": "GOAL-REPLACE-ME",
+  "work_item_id": null,
   "checkpoint_id": "GATE-REPLACE-ME",
   "repository": {
-    "branch": null,
-    "baseline_sha": null,
-    "current_sha": null
+    "remote": "https://github.com/owner/repository.git",
+    "default_branch": "main",
+    "base_sha": "0000000000000000000000000000000000000000",
+    "head_sha": "1111111111111111111111111111111111111111",
+    "branch": "chore/replace-me",
+    "worktree_mode": "remote_only",
+    "worktree_id": null,
+    "worktree_path": null,
+    "pull_request": 123
   },
-  "evidence": [],
+  "environment": "replace-me",
+  "evidence": [
+    {
+      "evidence_id": "EVID-001",
+      "path": "relative/path",
+      "kind": "test_result",
+      "representation": "raw_file",
+      "mime_type": "text/plain",
+      "hash_scope": "stored_raw_bytes",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_relation": "direct",
+      "claim_ids": [
+        "CLAIM-001"
+      ],
+      "generated_by": "replace-me",
+      "repository_head": "1111111111111111111111111111111111111111",
+      "environment": "replace-me",
+      "verification": "verified",
+      "status": "complete"
+    }
+  ],
   "limitations": [],
-  "generated_at": null
+  "generated_at": "2026-01-01T00:00:00Z"
 }

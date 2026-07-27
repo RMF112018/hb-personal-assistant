@@ -134,7 +134,7 @@ def test_kill_switch_disables_only_answer_drafts(mcp_env, monkeypatch: pytest.Mo
 
 def test_no_write_build_or_answer_tool_registered(mcp_env) -> None:
     mcp = _FakeMcp()
-    register_nas_mcp_tools(mcp, mcp_env["broker"])
+    register_nas_mcp_tools(mcp, mcp_env["broker"], capability_profile="legacy-v12")
     assistant = [n for n in mcp.names if n.startswith("assistant_")]
     # existing tool sets preserved BY NAME (incl. the N8C-12 source connector).
     for tools in (ASSISTANT_NAV_TOOLS, ASSISTANT_CONTEXT_PACK_TOOLS, ASSISTANT_MEMORY_TOOLS,

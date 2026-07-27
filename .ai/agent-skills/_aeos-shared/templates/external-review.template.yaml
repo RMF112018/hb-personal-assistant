@@ -1,13 +1,24 @@
-schema_version: 1
+schema_version: 2
 review_id: REVIEW-REPLACE-ME
 goal_id: GOAL-REPLACE-ME
 checkpoint_id: GATE-REPLACE-ME
+review_type: IMPLEMENTATION_AUDIT
 reviewer_context: independent
+repository:
+  remote: https://github.com/owner/repository.git
+  branch: chore/replace-me
+  worktree_mode: remote_only
+  worktree_id: null
+  base_sha: '0000000000000000000000000000000000000000'
+  reviewed_head_sha: '1111111111111111111111111111111111111111'
+  pull_request: 123
+reviewed_artifacts: []
+evidence_reviewed: []
 review_disposition: REVISE
 required_changes: []
 recommendations: []
 findings: []
-evidence_reviewed: []
 limitations: []
+stale_on_head_change: true
 operator_decision: PENDING
-created_at: null
+created_at: '2026-01-01T00:00:00Z'

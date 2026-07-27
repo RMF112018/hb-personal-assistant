@@ -11,7 +11,9 @@ from tests.n8c24_helpers import make_env
 
 
 def test_output_tools_appear_in_live_tool_surface(tmp_path: Path) -> None:
-    names = current_tool_names(make_env(tmp_path)["config"])
+    config = make_env(tmp_path)["config"]
+    config.capability_profile = "legacy-v12"
+    names = current_tool_names(config)
     assert set(ALL_PA_OUTPUT_TOOLS) <= names
 
 
@@ -25,6 +27,8 @@ def test_output_tools_classified_as_output_family_reads_or_staged() -> None:
 
 def test_write_tools_gated_out_of_surface_when_disabled(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("HB_MCP_ALLOW_CLIENT_OUTPUT_WRITE", "0")
-    names = current_tool_names(make_env(tmp_path)["config"])
+    config = make_env(tmp_path)["config"]
+    config.capability_profile = "legacy-v12"
+    names = current_tool_names(config)
     assert "pa_output_commit" not in names
     assert "pa_output_list" in names

@@ -47,6 +47,7 @@ dev = [
   "ruff>=0.4.4",
   "mypy>=1.10",
   "types-PyYAML>=6.0",
+  "jsonschema>=4.23",
   "types-requests",  # future proof for graph client
 ]
 # Phase 08A second-brain runtime — opt-in live Claude transport only.

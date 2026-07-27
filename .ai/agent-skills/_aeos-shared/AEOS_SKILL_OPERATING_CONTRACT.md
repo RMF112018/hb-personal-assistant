@@ -1,95 +1,163 @@
 # AEOS Skill Operating Contract
 
-Apply this contract whenever any skill in this package is used.
+Apply this contract whenever any canonical AEOS skill is used.
 
 ## Governing-source preflight
 
-Before substantive work, read in repository-defined order:
+Read in repository-defined order:
 
-1. `CLAUDE.md`
-2. `AGENTS.md`
-3. `AI_OPERATING_MANUAL.md`, when present
-4. `.ai/project-sources/00_AEOS_MASTER_INDEX.md`
-5. Governing AEOS sources selected by the Master Index
-6. Approved goal, architecture, plan, acceptance criteria, review, and authorization artifacts for the current state
+1. `CLAUDE.md` or the active harness adapter;
+2. `AGENTS.md`;
+3. `AI_OPERATING_MANUAL.md`;
+4. `.ai/project-sources/00_AEOS_MASTER_INDEX.md`;
+5. governing AEOS sources selected by the Master Index;
+6. repository-local ADRs and policies;
+7. approved goal, plan, review, evidence, and authorization artifacts for the
+   current state.
 
-If paths differ in the current repository, establish the current authoritative locations from repository truth. Report conflicts and stop rather than silently selecting a weaker source.
+For this repository, include ADR-019, `POL-GIT-HYGIENE-001`, and the repository
+test-selection standard when applicable. Report conflicts and stop rather than
+silently choosing a weaker source.
 
-## Authority order
+## Truth precedence
 
-1. Current repository and runtime evidence
-2. Approved repository-specific specification and acceptance criteria
-3. Repository-local ADRs, policies, and instructions
-4. AEOS governance
-5. Current operator instruction
-6. Prior conversation or model memory
+1. Authenticated runtime evidence for deployed behavior.
+2. Authenticated repository and GitHub state for engineering identity.
+3. Repository-local governance, approved specifications, and criteria.
+4. AEOS governance.
+5. Approved publication/reference governance for publication matters.
+6. Prior conversations and agent reports as claims.
+7. Model memory or general knowledge.
+
+## Action authority
+
+The current operator instruction defines task intent and permitted action scope.
+It does not alter facts or approve an unstated action.
+
+Only the operator may authorize state transitions, merge, cleanup, deployment,
+production activation, destructive action, or risk acceptance. Access,
+publication, prior approval, and tool capability do not grant authority.
 
 ## Mandatory pre-edit record
 
-Before any edit, report and record:
+Before editing, report and record:
 
-- repository path;
-- branch;
-- HEAD SHA;
-- upstream, when available;
-- worktree status;
-- active goal and state;
-- authorization identifier;
-- permitted scope;
-- prohibited actions.
+- repository path and authenticated remote;
+- default branch;
+- registered branch and worktree identities;
+- branch, worktree path, base SHA, exact head SHA, and upstream;
+- pull request and required checks when applicable;
+- dirty and untracked state;
+- active goal, state, work item, and checkpoint;
+- authorization identifier and authorized action/transition;
+- permitted scope and prohibited actions.
+
+A non-canonical branch or worktree must be registered before substantive work.
+
+## Exact-identity binding
+
+Authorization, review, audit, tests, and evidence must identify the exact
+repository or artifact identity to which they apply. Repository drift or a
+later commit invalidates current-head approval and identity-bound authorization
+unless explicitly reauthorized.
 
 ## Universal prohibitions without explicit operator authorization
 
 Do not:
 
-- push, merge, force-push, or rewrite history;
-- reset hard;
-- delete branches or worktrees;
+- push, merge, force-push, rebase shared history, or rewrite history;
+- reset hard or run broad destructive clean;
+- remove worktrees or delete local/remote branches;
+- prune worktree metadata or remote references;
+- delete data, evidence, tags, or refs;
 - deploy or activate production services;
 - modify credentials, secrets, or authentication policy;
 - run irreversible migrations;
 - weaken tests, thresholds, evidence requirements, or safeguards;
 - accept risk;
-- approve a plan or implementation created by the same execution context;
+- approve work produced by the same execution context as independent review;
 - modify closed checkpoint evidence;
 - activate the next workflow state.
 
+Worktree removal, local branch deletion, remote branch deletion, worktree
+metadata pruning, and remote-reference pruning are separate actions.
+
+## Preservation-before-cleanup rules
+
+Before cleanup, deletion, or pruning:
+
+1. inventory relevant branches, worktrees, refs, tags, dirty state, locks, and
+   process dependencies;
+2. perform no-prune fetch when remote state matters;
+3. preserve unique, dirty, inaccessible, uncertain, or process-dependent state;
+4. prove integration, patch equivalence, retention need, or blocker;
+5. preview the exact target action;
+6. obtain target-specific authorization.
+
+Uncertainty fails closed to preservation.
+
 ## Evidence rules
 
-- Do not use agent narrative as proof.
-- Preserve exact commands, exit codes, and outputs.
-- Distinguish `VERIFIED`, `CLAIMED_NOT_VERIFIED`, `ASSUMED`, `UNKNOWN`, and `UNAVAILABLE`.
-- Preserve failed and invalid attempts.
-- Reference evidence by stable path and hash.
+- Agent narrative is not proof.
+- Preserve exact commands, timestamps, exit codes, outputs, and failed attempts.
+- Bind evidence to exact repository and environment identity.
+- Record representation, MIME type, hash scope, and SHA-256 when material.
+- Valid hash scopes are `stored_raw_bytes`, `source_bytes`, `exported_bytes`,
+  and `not_applicable`.
+- Hashes from different representation classes are not interchangeable.
+- Distinguish `VERIFIED`, `CLAIMED_NOT_VERIFIED`, `ASSUMED`, `UNKNOWN`,
+  `UNAVAILABLE`, and `NOT_APPLICABLE`.
 - Disclose material access limitations.
+- A publication receipt proves publication, not correctness or authorization.
 - Never claim a readiness category not explicitly evaluated.
+
+## Merge and closeout rules
+
+Merge transitions the goal or work item to `MERGED_PENDING_CLEANUP`, not
+`CLOSED`.
+
+Closure requires:
+
+- accepted merge identity;
+- post-merge validation or explicit not-required decision;
+- preservation and integration evidence;
+- worktree/local branch/remote branch/metadata/ref disposition;
+- cleanup, retention, or blocker receipt;
+- operator-authorized closure transition.
 
 ## Stop rules
 
 Stop immediately when:
 
-- authorization is absent, expired, mismatched, or invalid;
-- repository drift invalidates authorization;
+- authorization is absent, expired, mismatched, or exceeded;
+- repository drift invalidates authorization or review;
 - required governance is missing or contradictory;
 - scope or architecture must change;
 - a consequential action is required;
 - acceptance criteria are ambiguous;
 - evidence cannot support the requested claim;
-- retry or correction limits are exhausted;
+- retry limits are exhausted;
 - the environment is invalid;
-- sensitive information may be exposed.
+- sensitive information may be exposed;
+- required-safe-suite failures remain unresolved;
+- cleanup inventory, preservation, proof, or authority is incomplete.
 
-## Required terminal disposition
+## Required terminal dispositions
 
-Use one bounded disposition:
+Use one bounded disposition appropriate to the active workflow:
 
 - `READY_FOR_EXTERNAL_REVIEW`
 - `IMPLEMENTATION_COMPLETE_PENDING_AUDIT`
 - `CORRECTIVE_WORK_READY_FOR_REAUDIT`
+- `READY_FOR_MERGE_REVIEW`
+- `MERGED_PENDING_CLEANUP`
+- `POST_MERGE_VALIDATION_COMPLETE`
+- `CLOSEOUT_READY_FOR_OPERATOR_DECISION`
 - `BLOCKED`
 - `INSUFFICIENT_EVIDENCE`
 - `ENVIRONMENT_INVALID`
 - `FAILED_BOUNDED`
 - `OPERATOR_AUTHORIZATION_REQUIRED`
 
-Never emit `GO`, `APPROVED`, or `PRODUCTION_READY` unless the currently authorized workflow is an independent decision workflow and evidence supports that exact bounded decision.
+Never emit `GO`, `APPROVED`, `CLOSED`, or `PRODUCTION_READY` unless the active
+independent decision workflow and evidence support that exact bounded decision.

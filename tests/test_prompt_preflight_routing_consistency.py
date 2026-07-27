@@ -248,6 +248,7 @@ def test_routing_tools_in_current_tool_names() -> None:
     db = os.path.join(d, "t.db")
     SQLiteMigrator(db_path=db).apply()
     cfg = NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    cfg.capability_profile = "legacy-v12"
     names = current_tool_names(cfg)
     assert "pa_prompt_route" in names
     assert "pa_prompt_route_explain" in names
@@ -262,6 +263,7 @@ def test_manifest_help_includes_routing_tools() -> None:
     db = os.path.join(d, "t.db")
     SQLiteMigrator(db_path=db).apply()
     cfg = NasMcpConfig.from_mapping({"db_path": db, "roots": {"outputs": {"path": d, "mode": "read_write"}}})
+    cfg.capability_profile = "legacy-v12"
     idx = _build_tool_index(cfg)
     for name in ("pa_prompt_route", "pa_prompt_route_explain"):
         assert name in idx

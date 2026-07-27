@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Validate the AEOS Claude Code initial skill package without third-party dependencies."""
+"""Validate the canonical AEOS skill package without third-party dependencies."""
 
 from __future__ import annotations
 
 import json
 import re
 import sys
+import subprocess
 from pathlib import Path
 
 EXPECTED = [
@@ -18,9 +19,9 @@ EXPECTED = [
     "aeos-independent-auditor",
     "aeos-finding-reconciler",
 ]
-
 REQUIRED_SHARED = [
     "AEOS_SKILL_OPERATING_CONTRACT.md",
+    "references/workflow-states.md",
     "templates/goal-charter.template.md",
     "templates/governance-manifest.template.yaml",
     "templates/state.template.yaml",
@@ -35,18 +36,33 @@ REQUIRED_SHARED = [
     "schemas/finding-ledger.schema.json",
     "schemas/state.schema.json",
 ]
-
 DISALLOWED = [
     r"continue\s+until\s+the\s+entire\s+goal\s+is\s+complete",
     r"automatically\s+approve",
     r"self[- ]approve",
     r"bypass\s+(?:the\s+)?operator",
+    r"merge\s+directly\s+to\s+closed",
 ]
+REQUIRED_CONTRACT_TERMS = [
+    "Truth precedence",
+    "Action authority",
+    "exact repository",
+    "MERGED_PENDING_CLEANUP",
+    "preservation",
+    "cleanup, retention, or blocker receipt",
+]
+REQUIRED_SKILL_TERMS = {
+    "aeos-goal-controller": ["MERGED_PENDING_CLEANUP", "POST_MERGE_VALIDATION", "BRANCH_WORKTREE_CLOSEOUT"],
+    "aeos-repository-truth": ["no-prune", "worktree", "preservation"],
+    "aeos-checkpoint-manager": ["MERGED_PENDING_CLEANUP", "closeout receipt", "exact repository"],
+    "aeos-implementation-planner": ["worktree", "proportional", "post-merge"],
+    "aeos-work-package-executor": ["registered branch and worktree", "classify every failure", "exact head"],
+    "aeos-evidence-packager": ["representation", "hash_scope", "repository_head"],
+    "aeos-independent-auditor": ["exact reviewed head", "later commit", "required-safe"],
+    "aeos-finding-reconciler": ["corrected exact head", "VERIFIED FIXED", "separately authorized"],
+}
+FRONT_MATTER = re.compile(r"\A---\s*\n(?P<header>.*?)\n---\s*\n", re.DOTALL)
 
-FRONT_MATTER = re.compile(
-    r"\A---\s*\n(?P<header>.*?)\n---\s*\n",
-    re.DOTALL,
-)
 
 def parse_header(text: str) -> dict[str, str]:
     match = FRONT_MATTER.search(text)
@@ -62,12 +78,20 @@ def parse_header(text: str) -> dict[str, str]:
         result[key.strip()] = value.strip()
     return result
 
+
 def main() -> int:
     script = Path(__file__).resolve()
     skills_root = script.parents[2]
     shared = skills_root / "_aeos-shared"
     errors: list[str] = []
     names: list[str] = []
+
+    contract = shared / "AEOS_SKILL_OPERATING_CONTRACT.md"
+    if contract.is_file():
+        contract_text = contract.read_text(encoding="utf-8")
+        for term in REQUIRED_CONTRACT_TERMS:
+            if term.lower() not in contract_text.lower():
+                errors.append(f"{contract}: missing required contract term {term!r}")
 
     for skill_name in EXPECTED:
         path = skills_root / skill_name / "SKILL.md"
@@ -81,16 +105,17 @@ def main() -> int:
             errors.append(f"{path}: {exc}")
             continue
         if header.get("name") != skill_name:
-            errors.append(
-                f"{path}: name={header.get('name')!r}, expected {skill_name!r}"
-            )
+            errors.append(f"{path}: name={header.get('name')!r}, expected {skill_name!r}")
         description = header.get("description", "")
         if len(description) < 30:
             errors.append(f"{path}: description is too short")
         names.append(header.get("name", ""))
         for pattern in DISALLOWED:
             if re.search(pattern, text, flags=re.IGNORECASE):
-                errors.append(f"{path}: disallowed broad-autonomy wording: {pattern}")
+                errors.append(f"{path}: disallowed wording: {pattern}")
+        for term in REQUIRED_SKILL_TERMS.get(skill_name, []):
+            if term.lower() not in text.lower():
+                errors.append(f"{path}: missing required term {term!r}")
 
     if len(names) != len(set(names)):
         errors.append("duplicate skill names")
@@ -106,9 +131,15 @@ def main() -> int:
         except Exception as exc:
             errors.append(f"{path}: invalid JSON: {exc}")
 
-    # Validate local Markdown links only within the canonical skill corpus.
-    # Do not scan the enclosing repository, virtual environments, worktrees,
-    # or unrelated documentation when this script is reached through a symlink.
+
+    semantic_script = skills_root.parent / "aeos" / "bin" / "validate_goal_loop_contracts.py"
+    semantic = subprocess.run([sys.executable, str(semantic_script), "--quiet"], capture_output=True, text=True)
+    if semantic.returncode != 0:
+        errors.append("goal-loop semantic validation failed")
+        for line in (semantic.stdout + semantic.stderr).splitlines():
+            if line.strip():
+                errors.append(f"goal-loop: {line}")
+
     package_root = skills_root
     link_re = re.compile(r"\[[^\]]+\]\((?!https?://|#)([^)]+)\)")
     for md in package_root.rglob("*.md"):
@@ -131,7 +162,9 @@ def main() -> int:
     print(f"- skills root: {skills_root}")
     print(f"- skills: {len(EXPECTED)}")
     print(f"- shared resources: {len(REQUIRED_SHARED)} required files present")
+    print("- exact-head, proportional-test, representation, and closeout controls: present")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

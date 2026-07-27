@@ -1218,7 +1218,15 @@ def _tool_surface_signals(
 
             gateway_allowlisted = tool_name in GATEWAY_ALLOWLIST
             if rp.get("directly_exposed") is None:
-                directly_exposed = not gateway_allowlisted
+                from hb_assistant.nas_mcp.capability_registry import (  # noqa: PLC0415
+                    build_capability_registry,
+                    prompt_preflight_compatibility_names,
+                )
+
+                definition = build_capability_registry().get(tool_name)
+                directly_exposed = bool(definition and definition.direct_exposure) or (
+                    tool_name in prompt_preflight_compatibility_names()
+                )
         except Exception:  # noqa: BLE001
             gateway_allowlisted = True
             directly_exposed = True
@@ -1260,7 +1268,10 @@ def _runtime_policy_permission(
         available_tools=available_tools,
         runtime_policy=runtime_policy,
     )
-    call_mode = rp.get("recommended_call_mode") or _resolve_recommended_call_mode(signals)
+    # Observational only: when both paths exist, direct is the deterministic
+    # preferred call mode. Runtime-policy metadata must not reverse that
+    # preference or grant/deny executable authorization.
+    call_mode = _resolve_recommended_call_mode(signals) or rp.get("recommended_call_mode")
 
     return {
         "safe_mode": safe_mode,

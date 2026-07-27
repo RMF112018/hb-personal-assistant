@@ -1,0 +1,394 @@
+schema_version: 2
+branch_id: BR-TEST-SELECTION-POLICY-001
+repository: RMF112018/hb-personal-assistant
+local_branch: null
+remote_name: origin
+remote_branch: chore/proportional-test-selection-policy-v2
+remote_tracking_ref: refs/remotes/origin/chore/proportional-test-selection-policy-v2
+registration_tip_sha: 8b44cbd216d531a1894b4257355469edf922029f
+current_tip_authority: authenticated_github
+current_tip_recorded_in_repository: false
+review_candidate_binding: external_exact_sha_review
+base_branch: main
+base_sha: 8b44cbd216d531a1894b4257355469edf922029f
+owner_or_agent: OpenAI ChatGPT, operator-directed
+goal_id: null
+work_item_id: POLICY-TEST-SELECTION-001
+issue: null
+pull_request: 319
+created_at: 2026-07-21T05:34:00-04:00
+registered_at: 2026-07-21T05:40:38-04:00
+expected_disposition: remove-after-merge
+lifecycle_state: REVIEW_PENDING
+retention_reason: null
+next_review_at: null
+validation:
+  application_tests: not_applicable
+  executable_governance_validation: required
+  reason: R6 independently authenticates all receipt claims, provisional validator references, and the complete diagnostic-specific mutation matrix; validate only those surfaces plus bounded collection.
+  compare_base: 8b44cbd216d531a1894b4257355469edf922029f
+transitions:
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REGISTER
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: null
+    to_state: REGISTERED
+    occurred_at: 2026-07-21T05:40:38-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: 8b44cbd216d531a1894b4257355469edf922029f
+    evidence: docs/evidence/test-selection-policy/branch-registration.yaml
+    reason: Register the branch before substantive policy work.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-ACTIVE
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REGISTERED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T05:40:38-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: 8b44cbd216d531a1894b4257355469edf922029f
+    evidence: docs/evidence/test-selection-policy/branch-registration.yaml
+    reason: Begin bounded proportional-test governance implementation.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R1
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T05:49:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: operator-instruction-2026-07-21-test-selection-policy
+    evidence_parent_sha: f7f51fad8fc4c7fe31fe3055655df6551e1c7f8c
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Submit initial package for exact-head independent review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T09:45:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-R1
+    evidence_parent_sha: 3f008f4ba7e64a0036ecee913a9eaab24cfa1e75
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Independent review returned REVISE with findings PR319-GOV-F-001 through F-008.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T10:00:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-20260721-001
+    evidence_parent_sha: 3f008f4ba7e64a0036ecee913a9eaab24cfa1e75
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded corrective implementation for the eight review findings.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T10:53:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-20260721-001
+    evidence_parent_sha: 71e578dc33b6dba6f0819d2b7e8298854854d6d3
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Corrective package complete; current tip and review candidate are resolved externally from authenticated GitHub state.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T11:28:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-R2
+    evidence_parent_sha: 43abb04a549d927334959fd2e40745296a6281c2
+    evidence: external-review:PR319-GOV-R2@43abb04a549d927334959fd2e40745296a6281c2
+    reason: Fresh independent re-review returned REVISE with three blocking failures and one evidence-classification correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T11:29:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 43abb04a549d927334959fd2e40745296a6281c2
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R2 correction of safe-suite portability, issue-form validity, validator semantics, and evidence labeling.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T11:39:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 71cc12f8cc787a199723bfcd6194c484fcae6455
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R2 corrections complete; route the externally resolved current head to exact-head CI.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T11:40:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R24
+    evidence_parent_sha: 65e30e7435e10153c4862ed6b70b8e7bb5d2a048
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29845014007
+    reason: Exact-head bounded collection failed before validator execution; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T11:43:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 65e30e7435e10153c4862ed6b70b8e7bb5d2a048
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Diagnose preserved collection failure, add durable diagnostics, and correct the declared prerequisite environment.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R4
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T11:49:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R2-20260721-001
+    evidence_parent_sha: 145ef391f35fd10d5030ad23e1bf1175bb9ef792
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29845587016
+    reason: Complete prerequisite correction after preserved diagnostic evidence; technical validation passed at 2572454ec1cd3c0f43a7d548c569075ce3e9e169 and the new externally resolved head requires final exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR2
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:43:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR2
+    evidence_parent_sha: a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    evidence: external-review:PR319-GOV-RR2@a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    reason: Fresh independent R2 re-review returned REVISE with PR319-RR2-F-001 through F-003.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R4
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T12:44:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: a5b1cdb0220982db6d6c956e45d532b0c6187a5c
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R3 correction of exact scope enforcement, receipt completeness, and adversarial fixtures.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T12:50:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: dc12f002892e875d12f0395ec5c40fc367c3033c
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R3 validator and workflow corrections complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:54:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R34
+    evidence_parent_sha: 65df3ccab6984cfe943ab8beb73fe277c01f4660
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29850530934
+    reason: R3 generic-fallback negative fixture failed through the wrong semantic diagnostic; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T12:55:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: 65df3ccab6984cfe943ab8beb73fe277c01f4660
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Reorder static validation so generic-fallback mutations prove the intended invariant and diagnostic.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T12:56:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Generic-fallback fixture-order correction complete; route exact head to CI.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T12:59:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R35
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29850884197
+    reason: R3 legacy-about issue-form fixture failed through the wrong semantic diagnostic; preserve failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R6
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T13:00:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: f3ceebfb771445d654212368cefa0e8a304319a9
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Reorder issue-form validation so legacy-about mutations prove the intended invariant and diagnostic.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R7
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T13:03:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R3-20260721-001
+    evidence_parent_sha: 93fece6e46bead0b6bf07f21d51b072a35bacde7
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R3 correction and authorization closeout complete; route the externally resolved current head to final exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR3
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T14:44:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR3
+    evidence_parent_sha: e7e4e999b11e29864b5d7876bb52a51583b38885
+    evidence: external-review:PR319-GOV-RR3@e7e4e999b11e29864b5d7876bb52a51583b38885
+    reason: Fresh independent R3 re-review returned REVISE with PR319-RR3-F-001 through F-003.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R7
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T14:45:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R4-20260721-001
+    evidence_parent_sha: e7e4e999b11e29864b5d7876bb52a51583b38885
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R4 correction of authenticated receipt binding, command and evidence-reference enforcement, and individual dependency probes.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R8
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T14:48:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R4-20260721-001
+    evidence_parent_sha: 3ea79313e0aaf2a3c1d4e90b6090c8e4bc39c275
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R4 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR4
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T15:34:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR4
+    evidence_parent_sha: 230fe55eddf44ed60d6c6434fe7c3121d369f238
+    evidence: external-review:PR319-GOV-RR4@230fe55eddf44ed60d6c6434fe7c3121d369f238
+    reason: Fresh independent R4 re-review returned REVISE with blocking PR319-RR4-F-001 and non-blocking PR319-RR4-F-002.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R8
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T15:35:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R5-20260721-001
+    evidence_parent_sha: 230fe55eddf44ed60d6c6434fe7c3121d369f238
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R5 correction of provisional receipt lineage and exact unique path-array enforcement.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R9
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T15:36:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R5-20260721-001
+    evidence_parent_sha: 230fe55eddf44ed60d6c6434fe7c3121d369f238
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R5 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-RR5
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T16:27:00-04:00
+    actor: Independent governance reviewer; operator received disposition
+    authorization_id: PR319-INDEPENDENT-REVIEW-RR5
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: external-review:PR319-GOV-RR5@0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    reason: Fresh independent R5 re-review returned REVISE with blocking PR319-RR5-F-001 through F-003.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R9
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T16:28:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Begin bounded R6 correction of provisional reference authentication, independent receipt-claim validation, and complete mutation fixtures.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R10
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T16:29:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 0a619c3a6e502f09988d5fb74c2a3ce62b7adfe7
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: R6 corrective implementation and authorization closeout complete; route the externally resolved current head to exact-head CI and fresh independent re-review.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CHANGES-R82
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: REVIEW_PENDING
+    to_state: CHANGES_REQUESTED
+    occurred_at: 2026-07-21T16:43:00-04:00
+    actor: GitHub Actions exact-head governance gate
+    authorization_id: PR319-GOV-CI-R82
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: https://github.com/RMF112018/hb-personal-assistant/actions/runs/29866873768
+    reason: R6 exact-head final enforcement rejected an outdated unqualified diagnostic expectation; preserve the failure and return to correction.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-CORRECTIVE-R82
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: CHANGES_REQUESTED
+    to_state: ACTIVE
+    occurred_at: 2026-07-21T16:44:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: docs/evidence/test-selection-policy/corrective-authorization.md
+    reason: Correct the diagnostic-specific fixture expectation within the existing bounded R6 authorization.
+  - transition_id: TR-BR-TEST-SELECTION-POLICY-001-REVIEW-R11
+    entity_type: branch
+    entity_id: BR-TEST-SELECTION-POLICY-001
+    from_state: ACTIVE
+    to_state: REVIEW_PENDING
+    occurred_at: 2026-07-21T16:45:00-04:00
+    actor: OpenAI ChatGPT, operator-directed
+    authorization_id: AUTH-PR319-GOV-CORRECTIVE-R6-20260721-001
+    evidence_parent_sha: 543491f996036bf12018b2a7d439156de8082a60
+    evidence: https://github.com/RMF112018/hb-personal-assistant/pull/319
+    reason: Diagnostic-specific fixture expectation corrected; route the externally resolved current head to replacement exact-head CI and fresh independent re-review.

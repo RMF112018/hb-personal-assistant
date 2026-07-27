@@ -1,6 +1,6 @@
 ---
 standard: AEOS
-version: "1.0"
+version: "1.1"
 status: normative
 license: internal-use
 ---
@@ -9,334 +9,299 @@ license: internal-use
 
 ## 1. Purpose
 
-This standard defines the durable artifacts produced by AEOS-governed work. AEOS is artifact-centric: conversations may initiate and discuss work, but the engineering record SHALL live in repository files, evidence packages, decisions, and review artifacts.
+AEOS is artifact-centric. Durable engineering state belongs in governed
+repository files, evidence packages, decisions, reviews, lifecycle records, and
+approved publication artifacts—not only in conversations.
 
-## 2. Artifact Principles
+## 2. Universal Artifact Requirements
 
-Artifacts SHALL be:
+A significant artifact SHALL identify, as applicable:
 
-- traceable to source evidence;
-- stable enough to survive model/session turnover;
-- version-controlled whenever appropriate;
-- explicit about assumptions and limitations;
-- linked to related artifacts;
-- structured consistently across repositories.
+- stable artifact ID;
+- title and artifact type;
+- status and version;
+- author or execution context;
+- created and modified timestamps;
+- objective and scope;
+- canonical repository and authenticated remote;
+- issue, goal, and work item;
+- authorization identifier;
+- branch and worktree identifiers;
+- base SHA and exact head SHA;
+- pull request and required checks;
+- reviewed head and review identity;
+- lifecycle state and checkpoint;
+- governing sources;
+- acceptance criteria;
+- evidence references;
+- assumptions, limitations, and unknowns;
+- related and superseding artifacts.
 
-## 3. Required Identifiers
+Identifiers SHALL NOT be silently renumbered after review begins.
 
-Significant artifacts SHOULD use stable identifiers:
+## 3. Representation and Integrity
 
-- `SPEC-####` for specifications;
-- `ADR-####` for architectural decisions;
-- `PLAN-####` for implementation plans;
-- `EVID-####` for evidence packages;
-- `AUDIT-####` for audit reports;
-- `FIND-####` for findings;
-- `RISK-####` for risks;
-- `AC-####` for acceptance criteria;
-- `GNG-####` for Go/No-Go records.
+When an artifact is material to an integrity claim, record:
 
-Identifiers SHALL NOT be renumbered after review begins.
-
-## 4. Recommended Repository Layout
-
-```text
-.ai/
-  00_AEOS_MASTER_INDEX.md
-  01_AEOS_OPERATING_MANUAL.md
-  ...
-docs/
-  architecture/
-  decisions/
-  specs/
-  implementation-plans/
-  evidence/
-  audits/
-  go-no-go/
-  patterns/
+```yaml
+representation:
+mime_type:
+hash_scope:
+sha256:
+source_relation:
+verification:
 ```
 
-This layout MAY be adapted to repository conventions, but the artifact types SHALL remain discoverable.
+Valid representation examples:
+
+- `raw_file`
+- `native_google_doc`
+- `exported_representation`
+- `repository_blob`
+- `runtime_observation`
+
+Valid hash scopes:
+
+- `stored_raw_bytes`
+- `source_bytes`
+- `exported_bytes`
+- `not_applicable`
+
+A SHA-256 authenticates only the identified representation and scope. Hashes
+from different representation classes SHALL NOT be treated as equivalent. A
+native Google Doc SHALL use `hash_scope: not_applicable` unless a separately
+identified source or export is hashed.
+
+## 4. Canonical Locations
+
+Repository artifacts SHOULD use established locations:
+
+```text
+.ai/aeos/goals/<goal-id>/
+docs/architecture/
+docs/decisions/
+docs/governance/
+docs/specs/
+docs/implementation-plans/
+docs/evidence/
+docs/audits/
+docs/go-no-go/
+```
+
+Publication copies MAY exist in approved external systems but SHALL identify
+their canonical repository or GitHub pointer when one exists.
 
 ## 5. Repository-Truth Report
 
-### Purpose
+Required fields include:
 
-Capture current implementation facts before planning or audit.
+- repository and remote;
+- default branch and target branch;
+- branch/worktree registration;
+- base, head, and merge-base SHAs;
+- dirty/untracked state;
+- PR, checks, and review state;
+- relevant files, tests, schemas, migrations, configuration, and runtime
+  surfaces;
+- branch, worktree, ref, tag, lock, and process inventory when hygiene is in
+  scope;
+- verified facts, claims not verified, assumptions, unknowns, and unavailable
+  evidence;
+- evidence gaps and next gate.
 
-### Required Fields
+## 6. Architecture and ADR Artifacts
 
-- artifact ID;
-- date;
-- operator/session;
-- repository;
-- remote;
-- branch;
-- HEAD SHA;
-- base branch and merge base;
-- worktree state;
-- relevant files inspected;
-- tests discovered;
-- runtime surfaces discovered;
-- verified facts;
-- assumptions;
-- unknowns;
-- evidence gaps;
-- next recommended phase.
+Architecture artifacts SHALL define objective, current and desired state,
+components, interfaces, data and trust boundaries, failure behavior,
+observability, alternatives, invariants, acceptance criteria, risks, and
+approval status.
 
-## 6. Architecture Artifact
+ADRs SHALL record context, decision, alternatives, rationale, consequences,
+status, affected repositories, supersession, and evidence. Accepted ADRs are
+immutable except for status, supersession links, and clerical corrections.
 
-### Purpose
+## 7. Implementation Plan and Handoff
 
-Define target design before implementation.
+An implementation plan SHALL include:
 
-### Required Fields
+- authoritative baseline and exact identity;
+- branch/worktree ownership and expected disposition;
+- approved architecture;
+- scope and out-of-scope;
+- work packages and prerequisites;
+- expected files and symbols;
+- acceptance traceability;
+- proportional test plan;
+- failure-disposition rules;
+- evidence and representation contract;
+- rollback and recovery;
+- prohibited actions and stop conditions;
+- independent review checkpoints;
+- post-merge validation and closeout expectations;
+- required final report.
 
-- artifact ID;
-- objective;
-- current state;
-- desired state;
-- affected components;
-- interfaces;
-- data model;
-- trust boundaries;
-- failure behavior;
-- observability;
-- alternatives considered;
-- rejected alternatives;
-- invariants;
+A local-agent handoff SHALL reproduce the bounded execution contract without
+inventing additional authority.
+
+## 8. Work-Item Ledger
+
+Each work item SHALL record:
+
+- stable work-item ID;
+- title and lifecycle status;
+- authorization ID;
+- branch and worktree identity;
+- base and expected head;
+- prerequisites;
+- scope and out-of-scope;
 - acceptance criteria;
-- risks;
-- approval status.
+- tests and evidence;
+- retry limit and stop conditions;
+- expected merge and closeout disposition;
+- actual disposition and related receipts.
 
-## 7. ADR — Architectural Decision Record
+## 9. Implementation Report
 
-### Purpose
+An implementation report is a claim index, not proof. It SHALL include:
 
-Record durable decisions and rationale.
-
-### Required Fields
-
-- ADR ID;
-- title;
-- status: proposed, accepted, superseded, rejected;
-- date;
-- context;
-- decision;
-- alternatives considered;
-- rationale;
-- consequences;
-- affected repositories;
-- related specs;
-- supersedes/superseded by;
-- evidence references.
-
-ADRs SHOULD be immutable except for status, supersession links, and correction of clerical errors.
-
-## 8. Implementation Plan
-
-### Purpose
-
-Translate approved design into executable work.
-
-### Required Fields
-
-- plan ID;
-- objective;
-- approved architecture reference;
-- repository preflight;
-- scope;
-- out-of-scope;
-- constraints;
-- assumptions;
-- implementation phases;
-- expected files/components;
-- tests;
-- evidence requirements;
-- rollback plan;
-- stop conditions;
-- required final report format.
-
-## 9. Local-Agent Handoff Prompt
-
-### Purpose
-
-Give a coding agent a complete and bounded execution contract.
-
-### Required Fields
-
-- role;
-- repository and branch assumptions;
-- mandatory preflight;
-- objective;
-- scope;
-- out-of-scope;
-- constraints;
-- ordered steps;
-- tests;
-- evidence;
-- forbidden actions;
-- stop conditions;
-- final report requirements.
-
-## 10. Implementation Report
-
-### Purpose
-
-Provide the implementing agent's claim package.
-
-### Required Fields
-
-- disposition;
-- repository state;
-- base and head SHAs;
-- commits created;
-- files changed;
+- exact repository state and identity;
+- commits and changed files;
 - implementation summary;
 - acceptance-criteria matrix;
-- tests executed;
-- evidence links or pasted output;
-- deviations from plan;
-- known issues;
-- unverified areas;
-- final git status.
+- test commands and outcomes;
+- failing-test classifications;
+- evidence references;
+- deviations;
+- known issues and unverified areas;
+- final git status;
+- recommended next gate.
 
-The report is not proof; it is a claim index for audit.
+## 10. Evidence Index and Package
 
-## 11. Evidence Package
+An evidence index SHALL include, per item:
 
-### Purpose
+```yaml
+evidence_id:
+path:
+kind:
+representation:
+mime_type:
+hash_scope:
+sha256:
+claim_ids:
+generated_by:
+repository_head:
+environment:
+status:
+```
 
-Collect proof for audit and release decisions.
+Evidence packages SHALL preserve failed and invalid attempts, raw or native
+machine output, commands, exit codes, timestamps, redactions, and limitations.
 
-### Required Fields
+## 11. Review and Audit Artifacts
 
-- evidence package ID;
-- repository;
-- branch;
-- SHAs;
-- commands run;
-- full command outputs or links;
-- test results;
-- CI results;
-- runtime validation;
-- migration validation;
-- screenshots if applicable;
-- logs;
-- baseline comparison;
-- known limitations;
-- provenance.
+A review or audit SHALL identify:
 
-## 12. Audit Report
-
-### Purpose
-
-Independently verify implementation claims.
-
-### Required Fields
-
-- audit ID;
-- audit scope;
-- source evidence reviewed;
-- repository state;
+- review/audit ID and type;
+- independent context and limitations;
+- reviewed artifact versions;
+- repository, branch, PR, base, and exact reviewed head;
+- evidence reviewed;
 - acceptance-criteria matrix;
-- finding ledger;
-- evidence sufficiency;
-- regression assessment;
-- security/trust assessment;
-- unresolved risks;
-- disposition.
+- findings and severities;
+- required changes or closure tests;
+- disposition;
+- stale-on-head-change rule;
+- operator decision state.
 
-## 13. Finding Record
+A later commit SHALL make current-head approval stale.
 
-### Required Fields
+## 12. Finding Record
 
-- finding ID;
-- severity;
-- title;
+Each finding SHALL preserve:
+
+- stable ID;
+- severity and title;
+- affected criterion;
+- exact repository identity;
 - evidence;
-- impact;
-- root cause or likely cause;
+- impact and likely cause;
 - required remediation;
-- verification method;
-- status;
-- disposition history.
+- closure test;
+- status and owner;
+- disposition history;
+- risk-acceptance identity when applicable.
 
-Permitted statuses:
+Findings SHALL NOT disappear without explicit disposition.
 
-- OPEN;
-- FIX CLAIMED;
-- VERIFIED FIXED;
-- DEFERRED WITH ACCEPTED RISK;
-- REJECTED WITH RATIONALE;
-- NOT REPRODUCIBLE.
+## 13. Merge and Closeout Artifacts
 
-## 14. Corrective Review Report
+### 13.1 Merge-readiness record
 
-### Purpose
+Record exact candidate head, PR, checks, current-head review, safe-suite status,
+blocking findings, unrelated changes, required conditions, and operator
+authorization state.
 
-Verify remediation against findings.
+### 13.2 Post-merge validation record
 
-### Required Fields
+Record accepted target-branch commit, relationship to candidate, validation
+performed, not-required decisions, and remaining follow-up.
 
-- original finding IDs;
-- claimed fixes;
-- evidence reviewed;
-- verification result per finding;
-- new regressions if any;
-- remaining blockers;
-- next recommended gate.
+### 13.3 Cleanup, retention, or blocker receipt
 
-## 15. Go/No-Go Record
+Record:
 
-### Required Fields
+- complete inventory basis;
+- preservation actions;
+- integration or patch-equivalence proof;
+- worktree disposition;
+- local branch disposition;
+- remote branch disposition;
+- metadata and remote-ref prune previews/actions;
+- separate authorization IDs;
+- commands, outputs, and timestamps;
+- retained material or blockers;
+- final lifecycle state.
 
-- decision ID;
-- decision scope;
-- target branch/PR/commit;
-- readiness category;
-- evidence reviewed;
-- blockers;
-- accepted risks;
-- required conditions;
-- decision;
-- approver;
-- timestamp.
+Merge alone is not a closeout receipt.
+
+## 14. Readiness and Go/No-Go Records
+
+Readiness artifacts SHALL separate:
+
+- merge readiness;
+- cleanup/closure readiness;
+- deployment readiness;
+- production readiness;
+- operational readiness.
+
+A decision record SHALL identify exact target identity, evidence, blockers,
+conditions, accepted risks, approver, and timestamp.
+
+## 15. Publication Registration
+
+A durable external publication SHOULD record:
+
+- title;
+- classification and artifact type;
+- status and version;
+- stable external identity and logical path;
+- purpose;
+- representation and hash scope;
+- nearest owning publication index;
+- canonical repository or GitHub pointer.
+
+Publication does not imply approval or action authority.
 
 ## 16. Artifact Quality Rules
 
 Artifacts SHALL NOT:
 
-- hide uncertainty;
-- omit known blockers;
+- hide uncertainty or blockers;
+- use duplicate titles as identity;
 - rely on uncited summaries;
-- mix unrelated feature scopes;
-- overwrite original findings without disposition;
+- mix unrelated scopes;
+- overwrite findings or failed evidence;
 - use vague acceptance criteria;
-- treat unverified claims as facts.
-
-## 17. Minimal Artifact Set by Work Type
-
-### Low-Risk Change
-
-- implementation report;
-- evidence package;
-- lightweight audit or review note.
-
-### Feature Change
-
-- repository-truth report;
-- architecture artifact or ADR;
-- implementation plan;
-- evidence package;
-- audit report;
-- Go/No-Go if merging or deploying.
-
-### Production or Trust-Boundary Change
-
-All feature artifacts plus:
-
-- production readiness report;
-- rollback validation;
-- operational watchpoints;
-- approval record.
+- claim cross-representation byte identity;
+- treat publication, review, merge, deployment, and production as one state.

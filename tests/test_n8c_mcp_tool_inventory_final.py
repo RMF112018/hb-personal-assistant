@@ -97,7 +97,7 @@ def env(tmp_path: Path):
     )
     mcp = _FakeMcp()
     broker = NasMcpBroker(cfg)
-    register_nas_mcp_tools(mcp, broker)
+    register_nas_mcp_tools(mcp, broker, capability_profile="legacy-v12")
     return {"mcp": mcp, "broker": broker}
 
 
