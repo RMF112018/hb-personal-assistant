@@ -382,7 +382,8 @@ def test_execution_identity_binds_repository_runtime_and_storage(tmp_path: Path)
     )
     assert len(identity["repository"]["head_sha"]) == 40
     assert len(identity["repository"]["head_tree_sha"]) == 40
-    assert identity["repository"]["remote_origin"].endswith("hb-personal-assistant.git")
+    remote_origin = identity["repository"]["remote_origin"].removesuffix(".git")
+    assert remote_origin.endswith("/hb-personal-assistant")
     assert identity["script"]["sha256"] == rehearsal._sha256_path(
         Path(rehearsal.__file__).resolve()
     )
