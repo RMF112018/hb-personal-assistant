@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import errno
 import importlib.util
+import json
 import multiprocessing
 import os
 import sqlite3
@@ -225,7 +226,19 @@ def test_failed_slo_cannot_report_pass() -> None:
             "concurrent_failures": 1,
             "concurrent_p95_ms": 1,
         },
-        "wal_checkpoint": {"busy": 0, "after_bytes": 0},
+        "wal_checkpoint": {
+            "journal_mode": "wal",
+            "before_bytes": 8192,
+            "passive_busy": 0,
+            "log_frames": 2,
+            "checkpointed_frames": 2,
+            "busy": 0,
+            "after_truncate_bytes": 0,
+            "integrity_check": "ok",
+            "post_checkpoint_write_read": True,
+            "final_checkpoint_busy": 0,
+            "after_bytes": 0,
+        },
         "lock_contention": {
             "bounded_lock_error": True,
             "blocked_seconds": 1,
@@ -253,6 +266,131 @@ def test_database_remains_readable_after_rehearsal(tmp_path: Path) -> None:
     SQLiteMigrator(db_path=db).apply()
     with sqlite3.connect(db) as conn:
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+
+
+def test_wal_checkpoint_requires_populated_wal_and_recovers(tmp_path: Path) -> None:
+    rehearsal = _load_rehearsal()
+    db = tmp_path / "wal.db"
+    SQLiteMigrator(db_path=db).apply()
+    result = rehearsal._wal_checkpoint(db)
+    assert result["journal_mode"] == "wal"
+    assert result["before_bytes"] >= 4096
+    assert result["log_frames"] > 0
+    assert result["checkpointed_frames"] > 0
+    assert result["busy"] == 0
+    assert result["after_truncate_bytes"] <= 4096
+    assert result["integrity_check"] == "ok"
+    assert result["post_checkpoint_write_read"] is True
+    assert result["final_checkpoint_busy"] == 0
+    assert result["after_bytes"] <= 4096
+
+
+def test_empty_wal_cannot_satisfy_evaluator() -> None:
+    rehearsal = _load_rehearsal()
+    result = {
+        "scale_scans": {
+            "1000": {
+                "status": "completed",
+                "all_files_discoverable": True,
+                "bounded_resume": True,
+                "metadata_only": True,
+                "parser_invocations": {"hash": 0, "extract": 0},
+                "peak_rss_mb": 10,
+                "files_per_second": 100,
+                "expected_files": 1000,
+            }
+        },
+        "no_change": {"metadata_upserted": 0, "files_unchanged": 1000},
+        "delta_scans": [
+            {"metadata_upserted": 10, "files_unchanged": 990, "expected_changed": 10}
+        ],
+        "search": {
+            "cold_result_count": 1,
+            "cold_connection_ms": 1,
+            "warm_p95_ms": 1,
+            "concurrent_failures": 0,
+            "concurrent_p95_ms": 1,
+        },
+        "wal_checkpoint": {
+            "journal_mode": "wal",
+            "before_bytes": 0,
+            "passive_busy": 0,
+            "log_frames": 0,
+            "checkpointed_frames": 0,
+            "busy": 0,
+            "after_truncate_bytes": 0,
+            "integrity_check": "ok",
+            "post_checkpoint_write_read": True,
+            "final_checkpoint_busy": 0,
+            "after_bytes": 0,
+        },
+        "lock_contention": {
+            "bounded_lock_error": True,
+            "blocked_seconds": 1,
+            "recovery_status": "completed",
+        },
+    }
+    evaluation = rehearsal._evaluate(
+        result,
+        {
+            "max_peak_rss_mb": 20,
+            "min_files_per_second": 10,
+            "cold_search_ms": 10,
+            "warm_search_p95_ms": 10,
+            "concurrent_search_p95_ms": 10,
+            "lock_timeout_seconds": 10,
+        },
+    )
+    assert evaluation["checks"]["wal_checkpoint_bounded"] is False
+    assert evaluation["passed"] is False
+
+
+def test_evidence_manifest_binds_exact_result_bytes(tmp_path: Path) -> None:
+    rehearsal = _load_rehearsal()
+    evidence = tmp_path / "evidence.json"
+    manifest_path = tmp_path / "manifest.json"
+    identity = {"repository": {"head_sha": "a" * 40, "worktree_clean": True}}
+    result = {
+        "configuration": {"targets": [400_000, 1_000_000]},
+        "slos": {"max_peak_rss_mb": 1024.0},
+        "started_at": "2026-07-28T00:00:00+00:00",
+        "finished_at": "2026-07-28T01:00:00+00:00",
+        "elapsed_seconds": 3600.0,
+        "evaluation": {"checks": {"all": True}, "passed": True},
+    }
+    manifest = rehearsal._write_evidence_bundle(
+        result=result,
+        json_out=evidence,
+        manifest_out=manifest_path,
+        execution_identity=identity,
+        process_exit_code=0,
+    )
+    assert manifest["evidence"]["bytes"] == evidence.stat().st_size
+    assert manifest["evidence"]["sha256"] == rehearsal._sha256_path(evidence)
+    assert manifest["process_exit_code"] == 0
+    assert manifest["execution_identity"] == identity
+    stored = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert stored["manifest_payload_sha256"] == manifest["manifest_payload_sha256"]
+
+
+def test_execution_identity_binds_repository_runtime_and_storage(tmp_path: Path) -> None:
+    rehearsal = _load_rehearsal()
+    identity = rehearsal._execution_identity(
+        expected_head=None,
+        require_clean=False,
+        workdir=str(tmp_path),
+    )
+    assert len(identity["repository"]["head_sha"]) == 40
+    assert len(identity["repository"]["head_tree_sha"]) == 40
+    assert identity["repository"]["remote_origin"].endswith("hb-personal-assistant.git")
+    assert identity["script"]["sha256"] == rehearsal._sha256_path(
+        Path(rehearsal.__file__).resolve()
+    )
+    assert identity["runtime"]["sqlite"] == sqlite3.sqlite_version
+    assert identity["runtime"]["sqlite_compile_options"]
+    assert identity["dependencies"]["installed_distributions"]
+    assert identity["storage"]["filesystem_type"]
+    assert identity["storage"]["device_id"] == tmp_path.stat().st_dev
 
 
 def test_production_locator_lookup_uses_active_path_index(tmp_path: Path) -> None:

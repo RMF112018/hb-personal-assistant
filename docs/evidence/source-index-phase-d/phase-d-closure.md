@@ -1,6 +1,6 @@
 # Source Index Phase D Closure
 
-Disposition: **PASS — ready for pull-request review**
+Disposition: **CORRECTIVE — exact-head rerun and fresh review required**
 
 ## Repository identity
 
@@ -8,6 +8,7 @@ Disposition: **PASS — ready for pull-request review**
 - Branch: `bf/source-index-phase-d-scale-resilience`
 - Base branch: `origin/main`
 - Base SHA: `bd3c96442346150f5fc86fa20a40f5ddaf9129f2`
+- Initial reviewed head: `8e50ab74b39c62498676a501d426d443634f94f2`
 - Work item: source-index Phase D scalability and resilience remediation
 - Execution scope: scratch-only local rehearsal and CI-safe fault injection; no live NAS,
   production database, deployment, watcher activation, or tenant operation
@@ -27,24 +28,34 @@ Disposition: **PASS — ready for pull-request review**
 
 | Criterion | Result | Evidence |
 | --- | --- | --- |
-| PD-AC-001 | PASS | 400k completed in 17 passes; 1M completed in 41 passes; exact active counts |
-| PD-AC-002 | PASS | Zero hash/extract invocations and zero content rows |
-| PD-AC-003 | PASS | 10k fanout, 32-level depth, small, large, and corrupt fixtures recorded |
-| PD-AC-004 | PASS | Peak RSS 386.9 MiB; 1M fresh throughput 3,259.2 files/s |
-| PD-AC-005 | PASS | No-change: zero upserts and 1,000,000 unchanged |
-| PD-AC-006 | PASS | Exact 1,000 / 10,000 / 100,000 upserts for 0.1% / 1% / 10% deltas |
-| PD-AC-007 | PASS | Fresh-connection FTS 12.558 ms; warm p95 11.116 ms |
-| PD-AC-008 | PASS | 8 readers, 160 queries, zero failures, p95 246.674 ms |
-| PD-AC-009 | PASS | Checkpoint not busy; WAL truncated to zero bytes |
-| PD-AC-010 | PASS | Lock error in 5.212 s; recovery completed with 1M active rows |
+| PD-AC-001 | RERUN REQUIRED | Initial values preserved; exact-head provenance required |
+| PD-AC-002 | RERUN REQUIRED | Initial tripwire values preserved; exact-head provenance required |
+| PD-AC-003 | RERUN REQUIRED | Topology remains deterministic; exact-head manifest required |
+| PD-AC-004 | RERUN REQUIRED | Initial performance preserved; exact-head environment binding required |
+| PD-AC-005 | RERUN REQUIRED | Initial no-change result preserved; exact-head provenance required |
+| PD-AC-006 | RERUN REQUIRED | Initial delta counts preserved; exact-head provenance required |
+| PD-AC-007 | RERUN REQUIRED | Initial search result preserved; exact-head provenance required |
+| PD-AC-008 | RERUN REQUIRED | Initial concurrency result preserved; exact-head provenance required |
+| PD-AC-009 | CORRECTED, RERUN REQUIRED | Evaluator now requires populated WAL bytes/frames, successful truncation, integrity, and post-checkpoint write/read recovery |
+| PD-AC-010 | RERUN REQUIRED | Initial lock result preserved; exact-head provenance required |
 | PD-AC-011 | PASS | EIO, ESTALE, EACCES, and fanout tests preserve reconciliation safety |
 | PD-AC-012 | PASS | Real killed process resumes the same committed generation and completes |
 | PD-AC-013 | PASS | Negative evaluator test proves SLO failures cannot report PASS |
 
-The machine evaluation in
-`docs/evidence/source-index-phase-d/phase-d-400k-1m-rehearsal.json` passed every
-required check. Its SHA-256 is
-`2c045b5c6b881de0b46f992856fcf355ba6e79145f311ffebb76236d71759288`.
+The initial machine evaluation in
+`docs/evidence/source-index-phase-d/phase-d-400k-1m-rehearsal.json` is preserved
+with SHA-256
+`2c045b5c6b881de0b46f992856fcf355ba6e79145f311ffebb76236d71759288`,
+but it is superseded for terminal closure by independent findings `PD329-F-001`
+and `PD329-F-002`.
+
+The corrective head must be run without further repository changes and publish:
+
+- `SOURCE-INDEX-PHASE-D-PR329-EXACT-HEAD-EVIDENCE-20260728.json`
+- `SOURCE-INDEX-PHASE-D-PR329-EXACT-HEAD-MANIFEST-20260728.json`
+
+The manifest and evidence must pass byte-exact Drive readback before fresh
+independent review.
 
 ## Validation
 
@@ -68,6 +79,24 @@ required check. Its SHA-256 is
 - `failed-run-003.md`: SQLite selected a root-locator-first FTS plan; the remediation
   enforces the selective FTS-first loop order.
 
+## Independent review corrective cycle
+
+The exact-head review
+`REVIEW-SOURCE-INDEX-PHASE-D-PR329-20260728.md` (Drive ID
+`1no-lEdOM6_wrOZRfoyXAVYilaOA9zMv8`, SHA-256
+`b75c76ab9bf428b2b8ffd6fa21a7cf740f638bc77269936aeec2a48acfb0ad19`)
+accepted the production SQL and resilience tests and opened two blocking
+findings:
+
+- `PD329-F-001`: bind the terminal rehearsal to the exact candidate,
+  command, script, dependencies, configuration, environment, result bytes,
+  and exit status.
+- `PD329-F-002`: checkpoint a deterministically populated WAL and prove
+  truncation, integrity, and subsequent read/write recovery.
+
+This corrective cycle is bounded to those findings plus the observed scratch
+cleanup reporting defect.
+
 ## Deviations and residual risk
 
 No acceptance criterion was weakened. The only command-level deviation was invoking
@@ -78,5 +107,5 @@ The scale evidence is synthetic and local. “Cold” means a fresh SQLite conne
 an operating-system cache drop or live-NAS measurement. Live deployment, NAS
 attestation, and production activation remain outside Phase D.
 
-Recommended next gate: pull-request review and hosted CI. This recommendation does not
-authorize merge.
+Recommended next gate: exact-head rehearsal publication followed by fresh
+independent review. This recommendation does not authorize merge.

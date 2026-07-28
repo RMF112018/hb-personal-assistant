@@ -22,7 +22,7 @@ databases, then records raw outcomes and an explicit pass/fail evaluation.
 | PD-AC-006 | 0.1%, 1%, and 10% delta generations upsert exactly the touched count and fast-skip the remainder. | Exact generation counters per delta. |
 | PD-AC-007 | Fresh-connection FTS search is at most 5,000 ms; warm p95 is at most 250 ms. | Timed path-only FTS query returning the known marker. |
 | PD-AC-008 | Eight concurrent read-only clients complete without error; p95 is at most 1,000 ms. | Per-query timing and failure count. |
-| PD-AC-009 | WAL checkpoint is not busy and truncates the WAL to at most 4,096 bytes. | Pre/post byte counts and checkpoint tuple. |
+| PD-AC-009 | A populated WAL checkpoints without contention, truncates to at most 4,096 bytes, passes integrity checking, and supports a subsequent write/read cycle. | Positive pre-checkpoint bytes and frame counts, checkpoint tuples, integrity result, recovery result, and final byte count. |
 | PD-AC-010 | Write-lock contention returns a bounded lock error within 10 seconds and the next generation completes. | Timed contention result and recovery generation. |
 | PD-AC-011 | EIO, ESTALE, and permission failures suspend without reconciliation; over-limit fanout fails without reconciliation. | CI fault-injection tests. |
 | PD-AC-012 | A real killed scanner resumes the same durable generation from a committed cursor and completes without a permanent pin. | CI process-kill/resume test. |
@@ -37,8 +37,17 @@ gate; deployment attestation and live activation remain separate later phases.
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/source_index_phase_d_rehearsal.py \
   --targets 400000,1000000 \
-  --json-out docs/evidence/source-index-phase-d/phase-d-400k-1m-rehearsal.json
+  --expected-head "$(git rev-parse HEAD)" \
+  --json-out /absolute/evidence/SOURCE-INDEX-PHASE-D-PR329-EXACT-HEAD-EVIDENCE-20260728.json \
+  --manifest-out /absolute/evidence/SOURCE-INDEX-PHASE-D-PR329-EXACT-HEAD-MANIFEST-20260728.json
 ```
+
+The exact-head evidence form fails before scanning unless the supplied head matches a
+clean worktree. Its manifest binds the repository remote, branch, head and tree,
+base, command, script hash, dependency/lock identities, installed package inventory,
+Python/SQLite identity and compile options, material configuration, SLOs, filesystem
+identity, result hash and byte count, evaluator result, timestamps, and process exit
+status.
 
 Run the CI-safe fault and reduced-scale gate with:
 
