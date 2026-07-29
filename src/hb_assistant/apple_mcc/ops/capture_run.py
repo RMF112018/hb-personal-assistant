@@ -125,10 +125,20 @@ def export_mail_live(
     return data
 
 
-def export_calendar_live(*, days: int = 14, limit: int = 50) -> dict:
+def export_calendar_live(
+    *,
+    days: int = 14,
+    limit: int = 50,
+    sources: str = "iCloud",
+) -> dict:
+    """Export events from all calendars under the given EventKit source titles.
+
+    Default ``sources="iCloud"`` selects every calendar in the iCloud account,
+    including shared calendars. Pass comma-separated titles to include more.
+    """
     binary = _ensure_eventkit_binary()
     proc = subprocess.run(
-        [str(binary), str(days), str(limit)],
+        [str(binary), str(days), str(limit), sources],
         capture_output=True,
         text=True,
         check=False,
@@ -323,6 +333,7 @@ def run_capture(
     mail_limit: int = 5,
     calendar_days: int = 14,
     calendar_limit: int = 50,
+    calendar_sources: str = "iCloud",
     contacts_limit: int = 20,
     spool_root: Path | None = None,
     transport: bool = True,
@@ -383,7 +394,12 @@ def run_capture(
     # --- calendar ---
     if "calendar" in wanted:
         try:
-            exported = export_calendar_live(days=calendar_days, limit=calendar_limit)
+            # All calendars under iCloud (including shared); do not filter by ownership.
+            exported = export_calendar_live(
+                days=calendar_days,
+                limit=calendar_limit,
+                sources=calendar_sources,
+            )
             payloads = []
             for item in exported.get("items") or []:
                 meta = _calendar_payload(item, capture_run_id=capture_run_id)
@@ -550,6 +566,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mail-limit", type=int, default=5)
     p.add_argument("--calendar-days", type=int, default=14)
     p.add_argument("--calendar-limit", type=int, default=50)
+    p.add_argument(
+        "--calendar-sources",
+        default="iCloud",
+        help="Comma-separated EventKit source titles (default: iCloud = all calendars in that account, including shared)",
+    )
     p.add_argument("--contacts-limit", type=int, default=20)
     p.add_argument("--no-transport", action="store_true")
     p.add_argument("--spool-root", type=Path, default=None)
@@ -562,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
         mail_limit=args.mail_limit,
         calendar_days=args.calendar_days,
         calendar_limit=args.calendar_limit,
+        calendar_sources=args.calendar_sources,
         contacts_limit=args.contacts_limit,
         spool_root=args.spool_root,
         transport=not args.no_transport,
