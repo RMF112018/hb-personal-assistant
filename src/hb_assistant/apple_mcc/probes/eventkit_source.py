@@ -8,9 +8,17 @@ from typing import Any
 from hb_assistant.apple_mcc.probes.status import ProbeResult, ProbeState
 
 # Default allowlist of source titles (case-sensitive). Prefer live discovery at runtime.
+# Calendar capture targets EventKit sources by exact source title.
+# iCloud includes the operator's own calendars and shared calendars under that account.
 DEFAULT_EVENTKIT_SOURCE_ALLOWLIST: frozenset[str] = frozenset(
     {
         "iCloud",
+    }
+)
+# Optional additional sources (e.g. Exchange/local) — not selected for calendar capture by default.
+DEFAULT_EVENTKIT_SOURCE_OPTIONAL: frozenset[str] = frozenset(
+    {
+        "BF-Personal",
         "On My Mac",
         "Exchange",
         "Google",

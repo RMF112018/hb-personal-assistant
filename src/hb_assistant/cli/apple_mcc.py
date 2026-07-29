@@ -34,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     cap.add_argument("--mail-limit", type=int, default=5)
     cap.add_argument("--calendar-days", type=int, default=14)
     cap.add_argument("--calendar-limit", type=int, default=50)
+    cap.add_argument("--calendar-sources", default="iCloud")
     cap.add_argument("--contacts-limit", type=int, default=20)
     cap.add_argument("--no-transport", action="store_true")
 
@@ -102,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
             str(args.calendar_days),
             "--calendar-limit",
             str(args.calendar_limit),
+            "--calendar-sources",
+            args.calendar_sources,
             "--contacts-limit",
             str(args.contacts_limit),
         ]
