@@ -283,3 +283,13 @@ class LaunchdManager:
             "working_directory": plist["WorkingDirectory"],
             "readiness": readiness,
         }
+
+
+def apple_mcc_plist_template_path() -> Path:
+    """Return path to the Apple MCC LaunchAgent template (install/enable is operator-gated)."""
+    return Path(__file__).resolve().parents[1] / "resources" / "launchd" / "apple-mcc.plist.template"
+
+
+def render_apple_mcc_plist(*, executable: str) -> str:
+    tpl = apple_mcc_plist_template_path().read_text(encoding="utf-8")
+    return tpl.replace("{{EXECUTABLE}}", executable)
