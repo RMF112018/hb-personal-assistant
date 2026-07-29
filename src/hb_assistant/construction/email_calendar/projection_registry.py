@@ -595,3 +595,5 @@ __all__ = [
     "plan_for",
     "plan_for_raw_table",
 ]
+
+# Apple MCC projections ride the same completeness harness via contact registry.

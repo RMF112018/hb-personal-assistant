@@ -12175,3 +12175,480 @@ class ConstructionStore:
         for r in rows:
             r["review_required"] = bool(r.get("review_required", 0))
         return rows
+
+
+
+# =============================================================================
+# Apple MCC three-domain import surface (V130–V134) — F-005
+# =============================================================================
+
+from hb_assistant.apple_mcc.contracts.raw_fields import (  # noqa: E402
+    CalendarObservationFields,
+    CalendarRawFields,
+    ContactObservationFields,
+    ContactRawFields,
+    EmailObservationFields,
+    EmailRawFields,
+)
+from hb_assistant.construction.email_calendar.source_quality import rank as _mcc_sq_rank  # noqa: E402
+
+_MCC_INSERT_EMAIL_RAW = """
+INSERT INTO email_message_raw_content (
+  raw_email_id, message_id_hash, internet_message_id_hash, conversation_id_hash, source_ref_hash,
+  project_key, subject, body_preview, body_text, body_html, from_name, from_address,
+  to_recipients_json, cc_recipients_json, bcc_recipients_json, sent_at_utc, received_at_utc,
+  has_attachments, attachment_metadata_json, source_quality, payload_hash, raw_capture_run_id,
+  source_record_ref, source_record_id, source_updated_at_utc, raw_content_schema_version, raw_sidecar_json
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+"""
+
+_MCC_INSERT_CAL_RAW = """
+INSERT INTO calendar_event_raw_content (
+  raw_calendar_event_id, event_index_id, graph_event_id_hash, source_ref_hash, project_key,
+  subject, body_preview, body_text, body_html, location_display, organizer_name, organizer_email,
+  attendees_json, online_meeting_provider, join_url, recurrence_json, start_datetime_utc, end_datetime_utc,
+  source_quality, payload_hash, raw_capture_run_id, source_record_ref, source_record_id,
+  source_updated_at_utc, raw_content_schema_version, join_url_policy, raw_sidecar_json
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+"""
+
+_MCC_INSERT_CONTACT_RAW = """
+INSERT INTO apple_contact_raw_content (
+  raw_contact_payload_id, contact_entity_id, structured_payload_json, payload_hash,
+  schema_version, source_quality, created_utc
+) VALUES (?,?,?,?,?,?,?)
+"""
+
+
+def insert_email_raw_snapshot(conn: "sqlite3.Connection", raw: EmailRawFields) -> None:
+    conn.execute(_MCC_INSERT_EMAIL_RAW, raw.as_insert_tuple())
+
+
+def insert_calendar_raw_snapshot(conn: "sqlite3.Connection", raw: CalendarRawFields) -> None:
+    conn.execute(_MCC_INSERT_CAL_RAW, raw.as_insert_tuple())
+
+
+def insert_contact_raw_snapshot(conn: "sqlite3.Connection", raw: ContactRawFields) -> None:
+    conn.execute(_MCC_INSERT_CONTACT_RAW, raw.as_insert_tuple())
+
+
+class IntegrityErrorSameKey(sqlite3.IntegrityError):
+    """Same-key selection assert failure."""
+
+
+def _mcc_assert_email_same_key(conn: "sqlite3.Connection", canonical_message_key: str) -> None:
+    row = conn.execute(
+        """
+        SELECT 1 FROM email_message_current_selection s
+        JOIN email_message_revisions r ON r.revision_key = s.selected_revision_key
+        WHERE s.canonical_message_key = ? AND r.canonical_message_key = s.canonical_message_key
+        """,
+        (canonical_message_key,),
+    ).fetchone()
+    if row is None:
+        raise IntegrityErrorSameKey("email_same_key_assert_failed")
+
+
+def _mcc_assert_calendar_same_key(conn: "sqlite3.Connection", occurrence_key: str) -> None:
+    row = conn.execute(
+        """
+        SELECT 1 FROM calendar_event_current_selection s
+        JOIN calendar_event_revisions r ON r.revision_key = s.selected_revision_key
+        WHERE s.occurrence_key = ? AND r.occurrence_key = s.occurrence_key
+        """,
+        (occurrence_key,),
+    ).fetchone()
+    if row is None:
+        raise IntegrityErrorSameKey("calendar_same_key_assert_failed")
+
+
+def _mcc_assert_contact_same_key(conn: "sqlite3.Connection", contact_entity_id: str) -> None:
+    row = conn.execute(
+        """
+        SELECT 1 FROM contact_current_selection s
+        JOIN contact_revisions r ON r.revision_key = s.selected_revision_key
+        WHERE s.contact_entity_id = ? AND r.contact_entity_id = s.contact_entity_id
+        """,
+        (contact_entity_id,),
+    ).fetchone()
+    if row is None:
+        raise IntegrityErrorSameKey("contact_same_key_assert_failed")
+
+
+def _mcc_select_best_revision(
+    conn: "sqlite3.Connection", *, table_revisions: str, key_col: str, key_val: str
+) -> str | None:
+    rows = conn.execute(
+        f"SELECT revision_key, source_quality FROM {table_revisions} WHERE {key_col} = ?",
+        (key_val,),
+    ).fetchall()
+    if not rows:
+        return None
+    best = max(rows, key=lambda r: _mcc_sq_rank(r[1]))
+    return str(best[0])
+
+
+def _mcc_upsert_selection(
+    conn: "sqlite3.Connection",
+    *,
+    table: str,
+    key_col: str,
+    key_val: str,
+    revision_key: str,
+    updated_utc: str,
+) -> None:
+    rev_table = {
+        "email_message_current_selection": "email_message_revisions",
+        "calendar_event_current_selection": "calendar_event_revisions",
+        "contact_current_selection": "contact_revisions",
+    }[table]
+    best = (
+        _mcc_select_best_revision(
+            conn, table_revisions=rev_table, key_col=key_col, key_val=key_val
+        )
+        or revision_key
+    )
+    conn.execute(
+        f"""
+        INSERT INTO {table} ({key_col}, selected_revision_key, selection_rule_version, updated_utc)
+        VALUES (?, ?, 'sel_v1', ?)
+        ON CONFLICT({key_col}) DO UPDATE SET
+          selected_revision_key = excluded.selected_revision_key,
+          updated_utc = excluded.updated_utc
+        """,
+        (key_val, best, updated_utc),
+    )
+
+
+def import_email_observation_and_revision(
+    conn: "sqlite3.Connection",
+    *,
+    observation_fields: EmailObservationFields,
+    revision_key: str,
+    canonical_message_key: str,
+    payload_hash: str,
+    raw_email: EmailRawFields,
+    source_quality: str,
+    fidelity_class: str | None,
+    provider: str,
+    observed_at_utc: str,
+) -> str:
+    if observation_fields.import_status == "successful" and not revision_key:
+        raise sqlite3.IntegrityError("successful_observation_requires_revision")
+    existing = conn.execute(
+        "SELECT payload_hash FROM email_message_revisions WHERE revision_key = ?",
+        (revision_key,),
+    ).fetchone()
+    if existing is not None:
+        if str(existing[0]) != payload_hash:
+            raise sqlite3.IntegrityError("email_payload_mismatch_on_attach")
+    else:
+        try:
+            insert_email_raw_snapshot(conn, raw_email)
+        except sqlite3.IntegrityError:
+            row = conn.execute(
+                "SELECT payload_hash FROM email_message_raw_content WHERE raw_email_id = ?",
+                (raw_email.raw_email_id,),
+            ).fetchone()
+            if row is None or str(row[0]) != payload_hash:
+                raise
+        conn.execute(
+            """
+            INSERT INTO email_message_revisions (
+              revision_key, canonical_message_key, payload_hash, raw_email_id,
+              source_quality, quarantine_flag, fidelity_class, provider, created_utc
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)
+            """,
+            (
+                revision_key,
+                canonical_message_key,
+                payload_hash,
+                raw_email.raw_email_id,
+                source_quality,
+                fidelity_class,
+                provider,
+                observed_at_utc,
+            ),
+        )
+    try:
+        conn.execute(
+            """
+            INSERT INTO email_message_source_observations (
+              observation_id, canonical_message_key, revision_key, provider,
+              account_locator_hash, mailbox_locator_hash, source_local_id_hash, graph_id_hash,
+              raw_source_sha256, raw_source_bytes, source_quality, fidelity_class,
+              parser_version, adapter_version, observed_at_utc, spool_item_id, capture_run_id,
+              conflict_flag, import_status, raw_sidecar_json
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+            """,
+            (
+                observation_fields.observation_id,
+                canonical_message_key,
+                revision_key,
+                provider,
+                observation_fields.account_locator_hash,
+                observation_fields.mailbox_locator_hash,
+                observation_fields.source_local_id_hash,
+                observation_fields.graph_id_hash,
+                observation_fields.raw_source_sha256,
+                observation_fields.raw_source_bytes,
+                source_quality,
+                fidelity_class,
+                observation_fields.parser_version,
+                observation_fields.adapter_version,
+                observed_at_utc,
+                observation_fields.spool_item_id,
+                observation_fields.capture_run_id,
+                observation_fields.import_status,
+                observation_fields.raw_sidecar_json,
+            ),
+        )
+    except sqlite3.IntegrityError:
+        pass
+    if observation_fields.import_status == "successful":
+        _mcc_upsert_selection(
+            conn,
+            table="email_message_current_selection",
+            key_col="canonical_message_key",
+            key_val=canonical_message_key,
+            revision_key=revision_key,
+            updated_utc=observed_at_utc,
+        )
+        _mcc_assert_email_same_key(conn, canonical_message_key)
+    return revision_key
+
+
+def import_calendar_observation_and_revision(
+    conn: "sqlite3.Connection",
+    *,
+    observation_fields: CalendarObservationFields,
+    revision_key: str,
+    occurrence_key: str,
+    payload_hash: str,
+    raw_calendar: CalendarRawFields,
+    source_quality: str,
+    provider: str,
+    observed_at_utc: str,
+) -> str:
+    if observation_fields.import_status == "successful" and not revision_key:
+        raise sqlite3.IntegrityError("successful_observation_requires_revision")
+    existing = conn.execute(
+        "SELECT payload_hash FROM calendar_event_revisions WHERE revision_key = ?",
+        (revision_key,),
+    ).fetchone()
+    if existing is not None:
+        if str(existing[0]) != payload_hash:
+            raise sqlite3.IntegrityError("calendar_payload_mismatch_on_attach")
+    else:
+        try:
+            insert_calendar_raw_snapshot(conn, raw_calendar)
+        except sqlite3.IntegrityError:
+            row = conn.execute(
+                "SELECT payload_hash FROM calendar_event_raw_content WHERE raw_calendar_event_id = ?",
+                (raw_calendar.raw_calendar_event_id,),
+            ).fetchone()
+            if row is None or str(row[0]) != payload_hash:
+                raise
+        conn.execute(
+            """
+            INSERT INTO calendar_event_revisions (
+              revision_key, occurrence_key, payload_hash, raw_calendar_event_id,
+              source_quality, quarantine_flag, provider, created_utc
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)
+            """,
+            (
+                revision_key,
+                occurrence_key,
+                payload_hash,
+                raw_calendar.raw_calendar_event_id,
+                source_quality,
+                provider,
+                observed_at_utc,
+            ),
+        )
+    try:
+        conn.execute(
+            """
+            INSERT INTO calendar_event_source_observations (
+              observation_id, occurrence_key, revision_key, provider,
+              source_locator_hash, calendar_locator_hash, source_local_id_hash, graph_id_hash,
+              ical_uid_hash, ics_provenance, raw_ics_sha256, raw_ics_bytes, source_quality,
+              parser_version, adapter_version, observed_at_utc, spool_item_id, capture_run_id,
+              conflict_flag, import_status, raw_sidecar_json
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+            """,
+            (
+                observation_fields.observation_id,
+                occurrence_key,
+                revision_key,
+                provider,
+                observation_fields.source_locator_hash,
+                observation_fields.calendar_locator_hash,
+                observation_fields.source_local_id_hash,
+                observation_fields.graph_id_hash,
+                observation_fields.ical_uid_hash,
+                observation_fields.ics_provenance,
+                observation_fields.raw_ics_sha256,
+                observation_fields.raw_ics_bytes,
+                source_quality,
+                observation_fields.parser_version,
+                observation_fields.adapter_version,
+                observed_at_utc,
+                observation_fields.spool_item_id,
+                observation_fields.capture_run_id,
+                observation_fields.import_status,
+                observation_fields.raw_sidecar_json,
+            ),
+        )
+    except sqlite3.IntegrityError:
+        pass
+    if observation_fields.import_status == "successful":
+        _mcc_upsert_selection(
+            conn,
+            table="calendar_event_current_selection",
+            key_col="occurrence_key",
+            key_val=occurrence_key,
+            revision_key=revision_key,
+            updated_utc=observed_at_utc,
+        )
+        _mcc_assert_calendar_same_key(conn, occurrence_key)
+    return revision_key
+
+
+def ensure_contact_entity(
+    conn: "sqlite3.Connection",
+    *,
+    contact_entity_id: str,
+    container_locator_hash: str,
+    contact_id_hash: str,
+    contact_type: str,
+    created_utc: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO contact_entities (
+          contact_entity_id, container_locator_hash, contact_id_hash, contact_type, created_utc
+        ) VALUES (?, ?, ?, ?, ?)
+        """,
+        (contact_entity_id, container_locator_hash, contact_id_hash, contact_type, created_utc),
+    )
+
+
+def import_contact_observation_and_revision(
+    conn: "sqlite3.Connection",
+    *,
+    observation_fields: ContactObservationFields,
+    revision_key: str,
+    contact_entity_id: str,
+    payload_hash: str,
+    raw_contact: ContactRawFields,
+    source_quality: str,
+    provider: str,
+    observed_at_utc: str,
+    contact_type: str = "person",
+) -> str:
+    if observation_fields.import_status == "successful" and not revision_key:
+        raise sqlite3.IntegrityError("successful_observation_requires_revision")
+    ensure_contact_entity(
+        conn,
+        contact_entity_id=contact_entity_id,
+        container_locator_hash=observation_fields.container_locator_hash,
+        contact_id_hash=observation_fields.contact_id_hash,
+        contact_type=contact_type,
+        created_utc=observed_at_utc,
+    )
+    existing = conn.execute(
+        "SELECT payload_hash FROM contact_revisions WHERE revision_key = ?",
+        (revision_key,),
+    ).fetchone()
+    if existing is not None:
+        if str(existing[0]) != payload_hash:
+            raise sqlite3.IntegrityError("contact_payload_mismatch_on_attach")
+    else:
+        try:
+            insert_contact_raw_snapshot(conn, raw_contact)
+        except sqlite3.IntegrityError:
+            row = conn.execute(
+                "SELECT payload_hash FROM apple_contact_raw_content WHERE raw_contact_payload_id = ?",
+                (raw_contact.raw_contact_payload_id,),
+            ).fetchone()
+            if row is None or str(row[0]) != payload_hash:
+                raise
+        conn.execute(
+            """
+            INSERT INTO contact_revisions (
+              revision_key, contact_entity_id, payload_hash, raw_contact_payload_id,
+              source_quality, quarantine_flag, created_utc
+            ) VALUES (?, ?, ?, ?, ?, 0, ?)
+            """,
+            (
+                revision_key,
+                contact_entity_id,
+                payload_hash,
+                raw_contact.raw_contact_payload_id,
+                source_quality,
+                observed_at_utc,
+            ),
+        )
+    try:
+        conn.execute(
+            """
+            INSERT INTO contact_source_observations (
+              observation_id, contact_entity_id, revision_key, provider,
+              container_locator_hash, contact_id_hash, payload_hash, source_quality,
+              adapter_version, observed_at_utc, spool_item_id, capture_run_id,
+              conflict_flag, import_status, raw_sidecar_json
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+            """,
+            (
+                observation_fields.observation_id,
+                contact_entity_id,
+                revision_key,
+                provider,
+                observation_fields.container_locator_hash,
+                observation_fields.contact_id_hash,
+                payload_hash,
+                source_quality,
+                observation_fields.adapter_version,
+                observed_at_utc,
+                observation_fields.spool_item_id,
+                observation_fields.capture_run_id,
+                observation_fields.import_status,
+                observation_fields.raw_sidecar_json,
+            ),
+        )
+    except sqlite3.IntegrityError:
+        pass
+    if observation_fields.import_status == "successful":
+        _mcc_upsert_selection(
+            conn,
+            table="contact_current_selection",
+            key_col="contact_entity_id",
+            key_val=contact_entity_id,
+            revision_key=revision_key,
+            updated_utc=observed_at_utc,
+        )
+        _mcc_assert_contact_same_key(conn, contact_entity_id)
+    return revision_key
+
+
+def rewrite_unmatched_linkage(
+    conn: "sqlite3.Connection",
+    *,
+    left_contact_entity_id: str,
+    evidence_json: str,
+    created_utc: str,
+    linkage_id: str,
+) -> None:
+    conn.execute(
+        "DELETE FROM contact_linkage_candidates WHERE left_contact_entity_id = ? AND match_kind = 'unmatched'",
+        (left_contact_entity_id,),
+    )
+    conn.execute(
+        """
+        INSERT INTO contact_linkage_candidates (
+          linkage_id, left_contact_entity_id, right_contact_entity_id, match_kind, evidence_json, created_utc
+        ) VALUES (?, ?, NULL, 'unmatched', ?, ?)
+        """,
+        (linkage_id, left_contact_entity_id, evidence_json, created_utc),
+    )

@@ -101,3 +101,35 @@ def rank_case_sql(column_expr: str) -> str:
         preview=EMAIL_PREVIEW_ONLY,
         legacy=EMAIL_REDACTED_LEGACY,
     )
+
+
+# Apple local capture source-quality values (MCC).
+APPLE_MAIL_FULL = "apple_mail_full_mime"
+APPLE_MAIL_PREVIEW = "apple_mail_preview"
+APPLE_EVENTKIT_FULL = "apple_eventkit_full"
+APPLE_EVENTKIT_META = "apple_eventkit_metadata"
+CNCONTACT_FULL = "cncontact_full"
+CNCONTACT_PARTIAL = "cncontact_partial"
+
+APPLE_SOURCE_QUALITY_VALUES = frozenset(
+    {
+        APPLE_MAIL_FULL,
+        APPLE_MAIL_PREVIEW,
+        APPLE_EVENTKIT_FULL,
+        APPLE_EVENTKIT_META,
+        CNCONTACT_FULL,
+        CNCONTACT_PARTIAL,
+    }
+)
+
+# Extend rank ladder (higher wins). Keep graph full at 100; apple full at 95.
+SOURCE_QUALITY_RANK.update(
+    {
+        APPLE_MAIL_FULL: 95,
+        APPLE_EVENTKIT_FULL: 95,
+        CNCONTACT_FULL: 95,
+        APPLE_MAIL_PREVIEW: 65,
+        APPLE_EVENTKIT_META: 40,
+        CNCONTACT_PARTIAL: 50,
+    }
+)

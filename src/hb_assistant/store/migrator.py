@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 129
+LATEST_SCHEMA_VERSION = 134
 
 # --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R8) -------
 # The V128 always-revalidate oracle validates a live DB by exact-equality against a CANONICAL V128
@@ -10397,6 +10397,10 @@ class SQLiteMigrator:
                     (now,),
                 )
 
+            # --- V130–V134: Apple MCC observation/revision/selection + contacts ---
+            if apply_v129:
+                self._apply_apple_mcc_v130_v134(conn, now)
+
             # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
             # drifted (path swapped to a different inode) before this single migration transaction
             # commits. A failure here raises and rolls the entire migration back.
@@ -11427,6 +11431,273 @@ class SQLiteMigrator:
         for name, seg in zip(delta_names, delta_segs, strict=True):
             if name and name not in present:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {seg}")
+
+    def _apply_apple_mcc_v130_v134(self, conn: sqlite3.Connection, now: str) -> None:
+        """Apply Apple local MCC observation/revision/selection tables (V130–V134).
+
+        Forward-only additive CREATE IF NOT EXISTS. Safe on disposable/rehearsal and
+        ordinary apply paths once tip is >=129. Does not write production NAS by itself.
+        """
+        statements_by_version: list[tuple[int, str, list[str]]] = [
+            (130, "v130_email_observation_revision_selection", [
+                """
+                CREATE TABLE IF NOT EXISTS email_message_source_observations (
+                  observation_id TEXT PRIMARY KEY,
+                  canonical_message_key TEXT NOT NULL,
+                  revision_key TEXT NOT NULL,
+                  provider TEXT NOT NULL CHECK (provider IN ('apple_mail','graph')),
+                  account_locator_hash TEXT NOT NULL,
+                  mailbox_locator_hash TEXT,
+                  source_local_id_hash TEXT NOT NULL,
+                  graph_id_hash TEXT,
+                  raw_source_sha256 TEXT,
+                  raw_source_bytes INTEGER,
+                  source_quality TEXT NOT NULL,
+                  fidelity_class TEXT,
+                  parser_version TEXT NOT NULL,
+                  adapter_version TEXT NOT NULL,
+                  observed_at_utc TEXT NOT NULL,
+                  spool_item_id TEXT,
+                  capture_run_id TEXT,
+                  conflict_flag INTEGER NOT NULL DEFAULT 0,
+                  import_status TEXT NOT NULL CHECK (import_status IN ('successful','rejected','quarantined','attempted')),
+                  raw_sidecar_json TEXT,
+                  UNIQUE (provider, account_locator_hash, source_local_id_hash, revision_key)
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_emso_canonical ON email_message_source_observations(canonical_message_key)",
+                "CREATE INDEX IF NOT EXISTS idx_emso_revision ON email_message_source_observations(revision_key)",
+                """
+                CREATE TABLE IF NOT EXISTS email_message_revisions (
+                  revision_key TEXT PRIMARY KEY,
+                  canonical_message_key TEXT NOT NULL,
+                  payload_hash TEXT NOT NULL,
+                  raw_email_id TEXT NOT NULL UNIQUE,
+                  source_quality TEXT NOT NULL,
+                  quarantine_flag INTEGER NOT NULL DEFAULT 0,
+                  fidelity_class TEXT,
+                  provider TEXT NOT NULL CHECK (provider IN ('apple_mail','graph')),
+                  created_utc TEXT NOT NULL,
+                  UNIQUE (canonical_message_key, payload_hash),
+                  FOREIGN KEY (raw_email_id) REFERENCES email_message_raw_content(raw_email_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_emr_canonical ON email_message_revisions(canonical_message_key)",
+                """
+                CREATE TABLE IF NOT EXISTS email_message_current_selection (
+                  canonical_message_key TEXT PRIMARY KEY,
+                  selected_revision_key TEXT NOT NULL,
+                  selection_rule_version TEXT NOT NULL DEFAULT 'sel_v1',
+                  updated_utc TEXT NOT NULL,
+                  FOREIGN KEY (selected_revision_key) REFERENCES email_message_revisions(revision_key) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+            ]),
+            (131, "v131_calendar_observation_revision_selection", [
+                """
+                CREATE TABLE IF NOT EXISTS calendar_event_source_observations (
+                  observation_id TEXT PRIMARY KEY,
+                  occurrence_key TEXT NOT NULL,
+                  revision_key TEXT NOT NULL,
+                  provider TEXT NOT NULL CHECK (provider IN ('apple_eventkit','graph')),
+                  source_locator_hash TEXT NOT NULL,
+                  calendar_locator_hash TEXT NOT NULL,
+                  source_local_id_hash TEXT NOT NULL,
+                  graph_id_hash TEXT,
+                  ical_uid_hash TEXT,
+                  ics_provenance TEXT NOT NULL CHECK (ics_provenance IN ('none','eventkit_derived','server_original')),
+                  raw_ics_sha256 TEXT,
+                  raw_ics_bytes INTEGER,
+                  source_quality TEXT NOT NULL,
+                  parser_version TEXT NOT NULL,
+                  adapter_version TEXT NOT NULL,
+                  observed_at_utc TEXT NOT NULL,
+                  spool_item_id TEXT,
+                  capture_run_id TEXT,
+                  conflict_flag INTEGER NOT NULL DEFAULT 0,
+                  import_status TEXT NOT NULL CHECK (import_status IN ('successful','rejected','quarantined','attempted')),
+                  raw_sidecar_json TEXT,
+                  UNIQUE (provider, source_locator_hash, source_local_id_hash, revision_key)
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_ceso_occurrence ON calendar_event_source_observations(occurrence_key)",
+                "CREATE INDEX IF NOT EXISTS idx_ceso_revision ON calendar_event_source_observations(revision_key)",
+                """
+                CREATE TABLE IF NOT EXISTS calendar_event_revisions (
+                  revision_key TEXT PRIMARY KEY,
+                  occurrence_key TEXT NOT NULL,
+                  payload_hash TEXT NOT NULL,
+                  raw_calendar_event_id TEXT NOT NULL UNIQUE,
+                  source_quality TEXT NOT NULL,
+                  quarantine_flag INTEGER NOT NULL DEFAULT 0,
+                  provider TEXT NOT NULL CHECK (provider IN ('apple_eventkit','graph')),
+                  created_utc TEXT NOT NULL,
+                  UNIQUE (occurrence_key, payload_hash),
+                  FOREIGN KEY (raw_calendar_event_id) REFERENCES calendar_event_raw_content(raw_calendar_event_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_cer_occurrence ON calendar_event_revisions(occurrence_key)",
+                """
+                CREATE TABLE IF NOT EXISTS calendar_event_current_selection (
+                  occurrence_key TEXT PRIMARY KEY,
+                  selected_revision_key TEXT NOT NULL,
+                  selection_rule_version TEXT NOT NULL DEFAULT 'sel_v1',
+                  updated_utc TEXT NOT NULL,
+                  FOREIGN KEY (selected_revision_key) REFERENCES calendar_event_revisions(revision_key) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+            ]),
+            (132, "v132_contact_entities_raw_obs_revisions", [
+                """
+                CREATE TABLE IF NOT EXISTS contact_entities (
+                  contact_entity_id TEXT PRIMARY KEY,
+                  container_locator_hash TEXT NOT NULL,
+                  contact_id_hash TEXT NOT NULL,
+                  contact_type TEXT NOT NULL CHECK (contact_type IN ('person','organization','unknown')),
+                  created_utc TEXT NOT NULL,
+                  UNIQUE (container_locator_hash, contact_id_hash)
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS apple_contact_raw_content (
+                  raw_contact_payload_id TEXT PRIMARY KEY,
+                  contact_entity_id TEXT NOT NULL,
+                  structured_payload_json TEXT NOT NULL,
+                  payload_hash TEXT NOT NULL,
+                  schema_version TEXT NOT NULL DEFAULT 'apple_contact_raw_v1',
+                  source_quality TEXT NOT NULL,
+                  created_utc TEXT NOT NULL,
+                  UNIQUE (contact_entity_id, payload_hash),
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS contact_source_observations (
+                  observation_id TEXT PRIMARY KEY,
+                  contact_entity_id TEXT NOT NULL,
+                  revision_key TEXT NOT NULL,
+                  provider TEXT NOT NULL CHECK (provider IN ('cncontact_icloud','cncontact_local','cncontact_other')),
+                  container_locator_hash TEXT NOT NULL,
+                  contact_id_hash TEXT NOT NULL,
+                  payload_hash TEXT NOT NULL,
+                  source_quality TEXT NOT NULL,
+                  adapter_version TEXT NOT NULL,
+                  observed_at_utc TEXT NOT NULL,
+                  spool_item_id TEXT,
+                  capture_run_id TEXT,
+                  conflict_flag INTEGER NOT NULL DEFAULT 0,
+                  import_status TEXT NOT NULL CHECK (import_status IN ('successful','rejected','quarantined','attempted')),
+                  raw_sidecar_json TEXT,
+                  UNIQUE (provider, container_locator_hash, contact_id_hash, revision_key),
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_cso_entity ON contact_source_observations(contact_entity_id)",
+                "CREATE INDEX IF NOT EXISTS idx_cso_revision ON contact_source_observations(revision_key)",
+                """
+                CREATE TABLE IF NOT EXISTS contact_revisions (
+                  revision_key TEXT PRIMARY KEY,
+                  contact_entity_id TEXT NOT NULL,
+                  payload_hash TEXT NOT NULL,
+                  raw_contact_payload_id TEXT NOT NULL UNIQUE,
+                  source_quality TEXT NOT NULL,
+                  quarantine_flag INTEGER NOT NULL DEFAULT 0,
+                  created_utc TEXT NOT NULL,
+                  UNIQUE (contact_entity_id, payload_hash),
+                  FOREIGN KEY (raw_contact_payload_id) REFERENCES apple_contact_raw_content(raw_contact_payload_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                """
+                CREATE TABLE IF NOT EXISTS contact_current_selection (
+                  contact_entity_id TEXT PRIMARY KEY,
+                  selected_revision_key TEXT NOT NULL,
+                  selection_rule_version TEXT NOT NULL DEFAULT 'sel_v1',
+                  updated_utc TEXT NOT NULL,
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+                  FOREIGN KEY (selected_revision_key) REFERENCES contact_revisions(revision_key) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+            ]),
+            (133, "v133_contact_hash_index_and_linkage", [
+                """
+                CREATE TABLE IF NOT EXISTS contact_email_hashes (
+                  hash_row_id TEXT PRIMARY KEY,
+                  hash TEXT NOT NULL,
+                  contact_entity_id TEXT NOT NULL,
+                  label TEXT NOT NULL DEFAULT '',
+                  norm_version TEXT NOT NULL,
+                  is_primary INTEGER NOT NULL DEFAULT 0,
+                  UNIQUE (hash, contact_entity_id, label, norm_version),
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_ceh_hash ON contact_email_hashes(hash)",
+                """
+                CREATE TABLE IF NOT EXISTS contact_phone_hashes (
+                  hash_row_id TEXT PRIMARY KEY,
+                  hash TEXT NOT NULL,
+                  contact_entity_id TEXT NOT NULL,
+                  label TEXT NOT NULL DEFAULT '',
+                  norm_version TEXT NOT NULL,
+                  is_primary INTEGER NOT NULL DEFAULT 0,
+                  UNIQUE (hash, contact_entity_id, label, norm_version),
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_cph_hash ON contact_phone_hashes(hash)",
+                """
+                CREATE TABLE IF NOT EXISTS contact_linkage_candidates (
+                  linkage_id TEXT PRIMARY KEY,
+                  left_contact_entity_id TEXT NOT NULL,
+                  right_contact_entity_id TEXT,
+                  match_kind TEXT NOT NULL CHECK (match_kind IN ('matched','ambiguous','unmatched','conflict')),
+                  evidence_json TEXT NOT NULL,
+                  created_utc TEXT NOT NULL,
+                  CHECK (
+                    (match_kind = 'unmatched' AND right_contact_entity_id IS NULL)
+                    OR (match_kind != 'unmatched' AND right_contact_entity_id IS NOT NULL
+                        AND left_contact_entity_id != right_contact_entity_id)
+                  ),
+                  FOREIGN KEY (left_contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+                  FOREIGN KEY (right_contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                # SQLite NULL uniqueness: multiple unmatched rows with NULL right are allowed by UNIQUE;
+                # application layer rewrites unmatched per left entity (DELETE+INSERT).
+            ]),
+            (134, "v134_apple_contact_structured_projection", [
+                """
+                CREATE TABLE IF NOT EXISTS apple_contact_structured (
+                  projection_id TEXT PRIMARY KEY,
+                  contact_entity_id TEXT NOT NULL,
+                  raw_contact_payload_id TEXT NOT NULL UNIQUE,
+                  contact_type TEXT NOT NULL,
+                  has_email INTEGER NOT NULL DEFAULT 0,
+                  has_phone INTEGER NOT NULL DEFAULT 0,
+                  email_count INTEGER NOT NULL DEFAULT 0,
+                  phone_count INTEGER NOT NULL DEFAULT 0,
+                  source_quality TEXT NOT NULL,
+                  projection_schema_version TEXT NOT NULL DEFAULT 'apple_contact_projection_v1',
+                  projected_utc TEXT NOT NULL,
+                  non_pii_sidecar_json TEXT,
+                  FOREIGN KEY (contact_entity_id) REFERENCES contact_entities(contact_entity_id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+                  FOREIGN KEY (raw_contact_payload_id) REFERENCES apple_contact_raw_content(raw_contact_payload_id) ON DELETE RESTRICT ON UPDATE RESTRICT
+                )
+                """,
+                "CREATE INDEX IF NOT EXISTS idx_acs_entity ON apple_contact_structured(contact_entity_id)",
+            ]),
+        ]
+        for version, name, stmts in statements_by_version:
+            for sql in stmts:
+                conn.execute(sql)
+            if conn.execute(
+                "SELECT version FROM schema_migrations WHERE version = ?", (version,)
+            ).fetchone() is None:
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)",
+                    (version, name, now),
+                )
 
     @staticmethod
     def _v129_attribute_layer(conn: sqlite3.Connection) -> str:
