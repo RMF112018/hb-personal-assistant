@@ -1,0 +1,12 @@
+{
+  "contact_type": "person",
+  "given_name": "Grace",
+  "family_name": "Hopper",
+  "emails": [],
+  "phones": [
+    {"label": "work", "value": "+1-555-0200"},
+    {"label": "home", "value": "+1-555-0201"}
+  ],
+  "container": "iCloud",
+  "cn_id": "CN-multi-1"
+}

@@ -1,0 +1,8 @@
+{
+  "contact_type": "organization",
+  "organization_name": "Analytical Engines",
+  "emails": [{"label": "info", "value": "info@example.com"}],
+  "phones": [],
+  "container": "iCloud",
+  "cn_id": "CN-org-1"
+}

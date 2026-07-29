@@ -1,0 +1,9 @@
+{
+  "contact_type": "person",
+  "given_name": "Ada",
+  "family_name": "Lovelace",
+  "emails": [{"label": "work", "value": "ada@example.com"}],
+  "phones": [{"label": "mobile", "value": "+1-555-0100"}],
+  "container": "iCloud",
+  "cn_id": "CN-person-1"
+}
