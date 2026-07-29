@@ -7,12 +7,12 @@ from typing import Any
 
 from hb_assistant.apple_mcc.probes.status import ProbeResult, ProbeState
 
+# Default live capture targets iCloud CN container (primary).
+# BF-Personal is included when present as a Contacts container name.
 DEFAULT_CONTACTS_CONTAINER_ALLOWLIST: frozenset[str] = frozenset(
     {
         "iCloud",
-        "On My Mac",
-        "CardDAV",
-        "Exchange",
+        "BF-Personal",
     }
 )
 

@@ -220,3 +220,4 @@ docs/evidence/**/.DS_Store
 # Apple MCC detached evidence (path fragment; never commit under this host path)
 Library/Application Support/HB Personal Assistant/evidence/
 tools/apple/bin/
+tools/apple/bin/
