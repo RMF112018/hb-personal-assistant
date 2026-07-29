@@ -757,3 +757,5 @@ __all__ = [
     "reprocess",
     "status",
 ]
+
+# Apple MCC contacts projections use apple_mcc.contacts.projection_registry.
