@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
-from hb_assistant.apple_mcc.probes.mail_account import DEFAULT_MAIL_ACCOUNT_NAME, resolve_mail_account
+from hb_assistant.apple_mcc.probes.mail_account import (
+    DEFAULT_MAIL_ACCOUNT_NAME,
+    resolve_mail_account,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:

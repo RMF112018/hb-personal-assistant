@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from hb_assistant.apple_mcc.probes.mail_account import DEFAULT_MAIL_ACCOUNT_NAME, resolve_mail_account
+from hb_assistant.apple_mcc.probes.mail_account import (
+    DEFAULT_MAIL_ACCOUNT_NAME,
+    resolve_mail_account,
+)
 
 
 @dataclass

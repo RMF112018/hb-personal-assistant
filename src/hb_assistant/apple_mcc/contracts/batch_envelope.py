@@ -7,7 +7,6 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-
 SCHEMA = "apple_mcc_batch_envelope_v1"
 
 
