@@ -36,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     cap.add_argument("--calendar-limit", type=int, default=50)
     cap.add_argument("--calendar-sources", default="iCloud")
     cap.add_argument("--contacts-limit", type=int, default=20)
+    cap.add_argument("--contacts-containers", default="iCloud,BF-Personal")
     cap.add_argument("--no-transport", action="store_true")
 
     return p
@@ -74,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             from hb_assistant.apple_mcc.ops.capture_run import export_contacts_live
 
             try:
-                cn = export_contacts_live(limit=3)
+                cn = export_contacts_live(limit=3, containers="iCloud,BF-Personal")
                 results["contacts"] = {
                     "state": "ok",
                     "total": cn.get("total"),
@@ -107,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
             args.calendar_sources,
             "--contacts-limit",
             str(args.contacts_limit),
+            "--contacts-containers",
+            args.contacts_containers,
         ]
         if args.no_transport:
             argv2.append("--no-transport")

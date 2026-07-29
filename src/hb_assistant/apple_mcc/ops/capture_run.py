@@ -102,6 +102,38 @@ def _ensure_eventkit_binary() -> Path:
     return binary
 
 
+
+def _ensure_contacts_binary() -> Path:
+    root = _repo_root()
+    binary = root / "tools" / "apple" / "bin" / "contacts_export"
+    source = root / "tools" / "apple" / "ContactsExport" / "main.swift"
+    if binary.is_file() and os.access(binary, os.X_OK):
+        return binary
+    if not source.is_file():
+        raise FileNotFoundError(f"missing_contacts_export_source:{source}")
+    binary.parent.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.run(
+        [
+            "swiftc",
+            "-O",
+            "-framework",
+            "Contacts",
+            "-framework",
+            "Foundation",
+            str(source),
+            "-o",
+            str(binary),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0 or not binary.is_file():
+        raise RuntimeError(f"contacts_compile_failed:{proc.stderr[:800]!r}")
+    binary.chmod(0o755)
+    return binary
+
+
 def export_mail_live(
     *,
     account_name: str = DEFAULT_MAIL_ACCOUNT_NAME,
@@ -151,21 +183,26 @@ def export_calendar_live(
     return data
 
 
-def export_contacts_live(*, limit: int = 20) -> dict:
-    script = _repo_root() / "tools" / "apple" / "contacts_jxa" / "export_contacts.js"
-    if not script.is_file():
-        raise FileNotFoundError(f"missing_contacts_export:{script}")
+def export_contacts_live(*, limit: int = 20, containers: str = "iCloud") -> dict:
+    """Export contacts from named CNContactStore containers (default: iCloud).
+
+    ``containers`` is a comma-separated list of container names. BF-Personal is
+    included when present as a CN container; if absent, only listed existing containers are used.
+    """
+    binary = _ensure_contacts_binary()
     proc = subprocess.run(
-        ["osascript", "-l", "JavaScript", str(script), str(limit)],
+        [str(binary), str(limit), containers],
         capture_output=True,
         text=True,
         check=False,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"contacts_jxa_failed rc={proc.returncode} err={proc.stderr[:500]!r}")
+        raise RuntimeError(
+            f"contacts_export_failed rc={proc.returncode} err={proc.stderr[:500]!r} out={proc.stdout[:500]!r}"
+        )
     data = json.loads(proc.stdout)
     if not data.get("ok"):
-        raise RuntimeError(f"contacts_jxa_not_ok:{data}")
+        raise RuntimeError(f"contacts_export_not_ok:{data}")
     return data
 
 
@@ -335,6 +372,7 @@ def run_capture(
     calendar_limit: int = 50,
     calendar_sources: str = "iCloud",
     contacts_limit: int = 20,
+    contacts_containers: str = "iCloud,BF-Personal",
     spool_root: Path | None = None,
     transport: bool = True,
     nas_host: str = "hb-nas",
@@ -427,7 +465,7 @@ def run_capture(
     # --- contacts ---
     if "contacts" in wanted:
         try:
-            exported = export_contacts_live(limit=contacts_limit)
+            exported = export_contacts_live(limit=contacts_limit, containers=contacts_containers)
             payloads = []
             for item in exported.get("items") or []:
                 meta = _contact_payload(item, capture_run_id=capture_run_id)
@@ -572,6 +610,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Comma-separated EventKit source titles (default: iCloud = all calendars in that account, including shared)",
     )
     p.add_argument("--contacts-limit", type=int, default=20)
+    p.add_argument(
+        "--contacts-containers",
+        default="iCloud,BF-Personal",
+        help="Comma-separated CN container names (default iCloud; add BF-Personal if present)",
+    )
     p.add_argument("--no-transport", action="store_true")
     p.add_argument("--spool-root", type=Path, default=None)
     args = p.parse_args(argv)
@@ -585,6 +628,7 @@ def main(argv: list[str] | None = None) -> int:
         calendar_limit=args.calendar_limit,
         calendar_sources=args.calendar_sources,
         contacts_limit=args.contacts_limit,
+        contacts_containers=args.contacts_containers,
         spool_root=args.spool_root,
         transport=not args.no_transport,
     )
