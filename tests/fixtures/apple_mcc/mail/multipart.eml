@@ -1,0 +1,16 @@
+From: Ada <ada@example.com>
+To: Bob <bob@example.com>
+Subject: Multi
+Message-ID: <multi@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="bound1"
+
+--bound1
+Content-Type: text/plain; charset=utf-8
+
+Plain part
+--bound1
+Content-Type: text/html; charset=utf-8
+
+<html><body>HTML part</body></html>
+--bound1--
