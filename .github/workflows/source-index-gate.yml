@@ -34,6 +34,11 @@ on:
       - "scripts/ci_source_index_gate.sh"
       - "scripts/ci_source_index_phase_c_gate.sh"
       - "scripts/source_index_phase_c_rehearsal.py"
+      - "scripts/ci_source_index_phase_d_gate.sh"
+      - "scripts/source_index_phase_d_rehearsal.py"
+      - "scripts/source_index_scan_benchmark.py"
+      - "docs/specs/source-index-phase-d-scalability-resilience.md"
+      - "docs/evidence/source-index-phase-d/**"
       - ".github/workflows/source-index-gate.yml"
   push:
     branches:
@@ -60,6 +65,11 @@ on:
       - "scripts/ci_source_index_gate.sh"
       - "scripts/ci_source_index_phase_c_gate.sh"
       - "scripts/source_index_phase_c_rehearsal.py"
+      - "scripts/ci_source_index_phase_d_gate.sh"
+      - "scripts/source_index_phase_d_rehearsal.py"
+      - "scripts/source_index_scan_benchmark.py"
+      - "docs/specs/source-index-phase-d-scalability-resilience.md"
+      - "docs/evidence/source-index-phase-d/**"
       - ".github/workflows/source-index-gate.yml"
 
 jobs:
@@ -88,3 +98,6 @@ jobs:
 
       - name: Run source-index Phase C migration assurance gate
         run: bash scripts/ci_source_index_phase_c_gate.sh
+
+      - name: Run source-index Phase D scalability and resilience gate
+        run: bash scripts/ci_source_index_phase_d_gate.sh

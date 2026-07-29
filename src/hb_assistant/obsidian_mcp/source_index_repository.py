@@ -256,7 +256,7 @@ class SourceIndexRepository:
             "SELECT s.source_entity_id, l.source_id, l.source_root_key, l.rel_path "
             "FROM source_intelligence_sources s "
             "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
-            "  AND l.is_current_locator = 1 "
+            "  AND l.is_current_locator = 1 AND l.tombstoned_at IS NULL "
             "WHERE s.source_kind=? AND l.rel_path=?"
         )
         params: list[Any] = [source_kind, rel_path]
@@ -509,7 +509,7 @@ class SourceIndexRepository:
                 "SELECT l.rel_path, m.mtime_ns, m.size_bytes "
                 "FROM source_intelligence_sources s "
                 "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
-                "  AND l.is_current_locator = 1 "
+                "  AND l.is_current_locator = 1 AND l.tombstoned_at IS NULL "
                 "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
                 "WHERE s.source_kind='external_file' AND l.source_root_key=? "
                 "AND l.rel_path IS NOT NULL AND s.deleted=0",
@@ -1295,7 +1295,7 @@ class SourceIndexRepository:
                 "   WHERE t.source_entity_id = s.source_entity_id), 'none') AS content_mode "
                 "FROM source_intelligence_sources s "
                 "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
-                "  AND l.is_current_locator = 1 "
+                "  AND l.is_current_locator = 1 AND l.tombstoned_at IS NULL "
                 "LEFT JOIN source_intelligence_metadata m ON m.source_entity_id = s.source_entity_id "
                 "WHERE s.source_kind='external_file' AND l.source_root_key=? AND s.deleted=0 "
                 f"AND l.rel_path IN ({placeholders})",
@@ -1339,7 +1339,7 @@ class SourceIndexRepository:
         # two observation columns — never parent updated_at.
         sql = (
             "UPDATE source_index_locators SET last_seen_generation=?, last_seen_at=? "
-            "WHERE is_current_locator=1 AND source_root_key=? "
+            "WHERE is_current_locator=1 AND tombstoned_at IS NULL AND source_root_key=? "
             f"AND rel_path IN ({placeholders}) "
             "AND source_entity_id IN (SELECT source_entity_id FROM source_intelligence_sources "
             " WHERE source_kind='external_file' AND deleted=0)"
@@ -2294,11 +2294,16 @@ class SourceIndexRepository:
                 " snippet(source_intelligence_fts, 2, '[', ']', '…', 12) AS snip_aux, "
                 " s.source_entity_id, m.extraction_status, m.extraction_disposition, "
                 " CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 1 ELSE 0 END AS has_text "
+                # CROSS JOIN fixes the selective FTS-first loop order. Ordinary INNER JOIN lets SQLite
+                # start at a root-scoped locator index, then probe the FTS virtual table once per locator
+                # (~seconds at 100k / unbounded at NAS scale). FTS → metadata.fts_rowid → entity → current
+                # locator is deterministic and sub-millisecond for a selective path token (Phase D).
                 "FROM source_intelligence_fts f "
-                "JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
-                "JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
-                "JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
-                "  AND l.is_current_locator = 1 AND l.policy_validation_state IS NULL "
+                "CROSS JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
+                "CROSS JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
+                "CROSS JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "  AND l.is_current_locator = 1 AND l.tombstoned_at IS NULL "
+                "  AND l.policy_validation_state IS NULL "
                 "LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
                 "WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
@@ -2414,11 +2419,14 @@ class SourceIndexRepository:
                 "  snippet(source_intelligence_fts, 2, '[', ']', '…', 12) AS snip_aux, "
                 "  m.extraction_status AS est, m.extraction_disposition AS disp, "
                 "  CASE WHEN t.text_excerpt IS NOT NULL AND LENGTH(t.text_excerpt) > 0 THEN 1 ELSE 0 END AS has_text "
+                # CROSS JOIN is intentional: preserve the selective FTS-first loop order. With ordinary
+                # INNER JOIN, SQLite may start at all root locators and probe FTS once per file.
                 " FROM source_intelligence_fts f "
-                " JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
-                " JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
-                " JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
-                "   AND l.is_current_locator = 1 AND l.policy_validation_state IS NULL "
+                " CROSS JOIN source_intelligence_metadata m ON m.fts_rowid = f.rowid "
+                " CROSS JOIN source_intelligence_sources s ON s.source_entity_id = m.source_entity_id "
+                " CROSS JOIN source_index_locators l ON l.source_entity_id = s.source_entity_id "
+                "   AND l.is_current_locator = 1 AND l.tombstoned_at IS NULL "
+                "   AND l.policy_validation_state IS NULL "
                 " LEFT JOIN source_intelligence_text t ON t.source_entity_id = s.source_entity_id "
                 " WHERE source_intelligence_fts MATCH ? AND s.deleted=0 AND s.source_kind='external_file' "
             )
