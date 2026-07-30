@@ -12406,7 +12406,28 @@ def import_email_observation_and_revision(
             ),
         )
     except sqlite3.IntegrityError:
-        pass
+        # Idempotent re-import: fill display locators if still empty (V135).
+        if observation_fields.source_account:
+            conn.execute(
+                """
+                UPDATE email_message_source_observations
+                SET source_account = ?,
+                    source_scope = COALESCE(?, source_scope)
+                WHERE provider = ?
+                  AND account_locator_hash = ?
+                  AND source_local_id_hash = ?
+                  AND revision_key = ?
+                  AND (source_account IS NULL OR source_account = '')
+                """,
+                (
+                    observation_fields.source_account,
+                    observation_fields.source_scope,
+                    provider,
+                    observation_fields.account_locator_hash,
+                    observation_fields.source_local_id_hash,
+                    revision_key,
+                ),
+            )
     if observation_fields.import_status == "successful":
         _mcc_upsert_selection(
             conn,
@@ -12505,7 +12526,27 @@ def import_calendar_observation_and_revision(
             ),
         )
     except sqlite3.IntegrityError:
-        pass
+        if observation_fields.source_account:
+            conn.execute(
+                """
+                UPDATE calendar_event_source_observations
+                SET source_account = ?,
+                    source_scope = COALESCE(?, source_scope)
+                WHERE provider = ?
+                  AND source_locator_hash = ?
+                  AND source_local_id_hash = ?
+                  AND revision_key = ?
+                  AND (source_account IS NULL OR source_account = '')
+                """,
+                (
+                    observation_fields.source_account,
+                    observation_fields.source_scope,
+                    provider,
+                    observation_fields.source_locator_hash,
+                    observation_fields.source_local_id_hash,
+                    revision_key,
+                ),
+            )
     if observation_fields.import_status == "successful":
         _mcc_upsert_selection(
             conn,
@@ -12645,7 +12686,27 @@ def import_contact_observation_and_revision(
             ),
         )
     except sqlite3.IntegrityError:
-        pass
+        if observation_fields.source_account:
+            conn.execute(
+                """
+                UPDATE contact_source_observations
+                SET source_account = ?,
+                    source_scope = COALESCE(?, source_scope)
+                WHERE provider = ?
+                  AND container_locator_hash = ?
+                  AND contact_id_hash = ?
+                  AND revision_key = ?
+                  AND (source_account IS NULL OR source_account = '')
+                """,
+                (
+                    observation_fields.source_account,
+                    observation_fields.source_scope,
+                    provider,
+                    observation_fields.container_locator_hash,
+                    observation_fields.contact_id_hash,
+                    revision_key,
+                ),
+            )
     if observation_fields.import_status == "successful":
         _mcc_upsert_selection(
             conn,
