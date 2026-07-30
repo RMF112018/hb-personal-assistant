@@ -159,8 +159,8 @@ def export_mail_live(
 
 def export_calendar_live(
     *,
-    days: int = 14,
-    limit: int = 50,
+    days: int = 30,
+    limit: int = 200,
     sources: str = "iCloud",
 ) -> dict:
     """Export events from all calendars under the given EventKit source titles.
@@ -368,8 +368,8 @@ def run_capture(
     account_name: str = DEFAULT_MAIL_ACCOUNT_NAME,
     mailbox: str = "Inbox",
     mail_limit: int = 5,
-    calendar_days: int = 14,
-    calendar_limit: int = 50,
+    calendar_days: int = 30,
+    calendar_limit: int = 200,
     calendar_sources: str = "iCloud",
     contacts_limit: int = 20,
     contacts_containers: str = "iCloud,BF-Personal",
@@ -602,8 +602,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--account", default=DEFAULT_MAIL_ACCOUNT_NAME)
     p.add_argument("--mailbox", default="Inbox")
     p.add_argument("--mail-limit", type=int, default=5)
-    p.add_argument("--calendar-days", type=int, default=14)
-    p.add_argument("--calendar-limit", type=int, default=50)
+    p.add_argument("--calendar-days", type=int, default=30)
+    p.add_argument("--calendar-limit", type=int, default=200)
     p.add_argument(
         "--calendar-sources",
         default="iCloud",
