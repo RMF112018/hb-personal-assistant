@@ -75,6 +75,8 @@ def test_email_same_key_and_no_downgrade(disposable_db: Path) -> None:
             account_locator_hash=acct,
             source_local_id_hash=local,
             mailbox_locator_hash=mbx,
+            source_account="BF-Personal",
+            source_scope="INBOX",
         )
         import_email_observation_and_revision(
             conn,
@@ -112,6 +114,8 @@ def test_email_same_key_and_no_downgrade(disposable_db: Path) -> None:
             account_locator_hash=acct,
             source_local_id_hash="22" * 32,
             mailbox_locator_hash=mbx,
+            source_account="BF-Personal",
+            source_scope="INBOX",
         )
         import_email_observation_and_revision(
             conn,
@@ -166,6 +170,8 @@ def test_calendar_and_contact_same_key(disposable_db: Path) -> None:
             source_locator_hash=src,
             calendar_locator_hash=cal,
             source_local_id_hash=local,
+            source_account="iCloud",
+            source_scope="Personal",
         )
         import_calendar_observation_and_revision(
             conn,
@@ -198,6 +204,7 @@ def test_calendar_and_contact_same_key(disposable_db: Path) -> None:
             observation_id="ctobs1",
             container_locator_hash=cont,
             contact_id_hash=cid,
+            source_account="iCloud",
         )
         import_contact_observation_and_revision(
             conn,

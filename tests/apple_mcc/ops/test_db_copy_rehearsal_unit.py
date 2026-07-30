@@ -11,8 +11,8 @@ def test_rehearsal(tmp_path):
     conn.commit(); conn.close()
     def migrate(path: Path) -> int:
         c = sqlite3.connect(str(path))
-        c.execute("INSERT INTO schema_migrations VALUES (134, 'v134', 't')")
+        c.execute("INSERT INTO schema_migrations VALUES (135, 'v135', 't')")
         c.commit(); c.close()
-        return 134
+        return 135
     r = rehearse_copy_and_migrate(src, tmp_path / "copy.sqlite", migrate_fn=migrate)
-    assert r.copy_ok and r.schema_version_after == 134 and r.wrote_production is False
+    assert r.copy_ok and r.schema_version_after == 135 and r.wrote_production is False

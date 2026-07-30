@@ -12378,8 +12378,8 @@ def import_email_observation_and_revision(
               account_locator_hash, mailbox_locator_hash, source_local_id_hash, graph_id_hash,
               raw_source_sha256, raw_source_bytes, source_quality, fidelity_class,
               parser_version, adapter_version, observed_at_utc, spool_item_id, capture_run_id,
-              conflict_flag, import_status, raw_sidecar_json
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+              conflict_flag, import_status, raw_sidecar_json, source_account, source_scope
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)
             """,
             (
                 observation_fields.observation_id,
@@ -12401,6 +12401,8 @@ def import_email_observation_and_revision(
                 observation_fields.capture_run_id,
                 observation_fields.import_status,
                 observation_fields.raw_sidecar_json,
+                observation_fields.source_account or "",
+                observation_fields.source_scope,
             ),
         )
     except sqlite3.IntegrityError:
@@ -12474,8 +12476,8 @@ def import_calendar_observation_and_revision(
               source_locator_hash, calendar_locator_hash, source_local_id_hash, graph_id_hash,
               ical_uid_hash, ics_provenance, raw_ics_sha256, raw_ics_bytes, source_quality,
               parser_version, adapter_version, observed_at_utc, spool_item_id, capture_run_id,
-              conflict_flag, import_status, raw_sidecar_json
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+              conflict_flag, import_status, raw_sidecar_json, source_account, source_scope
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)
             """,
             (
                 observation_fields.observation_id,
@@ -12498,6 +12500,8 @@ def import_calendar_observation_and_revision(
                 observation_fields.capture_run_id,
                 observation_fields.import_status,
                 observation_fields.raw_sidecar_json,
+                observation_fields.source_account or "",
+                observation_fields.source_scope,
             ),
         )
     except sqlite3.IntegrityError:
@@ -12523,15 +12527,35 @@ def ensure_contact_entity(
     contact_id_hash: str,
     contact_type: str,
     created_utc: str,
+    source_account: str = "",
 ) -> None:
     conn.execute(
         """
         INSERT OR IGNORE INTO contact_entities (
-          contact_entity_id, container_locator_hash, contact_id_hash, contact_type, created_utc
-        ) VALUES (?, ?, ?, ?, ?)
+          contact_entity_id, container_locator_hash, contact_id_hash, contact_type, created_utc,
+          source_account
+        ) VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (contact_entity_id, container_locator_hash, contact_id_hash, contact_type, created_utc),
+        (
+            contact_entity_id,
+            container_locator_hash,
+            contact_id_hash,
+            contact_type,
+            created_utc,
+            source_account or "",
+        ),
     )
+    # Backfill display account on existing entity rows when newly known.
+    if source_account:
+        conn.execute(
+            """
+            UPDATE contact_entities
+            SET source_account = ?
+            WHERE contact_entity_id = ?
+              AND (source_account IS NULL OR source_account = '')
+            """,
+            (source_account, contact_entity_id),
+        )
 
 
 def import_contact_observation_and_revision(
@@ -12556,6 +12580,7 @@ def import_contact_observation_and_revision(
         contact_id_hash=observation_fields.contact_id_hash,
         contact_type=contact_type,
         created_utc=observed_at_utc,
+        source_account=observation_fields.source_account or "",
     )
     existing = conn.execute(
         "SELECT payload_hash FROM contact_revisions WHERE revision_key = ?",
@@ -12597,8 +12622,8 @@ def import_contact_observation_and_revision(
               observation_id, contact_entity_id, revision_key, provider,
               container_locator_hash, contact_id_hash, payload_hash, source_quality,
               adapter_version, observed_at_utc, spool_item_id, capture_run_id,
-              conflict_flag, import_status, raw_sidecar_json
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)
+              conflict_flag, import_status, raw_sidecar_json, source_account, source_scope
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?)
             """,
             (
                 observation_fields.observation_id,
@@ -12615,6 +12640,8 @@ def import_contact_observation_and_revision(
                 observation_fields.capture_run_id,
                 observation_fields.import_status,
                 observation_fields.raw_sidecar_json,
+                observation_fields.source_account or "",
+                observation_fields.source_scope,
             ),
         )
     except sqlite3.IntegrityError:

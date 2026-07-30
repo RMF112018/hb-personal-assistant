@@ -230,6 +230,8 @@ def _mail_payload(item: dict, *, account_name: str, mailbox: str, capture_run_id
         "provider": "apple_mail",
         "account_name": account_name,
         "mailbox": mailbox,
+        "source_account": account_name,
+        "source_scope": mailbox,
         "source_local_id": str(item.get("id") or ""),
         "account_locator_hash": acct,
         "mailbox_locator_hash": mbx,
@@ -277,11 +279,14 @@ def _calendar_payload(item: dict, *, capture_run_id: str) -> dict:
     )
     rev = calendar_revision_key(occ, ph)
     snap = calendar_raw_snapshot_id(rev)
+    cal_title = item.get("calendar_title")
     return {
         "domain": "calendar",
         "provider": "apple_eventkit",
         "source_title": src_title,
-        "calendar_title": item.get("calendar_title"),
+        "calendar_title": cal_title,
+        "source_account": src_title,
+        "source_scope": str(cal_title) if cal_title else None,
         "calendar_id": cal_id,
         "event_id": ek_id,
         "source_locator_hash": src,
@@ -334,6 +339,8 @@ def _contact_payload(item: dict, *, capture_run_id: str) -> dict:
         "domain": "contacts",
         "provider": "cncontact_local",
         "container": container,
+        "source_account": container,
+        "source_scope": None,
         "cn_id": cn_id,
         "container_locator_hash": cont,
         "contact_id_hash": cid,

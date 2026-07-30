@@ -168,6 +168,9 @@ class EmailObservationFields:
     capture_run_id: str | None = None
     raw_sidecar_json: str | None = None
     import_status: str = "successful"
+    # Human-readable source locators (V135); hashes remain identity keys.
+    source_account: str = ""
+    source_scope: str | None = None
 
 
 @dataclass
@@ -187,6 +190,9 @@ class CalendarObservationFields:
     capture_run_id: str | None = None
     raw_sidecar_json: str | None = None
     import_status: str = "successful"
+    # EventKit source title + calendar title (V135).
+    source_account: str = ""
+    source_scope: str | None = None
 
 
 @dataclass
@@ -199,3 +205,6 @@ class ContactObservationFields:
     capture_run_id: str | None = None
     raw_sidecar_json: str | None = None
     import_status: str = "successful"
+    # CN container display name (V135).
+    source_account: str = ""
+    source_scope: str | None = None
