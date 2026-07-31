@@ -188,7 +188,7 @@ def validate_db_copy_rehearsal(obj: dict[str, Any]) -> None:
         raise PredicateFail("copy_ok")
     if _int(obj, "schema_version_before") < 129:
         raise PredicateFail("schema_version_before")
-    if _int(obj, "schema_version_after") != 134:
+    if _int(obj, "schema_version_after") != 135:
         raise PredicateFail("schema_version_after")
     if _int(obj, "foreign_key_check_rows") != 0:
         raise PredicateFail("foreign_key_check_rows")

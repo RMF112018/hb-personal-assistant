@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 # Single source of truth for the head schema version. Bump this with every new
 # migration block in apply(). Tests should assert against this constant rather
 # than hard-coding a literal so version bumps do not break unrelated tests.
-LATEST_SCHEMA_VERSION = 134
+LATEST_SCHEMA_VERSION = 135
 
 # --- V128 permanent-identity structural oracle: reference-schema comparison (CP-PI-WI-02-R8) -------
 # The V128 always-revalidate oracle validates a live DB by exact-equality against a CANONICAL V128
@@ -10400,6 +10400,7 @@ class SQLiteMigrator:
             # --- V130–V134: Apple MCC observation/revision/selection + contacts ---
             if apply_v129:
                 self._apply_apple_mcc_v130_v134(conn, now)
+                self._apply_apple_mcc_v135_source_account(conn, now)
 
             # NF-AUD-005 critical-boundary revalidation: confirm the opened-target identity has not
             # drifted (path swapped to a different inode) before this single migration transaction
@@ -11698,6 +11699,64 @@ class SQLiteMigrator:
                     "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)",
                     (version, name, now),
                 )
+
+    def _apply_apple_mcc_v135_source_account(self, conn: sqlite3.Connection, now: str) -> None:
+        """V135: first-class source_account / source_scope on MCC observation rows.
+
+        Additive display locators so operators can differentiate Mail account,
+        EventKit source, and Contacts container without reverse-hashing.
+        Existing locator hashes and uniqueness keys are unchanged.
+        """
+        if conn.execute(
+            "SELECT version FROM schema_migrations WHERE version = 135"
+        ).fetchone() is not None:
+            return
+
+        def _cols(table: str) -> set[str]:
+            return {
+                str(r[1])
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+
+        alters: list[str] = []
+        for table in (
+            "email_message_source_observations",
+            "calendar_event_source_observations",
+            "contact_source_observations",
+        ):
+            cols = _cols(table)
+            if "source_account" not in cols:
+                alters.append(
+                    f"ALTER TABLE {table} ADD COLUMN source_account TEXT NOT NULL DEFAULT ''"
+                )
+            if "source_scope" not in cols:
+                alters.append(f"ALTER TABLE {table} ADD COLUMN source_scope TEXT")
+
+        entity_cols = _cols("contact_entities")
+        if "source_account" not in entity_cols:
+            alters.append(
+                "ALTER TABLE contact_entities ADD COLUMN source_account TEXT NOT NULL DEFAULT ''"
+            )
+
+        for sql in alters:
+            conn.execute(sql)
+
+        for sql in (
+            "CREATE INDEX IF NOT EXISTS idx_emso_source_account "
+            "ON email_message_source_observations(source_account)",
+            "CREATE INDEX IF NOT EXISTS idx_ceso_source_account "
+            "ON calendar_event_source_observations(source_account)",
+            "CREATE INDEX IF NOT EXISTS idx_cso_source_account "
+            "ON contact_source_observations(source_account)",
+            "CREATE INDEX IF NOT EXISTS idx_contact_entities_source_account "
+            "ON contact_entities(source_account)",
+        ):
+            conn.execute(sql)
+
+        conn.execute(
+            "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)",
+            (135, "v135_mcc_source_account_display", now),
+        )
 
     @staticmethod
     def _v129_attribute_layer(conn: sqlite3.Connection) -> str:

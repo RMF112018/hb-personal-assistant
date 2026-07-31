@@ -39,7 +39,26 @@ def _obs_id(*parts: str) -> str:
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
+def _resolve_source_account(item: dict, *fallback_keys: str) -> str:
+    """Prefer explicit source_account; fall back to domain-native locator names."""
+    for key in ("source_account",) + fallback_keys:
+        val = item.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    raise ValueError(f"missing_source_account domain={item.get('domain')}")
+
+
+def _resolve_source_scope(item: dict, *fallback_keys: str) -> str | None:
+    for key in ("source_scope",) + fallback_keys:
+        val = item.get(key)
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return None
+
+
 def _import_mail(conn: sqlite3.Connection, item: dict) -> None:
+    source_account = _resolve_source_account(item, "account_name")
+    source_scope = _resolve_source_scope(item, "mailbox")
     raw = EmailRawFields(
         raw_email_id=item["raw_email_id"],
         message_id_hash=item["source_local_id_hash"],
@@ -56,6 +75,8 @@ def _import_mail(conn: sqlite3.Connection, item: dict) -> None:
                 "provider": "apple_mail",
                 "raw_source_sha256": item.get("raw_source_sha256"),
                 "internet_message_id": item.get("internet_message_id"),
+                "source_account": source_account,
+                "source_scope": source_scope,
             }
         ),
     )
@@ -69,6 +90,8 @@ def _import_mail(conn: sqlite3.Connection, item: dict) -> None:
         raw_source_bytes=item.get("raw_source_bytes"),
         fidelity_class=item.get("fidelity_class"),
         capture_run_id=item.get("capture_run_id"),
+        source_account=source_account,
+        source_scope=source_scope,
     )
     import_email_observation_and_revision(
         conn,
@@ -85,6 +108,21 @@ def _import_mail(conn: sqlite3.Connection, item: dict) -> None:
 
 
 def _import_calendar(conn: sqlite3.Connection, item: dict) -> None:
+    source_account = _resolve_source_account(item, "source_title")
+    source_scope = _resolve_source_scope(item, "calendar_title")
+    sidecar = item.get("raw_sidecar_json")
+    if isinstance(sidecar, str) and sidecar.strip():
+        try:
+            side_obj = json.loads(sidecar)
+            if not isinstance(side_obj, dict):
+                side_obj = {}
+        except json.JSONDecodeError:
+            side_obj = {"raw_sidecar": sidecar}
+    else:
+        side_obj = {}
+    side_obj.setdefault("source_account", source_account)
+    if source_scope is not None:
+        side_obj.setdefault("source_scope", source_scope)
     raw = CalendarRawFields(
         raw_calendar_event_id=item["raw_calendar_event_id"],
         graph_event_id_hash=item.get("graph_event_id_hash") or "",
@@ -98,7 +136,7 @@ def _import_calendar(conn: sqlite3.Connection, item: dict) -> None:
         raw_capture_run_id=item.get("capture_run_id"),
         raw_content_schema_version="calendar_raw_v1",
         join_url_policy=item.get("join_url_policy") or "local_db_only",
-        raw_sidecar_json=item.get("raw_sidecar_json"),
+        raw_sidecar_json=json.dumps(side_obj, sort_keys=True),
     )
     observed = item.get("observed_at_utc") or ""
     obs = CalendarObservationFields(
@@ -109,7 +147,9 @@ def _import_calendar(conn: sqlite3.Connection, item: dict) -> None:
         graph_id_hash=None,
         ics_provenance="none",
         capture_run_id=item.get("capture_run_id"),
-        raw_sidecar_json=item.get("raw_sidecar_json"),
+        raw_sidecar_json=json.dumps(side_obj, sort_keys=True),
+        source_account=source_account,
+        source_scope=source_scope,
     )
     import_calendar_observation_and_revision(
         conn,
@@ -126,6 +166,8 @@ def _import_calendar(conn: sqlite3.Connection, item: dict) -> None:
 
 def _import_contact(conn: sqlite3.Connection, item: dict) -> None:
     observed = item.get("observed_at_utc") or ""
+    source_account = _resolve_source_account(item, "container")
+    source_scope = _resolve_source_scope(item)
     raw = ContactRawFields(
         raw_contact_payload_id=item["raw_contact_payload_id"],
         contact_entity_id=item["contact_entity_id"],
@@ -140,6 +182,8 @@ def _import_contact(conn: sqlite3.Connection, item: dict) -> None:
         container_locator_hash=item["container_locator_hash"],
         contact_id_hash=item["contact_id_hash"],
         capture_run_id=item.get("capture_run_id"),
+        source_account=source_account,
+        source_scope=source_scope,
     )
     provider = item.get("provider") or "cncontact_local"
     if provider not in {"cncontact_icloud", "cncontact_local", "cncontact_other"}:
