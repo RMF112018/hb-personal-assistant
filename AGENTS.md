@@ -154,13 +154,69 @@ For an AEOS-governed goal:
 - exactly one workflow state may be active in an invocation;
 - the agent may complete the active state but may not authorize the next state;
 - every state closes with a durable checkpoint package;
-- external review and operator authorization are required before resumption;
+- independent review by an eligible reviewer subagent or other approved external
+  review context, followed by operator authorization, is required before
+  resumption;
 - implementers do not certify their own plans or implementation;
 - original finding identifiers and history remain traceable;
 - a broad goal prompt is not blanket authorization for all lifecycle stages.
 
 The deterministic controller or validated state—not the model—selects the active
 workflow and skill.
+
+## Mandatory Subagent Review and Approval
+
+When the active harness supports subagents, substantive planning,
+implementation, corrective work, audit preparation, and readiness assessment
+must use a fresh reviewer subagent before the parent context claims that the
+artifact or candidate is ready for the next gate.
+
+The parent or implementation context must:
+
+- finish and freeze the review candidate before spawning the reviewer;
+- provide a bounded review brief containing the goal and work-item identity,
+  acceptance criteria, exact base and head SHA or immutable artifact identity,
+  changed scope, relevant tests and evidence paths, known deviations, and the
+  requested decision;
+- spawn the reviewer in a fresh context that did not participate in planning or
+  implementation and provide no implementer chain-of-thought, preferred
+  conclusion, or patch instructions;
+- keep the reviewer read-only and require independent inspection of the diff,
+  repository truth, tests, and evidence rather than accepting the parent
+  context's summary as proof;
+- preserve the reviewer findings and disposition without suppression or
+  favorable rewriting;
+- route required corrections back to an implementation context, then obtain a
+  new review against the corrected exact identity;
+- invalidate the approval after any material commit, artifact mutation, or
+  evidence change; and
+- add specialist reviewer subagents proportional to risk, including test,
+  security/privacy, migration/data, architecture, or evidence/readiness review
+  when those surfaces are material.
+
+A reviewer or approver subagent:
+
+- must not have authored, edited, or materially directed the work under review;
+- must not patch the candidate it is reviewing;
+- may issue only a bounded artifact-level disposition such as `APPROVE`,
+  `APPROVE_WITH_NONBLOCKING_FINDINGS`, `REQUEST_CHANGES`, `BLOCKED`, or
+  `INSUFFICIENT_EVIDENCE`;
+- must identify the exact SHA or immutable artifact identity reviewed;
+- must report the acceptance-criteria result, findings, evidence gaps, residual
+  risks, and unverified areas;
+- must not waive acceptance criteria, conceal findings, or treat parent-agent
+  narrative as evidence; and
+- must not authorize a lifecycle transition, push, merge, cleanup, deployment,
+  production activation, destructive action, credential change, or risk
+  acceptance.
+
+For a formal AEOS independent decision, a subagent qualifies only when it is a
+fresh, distinct execution context, did not participate in producing the work,
+remains read-only, reviews the exact candidate identity, and the governing
+workflow permits that reviewer class. The subagent's artifact-level approval is
+review evidence; it is never operator authorization. If the harness cannot
+establish an eligible independent subagent context, stop at the applicable
+ready-for-review disposition and obtain another approved review context.
 
 ## Agent Rules
 
@@ -174,6 +230,8 @@ Agents must:
 - distinguish verified facts, unverified claims, assumptions, unknowns, and
   unavailable evidence;
 - produce evidence for implementation and readiness claims;
+- delegate substantive review and artifact-level approval to an eligible fresh
+  reviewer subagent when the harness supports subagents;
 - select tests under the repository test-selection standard;
 - run required tests or explain exactly why they were not run;
 - classify and preserve every observed failure;
@@ -211,12 +269,18 @@ Agents must not, without explicit operator approval:
 When multiple agents participate:
 
 - the implementation context must not perform the independent audit;
+- a fresh eligible reviewer subagent may approve the reviewed artifact within
+  its bounded decision scope but may not authorize the next lifecycle state or
+  any operator-only action;
 - an audit context must not patch the implementation it is auditing;
-- external model recommendations do not constitute operator authorization;
+- external model or subagent recommendations do not constitute operator
+  authorization;
 - corrective implementation may address only authorized findings;
 - parallel failure correction requires a separate work item, authorization,
   registered branch/worktree, evidence package, and review context;
-- a model may recommend a next gate but may not approve it.
+- the parent context must not replace, dilute, or override a reviewer
+  disposition; and
+- a model may recommend a next gate, but only the operator may authorize it.
 
 ## Required Final Report
 
@@ -238,6 +302,8 @@ Implementation and corrective agents must provide:
 14. Integrated-green status.
 15. Final Git status.
 16. Branch/worktree lifecycle state and cleanup, retention, or blocker receipt.
-17. Recommended next gate.
+17. Reviewer subagent identity or role, reviewed SHA or artifact identity,
+    disposition, findings, and evidence location.
+18. Recommended next gate.
 
-A recommendation is not an authorization.
+A recommendation or subagent approval is not operator authorization.
